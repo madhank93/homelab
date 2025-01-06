@@ -1,0 +1,49 @@
+#cloud-config
+
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    passwd: $6$SP/vqykLkV9d05An$mJ/fEZ3gmfVvD1vwSJqxfjsK9z/bykIMbCZ/Hov.nt31e8h0XklDSE7ofw2YjPemVOSm14JdYoEfEzbxkFkY/1
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHDtJdQ12Q8pUUGM16V1Ko+es5LzuGT/0FGWWTmsKQxj madhankumaravelu93@gmail.com
+
+chpasswd:
+  list: |
+    ubuntu:$6$SP/vqykLkV9d05An$mJ/fEZ3gmfVvD1vwSJqxfjsK9z/bykIMbCZ/Hov.nt31e8h0XklDSE7ofw2YjPemVOSm14JdYoEfEzbxkFkY/1
+  expire: true
+
+write_files:
+  - path: /etc/netplan/00-installer-config.yaml
+    permissions: '0600'
+    content: |
+      network:
+        version: 2
+        ethernets:
+          ${network_interface}:
+            dhcp4: true
+            nameservers:
+              addresses: [8.8.8.8, 8.8.4.4]
+
+runcmd:
+  # Wait for network connectivity
+  - |
+    count=0
+    max_attempts=30
+    until ping -c 1 8.8.8.8 >/dev/null 2>&1 || [ $count -eq $max_attempts ]; do
+      echo "Waiting for network connectivity... Attempt $count of $max_attempts"
+      sleep 5
+      count=$((count + 1))
+    done
+  - hostnamectl set-hostname ${hostname}
+  - netplan generate
+  - netplan apply
+  - systemctl restart systemd-timesyncd
+  - apt-get update
+  - apt-get install -y qemu-guest-agent wget net-tools
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - chsh -s /bin/bash ubuntu
+
+package_update: true
+package_upgrade: true
