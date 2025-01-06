@@ -1,0 +1,21 @@
+kube_version: v1.32.0
+helm_enabled: true
+kube_proxy_strict_arp: true
+##############
+### Addons ###
+##############
+metrics_server_enabled: true
+cert_manager_enabled: true
+ingress_nginx_enabled: true
+### MetalLB
+metallb_enabled: true
+metallb_speaker_enabled: true
+metallb_config:
+  address_pools:
+    primary:
+      ip_range:
+        - 192.168.1.150-192.168.1.200
+      auto_assign: true
+      avoid_buggy_ips: true
+  layer2:
+    - primary
