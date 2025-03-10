@@ -163,12 +163,13 @@ func main() {
 			Bridge:      "vmbr0",
 			ImageUrl:    "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img",
 			Nodes: []NodeConfig{
-				{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 15, HasGPU: false},
-				{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 15, HasGPU: false},
-				{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 15, HasGPU: false},
-				{Name: "k8s-worker1", Role: "control", Cores: 4, Memory: 8192, DiskSize: 30, HasGPU: true},
-				{Name: "k8s-worker2", Role: "control", Cores: 4, Memory: 8192, DiskSize: 30, HasGPU: false},
-				{Name: "k8s-worker3", Role: "control", Cores: 4, Memory: 8192, DiskSize: 30, HasGPU: false},
+				{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, HasGPU: false},
+				{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, HasGPU: false},
+				{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, HasGPU: false},
+				{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: false},
+				{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: false},
+				{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: false},
+				{Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: false},
 			},
 		}
 
