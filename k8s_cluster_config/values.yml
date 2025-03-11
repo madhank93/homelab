@@ -1,21 +1,24 @@
 kube_version: v1.32.0
 helm_enabled: true
 kube_proxy_strict_arp: true
+
 ##############
 ### Addons ###
 ##############
 metrics_server_enabled: true
 cert_manager_enabled: true
 ingress_nginx_enabled: true
-### MetalLB
-metallb_enabled: true
-metallb_speaker_enabled: true
-metallb_config:
-  address_pools:
-    primary:
-      ip_range:
-        - 192.168.1.150-192.168.1.200
-      auto_assign: true
-      avoid_buggy_ips: true
-  layer2:
-    - primary
+
+### Kube-VIP
+kube_vip_enabled: true
+kube_vip_arp_enabled: true
+kube_vip_controlplane_enabled: true
+kube_vip_services_enabled: true
+kube_vip_address: "192.168.1.200"
+# kube_vip_interface: "{% if has_gpu | default(false) %}ens18{% else %}enp6s18{% endif %}"
+kube_vip_interface: ens18
+kube_vip_address_range: 192.168.1.201-192.168.1.210
+
+loadbalancer_apiserver:
+  address: "{{ kube_vip_address }}"
+  port: 6443
