@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx-proxy-manager
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: nginx-proxy-manager
+    repoURL: oci://tccr.io/truecharts
+    targetRevision: 2.12.3
+    helm:
+      releaseName: nginx-proxy-manager
+      valueFiles:
+      - values/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nginx-proxy-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

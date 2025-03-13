@@ -1,0 +1,55 @@
+image:
+  repository: docker.io/jc21/nginx-proxy-manager
+  pullPolicy: IfNotPresent
+  tag: 2.12.3
+
+service:
+  main:
+    ports:
+      main:
+        port: 81
+        targetPort: 81
+  web:
+    enabled: true
+    ports:
+      web:
+        enabled: true
+        port: 80
+        targetPort: 80
+  websecure:
+    enabled: true
+    ports:
+      websecure:
+        enabled: true
+        port: 443
+        targetPort: 443
+
+persistence:
+  data:
+    enabled: true
+    mountPath: /data
+    size: 1Gi
+  letsencrypt:
+    enabled: true
+    mountPath: /etc/letsencrypt
+    size: 1Gi
+
+mariadb:
+  enabled: true
+  mariadbUsername: npm
+  mariadbDatabase: npm
+
+portal:
+  open:
+    enabled: true
+
+workload:
+  main:
+    podSpec:
+      containers:
+        main:
+          env:
+            DISABLE_IPV6: true
+            DB_MYSQL_PORT: 3306
+            DB_MYSQL_NAME: "{{ .Values.mariadb.mariadbDatabase }}"
+            DB_MYSQL_USER: "{{ .Values.mariadb.mariadbUsername }}"
