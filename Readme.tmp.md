@@ -27,3 +27,17 @@ To check the available IP range in your home network using the
 ```sh
 nmap -sn 192.168.1.0/24
 ```
+
+- Nginx ingress controller
+
+```sh
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install nginx-ingress ingress-nginx/ingress-nginx \
+  --namespace nginx-ingress-system --create-namespace \
+  --version 4.12.0 \
+  --set controller.service.loadBalancerIP=192.168.1.205 \
+  
+  #--set controller.ingressClassResource.name=custom-nginx
+  # --set controller.ingressClassResource.default=false
+```
