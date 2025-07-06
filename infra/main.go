@@ -30,6 +30,7 @@ type NodeConfig struct {
 	Memory   int
 	DiskSize int
 	HasGPU   bool
+	PcieIDs  []string
 }
 
 // initialize the Proxmox provider
@@ -134,13 +135,16 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 	if config.HasGPU {
 		args.Bios = pulumi.String("ovmf")
 		args.Machine = pulumi.String("q35")
-		args.Hostpcis = vm.VirtualMachineHostpciArray{
-			vm.VirtualMachineHostpciArgs{
+		var hostpcis vm.VirtualMachineHostpciArray
+		for i, pcieID := range config.PcieIDs {
+			hostpcis = append(hostpcis, vm.VirtualMachineHostpciArgs{
 				Device: pulumi.String("hostpci0"),
 				Pcie:   pulumi.Bool(true),
-				Id:     pulumi.String("0000:17:00.0"),
-			},
+				Id:     pulumi.String(pcieID),
+				Xvga:   pulumi.Bool(i == 0), // Only the first device is primary VGA
+			})
 		}
+		args.Hostpcis = hostpcis
 	}
 
 	return vm.NewVirtualMachine(ctx, config.Name, args,
@@ -158,10 +162,10 @@ func main() {
 
 		// Define cluster configs
 		clusterConfig := ClusterConfig{
-			NodeName:    "pve",
+			NodeName:    "proxmox",
 			DatastoreID: "local",
 			Bridge:      "vmbr0",
-			ImageUrl:    "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img",
+			ImageUrl:    "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img",
 			Nodes: []NodeConfig{
 				{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, HasGPU: false},
 				{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, HasGPU: false},
@@ -169,7 +173,7 @@ func main() {
 				{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: false},
 				{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: false},
 				{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: false},
-				{Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: false},
+				{Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: true, PcieIDs: []string{"0000:28:00.0"}},
 			},
 		}
 
@@ -179,6 +183,7 @@ func main() {
 			DatastoreId: pulumi.String(clusterConfig.DatastoreID),
 			NodeName:    pulumi.String(clusterConfig.NodeName),
 			Url:         pulumi.String(clusterConfig.ImageUrl),
+			Overwrite:   pulumi.Bool(true),
 		}, pulumi.Provider(provider))
 		if err != nil {
 			return err
