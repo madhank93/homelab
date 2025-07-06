@@ -3,7 +3,7 @@ Refer blog -
 
 ## Troubleshooting Guide
 
-### 1. Ensure you're using the correct Proxmox node
+1. Ensure you're using the correct Proxmox node
 
 <details>
 <summary>Show steps</summary>
@@ -24,7 +24,7 @@ text
 
 ---
 
-### 2. Enable "Snippets" in storage configuration
+2. Enable "Snippets" in storage configuration
 
 <details>
 <summary>Show steps</summary>
@@ -39,7 +39,7 @@ text
 
 ---
 
-### 3. Logging into a new VM
+3. Logging into a new VM
 
 
 <details> 
