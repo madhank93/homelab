@@ -42,11 +42,11 @@ runcmd:
   - systemctl restart systemd-timesyncd
   - apt-get update
   - apt-get install -y qemu-guest-agent wget net-tools ubuntu-drivers-common
-  - ubuntu-drivers autoinstall        # <-- This installs recommended NVIDIA drivers automatically
+  - ubuntu-drivers autoinstall        # Auto installs NVIDIA drivers
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
   - chsh -s /bin/bash ubuntu
-  - apt-get install -y linux-image-5.15.0-101-generic linux-headers-5.15.0-101-generic
+  - apt-get install -y linux-image-$(uname -r) linux-headers-$(uname -r)
   - update-grub
   - reboot
 
