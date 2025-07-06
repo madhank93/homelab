@@ -41,10 +41,12 @@ text
 
 ### 3. Logging into a new VM
 
-![ip-addr](/assets/img/ip_addr.png)
 
 <details> 
 <summary>Show steps</summary>
+
+![ip-addr](/assets/img/ip_addr.png)
+
 Find the VM’s IP (from Pulumi output or Proxmox GUI).
 
 SSH into the VM:
