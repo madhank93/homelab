@@ -1,0 +1,19 @@
+# justfile
+
+proxmox-ip := `yq '.proxmox.endpoint' config.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'`
+
+deploy:
+    pulumi up
+
+preview:
+    pulumi preview
+
+destroy:
+    pulumi destroy
+
+refresh:
+    pulumi refresh
+
+# stop-vm vm_id:
+#     ssh root@{{proxmox-ip}} "rm -f /run/lock/qemu-server/lock-{{vm_id}}.conf && qm unlock {{vm_id}} && qm stop {{vm_id}}"
+"
