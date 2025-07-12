@@ -26,6 +26,11 @@ run-kubespray:
       --mount type=bind,source="${HOME}/.ssh/id_ed25519",dst=/root/.ssh/id_ed25519 \
       quay.io/kubespray/kubespray:v2.28.0 bash -c "ansible-playbook -i /config/inventory/hosts.ini -e @/config/values.yml cluster.yml"
 
+reset-kubespray:
+    docker run --rm -it --mount type=bind,source="$(pwd)/k8s_cluster_config",dst=/config \
+      --mount type=bind,source="${HOME}/.ssh/id_ed25519",dst=/root/.ssh/id_ed25519 \
+      quay.io/kubespray/kubespray:v2.28.0 bash -c "ansible-playbook -i /config/inventory/hosts.ini -e @/config/values.yml reset.yml -vvv"
+
 
 # stop-vm vm_id:
 #     ssh root@{{proxmox-ip}} "rm -f /run/lock/qemu-server/lock-{{vm_id}}.conf && qm unlock {{vm_id}} && qm stop {{vm_id}}"
