@@ -1,4 +1,4 @@
-kube_version: v1.32.0
+kube_version: 1.32.0
 helm_enabled: true
 kube_proxy_strict_arp: true
 
@@ -15,8 +15,7 @@ kube_vip_arp_enabled: true
 kube_vip_controlplane_enabled: true
 kube_vip_services_enabled: true
 kube_vip_address: "192.168.1.200"
-# kube_vip_interface: "{% if has_gpu | default(false) %}ens18{% else %}enp6s18{% endif %}"
-kube_vip_interface: ens18
+kube_vip_interface: "{% if has_gpu | default(false) %}enp6s18{% else %}ens18{% endif %}"
 kube_vip_address_range: 192.168.1.201-192.168.1.210
 
 loadbalancer_apiserver:
