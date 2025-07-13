@@ -1,5 +1,6 @@
-Refer blog - 
+# HomeLab
 
+![architecture](/assets/img/architecture.png)
 
 ## Troubleshooting Guide
 
