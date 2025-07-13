@@ -7,13 +7,12 @@ kube_proxy_strict_arp: true
 helm_enabled: true
 metrics_server_enabled: true
 cert_manager_enabled: true
-ingress_nginx_enabled: true
+kube_vip_enabled: true
 # argocd_enabled: true # Argocd installation fails in v2.28.0 - https://github.com/kubernetes-sigs/kubespray/issues/12223
 
 ################
 ### Kube-VIP ###
 ################
-kube_vip_enabled: true
 kube_vip_arp_enabled: true
 kube_vip_controlplane_enabled: true
 kube_vip_services_enabled: true
