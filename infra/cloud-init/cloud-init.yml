@@ -1,18 +1,11 @@
 #cloud-config
-
 users:
   - name: ubuntu
     sudo: ALL=(ALL) NOPASSWD:ALL
-    lock_passwd: false
-    # Password is 12345
-    passwd: $6$SP/vqykLkV9d05An$mJ/fEZ3gmfVvD1vwSJqxfjsK9z/bykIMbCZ/Hov.nt31e8h0XklDSE7ofw2YjPemVOSm14JdYoEfEzbxkFkY/1
+    shell: /bin/bash
+    lock_passwd: true
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHDtJdQ12Q8pUUGM16V1Ko+es5LzuGT/0FGWWTmsKQxj madhankumaravelu93@gmail.com
-
-chpasswd:
-  list: |
-    ubuntu:$6$SP/vqykLkV9d05An$mJ/fEZ3gmfVvD1vwSJqxfjsK9z/bykIMbCZ/Hov.nt31e8h0XklDSE7ofw2YjPemVOSm14JdYoEfEzbxkFkY/1
-  expire: true
 
 write_files:
   - path: /etc/netplan/00-installer-config.yaml
@@ -39,10 +32,9 @@ runcmd:
   - hostnamectl set-hostname ${hostname}
   - netplan generate
   - netplan apply
-  - systemctl restart systemd-timesyncd
   - apt-get update
   - apt-get install -y qemu-guest-agent wget net-tools ubuntu-drivers-common
-  - ubuntu-drivers autoinstall        # Auto installs NVIDIA drivers
+  - ubuntu-drivers autoinstall
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
   - chsh -s /bin/bash ubuntu
