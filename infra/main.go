@@ -107,7 +107,10 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 		NodeName: pulumi.String(nodeName),
 		Name:     pulumi.String(config.Name),
 		Agent:    vm.VirtualMachineAgentArgs{Enabled: pulumi.Bool(true)},
-		Cpu:      &vm.VirtualMachineCpuArgs{Cores: pulumi.Int(config.Cores)},
+		Cpu: &vm.VirtualMachineCpuArgs{
+			Cores: pulumi.Int(config.Cores),
+			Type:  pulumi.String("host"),
+		},
 		Memory: &vm.VirtualMachineMemoryArgs{
 			Dedicated: pulumi.Int(config.Memory),
 			Floating:  pulumi.Int(0),
