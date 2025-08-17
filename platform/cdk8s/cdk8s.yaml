@@ -1,0 +1,6 @@
+language: go
+app: go run .
+imports:
+  - k8s
+  - helm:https://helm.ngc.nvidia.com/nvidia/gpu-operator@25.3.2
+  - helm:https://charts.bitnami.com/bitnami/cert-manager@1.5.13
