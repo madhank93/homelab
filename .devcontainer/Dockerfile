@@ -1,0 +1,90 @@
+# syntax=docker/dockerfile:1.7
+ARG GO_VERSION=1.23
+ARG NODE_VERSION=22.18.0
+ARG PULUMI_VERSION=3.188.0
+ARG YQ_VERSION=4.47.1
+ARG JUST_VERSION=1.38.0
+ARG HELM_VERSION=3.18.4
+ARG CDK8S_VERSION=2.200.153
+
+FROM mcr.microsoft.com/devcontainers/go:${GO_VERSION}-bookworm
+
+USER root
+
+# Install NVM and Node.js
+ARG NODE_VERSION
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash \
+    && export NVM_DIR=/usr/local/share/nvm \
+    && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" \
+    && nvm install ${NODE_VERSION} \
+    && nvm use ${NODE_VERSION} \
+    && nvm alias default ${NODE_VERSION}
+
+# Setup NVM environment
+ENV NVM_DIR="/usr/local/share/nvm"
+ENV PATH="/usr/local/share/nvm/versions/node/v${NODE_VERSION}/bin:${PATH}"
+
+# Essential packages
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    curl ca-certificates jq unzip git make bash-completion \
+    python3 python3-venv python3-pip \
+    openssh-client rsync \
+    build-essential pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Helm
+ARG HELM_VERSION
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
+    && chmod 700 get_helm.sh \
+    && ./get_helm.sh --version v${HELM_VERSION} \
+    && rm get_helm.sh
+
+# Install YQ
+ARG YQ_VERSION
+RUN curl -fsSL -o /usr/local/bin/yq \
+    "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" \
+    && chmod +x /usr/local/bin/yq
+
+# Install Just
+ARG JUST_VERSION
+RUN curl -fsSL \
+    "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+    | tar -xz -C /usr/local/bin just
+
+# Install Pulumi
+ARG PULUMI_VERSION
+RUN curl -fsSL \
+    "https://get.pulumi.com/releases/sdk/pulumi-v${PULUMI_VERSION}-linux-x64.tar.gz" \
+    -o /tmp/pulumi.tgz \
+    && tar -xzf /tmp/pulumi.tgz -C /usr/local \
+    && ln -sf /usr/local/pulumi/pulumi /usr/local/bin/pulumi \
+    && ln -sf /usr/local/pulumi/* /usr/local/bin/ \
+    && rm -f /tmp/pulumi.tgz
+
+# Install cdk8s CLI
+ARG CDK8S_VERSION
+RUN npm install -g cdk8s-cli@${CDK8S_VERSION}
+
+# Just auto completions
+RUN just --completions bash > /etc/bash_completion.d/just \
+    && echo 'complete -C /usr/local/bin/pulumi pulumi' > /etc/bash_completion.d/pulumi
+
+# Fix Go module cache permissions
+RUN mkdir -p /home/vscode/go/pkg/mod/cache /home/vscode/go/pkg/mod/download \
+    && chown -R vscode:vscode /home/vscode/go/pkg/mod \
+    && chmod -R u+rwX /home/vscode/go/pkg/mod
+
+# Prepare SSH directory (as root)
+RUN mkdir -p /home/vscode/.ssh && chmod 700 /home/vscode/.ssh \
+    && chown -R vscode:vscode /home/vscode/.ssh
+
+# Switch to dev user
+USER vscode
+
+# ENV
+ENV PATH="/home/vscode/go/bin:/usr/local/bin:/usr/local/share/nvm/versions/node/v${NODE_VERSION}/bin:${PATH}"
+
+# Install Go tools (as vscode user)
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.23.0 \
+    && go install mvdan.cc/gofumpt@v0.6.0 \
+    && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3

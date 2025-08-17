@@ -1,0 +1,61 @@
+{
+  "name": "Go Infra DevContainer",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "GO_VERSION": "1.23",
+      "NODE_VERSION": "24.6.0",
+      "PULUMI_VERSION": "3.188.0",
+      "YQ_VERSION": "4.47.1",
+      "JUST_VERSION": "1.38.0",
+      "HELM_VERSION": "3.18.4",
+      "CDK8S_VERSION": "2.200.153"
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "redhat.vscode-yaml",
+        "nefrob.vscode-just-syntax"
+      ],
+      "settings": {
+        "go.useLanguageServer": true,
+        "go.toolsManagement.autoUpdate": false,
+        "editor.formatOnSave": true,
+        "go.lintTool": "golangci-lint",
+        "go.formatTool": "gofumpt"
+      }
+    }
+  },
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "mounts": [
+    "source=${env:HOME}/.ssh/id_ed25519,target=/home/vscode/.ssh/id_ed25519,type=bind,readonly,consistency=cached",
+    "source=${env:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
+    "source=vscode-go-modules,target=/home/vscode/go/pkg/mod,type=volume"
+  ],
+  "containerEnv": {
+    "GOPATH": "/home/vscode/go",
+    "PULUMI_SKIP_UPDATE_CHECK": "true",
+    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
+    "HOST_HOME": "${env:HOME}"
+  },
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb"
+  },
+  "postCreateCommand": "sudo usermod -aG docker vscode && cdk8s --version && pulumi version",
+  "shutdownAction": "stopContainer"
+}

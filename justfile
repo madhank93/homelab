@@ -1,45 +1,58 @@
-# justfile
+# Variables
+config_path := "platform/k8s_cluster_config"
+kubespray_version := "v2.28.0"
+kubespray_image := "quay.io/kubespray/kubespray:" + kubespray_version
 
-# proxmox-ip := `yq '.proxmox.endpoint' ./infra/config.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'`
-
+##################
+##### Pulumi #####
+##################
 [working-directory: 'infra']
 deploy:
-    pulumi up
+	pulumi up --yes
 
 [working-directory: 'infra']
 preview:
-    pulumi preview
+	pulumi preview
 
 [working-directory: 'infra']
 destroy:
-    pulumi destroy
+	pulumi destroy --yes
 
 [working-directory: 'infra']
 refresh:
-    pulumi refresh
+	pulumi refresh
 
-ping_scan:
-    nmap -sn 192.168.1.0/24
+#######################
+##### Networking ###### 
+#######################
+ping-scan:
+	nmap -sn 192.168.1.0/24
+
+######################
+##### kubespray ######
+######################
+base_docker_cmd := "docker run --rm -it " + \
+  "--mount type=bind,source=${LOCAL_WORKSPACE_FOLDER}/" + config_path + ",target=/config " + \
+  "--mount type=bind,source=${HOST_HOME}/.ssh/id_ed25519,target=/root/.ssh/id_ed25519,readonly " + \
+  kubespray_image
 
 run-kubespray:
-    docker run --rm -it --mount type=bind,source="$(pwd)/platform/k8s_cluster_config",dst=/config \
-      --mount type=bind,source="${HOME}/.ssh/id_ed25519",dst=/root/.ssh/id_ed25519 \
-      quay.io/kubespray/kubespray:v2.28.0 bash -c "ansible-playbook -i /config/inventory/hosts.ini -e @/config/values.yml cluster.yml"
+	{{base_docker_cmd}} ansible-playbook -i /config/inventory/hosts.ini -e @/config/values.yml cluster.yml
 
 reset-kubespray:
-    docker run --rm -it --mount type=bind,source="$(pwd)/platform/k8s_cluster_config",dst=/config \
-      --mount type=bind,source="${HOME}/.ssh/id_ed25519",dst=/root/.ssh/id_ed25519 \
-      quay.io/kubespray/kubespray:v2.28.0 bash -c "ansible-playbook -i /config/inventory/hosts.ini -e @/config/values.yml reset.yml"
+	{{base_docker_cmd}} ansible-playbook -i /config/inventory/hosts.ini -e @/config/values.yml reset.yml
 
 install-addons addon_tags:
-    docker run --rm -it --mount type=bind,source="$(pwd)/platform/k8s_cluster_config",dst=/config \
-      --mount type=bind,source="${HOME}/.ssh/id_ed25519",dst=/root/.ssh/id_ed25519 \
-      quay.io/kubespray/kubespray:v2.28.0 bash -c "ansible-playbook -i /config/inventory/hosts.ini -e @/config/values.yml cluster.yml --tags {{addon_tags}}"
+	{{base_docker_cmd}} ansible-playbook -i /config/inventory/hosts.ini -e @/config/values.yml cluster.yml --tags {{addon_tags}}
 
+##################
+##### CDK8s ######
+##################
 [working-directory: 'platform/cdk8s']
 synth:
-    @go mod tidy
-    @cdk8s synth --output app
+	go mod tidy
+	cdk8s synth --output app
 
-# stop-vm vm_id:
-#     ssh root@{{proxmox-ip}} "rm -f /run/lock/qemu-server/lock-{{vm_id}}.conf && qm unlock {{vm_id}} && qm stop {{vm_id}}"
+[working-directory: 'platform/cdk8s']
+apply: synth
+	kubectl apply -f app
