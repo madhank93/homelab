@@ -1,4 +1,4 @@
-package cots
+package seccomp
 
 import (
 	"github.com/aws/constructs-go/constructs/v10"

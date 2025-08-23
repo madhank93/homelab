@@ -1,25 +1,31 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/cots"
+	"github.com/madhank93/homelab/cdk8s/cots/ai"
+	"github.com/madhank93/homelab/cdk8s/cots/seccomp"
 )
 
 func main() {
+
+	rootFolder := "../../app"
+
 	// Cert-Manager
 	certMgrApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String("app/cert-manager-app"),
+		Outdir:         jsii.String(fmt.Sprintf("%s/cert-manager", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
 	})
-	cots.NewCertManagerChart(certMgrApp, "cert-manager-app")
+	seccomp.NewCertManagerChart(certMgrApp, "cert-manager-app")
 	certMgrApp.Synth()
 
 	// NVIDIA GPU Operator
 	nvidiaGpuOperatorApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String("app/nvidia-gpu-operator"),
+		Outdir:         jsii.String(fmt.Sprintf("%s/nvidia-gpu-operator", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
 	})
-	cots.NewNvidiaGpuOperatorChart(nvidiaGpuOperatorApp, "nvidia-gpu-operator")
+	ai.NewNvidiaGpuOperatorChart(nvidiaGpuOperatorApp, "nvidia-gpu-operator")
 	nvidiaGpuOperatorApp.Synth()
 }

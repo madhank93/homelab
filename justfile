@@ -51,8 +51,14 @@ install-addons addon_tags:
 [working-directory: 'platform/cdk8s']
 synth:
 	go mod tidy
-	cdk8s synth --output app
+	cdk8s synth --output ../../app
 
 [working-directory: 'platform/cdk8s']
 apply: synth
 	kubectl apply -f app
+
+########################
+#### Misecellaneous ####
+########################
+folder_structure:
+	tree -P "*.go|*.ini|*.yml" --gitignore -I "imports|assets"
