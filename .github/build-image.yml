@@ -1,0 +1,75 @@
+name: Build and Release Ubuntu Image
+
+on:
+  push:
+    branches:
+      - "main"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  PRODUCT_VERSION: "1.14.1"
+  UBUNTU_VERSION: "22.04"
+
+jobs:
+  build-packer-image:
+    runs-on: ubuntu-latest
+    name: Build and Release Ubuntu Image
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install QEMU and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils genisoimage
+
+      - name: Create Cloud-Init ISO
+        run: |
+          genisoimage -output cidata.iso -input-charset utf-8 -volid cidata -joliet -r http/user-data http/meta-data
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+        id: setup
+        with:
+          version: ${{ env.PRODUCT_VERSION }}
+
+      - name: Initialize Packer
+        id: init
+        run: packer init .
+
+      - name: Validate Packer template
+        run: packer validate .
+
+      - name: Build artifact
+        run: packer build .
+
+      - name: Rename artifact for release
+        run: |
+          mv artifacts/* ubuntu-${{ github.ref_name }}.qcow2
+
+      - name: Create Release and Upload Artifact
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ubuntu-${{ github.ref_name }}.qcow2
+          tag_name: v${{env.UBUNTU_VERSION}}-${{ github.run_number }}
+          name: Ubuntu custom image v${{env.UBUNTU_VERSION}}-${{ github.run_number }}
+          body: |
+            ## Ubuntu Image Release
+
+            Built from commit: ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+            Build date: ${{ github.event.head_commit.timestamp }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
