@@ -1,0 +1,5 @@
+proxmox:
+  username: root@pam
+  endpoint: https://192.168.1.235:8006/
+  nodename: proxmox
+  image_url: https://github.com/madhank93/ubuntu-cloud-image/releases/download/v22.04-34/ubuntu-main.qcow2

@@ -1,5 +1,0 @@
-proxmox:
-  username: root@pam
-  endpoint: https://192.168.1.235:8006/
-  nodename: proxmox
-  image_url: https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img

@@ -11,10 +11,10 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 
-	"github.com/muhlba91/pulumi-proxmoxve/sdk/v6/go/proxmoxve"
-	"github.com/muhlba91/pulumi-proxmoxve/sdk/v6/go/proxmoxve/download"
-	"github.com/muhlba91/pulumi-proxmoxve/sdk/v6/go/proxmoxve/storage"
-	"github.com/muhlba91/pulumi-proxmoxve/sdk/v6/go/proxmoxve/vm"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/download"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/storage"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/vm"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -40,15 +40,12 @@ type NodeConfig struct {
 var k = koanf.New(".")
 
 func loadConfig() (*ClusterConfig, string, error) {
-	// Load YAML config
 	if err := k.Load(file.Provider("config.yml"), yaml.Parser()); err != nil {
 		return nil, "", fmt.Errorf("error loading config.yml: %v", err)
 	}
-	// Load .env for sensitive env vars (password)
 	if err := k.Load(file.Provider(".env"), dotenv.Parser()); err != nil {
 		return nil, "", fmt.Errorf("error loading .env: %v", err)
 	}
-	// Unmarshal cluster config
 	var clusterConfig ClusterConfig
 	if err := k.Unmarshal("proxmox", &clusterConfig); err != nil {
 		return nil, "", fmt.Errorf("error un-marshalling proxmox config: %v", err)
@@ -145,6 +142,10 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 	if config.HasGPU {
 		args.Bios = pulumi.String("ovmf")
 		args.Machine = pulumi.String("q35")
+		args.EfiDisk = &vm.VirtualMachineEfiDiskArgs{
+			DatastoreId: pulumi.String("local-lvm"),
+			Type:        pulumi.String("4m"),
+		}
 		var hostpcis vm.VirtualMachineHostpciArray
 		for i, pcieID := range config.PcieIDs {
 			hostpcis = append(hostpcis, vm.VirtualMachineHostpciArgs{
@@ -179,6 +180,7 @@ func main() {
 			DatastoreId: pulumi.String("local"),
 			NodeName:    pulumi.String(clusterConfig.NodeName),
 			Url:         pulumi.String(clusterConfig.ImageUrl),
+			FileName:    pulumi.String("ubuntu-main.img"),
 			Overwrite:   pulumi.Bool(true),
 		}, pulumi.Provider(provider))
 		if err != nil {
