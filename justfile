@@ -1,26 +1,26 @@
 # Variables
-config_path := "platform/k8s_cluster_config"
+config_path := "platform/ansible"
 kubespray_version := "v2.28.0"
 kubespray_image := "quay.io/kubespray/kubespray:" + kubespray_version
 
 ##################
 ##### Pulumi #####
 ##################
-[working-directory: 'infra']
+[working-directory: 'infra/pulumi']
 deploy:
 	pulumi up --yes
 
-[working-directory: 'infra']
+[working-directory: 'infra/pulumi']
 preview:
 	pulumi preview
 
-[working-directory: 'infra']
+[working-directory: 'infra/pulumi']
 destroy:
 	pulumi destroy --yes
 
-[working-directory: 'infra']
+[working-directory: 'infra/pulumi']
 refresh:
-	pulumi refresh
+	pulumi refresh --yes
 
 #######################
 ##### Networking ###### 
