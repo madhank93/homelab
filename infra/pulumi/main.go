@@ -76,16 +76,7 @@ func createCloudInit(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeConf
 		return nil, err
 	}
 	content := string(data)
-	replacements := map[string]string{
-		"${hostname}":          nodeConfig.Name,
-		"${network_interface}": "ens18",
-	}
-	if nodeConfig.HasGPU {
-		replacements["${network_interface}"] = "enp6s18"
-	}
-	for k, v := range replacements {
-		content = strings.ReplaceAll(content, k, v)
-	}
+	content = strings.ReplaceAll(content, "${hostname}", nodeConfig.Name)
 	return storage.NewFile(ctx, nodeConfig.Name+"-cloud-init", &storage.FileArgs{
 		NodeName:    pulumi.String(clusterNodeName),
 		DatastoreId: pulumi.String("local"),
@@ -137,15 +128,15 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 			DatastoreId:    pulumi.String("local-lvm"),
 			UserDataFileId: cloudInit.ID(),
 		},
+		Bios:    pulumi.String("ovmf"),
+		Machine: pulumi.String("q35"),
+		EfiDisk: &vm.VirtualMachineEfiDiskArgs{
+			DatastoreId: pulumi.String("local-lvm"),
+			Type:        pulumi.String("4m"),
+		},
 	}
 	// Set GPU specific configurations
 	if config.HasGPU {
-		args.Bios = pulumi.String("ovmf")
-		args.Machine = pulumi.String("q35")
-		args.EfiDisk = &vm.VirtualMachineEfiDiskArgs{
-			DatastoreId: pulumi.String("local-lvm"),
-			Type:        pulumi.String("4m"),
-		}
 		var hostpcis vm.VirtualMachineHostpciArray
 		for i, pcieID := range config.PcieIDs {
 			hostpcis = append(hostpcis, vm.VirtualMachineHostpciArgs{

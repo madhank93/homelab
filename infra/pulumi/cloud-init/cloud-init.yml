@@ -14,8 +14,9 @@ write_files:
       network:
         version: 2
         ethernets:
-          ${network_interface}:
+          enp6s18:
             dhcp4: true
+            dhcp-identifier: mac
             nameservers:
               addresses: [8.8.8.8, 8.8.4.4]
 
