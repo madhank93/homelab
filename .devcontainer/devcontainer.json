@@ -43,6 +43,7 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "mounts": [
     "source=${env:HOME}/.ssh/id_ed25519,target=/home/vscode/.ssh/id_ed25519,type=bind,readonly,consistency=cached",
+    "source=${env:HOME}/.ssh/id_ed25519.pub,target=/home/vscode/.ssh/id_ed25519.pub,type=bind,readonly,consistency=cached",
     "source=${env:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
     "source=vscode-go-modules,target=/home/vscode/go/pkg/mod,type=volume"
   ],

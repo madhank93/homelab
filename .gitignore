@@ -1,4 +1,5 @@
 *credentials
 *DS_Store
-*.env
+infra/pulumi/.env
 **/app
+platform
