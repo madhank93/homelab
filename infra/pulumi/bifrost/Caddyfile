@@ -1,0 +1,19 @@
+authz.madhan.app {
+  reverse_proxy keycloak:8080
+}
+
+ctrlz.ziti.madhan.app {
+  reverse_proxy https://ziti-controller:443 {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
+}
+
+erz1.ziti.madhan.app {
+  reverse_proxy https://ziti-router:443 {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
+}

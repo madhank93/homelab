@@ -1,5 +1,30 @@
-kube_version: 1.32.0
-kube_proxy_strict_arp: true
+#####################
+### Core settings ###
+#####################
+kube_version: "1.32.0"
+container_manager: containerd
+containerd_version: "2.1.4"
+
+#############################
+### Kubernetes Networking ###
+#############################
+kube_network_plugin: cilium
+kube_proxy_enabled: false
+kube_network_plugin_multus: false
+
+###############
+### Cilium ###
+###############
+cilium_version: "v1.14.5"
+cilium_enable_ipv4: true
+cilium_enable_ipv6: false
+cilium_tunnel_mode: vxlan # Valid values: vxlan, geneve, disabled
+cilium_enable_hubble: true
+cilium_hubble_metrics_enabled: true
+cilium_enable_bandwidth_manager: true
+cilium_enable_local_redirect_policy: true
+cilium_native_routing_cidr: "{{ kube_pods_subnet }}"
+cilium_kube_proxy_replacement: true # Boolean; strictly supported
 
 ##############
 ### Addons ###
@@ -16,8 +41,11 @@ kube_vip_controlplane_enabled: true
 kube_vip_services_enabled: true
 kube_vip_address: "192.168.1.10"
 kube_vip_interface: "{% if has_gpu | default(false) %}enp6s18{% else %}ens18{% endif %}"
-kube_vip_address_range: 192.168.1.11-192.168.1.20
+kube_vip_address_range: "192.168.1.11-192.168.1.20"
 
+############################
+### Loadbalancer Settings ###
+############################
 loadbalancer_apiserver:
   address: "{{ kube_vip_address }}"
   port: 6443

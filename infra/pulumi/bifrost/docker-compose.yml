@@ -1,0 +1,139 @@
+networks:
+  ziti:
+    driver: bridge
+
+volumes:
+  traefik_letsencrypt:
+  ziti_controller_data:
+  ziti_router_data:
+  keycloak_postgres_data:
+  keycloak_data:
+  caddy_data:
+  caddy_config:
+
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    networks:
+      - ziti
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    environment:
+      - CADDY_EMAIL=admin@madhan.app
+
+
+  chown-controller:
+    image: busybox:1.37
+    command: chown -R ${ZIGGY_UID:-2171} /ziti-controller
+    volumes:
+      - ziti_controller_data:/ziti-controller
+
+  ziti-controller:
+    container_name: ziti-controller
+    image: openziti/ziti-controller:1.7.0
+    depends_on:
+      chown-controller:
+        condition: service_completed_successfully
+    user: ${ZIGGY_UID:-2171}
+    volumes:
+      - ziti_controller_data:/ziti-controller
+    networks:
+      ziti:
+        aliases:
+          - ctrlz.ziti.ROOT_DOMAIN
+    environment:
+      ZITI_CTRL_ADVERTISED_ADDRESS: ctrlz.ziti.ROOT_DOMAIN
+      ZITI_CTRL_ADVERTISED_PORT: 443
+      ZITI_PWD: ${ZITI_ADMIN_PASSWORD}
+
+      ZITI_BOOTSTRAP: "true"
+      ZITI_BOOTSTRAP_PKI: "true"
+      ZITI_BOOTSTRAP_CONFIG: "true"
+      ZITI_BOOTSTRAP_DATABASE: "true"
+      ZITI_AUTO_RENEW_CERTS: "true"
+    command: run config.yml
+    expose:
+      - 443
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ziti", "agent", "stats"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  chown-router:
+    image: busybox:1.37
+    command: chown -R ${ZIGGY_UID:-2171} /ziti-router
+    volumes:
+      - ziti_router_data:/ziti-router
+
+  ziti-router:
+    image: openziti/ziti-router:1.7.0
+    container_name: ziti-router
+    depends_on:
+      chown-router:
+        condition: service_completed_successfully
+    user: ${ZIGGY_UID:-2171}
+    volumes:
+      - ziti_router_data:/ziti-router
+    environment:
+      ZITI_CTRL_ADVERTISED_ADDRESS: ctrlz.ziti.ROOT_DOMAIN
+      ZITI_CTRL_ADVERTISED_PORT: 443
+      ZITI_ENROLL_TOKEN: ${ZITI_ENROLL_TOKEN:-}
+      ZITI_ROUTER_ADVERTISED_ADDRESS: erz1.ziti.ROOT_DOMAIN
+      ZITI_ROUTER_PORT: 443
+      ZITI_ROUTER_MODE: host
+      ZITI_BOOTSTRAP: "true"
+      ZITI_BOOTSTRAP_CONFIG: "true"
+      ZITI_BOOTSTRAP_ENROLLMENT: "true"
+      ZITI_AUTO_RENEW_CERTS: "true"
+      ZITI_ROUTER_TYPE: edge
+    command: run config.yml
+    expose:
+      - 443
+    restart: unless-stopped
+    networks:
+      ziti:
+        aliases:
+          - erz1.ziti.ROOT_DOMAIN
+    healthcheck:
+      test: ["CMD", "ziti", "agent", "stats"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  keycloak-postgres:
+    container_name: keycloak-postgres
+    image: postgres:17
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KC_DB_USERNAME}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql
+    networks:
+      - ziti
+    restart: unless-stopped
+
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:26.0.4
+    command: start
+    env_file:
+      - .env
+    depends_on:
+      - keycloak-postgres
+    volumes:
+      - keycloak_data:/data:rw
+    restart: unless-stopped
+    networks:
+      - ziti
