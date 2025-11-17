@@ -109,7 +109,7 @@ POSTGRES_PASSWORD=$keycloak_postgres_password
 # --- ZITI VARIABLES ---
 ZITI_ADMIN_PASSWORD=$ZITI_ADMIN_PASSWORD
 ZITI_CONTROLLER_URL=https://ziti.$ROOT_DOMAIN
-ZITI_WEBSOCKET_CONTROLLER_URL=wss://ctrlz.ziti.$ROOT_DOMAIN
+ZITI_WEBSOCKET_CONTROLLER_URL=wss://ctrl.ziti.$ROOT_DOMAIN
 ZITI_ADMIN_USERNAME=admin
 EOF
 }
@@ -127,7 +127,7 @@ ziti_login() {
         echo "[ERROR] Root domain is not specified."
         return 1
     fi
-    ziti edge login "ctrlz.ziti.$ROOT_DOMAIN:443" -u "admin" -p "${ZITI_ADMIN_PASSWORD}" -y 2>&1
+    ziti edge login "ctrl.ziti.$ROOT_DOMAIN:443" -u "admin" -p "${ZITI_ADMIN_PASSWORD}" -y 2>&1
 }
 
 install_ziti() {
@@ -144,9 +144,9 @@ install_ziti() {
 
     echo "[INFO] Creating router and enrollment token..."
     ziti edge delete edge-router "er1" >/dev/null 2>&1 || true
-    ziti edge create edge-router "er1" -o "erz1.jwt" -t -a "public"
-    ROUTER_TOKEN=$(cat ./erz1.jwt)
-    rm -f erz1.jwt
+    ziti edge create edge-router "er1" -o "er1.jwt" -t -a "public"
+    ROUTER_TOKEN=$(cat ./er1.jwt)
+    rm -f er1.jwt
 
     echo "ZITI_ENROLL_TOKEN=$ROUTER_TOKEN" >> .env
     export $(grep -v '^#' .env | xargs)

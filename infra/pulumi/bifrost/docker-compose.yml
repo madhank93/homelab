@@ -47,9 +47,9 @@ services:
     networks:
       ziti:
         aliases:
-          - ctrlz.ziti.ROOT_DOMAIN
+          - ctrl.ziti.ROOT_DOMAIN
     environment:
-      ZITI_CTRL_ADVERTISED_ADDRESS: ctrlz.ziti.ROOT_DOMAIN
+      ZITI_CTRL_ADVERTISED_ADDRESS: ctrl.ziti.ROOT_DOMAIN
       ZITI_CTRL_ADVERTISED_PORT: 443
       ZITI_PWD: ${ZITI_ADMIN_PASSWORD}
 
@@ -85,10 +85,10 @@ services:
     volumes:
       - ziti_router_data:/ziti-router
     environment:
-      ZITI_CTRL_ADVERTISED_ADDRESS: ctrlz.ziti.ROOT_DOMAIN
+      ZITI_CTRL_ADVERTISED_ADDRESS: ctrl.ziti.ROOT_DOMAIN
       ZITI_CTRL_ADVERTISED_PORT: 443
       ZITI_ENROLL_TOKEN: ${ZITI_ENROLL_TOKEN:-}
-      ZITI_ROUTER_ADVERTISED_ADDRESS: erz1.ziti.ROOT_DOMAIN
+      ZITI_ROUTER_ADVERTISED_ADDRESS: er1.ziti.ROOT_DOMAIN
       ZITI_ROUTER_PORT: 443
       ZITI_ROUTER_MODE: host
       ZITI_BOOTSTRAP: "true"
@@ -103,7 +103,7 @@ services:
     networks:
       ziti:
         aliases:
-          - erz1.ziti.ROOT_DOMAIN
+          - er1.ziti.ROOT_DOMAIN
     healthcheck:
       test: ["CMD", "ziti", "agent", "stats"]
       interval: 3s
