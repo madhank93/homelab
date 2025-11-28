@@ -54,6 +54,24 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 					pulumi.String("::/0"),
 				},
 			},
+			&hcloud.FirewallRuleArgs{
+				Direction: pulumi.String("in"),
+				Protocol:  pulumi.String("tcp"),
+				Port:      pulumi.String("8441"), // Ziti Controller (mTLS)
+				SourceIps: pulumi.StringArray{
+					pulumi.String("0.0.0.0/0"),
+					pulumi.String("::/0"),
+				},
+			},
+			&hcloud.FirewallRuleArgs{
+				Direction: pulumi.String("in"),
+				Protocol:  pulumi.String("tcp"),
+				Port:      pulumi.String("8442"), // Ziti Edge Router (mTLS)
+				SourceIps: pulumi.StringArray{
+					pulumi.String("0.0.0.0/0"),
+					pulumi.String("::/0"),
+				},
+			},
 		},
 	})
 	if err != nil {

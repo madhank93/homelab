@@ -28,7 +28,6 @@ services:
     environment:
       - CADDY_EMAIL=admin@madhan.app
 
-
   chown-controller:
     image: busybox:1.37
     command: chown -R ${ZIGGY_UID:-2171} /ziti-controller
@@ -50,7 +49,7 @@ services:
           - ctrl.ziti.ROOT_DOMAIN
     environment:
       ZITI_CTRL_ADVERTISED_ADDRESS: ctrl.ziti.ROOT_DOMAIN
-      ZITI_CTRL_ADVERTISED_PORT: 443
+      ZITI_CTRL_ADVERTISED_PORT: 8441
       ZITI_PWD: ${ZITI_ADMIN_PASSWORD}
 
       ZITI_BOOTSTRAP: "true"
@@ -60,7 +59,9 @@ services:
       ZITI_AUTO_RENEW_CERTS: "true"
     command: run config.yml
     expose:
-      - 443
+      - 8441
+    ports:
+      - "8441:443"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "ziti", "agent", "stats"]
@@ -86,10 +87,10 @@ services:
       - ziti_router_data:/ziti-router
     environment:
       ZITI_CTRL_ADVERTISED_ADDRESS: ctrl.ziti.ROOT_DOMAIN
-      ZITI_CTRL_ADVERTISED_PORT: 443
+      ZITI_CTRL_ADVERTISED_PORT: 8441
       ZITI_ENROLL_TOKEN: ${ZITI_ENROLL_TOKEN:-}
       ZITI_ROUTER_ADVERTISED_ADDRESS: er1.ziti.ROOT_DOMAIN
-      ZITI_ROUTER_PORT: 443
+      ZITI_ROUTER_PORT: 8442
       ZITI_ROUTER_MODE: host
       ZITI_BOOTSTRAP: "true"
       ZITI_BOOTSTRAP_CONFIG: "true"
@@ -98,7 +99,9 @@ services:
       ZITI_ROUTER_TYPE: edge
     command: run config.yml
     expose:
-      - 443
+      - 8442
+    ports:
+      - "8442:443"
     restart: unless-stopped
     networks:
       ziti:
