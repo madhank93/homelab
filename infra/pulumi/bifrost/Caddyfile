@@ -2,18 +2,18 @@ auth.madhan.app {
   reverse_proxy keycloak:8080
 }
 
-ctrl.ziti.madhan.app {
-  reverse_proxy https://ziti-controller:443 {
-    transport http {
-      tls_insecure_skip_verify
-    }
-  }
-}
+netbird.madhan.app {
+  # Dashboard (Web UI)
+  reverse_proxy netbird-dashboard:80
 
-er1.ziti.madhan.app {
-  reverse_proxy https://ziti-router:443 {
-    transport http {
-      tls_insecure_skip_verify
-    }
-  }
+  # Management API (HTTP) for /api/*
+  reverse_proxy /api/* netbird-management:80
+
+  # Management gRPC
+  reverse_proxy /management.ManagementService/* h2c://netbird-management:80
+
+  # Signal gRPC
+  reverse_proxy /signal.SignalExchange/* h2c://netbird-signal:80
+  
+  # Relay (if using Websockets) or other paths can be added here
 }

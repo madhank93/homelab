@@ -5,6 +5,8 @@ TARGET_DIRECTORY=/etc/bifrost
 ROOT_DOMAIN="madhan.app"
 ADMIN_EMAIL="madhankumaravelu93@gmail.com"
 
+cd "$TARGET_DIRECTORY"
+
 
 make_absolute_path() {
     local path="$1"
@@ -84,6 +86,8 @@ create_files_and_directories() {
     KEYCLOAK_ADMIN_PASSWORD=$(generate_secret)
     ZITI_ADMIN_PASSWORD=$(generate_secret)
 
+    export ZITI_ADMIN_PASSWORD  
+
     cat <<EOF > .env
 # --- KEYCLOAK VARIABLES ---
 KC_DB=postgres
@@ -127,7 +131,7 @@ ziti_login() {
         echo "[ERROR] Root domain is not specified."
         return 1
     fi
-    ziti edge login "ctrl.ziti.$ROOT_DOMAIN:443" -u "admin" -p "${ZITI_ADMIN_PASSWORD}" -y 2>&1
+    ziti edge login "ctrl.ziti.$ROOT_DOMAIN:8441" -u "admin" -p "${ZITI_ADMIN_PASSWORD}" -y 2>&1
 }
 
 install_ziti() {
@@ -136,7 +140,7 @@ install_ziti() {
     sed -i "s/ROOT_DOMAIN/$ROOT_DOMAIN/g" $TARGET_DIRECTORY/docker-compose.yml
 
     # bring up ziti-controller to generate the enrollment
-    docker compose up -d
+    docker compose up -d ziti-controller
     echo "[INFO] Waiting 60s for ziti controller to start..."
     sleep 60
 

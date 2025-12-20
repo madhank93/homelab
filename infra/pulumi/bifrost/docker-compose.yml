@@ -3,7 +3,6 @@ networks:
     driver: bridge
 
 volumes:
-  traefik_letsencrypt:
   ziti_controller_data:
   ziti_router_data:
   keycloak_postgres_data:
@@ -46,22 +45,22 @@ services:
     networks:
       ziti:
         aliases:
-          - ctrl.ziti.ROOT_DOMAIN
+          - ctrl.ziti.madhan.app
     environment:
-      ZITI_CTRL_ADVERTISED_ADDRESS: ctrl.ziti.ROOT_DOMAIN
+      # IMPORTANT: This is the address clients use. It MUST match the external DNS and Port.
+      ZITI_CTRL_ADVERTISED_ADDRESS: ctrl.ziti.madhan.app
       ZITI_CTRL_ADVERTISED_PORT: 8441
       ZITI_PWD: ${ZITI_ADMIN_PASSWORD}
-
       ZITI_BOOTSTRAP: "true"
       ZITI_BOOTSTRAP_PKI: "true"
       ZITI_BOOTSTRAP_CONFIG: "true"
       ZITI_BOOTSTRAP_DATABASE: "true"
       ZITI_AUTO_RENEW_CERTS: "true"
     command: run config.yml
+    ports:
+      - "8441:8441"
     expose:
       - 8441
-    ports:
-      - "8441:443"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "ziti", "agent", "stats"]
@@ -82,14 +81,17 @@ services:
     depends_on:
       chown-router:
         condition: service_completed_successfully
+      ziti-controller:
+        condition: service_healthy
     user: ${ZIGGY_UID:-2171}
     volumes:
       - ziti_router_data:/ziti-router
     environment:
-      ZITI_CTRL_ADVERTISED_ADDRESS: ctrl.ziti.ROOT_DOMAIN
+      # Points to the controller (internal alias is fine, or external)
+      ZITI_CTRL_ADVERTISED_ADDRESS: ctrl.ziti.madhan.app
       ZITI_CTRL_ADVERTISED_PORT: 8441
-      ZITI_ENROLL_TOKEN: ${ZITI_ENROLL_TOKEN:-}
-      ZITI_ROUTER_ADVERTISED_ADDRESS: er1.ziti.ROOT_DOMAIN
+      # Router's own public address
+      ZITI_ROUTER_ADVERTISED_ADDRESS: er1.ziti.madhan.app
       ZITI_ROUTER_PORT: 8442
       ZITI_ROUTER_MODE: host
       ZITI_BOOTSTRAP: "true"
@@ -101,12 +103,14 @@ services:
     expose:
       - 8442
     ports:
-      - "8442:443"
+      - "8442:8442"
     restart: unless-stopped
+    env_file:
+      - .env
     networks:
       ziti:
         aliases:
-          - er1.ziti.ROOT_DOMAIN
+          - er1.ziti.madhan.app
     healthcheck:
       test: ["CMD", "ziti", "agent", "stats"]
       interval: 3s
