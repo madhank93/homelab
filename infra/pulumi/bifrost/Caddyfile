@@ -1,19 +1,33 @@
 auth.madhan.app {
-  reverse_proxy keycloak:8080
+  reverse_proxy authentik-server:9000
 }
+
+arcane.madhan.app {
+    encode gzip
+    reverse_proxy arcane:3552
+}
+
 
 netbird.madhan.app {
-  # Dashboard (Web UI)
-  reverse_proxy netbird-dashboard:80
+  # Management HTTP API
+  reverse_proxy /api/* netbird-management:9090
 
-  # Management API (HTTP) for /api/*
-  reverse_proxy /api/* netbird-management:80
+  # Management gRPC (HTTP/2 cleartext)
+  reverse_proxy /management.ManagementService/* h2c://netbird-management:33073
 
-  # Management gRPC
-  reverse_proxy /management.ManagementService/* h2c://netbird-management:80
+  # Management WebSocket
+  reverse_proxy /ws-proxy/management netbird-management:9090
 
-  # Signal gRPC
-  reverse_proxy /signal.SignalExchange/* h2c://netbird-signal:80
-  
-  # Relay (if using Websockets) or other paths can be added here
+  # Signal gRPC (h2c)
+  reverse_proxy /signalexchange.SignalExchange/* h2c://netbird-signal:80
+
+  # Signal WebSocket
+  reverse_proxy /ws-proxy/signal netbird-signal:80
+
+  # Relay over WebSocket
+  reverse_proxy /relay netbird-relay:33080
+
+  # Dashboard (catch‑all)
+  reverse_proxy * netbird-dashboard:80
 }
+
