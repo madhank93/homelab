@@ -56,8 +56,8 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 			},
 			&hcloud.FirewallRuleArgs{
 				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("tcp"),
-				Port:      pulumi.String("8441"), // Ziti Controller (mTLS)
+				Protocol:  pulumi.String("udp"),
+				Port:      pulumi.String("3478"),
 				SourceIps: pulumi.StringArray{
 					pulumi.String("0.0.0.0/0"),
 					pulumi.String("::/0"),
@@ -66,7 +66,34 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 			&hcloud.FirewallRuleArgs{
 				Direction: pulumi.String("in"),
 				Protocol:  pulumi.String("tcp"),
-				Port:      pulumi.String("8442"), // Ziti Edge Router (mTLS)
+				Port:      pulumi.String("3478"),
+				SourceIps: pulumi.StringArray{
+					pulumi.String("0.0.0.0/0"),
+					pulumi.String("::/0"),
+				},
+			},
+			&hcloud.FirewallRuleArgs{
+				Direction: pulumi.String("in"),
+				Protocol:  pulumi.String("udp"),
+				Port:      pulumi.String("5349"),
+				SourceIps: pulumi.StringArray{
+					pulumi.String("0.0.0.0/0"),
+					pulumi.String("::/0"),
+				},
+			},
+			&hcloud.FirewallRuleArgs{
+				Direction: pulumi.String("in"),
+				Protocol:  pulumi.String("tcp"),
+				Port:      pulumi.String("5349"),
+				SourceIps: pulumi.StringArray{
+					pulumi.String("0.0.0.0/0"),
+					pulumi.String("::/0"),
+				},
+			},
+			&hcloud.FirewallRuleArgs{
+				Direction: pulumi.String("in"),
+				Protocol:  pulumi.String("udp"),
+				Port:      pulumi.String("50000-50500"), // TURN Ephemeral Range
 				SourceIps: pulumi.StringArray{
 					pulumi.String("0.0.0.0/0"),
 					pulumi.String("::/0"),

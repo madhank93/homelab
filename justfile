@@ -22,6 +22,21 @@ destroy:
 refresh:
 	pulumi refresh --yes
 
+[working-directory: 'infra/pulumi']
+pulumi:hetzner:
+  pulumi stack select hetzner
+  pulumi up --yes
+
+[working-directory: 'infra/pulumi']
+pulumi:proxmox:
+  pulumi stack select proxmox
+  pulumi up --yes
+
+[working-directory: 'infra/pulumi']
+pulumi:all:
+  pulumi stack select all
+  pulumi up --yes
+
 #######################
 ##### Networking ###### 
 #######################

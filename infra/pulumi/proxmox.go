@@ -149,7 +149,7 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 		pulumi.Provider(provider))
 }
 
-func DeployHomelab(ctx *pulumi.Context) error {
+func DeployProxmox(ctx *pulumi.Context) error {
 	// Load config and secrets
 	clusterConfig, password, err := loadConfig()
 	if err != nil {

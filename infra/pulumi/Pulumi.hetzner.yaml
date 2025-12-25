@@ -1,0 +1,3 @@
+config:
+  infra-platform:services.hetzner.enabled: "true"
+  infra-platform:services.proxmox.enabled: "false"
