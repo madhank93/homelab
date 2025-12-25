@@ -1,0 +1,24 @@
+# The URL the site will be built for
+base_url = "https://madhank93.github.io/homelab"
+title = "Homelab Docs"
+description = "Documentation for Homelab"
+
+theme = "goyo"
+
+[markdown]
+highlight_code = true
+
+[extra]
+footer_html = "<span>Documentation for Homelab</span>"
+nav = [
+    { name = "Home", url = "/", type = "url", icon = "fa-solid fa-house" },
+    { name = "Infrastructure", url = "/infra", type = "url", icon = "fa-solid fa-server" },
+    { name = "GitHub", url = "https://github.com/madhank93/homelab", type = "url", icon = "fa-brands fa-github" },
+]
+
+[extra.logo]
+text = "Homelab"
+
+[extra.sidebar]
+expand_depth = 1
+disable_root_hide = false
