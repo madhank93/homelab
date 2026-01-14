@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/pulumi/pulumi-command/sdk/go/command/remote"
@@ -12,7 +13,7 @@ import (
 )
 
 func DeployHetznerVPS(ctx *pulumi.Context) error {
-	token := os.Getenv("HCLOUD_TOKEN")
+	token := k.String("HCLOUD_TOKEN")
 	if token == "" {
 		return fmt.Errorf("HCLOUD_TOKEN not found; make sure it's in your environment")
 	}
@@ -100,7 +101,7 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 				},
 			},
 		},
-	})
+	}, pulumi.Provider(provider))
 	if err != nil {
 		return err
 	}
@@ -140,25 +141,28 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 
 	serverIP := server.Ipv4Address
 
-	conn := &remote.ConnectionArgs{
-		Host: serverIP,
-		User: pulumi.String("root"),
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
 	}
-
-	copyDir, err := remote.NewCopyToRemote(ctx, "configs-dir",
-		&remote.CopyToRemoteArgs{
-			Connection: conn,
-			Source:     pulumi.NewFileArchive("./bifrost"),
-			RemotePath: pulumi.String("/etc"),
-		})
+	keyPath := filepath.Join(home, ".ssh", "id_ed25519")
+	privateKey, err := os.ReadFile(keyPath)
 	if err != nil {
 		return err
 	}
 
-	_, err = remote.NewCommand(ctx, "run-setup", &remote.CommandArgs{
-		Connection: conn,
-		Create:     pulumi.String("bash /etc/bifrost/bootstrap.sh"),
-	}, pulumi.DependsOn([]pulumi.Resource{copyDir}))
+	conn := &remote.ConnectionArgs{
+		Host:       serverIP,
+		User:       pulumi.String("root"),
+		PrivateKey: pulumi.String(string(privateKey)),
+	}
+
+	_, err = remote.NewCopyToRemote(ctx, "configs-dir",
+		&remote.CopyToRemoteArgs{
+			Connection: conn,
+			Source:     pulumi.NewFileArchive("./bifrost"),
+			RemotePath: pulumi.String("/etc"),
+		}, pulumi.Provider(provider))
 	if err != nil {
 		return err
 	}
