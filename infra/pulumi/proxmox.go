@@ -6,9 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/file"
-
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve"
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/download"
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/storage"
@@ -16,15 +13,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Cluster config
-type ClusterConfig struct {
+// Proxmox-specific config structs
+type ProxmoxClusterConfig struct {
 	Username string `koanf:"username"`
 	Endpoint string `koanf:"endpoint"`
 	NodeName string `koanf:"nodename"`
 	ImageUrl string `koanf:"image_url"`
 }
 
-// Node config
 type NodeConfig struct {
 	Name     string
 	Role     string
@@ -35,34 +31,72 @@ type NodeConfig struct {
 	PcieIDs  []string
 }
 
-func loadConfig() (*ClusterConfig, string, error) {
-	if err := k.Load(file.Provider("config.yml"), yaml.Parser()); err != nil {
-		return nil, "", fmt.Errorf("error loading config.yml: %v", err)
+func DeployProxmox(ctx *pulumi.Context) error {
+	// 1. Generic Load
+	var cfg ProxmoxClusterConfig
+	if err := LoadConfig("proxmox", &cfg); err != nil {
+		return err
 	}
 
-	var clusterConfig ClusterConfig
-	if err := k.Unmarshal("proxmox", &clusterConfig); err != nil {
-		return nil, "", fmt.Errorf("error unmarshalling proxmox config: %v", err)
-	}
-
+	// 2. Access Password from global k
 	password := k.String("PROXMOX_PASSWORD")
-	return &clusterConfig, password, nil
-}
-
-func initializeProvider(ctx *pulumi.Context, cfg *ClusterConfig, password string) (*proxmoxve.Provider, error) {
-	if cfg.Username == "" || cfg.Endpoint == "" {
-		return nil, fmt.Errorf("set username and endpoint in config.yml")
-	}
 	if password == "" {
-		return nil, fmt.Errorf("PROXMOX_PASSWORD not set in .env")
+		return fmt.Errorf("PROXMOX_PASSWORD not found in .env")
 	}
 
-	return proxmoxve.NewProvider(ctx, "proxmoxve", &proxmoxve.ProviderArgs{
+	// Initialize Provider
+	provider, err := proxmoxve.NewProvider(ctx, "proxmoxve", &proxmoxve.ProviderArgs{
 		Endpoint: pulumi.String(cfg.Endpoint),
 		Username: pulumi.String(cfg.Username),
 		Password: pulumi.String(password),
 		Insecure: pulumi.Bool(true),
 	})
+	if err != nil {
+		return err
+	}
+
+	// Download Image
+	cloudImage, err := download.NewFile(ctx, "ubuntu-cloud-image", &download.FileArgs{
+		ContentType: pulumi.String("iso"),
+		DatastoreId: pulumi.String("local"),
+		NodeName:    pulumi.String(cfg.NodeName),
+		Url:         pulumi.String(cfg.ImageUrl),
+		FileName:    pulumi.String("ubuntu-main.img"),
+		Overwrite:   pulumi.Bool(true),
+	}, pulumi.Provider(provider))
+	if err != nil {
+		return err
+	}
+
+	// Define Nodes
+	nodes := []NodeConfig{
+		{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
+		{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
+		{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
+		{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
+		{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
+		{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
+		{Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: true, PcieIDs: []string{"0000:28:00.0"}},
+	}
+
+	for _, node := range nodes {
+		cloudInit, err := createCloudInit(ctx, provider, node, cfg.NodeName)
+		if err != nil {
+			return err
+		}
+
+		vmRes, err := createVM(ctx, provider, cfg.NodeName, node, cloudInit, cloudImage)
+		if err != nil {
+			fmt.Printf("Error creating VM %s: %v\n", node.Name, err)
+			continue
+		}
+
+		ctx.Export(node.Name, pulumi.Map{
+			"id": vmRes.ID(),
+			"ip": vmRes.Ipv4Addresses,
+		})
+	}
+	return nil
 }
 
 func createCloudInit(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeConfig NodeConfig, clusterNodeName string) (*storage.File, error) {
@@ -130,7 +164,6 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 			Type:        pulumi.String("4m"),
 		},
 	}
-	// Set GPU specific configurations
 	if config.HasGPU {
 		var hostpcis vm.VirtualMachineHostpciArray
 		for i, pcieID := range config.PcieIDs {
@@ -147,60 +180,4 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 	return vm.NewVirtualMachine(ctx, config.Name, args,
 		pulumi.DependsOn([]pulumi.Resource{cloudImage}),
 		pulumi.Provider(provider))
-}
-
-func DeployProxmox(ctx *pulumi.Context) error {
-	// Load config and secrets
-	clusterConfig, password, err := loadConfig()
-	if err != nil {
-		return err
-	}
-	// Initialize Proxmox provider
-	provider, err := initializeProvider(ctx, clusterConfig, password)
-	if err != nil {
-		return err
-	}
-	// Download cloud image to Proxmox
-	cloudImage, err := download.NewFile(ctx, "ubuntu-cloud-image", &download.FileArgs{
-		ContentType: pulumi.String("iso"),
-		DatastoreId: pulumi.String("local"),
-		NodeName:    pulumi.String(clusterConfig.NodeName),
-		Url:         pulumi.String(clusterConfig.ImageUrl),
-		FileName:    pulumi.String("ubuntu-main.img"),
-		Overwrite:   pulumi.Bool(true),
-	}, pulumi.Provider(provider))
-	if err != nil {
-		return err
-	}
-	// Define cluster nodes
-	nodes := []NodeConfig{
-		{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
-		{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
-		{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
-		{Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: true, PcieIDs: []string{"0000:28:00.0"}},
-	}
-	// Create VMs for each node
-	for _, node := range nodes {
-		// Create cloud-init config
-		cloudInit, err := createCloudInit(ctx, provider, node, clusterConfig.NodeName)
-		if err != nil {
-			return err
-		}
-		// Create VM
-		vm, err := createVM(ctx, provider, clusterConfig.NodeName, node, cloudInit, cloudImage)
-		if err != nil {
-			// TODO: remove it later
-			// return err
-			continue
-		}
-		// Export VM details
-		ctx.Export(node.Name, pulumi.Map{
-			"id": vm.ID(),
-			"ip": vm.Ipv4Addresses,
-		})
-	}
-	return nil
 }
