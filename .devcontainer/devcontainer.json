@@ -2,16 +2,7 @@
   "name": "Go Infra DevContainer",
   "build": {
     "dockerfile": "Dockerfile",
-    "context": "..",
-    "args": {
-      "GO_VERSION": "1.23",
-      "NODE_VERSION": "24.6.0",
-      "PULUMI_VERSION": "3.188.0",
-      "YQ_VERSION": "4.47.1",
-      "JUST_VERSION": "1.38.0",
-      "HELM_VERSION": "3.18.4",
-      "CDK8S_VERSION": "2.200.153"
-    }
+    "context": ".."
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
