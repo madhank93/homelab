@@ -1,33 +1,44 @@
+{  
+  servers :80,:443 {
+    protocols h1 h2c h2 h3
+  }
+}
+
 auth.madhan.app {
   reverse_proxy authentik-server:9000
 }
 
-arcane.madhan.app {
-    encode gzip
-    reverse_proxy arcane:3552
+(security_headers) {
+    header * {
+        Strict-Transport-Security "max-age=3600; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        -Server
+        Referrer-Policy strict-origin-when-cross-origin
+    }
 }
 
 
 netbird.madhan.app {
-  # Management HTTP API
-  reverse_proxy /api/* netbird-management:9090
+  import security_headers
 
-  # Management gRPC (HTTP/2 cleartext)
-  reverse_proxy /management.ManagementService/* h2c://netbird-management:33073
+  # Management HTTP API + embedded IdP
+  reverse_proxy /api/* netbird-management:80
+  reverse_proxy /oauth2/* netbird-management:80
+  reverse_proxy /ws-proxy/management netbird-management:80
+  reverse_proxy /management.ManagementService/* h2c://netbird-management:80
 
-  # Management WebSocket
-  reverse_proxy /ws-proxy/management netbird-management:9090
-
-  # Signal gRPC (h2c)
+  # Signal (HTTP + gRPC over h2c)
   reverse_proxy /signalexchange.SignalExchange/* h2c://netbird-signal:80
-
-  # Signal WebSocket
   reverse_proxy /ws-proxy/signal netbird-signal:80
 
   # Relay over WebSocket
   reverse_proxy /relay netbird-relay:33080
 
-  # Dashboard (catch‑all)
-  reverse_proxy * netbird-dashboard:80
+  # Dashboard (catch-all)
+  reverse_proxy * netbird-dashboard:80 {
+      header_up Host {host}
+      header_up X-Real-IP {remote}
+  }
 }
-
