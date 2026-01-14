@@ -4,14 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/knadh/koanf/parsers/dotenv"
-	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
-
-var k = koanf.New(".")
 
 type service struct {
 	configKey string
@@ -20,8 +15,9 @@ type service struct {
 
 func main() {
 	// Load .env globally for all modules
-	if err := k.Load(file.Provider(".env"), dotenv.Parser()); err != nil {
-		fmt.Println("Warning: could not load .env:", err)
+	if err := InitConfig(); err != nil {
+		fmt.Printf("Critical: Failed to load configuration: %v\n", err)
+		os.Exit(1)
 	}
 
 	for _, key := range k.Keys() {
@@ -38,13 +34,17 @@ func main() {
 			configKey: "services.proxmox.enabled",
 			deploy:    DeployProxmox,
 		},
+		"authentik": {
+			configKey: "services.authentik.enabled",
+			deploy:    DeployAuthentik,
+		},
 	}
 
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "") // project namespace
 
 		for name, s := range services {
-			enabled := true
+			enabled := false
 
 			if v, err := cfg.TryBool(s.configKey); err == nil {
 				enabled = v
