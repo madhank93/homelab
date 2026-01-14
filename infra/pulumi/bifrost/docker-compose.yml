@@ -18,8 +18,6 @@ volumes:
   caddy_config:
   netbird-mgmt:
   netbird-signal:
-  netbird-letsencrypt:
-  arcane-data:
 
 services:
   caddy:
@@ -37,8 +35,6 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    env_file:
-      - .env
     healthcheck:
       test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
       interval: 30s
@@ -121,54 +117,30 @@ services:
     depends_on:
       authentik-postgres:
         condition: service_healthy
-  
-    # UI dashboard
-  
+
   # --------------------------------------------------------------------------------
   # Netbird Services
   # --------------------------------------------------------------------------------
 
   dashboard:
     <<: *default
-    image: netbirdio/dashboard:v2.23.1
+    image: netbirdio/dashboard:v2.26.1
     container_name: netbird-dashboard
-    ports: []
     networks:
       - bifrost_net
-    environment:
-      # Endpoints
-      - NETBIRD_MGMT_API_ENDPOINT=https://netbird.madhan.app:443
-      - NETBIRD_MGMT_GRPC_API_ENDPOINT=https://netbird.madhan.app:443
-      # OIDC
-      - AUTH_AUDIENCE=aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT
-      - AUTH_CLIENT_ID=aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT
-      - AUTH_CLIENT_SECRET=
-      - AUTH_AUTHORITY=https://auth.madhan.app/application/o/netbird/
-      - USE_AUTH0=false
-      - AUTH_SUPPORTED_SCOPES=openid profile email offline_access api
-      - AUTH_REDIRECT_URI=/auth
-      - AUTH_SILENT_REDIRECT_URI=/silent-auth
-      - NETBIRD_TOKEN_SOURCE=accessToken
-      # SSL
-      - NGINX_SSL_PORT=443
-      # Letsencrypt
-      - LETSENCRYPT_DOMAIN=
-      - LETSENCRYPT_EMAIL=
-    volumes:
-      - netbird-letsencrypt:/etc/letsencrypt/
+    env_file:
+      - ./netbird/dashboard.env
 
-  # Signal
   signal:
     <<: *default
-    image: netbirdio/signal:0.60.9
+    image: netbirdio/signal:0.62.2
     container_name: netbird-signal
     networks:
       - bifrost_net
     depends_on:
-          - dashboard
+      - dashboard
     volumes:
       - netbird-signal:/var/lib/netbird
-      - netbird-letsencrypt:/etc/letsencrypt:ro
     ports: []
     command: [
       "--cert-file", "",
@@ -176,26 +148,19 @@ services:
       "--log-file", "console"
     ]
 
-  # Relay
   relay:
     <<: *default
-    image: netbirdio/relay:0.60.9
+    image: netbirdio/relay:0.62.2
     container_name: netbird-relay
     networks:
       - bifrost_net
     env_file:
-      - .env
-    environment:
-    - NB_LOG_LEVEL=info
-    - NB_LISTEN_ADDRESS=:33080
-    - NB_EXPOSED_ADDRESS=rels://netbird.madhan.app:33080/relay
-    - NB_AUTH_SECRET=${NB_AUTH_SECRET}
+      - ./netbird/relay.env
     ports: []
 
-  # Management
   management:
     <<: *default
-    image: netbirdio/management:0.60.9
+    image: netbirdio/management:0.62.2
     container_name: netbird-management
     networks:
       - bifrost_net
@@ -203,63 +168,24 @@ services:
       - dashboard
     volumes:
       - netbird-mgmt:/var/lib/netbird
-      - netbird-letsencrypt:/etc/letsencrypt:ro
-      - ./management.json:/etc/netbird/management.json
+      - ./netbird/management.json:/etc/netbird/management.json
     ports: []
     command: [
-      "--port", "33073",
+      "--port", "80",
       "--log-file", "console",
       "--log-level", "info",
       "--disable-anonymous-metrics=false",
       "--single-account-mode-domain=netbird.madhan.app",
-      "--dns-domain=netbird.selfhosted"
-      ]
-    environment:
-      - NETBIRD_STORE_ENGINE_POSTGRES_DSN=
-      - NETBIRD_STORE_ENGINE_MYSQL_DSN=
-      
-  # Coturn
+      "--dns-domain=netbird.selfhosted",
+      "--idp-sign-key-refresh-enabled"
+    ]
+
   coturn:
     <<: *default
     image: coturn/coturn:4.7
-    #domainname: netbird.madhan.app # only needed when TLS is enabled
+    container_name: netbird-coturn
     volumes:
-      - ./turnserver.conf:/etc/turnserver.conf:ro
-      # - ./privkey.pem:/etc/coturn/private/privkey.pem:ro
-      # - ./cert.pem:/etc/coturn/certs/cert.pem:ro
+      - ./netbird/turnserver.conf:/etc/turnserver.conf:ro
     network_mode: host
     command:
       - -c /etc/turnserver.conf
-
-  # --------------------------------------------------------------------------------
-  # Arcane Services
-  # --------------------------------------------------------------------------------
-
-  arcane:
-    image: ghcr.io/getarcaneapp/arcane:v1.10.1
-    container_name: arcane
-    networks:
-      - bifrost_net
-    expose:
-      - "3552"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - arcane-data:/app/data
-      - /etc/bifrost:/app/data/projects/bifrost
-    env_file:
-      - .env
-    environment:
-      - APP_URL=https://arcane.madhan.app
-      - PUID=1000
-      - PGID=1000
-      - ENCRYPTION_KEY=${ARCANE_ENCRYPTION_KEY}
-      - JWT_SECRET=${ARCANE_JWT_SECRET}
-      - OIDC_ENABLED=true
-      - OIDC_CLIENT_ID=uVxrDBfEraNi4DvFm8QbvPQxCRAqFVgDAmAqQ4pQ
-      - OIDC_CLIENT_SECRET=${ARCANE_OIDC_CLIENT_SECRET}
-      - OIDC_ISSUER_URL=https://auth.madhan.app/application/o/arcane/
-      - OIDC_SCOPES=openid email profile
-      - OIDC_ADMIN_CLAIM=groups
-      - OIDC_ADMIN_VALUE=_arcane_admins
-      - OIDC_MERGE_ACCOUNTS=true
-    restart: unless-stopped
