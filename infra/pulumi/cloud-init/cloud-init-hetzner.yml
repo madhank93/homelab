@@ -18,3 +18,12 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl daemon-reload
   - docker compose version
+
+  # Install lazydocker from GitHub releases
+  - |
+    set -e
+    LAZY_VERSION=$(curl -fsSL https://api.github.com/repos/jesseduffield/lazydocker/releases/latest | jq -r '.tag_name')
+    curl -fsSL -o /tmp/lazydocker.tgz "https://github.com/jesseduffield/lazydocker/releases/download/${LAZY_VERSION}/lazydocker_${LAZY_VERSION#v}_Linux_x86_64.tar.gz"
+    tar -xzf /tmp/lazydocker.tgz -C /tmp
+    install -m 0755 /tmp/lazydocker /usr/local/bin/lazydocker
+    rm -f /tmp/lazydocker.tgz /tmp/lazydocker
