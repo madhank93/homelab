@@ -3,39 +3,50 @@ config_path := "platform/ansible"
 kubespray_version := "v2.28.0"
 kubespray_image := "quay.io/kubespray/kubespray:" + kubespray_version
 
+help:
+    @just --list
+
 ##################
 ##### Pulumi #####
 ##################
-[working-directory: 'infra/pulumi']
-deploy:
-	pulumi up --yes
+
+# Allowed actions for Pulumi
+allowed_actions := "up preview destroy refresh"
+
+pulumi_dir := "infra/pulumi"
 
 [working-directory: 'infra/pulumi']
-preview:
-	pulumi preview
+pulumi stack action:
+    #!/usr/bin/env bash
+    set -euo pipefail
 
-[working-directory: 'infra/pulumi']
-destroy:
-	pulumi destroy --yes
+    # Validate action
+    case "{{action}}" in
+      up|preview|destroy|refresh) ;;
+      *)
+        echo "Usage: just pulumi <stack> <action>"
+        echo "  <action> = up | preview | destroy | refresh"
+        exit 1
+        ;;
+    esac
 
-[working-directory: 'infra/pulumi']
-refresh:
-	pulumi refresh --yes
+    # Validate stack from Pulumi.*.yaml
+    STACK_FILE="Pulumi.{{stack}}.yaml"
+    if [[ ! -f "${STACK_FILE}" ]]; then
+      echo "❌ Invalid stack: '{{stack}}'"
+      echo "   No file '${STACK_FILE}' found in $(pwd)"
+      echo "   Available stacks:"
+      ls Pulumi.*.yaml | sed 's/^Pulumi.\(.*\)\.yaml$/  - \1/'
+      exit 1
+    fi
 
-[working-directory: 'infra/pulumi']
-pulumi:hetzner:
-  pulumi stack select hetzner
-  pulumi up --yes
+    # Compute flags
+    FLAGS=$([[ "{{action}}" != "preview" ]] && echo "--yes" || echo "")
 
-[working-directory: 'infra/pulumi']
-pulumi:proxmox:
-  pulumi stack select proxmox
-  pulumi up --yes
+    echo "🚀 [{{stack}}] pulumi {{action}} ${FLAGS}"
+    pulumi stack select "{{stack}}"
+    pulumi "{{action}}" ${FLAGS}
 
-[working-directory: 'infra/pulumi']
-pulumi:all:
-  pulumi stack select all
-  pulumi up --yes
 
 #######################
 ##### Networking ###### 
