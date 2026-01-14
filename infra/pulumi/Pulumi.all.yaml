@@ -1,3 +1,4 @@
 config:
-  infra-platform:services.hetzner.enabled: "true"
-  infra-platform:services.proxmox.enabled: "true"
+  services.hetzner.enabled: "true"
+  services.proxmox.enabled: "true"
+  services.authentik.enabled: "true"

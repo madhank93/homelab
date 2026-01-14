@@ -5,3 +5,9 @@ config:
   pulumi:tags:
     value:
       pulumi:template: go
+packages:
+  authentik:
+    source: terraform-provider
+    version: 1.0.2
+    parameters:
+      - goauthentik/authentik
