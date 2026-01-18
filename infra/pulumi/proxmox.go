@@ -22,29 +22,31 @@ type ProxmoxClusterConfig struct {
 }
 
 type NodeConfig struct {
-	Name     string
-	Role     string
-	Cores    int
-	Memory   int
-	DiskSize int
-	HasGPU   bool
-	PcieIDs  []string
+	Name       string
+	Role       string
+	Cores      int
+	Memory     int
+	DiskSize   int
+	HasGPU     bool
+	PcieIDs    []string
+	IsTemplate bool
+	TemplateID pulumi.IntInput
 }
 
 func DeployProxmox(ctx *pulumi.Context) error {
-	// 1. Generic Load
+	// Generic load
 	var cfg ProxmoxClusterConfig
 	if err := LoadConfig("proxmox", &cfg); err != nil {
 		return err
 	}
 
-	// 2. Access Password from global k
+	// Access password from global k
 	password := k.String("PROXMOX_PASSWORD")
 	if password == "" {
 		return fmt.Errorf("PROXMOX_PASSWORD not found in .env")
 	}
 
-	// Initialize Provider
+	// Initialize provider
 	provider, err := proxmoxve.NewProvider(ctx, "proxmoxve", &proxmoxve.ProviderArgs{
 		Endpoint: pulumi.String(cfg.Endpoint),
 		Username: pulumi.String(cfg.Username),
@@ -55,7 +57,7 @@ func DeployProxmox(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Download Image
+	// Download image
 	cloudImage, err := download.NewFile(ctx, "ubuntu-cloud-image", &download.FileArgs{
 		ContentType: pulumi.String("iso"),
 		DatastoreId: pulumi.String("local"),
@@ -68,15 +70,33 @@ func DeployProxmox(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Define Nodes
+	// Create base template
+	templateConfig := NodeConfig{
+		Name:       "ubuntu-template",
+		Cores:      2,
+		Memory:     2048,
+		DiskSize:   20,
+		IsTemplate: true,
+	}
+	templateCloudInit, err := createCloudInit(ctx, provider, templateConfig, cfg.NodeName)
+	if err != nil {
+		return err
+	}
+
+	baseTemplate, err := createVM(ctx, provider, cfg.NodeName, templateConfig, templateCloudInit, cloudImage)
+	if err != nil {
+		return err
+	}
+
+	// Define nodes
 	nodes := []NodeConfig{
-		{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
-		{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
-		{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
-		{Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: true, PcieIDs: []string{"0000:28:00.0"}},
+		{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, TemplateID: baseTemplate.VmId},
+		{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, TemplateID: baseTemplate.VmId},
+		{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, TemplateID: baseTemplate.VmId},
+		{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, TemplateID: baseTemplate.VmId},
+		{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, TemplateID: baseTemplate.VmId},
+		{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, TemplateID: baseTemplate.VmId},
+		{Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125, HasGPU: true, PcieIDs: []string{"0000:28:00.0"}, TemplateID: baseTemplate.VmId},
 	}
 
 	for _, node := range nodes {
@@ -120,9 +140,37 @@ func createCloudInit(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeConf
 }
 
 func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string, config NodeConfig, cloudInit *storage.File, cloudImage *download.File) (*vm.VirtualMachine, error) {
+	var cloneArgs *vm.VirtualMachineCloneArgs
+	var diskArgs vm.VirtualMachineDiskArgs
+
+	if config.TemplateID != nil {
+		cloneArgs = &vm.VirtualMachineCloneArgs{
+			VmId: config.TemplateID,
+			Full: pulumi.Bool(true),
+		}
+		diskArgs = vm.VirtualMachineDiskArgs{
+			Size:        pulumi.Int(config.DiskSize),
+			Interface:   pulumi.String("scsi0"),
+			Iothread:    pulumi.Bool(true),
+			Discard:     pulumi.String("on"),
+			DatastoreId: pulumi.String("local-lvm"),
+		}
+	} else {
+		diskArgs = vm.VirtualMachineDiskArgs{
+			Size:        pulumi.Int(config.DiskSize),
+			Interface:   pulumi.String("scsi0"),
+			Iothread:    pulumi.Bool(true),
+			FileFormat:  pulumi.String("raw"),
+			FileId:      cloudImage.ID(),
+			DatastoreId: pulumi.String("local-lvm"),
+		}
+	}
+
 	args := &vm.VirtualMachineArgs{
 		NodeName: pulumi.String(nodeName),
 		Name:     pulumi.String(config.Name),
+		Template: pulumi.Bool(config.IsTemplate),
+		Clone:    cloneArgs,
 		Agent:    vm.VirtualMachineAgentArgs{Enabled: pulumi.Bool(true)},
 		Cpu: &vm.VirtualMachineCpuArgs{
 			Cores: pulumi.Int(config.Cores),
@@ -133,13 +181,7 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 			Floating:  pulumi.Int(0),
 		},
 		Disks: &vm.VirtualMachineDiskArray{
-			vm.VirtualMachineDiskArgs{
-				Size:       pulumi.Int(config.DiskSize),
-				Interface:  pulumi.String("scsi0"),
-				Iothread:   pulumi.Bool(true),
-				FileFormat: pulumi.String("raw"),
-				FileId:     cloudImage.ID(),
-			},
+			diskArgs,
 		},
 		BootOrders:   pulumi.StringArray{pulumi.String("scsi0"), pulumi.String("net0")},
 		ScsiHardware: pulumi.String("virtio-scsi-single"),
@@ -177,7 +219,12 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string
 		args.Hostpcis = hostpcis
 	}
 
-	return vm.NewVirtualMachine(ctx, config.Name, args,
-		pulumi.DependsOn([]pulumi.Resource{cloudImage}),
-		pulumi.Provider(provider))
+	internalOpts := []pulumi.ResourceOption{
+		pulumi.Provider(provider),
+	}
+	if cloudImage != nil {
+		internalOpts = append(internalOpts, pulumi.DependsOn([]pulumi.Resource{cloudImage}))
+	}
+
+	return vm.NewVirtualMachine(ctx, config.Name, args, internalOpts...)
 }
