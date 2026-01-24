@@ -1,18 +1,22 @@
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 FROM mcr.microsoft.com/devcontainers/go:${GO_VERSION}-bookworm
 
-ARG NODE_VERSION=22.18.0
-ARG PULUMI_VERSION=3.213.0
-ARG YQ_VERSION=4.47.1
-ARG JUST_VERSION=1.38.0
-ARG HELM_VERSION=3.18.4
-ARG CDK8S_VERSION=2.200.153
-ARG KUBECTL_VERSION=1.33.0
+ARG NODE_VERSION=24.13.0
+ARG NVM_VERSION=0.40.3
+ARG PULUMI_VERSION=3.216.0
+ARG YQ_VERSION=4.50.1
+ARG JUST_VERSION=1.46.0
+ARG HELM_VERSION=3.20.0
+ARG CDK8S_VERSION=2.203.5
+ARG KUBECTL_VERSION=1.35.0
+ARG DELVE_VERSION=1.26.0
+ARG GOFUMPT_VERSION=0.9.2
+ARG GOLANGCI_LINT_VERSION=2.8.0
 
 USER root
 
 # Install NVM and Node.js
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash \
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash \
     && export NVM_DIR=/usr/local/share/nvm \
     && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" \
     && nvm install ${NODE_VERSION} \
@@ -24,7 +28,8 @@ ENV NVM_DIR="/usr/local/share/nvm"
 ENV PATH="/usr/local/share/nvm/versions/node/v${NODE_VERSION}/bin:${PATH}"
 
 # Essential packages (cleaned up)
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN rm -f /etc/apt/sources.list.d/yarn.list \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl ca-certificates jq unzip git make bash-completion \
     python3 python3-venv python3-pip \
     openssh-client rsync iputils-ping \
@@ -86,6 +91,7 @@ USER vscode
 ENV PATH="/home/vscode/go/bin:/usr/local/bin:/usr/local/share/nvm/versions/node/v${NODE_VERSION}/bin:${PATH}"
 
 # Install Go tools (as vscode user)
-RUN go install github.com/go-delve/delve/cmd/dlv@v1.23.0 \
-    && go install mvdan.cc/gofumpt@v0.6.0 \
-    && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
+
+RUN go install github.com/go-delve/delve/cmd/dlv@v${DELVE_VERSION} \
+    && go install mvdan.cc/gofumpt@v${GOFUMPT_VERSION} \
+    && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
