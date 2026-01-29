@@ -1,8 +1,6 @@
 module homelab
 
-go 1.24.0
-
-toolchain go1.24.2
+go 1.25
 
 replace github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2025 => ./sdks/authentik
 
@@ -15,6 +13,7 @@ require (
 	github.com/pulumi/pulumi-command/sdk v1.1.3
 	github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2025 v2025.0.0
 	github.com/pulumi/pulumi/sdk/v3 v3.213.0
+	github.com/pulumiverse/pulumi-talos/sdk v0.7.1
 )
 
 require github.com/spf13/cast v1.7.0 // indirect
@@ -108,6 +107,6 @@ require (
 	google.golang.org/grpc v1.72.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/frand v1.4.2 // indirect
 )
