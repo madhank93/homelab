@@ -1,4 +1,4 @@
 config:
   services.hetzner.enabled: "false"
-  services.proxmox.enabled: "true"
+  services.talos.enabled: "true"
   services.authentik.enabled: "false"

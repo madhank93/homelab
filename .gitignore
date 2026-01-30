@@ -8,3 +8,4 @@ infra/pulumi/bifrost/netbird/*.json
 infra/pulumi/bifrost/netbird/*.conf
 infra/pulumi/bifrost/netbird/*.env
 infra/pulumi/sdks
+*config
