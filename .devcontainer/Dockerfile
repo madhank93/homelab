@@ -27,47 +27,63 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/instal
 ENV NVM_DIR="/usr/local/share/nvm"
 ENV PATH="/usr/local/share/nvm/versions/node/v${NODE_VERSION}/bin:${PATH}"
 
-# Essential packages (cleaned up)
+# Essential packages (cleaned up) + socat for port forwarding
 RUN rm -f /etc/apt/sources.list.d/yarn.list \
     && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl ca-certificates jq unzip git make bash-completion \
     python3 python3-venv python3-pip \
-    openssh-client rsync iputils-ping \
+    openssh-client rsync iputils-ping socat netcat-openbsd \
     build-essential pkg-config libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Helm
+# Install Helm (Script handles arch detection)
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
     && chmod 700 get_helm.sh \
     && ./get_helm.sh --version v${HELM_VERSION} \
     && rm get_helm.sh
 
-# Install YQ
-RUN curl -fsSL -o /usr/local/bin/yq \
-    "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" \
-    && chmod +x /usr/local/bin/yq
-
-# Install Just
-RUN curl -fsSL \
-    "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
-    | tar -xz -C /usr/local/bin just
-
-# Install Pulumi
-RUN curl -fsSL \
-    "https://get.pulumi.com/releases/sdk/pulumi-v${PULUMI_VERSION}-linux-x64.tar.gz" \
-    -o /tmp/pulumi.tgz \
-    && tar -xzf /tmp/pulumi.tgz -C /usr/local \
-    && ln -sf /usr/local/pulumi/pulumi /usr/local/bin/pulumi \
-    && ln -sf /usr/local/pulumi/* /usr/local/bin/ \
-    && rm -f /tmp/pulumi.tgz
+# Detect Architecture and Install Binary Tools
+RUN ARCH=$(dpkg --print-architecture) && \
+    case "${ARCH}" in \
+        amd64) \
+            YQ_ARCH="linux_amd64"; \
+            JUST_ARCH="x86_64-unknown-linux-musl"; \
+            PULUMI_ARCH="linux-x64"; \
+            KUBECTL_ARCH="amd64"; \
+            ;; \
+        arm64) \
+            YQ_ARCH="linux_arm64"; \
+            JUST_ARCH="aarch64-unknown-linux-musl"; \
+            PULUMI_ARCH="linux-arm64"; \
+            KUBECTL_ARCH="arm64"; \
+            ;; \
+        *) \
+            echo "Unsupported architecture: ${ARCH}"; exit 1; \
+            ;; \
+    esac && \
+    # Install YQ
+    curl -fsSL -o /usr/local/bin/yq \
+    "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_${YQ_ARCH}" && \
+    chmod +x /usr/local/bin/yq && \
+    # Install Just
+    curl -fsSL \
+    "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${JUST_ARCH}.tar.gz" \
+    | tar -xz -C /usr/local/bin just && \
+    # Install Pulumi
+    curl -fsSL \
+    "https://get.pulumi.com/releases/sdk/pulumi-v${PULUMI_VERSION}-${PULUMI_ARCH}.tar.gz" \
+    -o /tmp/pulumi.tgz && \
+    tar -xzf /tmp/pulumi.tgz -C /usr/local && \
+    ln -sf /usr/local/pulumi/pulumi /usr/local/bin/pulumi && \
+    ln -sf /usr/local/pulumi/* /usr/local/bin/ && \
+    rm -f /tmp/pulumi.tgz && \
+    # Install kubectl
+    curl -fsSL -o /usr/local/bin/kubectl \
+    "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl" && \
+    chmod +x /usr/local/bin/kubectl
 
 # Install cdk8s CLI
 RUN npm install -g cdk8s-cli@${CDK8S_VERSION}
-
-# Install kubectl
-RUN curl -fsSL -o /usr/local/bin/kubectl \
-    "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
-    && chmod +x /usr/local/bin/kubectl
 
 # Setup auto completions
 RUN just --completions bash > /etc/bash_completion.d/just \
@@ -91,7 +107,6 @@ USER vscode
 ENV PATH="/home/vscode/go/bin:/usr/local/bin:/usr/local/share/nvm/versions/node/v${NODE_VERSION}/bin:${PATH}"
 
 # Install Go tools (as vscode user)
-
 RUN go install github.com/go-delve/delve/cmd/dlv@v${DELVE_VERSION} \
     && go install mvdan.cc/gofumpt@v${GOFUMPT_VERSION} \
     && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
