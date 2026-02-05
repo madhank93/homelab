@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	talos_client "github.com/pulumiverse/pulumi-talos/sdk/go/talos/client"
 	talos_cluster "github.com/pulumiverse/pulumi-talos/sdk/go/talos/cluster"
@@ -105,6 +106,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
   network:
     cni:
       name: none
+  proxy:
+    disabled: true
 `
 
 	// Generate Configs
@@ -144,7 +147,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		nodeIP := vmRes.Ipv4Addresses.ApplyT(func(ips [][]string) (string, error) {
 			for _, netInterface := range ips {
 				for _, ip := range netInterface {
-					if ip != "127.0.0.1" && !strings.Contains(ip, ":") {
+					if strings.HasPrefix(ip, "192.168.") {
 						return ip, nil
 					}
 				}
@@ -231,6 +234,41 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	})
 
 	ctx.Export("kubeconfig", kubeconfigRes.KubeconfigRaw)
+
+	// Initialize Kubernetes Provider (for CNI & GitOps)
+	// We depend on the Bootstrap having finished and Kubeconfig being generated.
+	k8sProvider, err := kubernetes.NewProvider(ctx, "k8s-provider", &kubernetes.ProviderArgs{
+		Kubeconfig: kubeconfigRes.KubeconfigRaw,
+	}, pulumi.DependsOn([]pulumi.Resource{kubeconfigRes, bootstrap}))
+	if err != nil {
+		return err
+	}
+
+	// Install Cilium (CNI) - Required for Nodes to become Ready
+	if err := InstallCilium(ctx, k8sProvider); err != nil {
+		return err
+	}
+
+	// Install Gateway (Gateway API)
+	if err := InstallGateway(ctx, k8sProvider); err != nil {
+		return err
+	}
+
+	// Install ArgoCD (GitOps)
+	if err := InstallArgoCD(ctx, k8sProvider); err != nil {
+		return err
+	}
+
+	// Configure Dynamic Cilium IP Pool
+	// Uses the first controller's IP to determine subnet and "eth0" as interface.
+	if err := ConfigureCiliumIPPool(ctx, k8sProvider, controllerIP, "(eth0|ens.*|enp.*)"); err != nil {
+		return err
+	}
+
+	// Patch Cilium RBAC for Leases (L2 Announcement Fix)
+	if err := PatchCiliumRBAC(ctx, k8sProvider); err != nil {
+		return err
+	}
 
 	return nil
 }

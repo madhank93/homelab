@@ -31,7 +31,7 @@ func main() {
 			deploy:    DeployHetznerVPS,
 		},
 		"talos": {
-			configKey: "services.proxmox.enabled",
+			configKey: "services.talos.enabled",
 			deploy:    DeployTalosCluster,
 		},
 		"authentik": {
