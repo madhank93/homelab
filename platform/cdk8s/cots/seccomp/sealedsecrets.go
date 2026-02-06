@@ -18,6 +18,11 @@ func NewSealedSecretsChart(scope constructs.Construct, id string, namespace stri
 		Version:     jsii.String("1.16.0"), // Latest stable chart
 		Values: &map[string]any{
 			"fullnameOverride": "sealed-secrets-controller",
+			"image": map[string]any{
+				"registry":   "docker.io",
+				"repository": "bitnami/sealed-secrets-controller",
+				"tag":        "0.22.0", // Use a specific, recent supported version
+			},
 		},
 	})
 	return chart
