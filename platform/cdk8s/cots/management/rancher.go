@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/rancher"
 )
 
 func NewRancherChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -12,47 +11,45 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 		Namespace: jsii.String(namespace),
 	})
 
-	values := &rancher.RancherValues{
-		AgentTlsMode: rancher.RancherAgentTlsMode_SYSTEM_HYPHEN_STORE,
-		AuditLog: &rancher.RancherAuditLog{
-			Level:       rancher.RancherAuditLogLevel_VALUE_0,
-			Destination: rancher.RancherAuditLogDestination_SIDECAR,
+	values := map[string]interface{}{
+		"agentTLSMode": "system-store",
+		"auditLog": map[string]interface{}{
+			"level":       0,
+			"destination": "sidecar",
 		},
-		Ingress: &rancher.RancherIngress{
-			AdditionalValues: &map[string]any{
-				"tls": map[string]any{
-					"source": "letsEncrypt",
+		"ingress": map[string]interface{}{
+			"extraValues": map[string]interface{}{
+				"tls": map[string]interface{}{
+					"source": "secret",
 				},
 			},
 		},
-		Service: &rancher.RancherService{
-			Type:        rancher.RancherServiceType_CLUSTER_IP,
-			DisableHttp: jsii.Bool(false),
+		"service": map[string]interface{}{
+			"type":        "ClusterIP",
+			"disableHttp": false,
 		},
-		AdditionalValues: &map[string]any{
-			"hostname": "rancher.local",
-			"letsEncrypt": map[string]any{
-				"email":       "admin@example.com",
-				"environment": "staging",
+		"hostname":          "rancher.local",
+		"bootstrapPassword": "admin",
+		"replicas":          3,
+		"resources": map[string]interface{}{
+			"limits": map[string]interface{}{
+				"memory": "2Gi",
+				"cpu":    "1000m",
 			},
-			"bootstrapPassword": "admin",
-			"replicas":          3,
-			"resources": map[string]any{
-				"limits": map[string]any{
-					"memory": "2Gi",
-					"cpu":    "1000m",
-				},
-				"requests": map[string]any{
-					"memory": "1Gi",
-					"cpu":    "500m",
-				},
+			"requests": map[string]interface{}{
+				"memory": "1Gi",
+				"cpu":    "500m",
 			},
-			"antiAffinity": "preferred",
 		},
+		"antiAffinity": "preferred",
 	}
-	rancher.NewRancher(chart, jsii.String("rancher-release"), &rancher.RancherProps{
+
+	cdk8s.NewHelm(chart, jsii.String("rancher-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("rancher"),
+		Repo:        jsii.String("https://releases.rancher.com/server-charts/stable"),
+		Version:     jsii.String("2.13.2"),
 		ReleaseName: jsii.String("rancher"),
-		Values:      values,
+		Values:      &values,
 	})
 	return chart
 }
