@@ -20,6 +20,7 @@ spec:
                 port:
                   number: 80
             path: /
+            pathType: ImplementationSpecific
   tls:
     - hosts:
         - headlamp.madhan.app
