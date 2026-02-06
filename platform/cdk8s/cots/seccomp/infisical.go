@@ -4,7 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/infisical"
+	infisical "github.com/madhank93/homelab/cdk8s/imports/infisicalstandalone"
 )
 
 func NewInfisicalChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -52,7 +52,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	}
 
-	infisical.NewInfisical(chart, jsii.String("infisical-release"), &infisical.InfisicalProps{
+	infisical.NewInfisicalstandalone(chart, jsii.String("infisical-release"), &infisical.InfisicalstandaloneProps{
 		ReleaseName: jsii.String("infisical"),
 		Values:      &values,
 	})
