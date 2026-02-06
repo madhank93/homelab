@@ -20,8 +20,9 @@ func NewSealedSecretsChart(scope constructs.Construct, id string, namespace stri
 		Values: &map[string]any{
 			"fullnameOverride": "sealed-secrets-controller",
 			"image": map[string]any{
-				"repository": "ghcr.io/bitnami-labs/sealed-secrets-controller",
-				"tag":        "v0.34.0", // Matching kubeseal CLI version
+				"registry":   "ghcr.io",
+				"repository": "bitnami-labs/sealed-secrets-controller",
+				"tag":        "0.34.0", // Tag on GHCR is without 'v'
 			},
 		},
 	})
