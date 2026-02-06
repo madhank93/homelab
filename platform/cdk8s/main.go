@@ -104,13 +104,13 @@ func main() {
 	seccomp.NewInfisicalChart(infisicalApp, "infisical-app", "infisical")
 	infisicalApp.Synth()
 
-	// // Rancher
-	// rancherApp := cdk8s.NewApp(&cdk8s.AppProps{
-	// 	Outdir:         jsii.String(fmt.Sprintf("%s/rancher", rootFolder)),
-	// 	YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	// })
-	// management.NewRancherChart(rancherApp, "rancher-app", "rancher")
-	// rancherApp.Synth()
+	// Sealed Secrets (Seccomp)
+	sealedSecretsApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/sealed-secrets", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	seccomp.NewSealedSecretsChart(sealedSecretsApp, "sealed-secrets", "kube-system")
+	sealedSecretsApp.Synth()
 
 	// Headlamp
 	headlampApp := cdk8s.NewApp(&cdk8s.AppProps{

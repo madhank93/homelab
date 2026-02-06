@@ -12,6 +12,7 @@ ARG KUBECTL_VERSION=1.35.0
 ARG DELVE_VERSION=1.26.0
 ARG GOFUMPT_VERSION=0.9.2
 ARG GOLANGCI_LINT_VERSION=2.8.0
+ARG KUBESEAL_VERSION=0.34.0
 
 USER root
 
@@ -50,12 +51,14 @@ RUN ARCH=$(dpkg --print-architecture) && \
             JUST_ARCH="x86_64-unknown-linux-musl"; \
             PULUMI_ARCH="linux-x64"; \
             KUBECTL_ARCH="amd64"; \
+            KUBESEAL_ARCH="amd64"; \
             ;; \
         arm64) \
             YQ_ARCH="linux_arm64"; \
             JUST_ARCH="aarch64-unknown-linux-musl"; \
             PULUMI_ARCH="linux-arm64"; \
             KUBECTL_ARCH="arm64"; \
+            KUBESEAL_ARCH="arm64"; \
             ;; \
         *) \
             echo "Unsupported architecture: ${ARCH}"; exit 1; \
@@ -80,7 +83,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
     # Install kubectl
     curl -fsSL -o /usr/local/bin/kubectl \
     "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl" && \
-    chmod +x /usr/local/bin/kubectl
+    chmod +x /usr/local/bin/kubectl && \
+    # Install kubeseal
+    curl -L "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-${KUBESEAL_ARCH}.tar.gz" -o kubeseal.tar.gz && \
+    tar -xvzf kubeseal.tar.gz kubeseal && \
+    install -m 755 kubeseal /usr/local/bin/kubeseal && \
+    rm kubeseal.tar.gz
 
 # Install cdk8s CLI
 RUN npm install -g cdk8s-cli@${CDK8S_VERSION}

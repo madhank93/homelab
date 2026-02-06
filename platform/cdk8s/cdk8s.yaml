@@ -13,6 +13,7 @@ imports:
   - helm:https://community-charts.github.io/helm-charts/n8n@1.16.28
   - helm:https://aquasecurity.github.io/helm-charts/trivy-operator@0.31.0
   - helm:https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/infisical-standalone@1.7.2
+  - helm:https://bitnami-labs.github.io/sealed-secrets/sealed-secrets@1.16.0
   # - helm:https://releases.rancher.com/server-charts/stable/rancher@2.13.2
   - helm:https://kubernetes-sigs.github.io/headlamp/headlamp@0.40.0
   - helm:https://rancher.github.io/fleet-helm-charts/fleet@0.14.2
