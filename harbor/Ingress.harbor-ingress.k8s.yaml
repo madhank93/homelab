@@ -17,7 +17,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-ingress
-  namespace: harbor-system
 spec:
   rules:
     - host: harbor.local

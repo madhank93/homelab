@@ -10,7 +10,6 @@ metadata:
     helm.sh/chart: gpu-operator-v25.3.2
     nvidia.com/gpu-driver-upgrade-drain.skip: "true"
   name: gpu-operator
-  namespace: gpu-operator
 spec:
   replicas: 1
   selector:

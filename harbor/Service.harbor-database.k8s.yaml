@@ -12,7 +12,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-database
-  namespace: harbor-system
 spec:
   ports:
     - port: 5432

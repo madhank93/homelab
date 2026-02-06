@@ -12,7 +12,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-jobservice
-  namespace: harbor-system
 spec:
   ports:
     - name: http-jobservice

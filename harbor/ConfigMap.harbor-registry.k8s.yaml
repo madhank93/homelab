@@ -12,7 +12,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-registry
-  namespace: harbor-system
 data:
   config.yml: |
     version: 0.1

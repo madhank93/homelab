@@ -16,7 +16,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-registry
-  namespace: harbor-system
 spec:
   accessModes:
     - ReadWriteOnce

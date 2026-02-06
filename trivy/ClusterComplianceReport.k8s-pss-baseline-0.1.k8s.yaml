@@ -7,7 +7,6 @@ metadata:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/version: 0.23.0
   name: k8s-pss-baseline-0.1
-  namespace: security
 spec:
   compliance:
     controls:

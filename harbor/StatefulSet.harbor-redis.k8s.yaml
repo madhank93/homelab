@@ -14,7 +14,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-redis
-  namespace: harbor-system
 spec:
   replicas: 1
   selector:

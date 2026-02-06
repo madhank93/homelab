@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/version: v25.3.2
     helm.sh/chart: gpu-operator-v25.3.2
   name: gpu-operator
-  namespace: gpu-operator
 rules:
   - apiGroups:
       - config.openshift.io

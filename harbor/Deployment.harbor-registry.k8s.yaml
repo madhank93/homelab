@@ -14,7 +14,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-registry
-  namespace: harbor-system
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -29,9 +28,9 @@ spec:
     metadata:
       annotations:
         checksum/configmap: f345950ba1e9a484a771f2d4bb386d6d6c1b697f71e048f261056691258d70df
-        checksum/secret: d6f4f1d3de7da22378b9e35ce2bbbdfa1298492c6c18e5ef97c223eca3dc0cc5
-        checksum/secret-core: 3cef464fc8dc562738726da394eacae0260cd559ef025bd5e908efa92084988d
-        checksum/secret-jobservice: 56d042430dcfec1ea45c94f0d753277cd8cf5a934799add812132489515d8b2e
+        checksum/secret: ba018c213ae4b984f2f2f2468245688379c2e19c946008814aa31763e63d0ec2
+        checksum/secret-core: 1878d9d990dd330f10e9e1d089bcd095539bfc7f56bfa31305570e7b2f96b967
+        checksum/secret-jobservice: 87eb042436234fe40608ded6255ec8ddec35a2986e4e04ee8e1dd9707fb16ef3
       labels:
         app: harbor
         app.kubernetes.io/component: registry

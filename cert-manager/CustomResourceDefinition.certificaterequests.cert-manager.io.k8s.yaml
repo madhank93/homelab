@@ -11,7 +11,6 @@ metadata:
     app.kubernetes.io/version: v1.15.5
     helm.sh/chart: cert-manager-v1.15.5
   name: certificaterequests.cert-manager.io
-  namespace: cert-manager
 spec:
   group: cert-manager.io
   names:

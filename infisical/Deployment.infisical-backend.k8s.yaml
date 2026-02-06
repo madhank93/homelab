@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    updatedAt: 2026-02-02 UTC 01:22:15
+    updatedAt: 2026-02-02 UTC 04:17:55
   labels:
     app: infisical
     chart: infisical-0.4.2
@@ -10,7 +10,6 @@ metadata:
     heritage: Helm
     release: infisical
   name: infisical-backend
-  namespace: infisical-system
 spec:
   replicas: 2
   selector:
@@ -21,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        updatedAt: 2026-02-02 UTC 01:22:15
+        updatedAt: 2026-02-02 UTC 04:17:55
       labels:
         app: infisical
         component: backend

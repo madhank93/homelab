@@ -14,7 +14,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-jobservice
-  namespace: harbor-system
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -30,8 +29,8 @@ spec:
       annotations:
         checksum/configmap: a18adf9b66d7b78f61618fe2cb06d77102bf0478f8993c47f6e97c05d9ccad22
         checksum/configmap-env: df105b2d8e7d3497d3c136deefdc7773672870f6ddbdf0f703d46ccd4c0a1d17
-        checksum/secret: 365d089dff6c01752239c15dc620cde7da73c4a3b05a90078aa26466d59e66a1
-        checksum/secret-core: cc6bd841e7dd87414f6c61c6ee8cb5affe294aa13a24617a034aca0e6eb92566
+        checksum/secret: 042f33cb04e37f4dbe8df3b4989a7a8061410f833a584ea59b9d2a944504d2f4
+        checksum/secret-core: c98885b43393541c3efa37d025dcc28074b00aa7bf1d8cd2e26b4c94cf5b9b03
       labels:
         app: harbor
         app.kubernetes.io/component: jobservice

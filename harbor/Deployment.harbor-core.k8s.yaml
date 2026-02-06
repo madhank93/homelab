@@ -14,7 +14,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-core
-  namespace: harbor-system
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -27,8 +26,8 @@ spec:
     metadata:
       annotations:
         checksum/configmap: f5a5db22bfbdf75186240aa0fdaf74919b28984e3632a5476b46cdd80f735588
-        checksum/secret: 3989fbad151494a97f269f86f9e541907e1f4355586a9a064ded0fe4c62a6ff4
-        checksum/secret-jobservice: 824deaba4c4dcf4a01816d40050aaf1971918019f0278285baf57bdf566919f7
+        checksum/secret: f38dbc26bcfe031bb72c5aba5346a429bdb9cde69c19f6e2d7927e9c708ba6e8
+        checksum/secret-jobservice: a0d13c80aa24bec45da3336ba25b67bd71d5cf71e5f3b3ea00e8a0de5ddc457d
       labels:
         app: harbor
         app.kubernetes.io/component: core

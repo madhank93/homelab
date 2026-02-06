@@ -8,7 +8,6 @@ metadata:
     heritage: Helm
     release: infisical
   name: infisical-backend
-  namespace: infisical-system
 spec:
   ports:
     - port: 8080

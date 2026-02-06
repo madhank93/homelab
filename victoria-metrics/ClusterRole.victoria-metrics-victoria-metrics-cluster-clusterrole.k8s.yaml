@@ -5,5 +5,4 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     helm.sh/chart: victoria-metrics-cluster-0.11.17
   name: victoria-metrics-victoria-metrics-cluster-clusterrole
-  namespace: monitoring
 rules: []

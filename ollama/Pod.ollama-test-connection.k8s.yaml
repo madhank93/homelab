@@ -10,7 +10,6 @@ metadata:
     app.kubernetes.io/version: 0.3.12
     helm.sh/chart: ollama-0.60.0
   name: ollama-test-connection
-  namespace: ai
 spec:
   containers:
     - args:

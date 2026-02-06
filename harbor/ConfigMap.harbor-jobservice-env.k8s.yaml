@@ -12,7 +12,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-jobservice-env
-  namespace: harbor-system
 data:
   CORE_URL: http://harbor-core:80
   HTTPS_PROXY: ""

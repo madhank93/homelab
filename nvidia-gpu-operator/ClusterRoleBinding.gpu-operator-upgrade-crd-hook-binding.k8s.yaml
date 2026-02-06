@@ -6,7 +6,6 @@ metadata:
     helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
     helm.sh/hook-weight: "0"
   name: gpu-operator-upgrade-crd-hook-binding
-  namespace: gpu-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

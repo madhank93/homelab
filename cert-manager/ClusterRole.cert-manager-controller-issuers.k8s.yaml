@@ -10,7 +10,6 @@ metadata:
     app.kubernetes.io/version: v1.15.5
     helm.sh/chart: cert-manager-v1.15.5
   name: cert-manager-controller-issuers
-  namespace: cert-manager
 rules:
   - apiGroups:
       - cert-manager.io

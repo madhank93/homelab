@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/version: v25.3.2
     helm.sh/chart: gpu-operator-v25.3.2
   name: cluster-policy
-  namespace: gpu-operator
 spec:
   ccManager:
     defaultMode: "off"

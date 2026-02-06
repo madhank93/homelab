@@ -12,7 +12,6 @@ metadata:
     heritage: Helm
     release: harbor
   name: harbor-core
-  namespace: harbor-system
 data:
   CHART_CACHE_DRIVER: redis
   CONFIG_PATH: /etc/core/app.conf

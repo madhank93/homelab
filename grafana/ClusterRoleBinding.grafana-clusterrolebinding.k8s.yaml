@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/version: 11.2.1
     helm.sh/chart: grafana-8.5.2
   name: grafana-clusterrolebinding
-  namespace: monitoring
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

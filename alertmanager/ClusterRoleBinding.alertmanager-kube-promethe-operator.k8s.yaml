@@ -13,7 +13,6 @@ metadata:
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-operator
-  namespace: monitoring
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

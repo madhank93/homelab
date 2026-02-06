@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/version: 0.23.0
     helm.sh/chart: trivy-operator-0.25.0
   name: trivy-operator
-  namespace: security
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

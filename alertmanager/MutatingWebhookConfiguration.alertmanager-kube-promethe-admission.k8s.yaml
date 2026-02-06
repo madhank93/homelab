@@ -13,7 +13,6 @@ metadata:
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-admission
-  namespace: monitoring
 webhooks:
   - admissionReviewVersions:
       - v1
