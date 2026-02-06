@@ -1,0 +1,35 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: kube-prometheus-stack-operator
+    app.kubernetes.io/component: prometheus-operator
+    app.kubernetes.io/instance: alertmanager
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    app.kubernetes.io/version: 65.0.0
+    chart: kube-prometheus-stack-65.0.0
+    heritage: Helm
+    release: alertmanager
+  name: alertmanager-kube-promethe-operator
+  namespace: default
+spec:
+  endpoints:
+    - honorLabels: true
+      port: https
+      scheme: https
+      tlsConfig:
+        ca:
+          secret:
+            key: ca
+            name: alertmanager-kube-promethe-admission
+            optional: false
+        serverName: alertmanager-kube-promethe-operator
+  namespaceSelector:
+    matchNames:
+      - default
+  selector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+      release: alertmanager

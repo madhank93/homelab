@@ -1,0 +1,13 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  labels:
+    helm.sh/chart: fleet-v6.5.1
+  name: rock8s
+  namespace: cattle-fleet-system
+app.kubernetes.io/instance: fleet
+app.kubernetes.io/managed-by: Helm
+app.kubernetes.io/name: fleet
+spec:
+  interval: 5m
+  url: https://charts.rock8s.com

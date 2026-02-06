@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: vmselect
+    app.kubernetes.io/instance: victoria-metrics
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-metrics-cluster
+    helm.sh/chart: victoria-metrics-cluster-0.11.17
+  name: victoria-metrics-victoria-metrics-cluster-vmselect
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vmselect
+      app.kubernetes.io/instance: victoria-metrics
+      app.kubernetes.io/name: victoria-metrics-cluster
+  template:
+    metadata:
+      labels:
+        app: vmselect
+        app.kubernetes.io/instance: victoria-metrics
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: victoria-metrics-cluster
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - --cacheDataPath=/cache
+            - --storageNode=victoria-metrics-victoria-metrics-cluster-vmstorage-0.victoria-metrics-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8401
+            - --envflag.enable=true
+            - --envflag.prefix=VM_
+            - --loggerFormat=json
+          image: victoriametrics/vmselect:v1.101.0-cluster
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            tcpSocket:
+              port: http
+            timeoutSeconds: 5
+          name: victoria-metrics-cluster-vmselect
+          ports:
+            - containerPort: 8481
+              name: http
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: /cache
+              name: cache-volume
+      serviceAccountName: victoria-metrics-victoria-metrics-cluster
+      volumes:
+        - emptyDir: {}
+          name: cache-volume

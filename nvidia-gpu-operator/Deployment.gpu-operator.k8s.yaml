@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: gpu-operator
+    app.kubernetes.io/instance: gpu-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: gpu-operator
+    app.kubernetes.io/version: v25.3.2
+    helm.sh/chart: gpu-operator-v25.3.2
+    nvidia.com/gpu-driver-upgrade-drain.skip: "true"
+  name: gpu-operator
+  namespace: gpu-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-operator
+      app.kubernetes.io/component: gpu-operator
+  template:
+    metadata:
+      annotations:
+        openshift.io/scc: restricted-readonly
+      labels:
+        app: gpu-operator
+        app.kubernetes.io/component: gpu-operator
+        app.kubernetes.io/instance: gpu-operator
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: gpu-operator
+        app.kubernetes.io/version: v25.3.2
+        helm.sh/chart: gpu-operator-v25.3.2
+        nvidia.com/gpu-driver-upgrade-drain.skip: "true"
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: In
+                    values:
+                      - ""
+              weight: 1
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: In
+                    values:
+                      - ""
+              weight: 1
+      containers:
+        - args:
+            - --leader-elect
+            - --zap-time-encoding=epoch
+            - --zap-log-level=info
+          command:
+            - gpu-operator
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: OPERATOR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DRIVER_MANAGER_IMAGE
+              value: nvcr.io/nvidia/cloud-native/k8s-driver-manager:v0.8.0
+          image: nvcr.io/nvidia/gpu-operator:v25.3.2
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          name: gpu-operator
+          ports:
+            - containerPort: 8080
+              name: metrics
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 500m
+              memory: 350Mi
+            requests:
+              cpu: 200m
+              memory: 100Mi
+          volumeMounts:
+            - mountPath: /host-etc/os-release
+              name: host-os-release
+              readOnly: true
+      nodeSelector:
+        node-role.kubernetes.io/gpu: "true"
+      priorityClassName: system-node-critical
+      serviceAccountName: gpu-operator
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Equal
+          value: ""
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Equal
+          value: ""
+      volumes:
+        - hostPath:
+            path: /etc/os-release
+          name: host-os-release

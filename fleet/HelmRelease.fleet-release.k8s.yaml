@@ -1,0 +1,141 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  labels:
+    helm.sh/chart: fleet-v6.5.1
+  name: fleet-release
+  namespace: cattle-fleet-system
+app.kubernetes.io/instance: fleet
+app.kubernetes.io/managed-by: Helm
+app.kubernetes.io/name: fleet
+spec:
+  chart:
+    spec:
+      chart: fleet-vendored
+      sourceRef:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        name: rock8s
+        namespace: default
+      version: v6.5.1
+  interval: 5m
+  values:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - fleet
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+    cache:
+      address: fleet-release-redis-master:6379
+      database: "0"
+      usePassword: false
+    database:
+      address: fleet-release-mysql:3306
+      connMaxLifetime: 0
+      database: fleet
+      maxIdleConns: 50
+      maxOpenConns: 50
+      passwordKey: mysql-root-password
+      secretName: mysql
+      tls:
+        enabled: false
+      username: root
+    environments: {}
+    envsFrom:
+      - name: FLEET_SERVER_PRIVATE_KEY
+        valueFrom:
+          secretKeyRef:
+            key: private_key
+            name: fleet
+    fleet:
+      app:
+        inviteTokenValidityPeriod: 120h
+        tokenKeySize: 24
+      auth:
+        bcryptCost: 12
+        saltKeySize: 24
+      autoApplySQLMigrations: true
+      extraVolumeMounts: []
+      extraVolumes: []
+      license:
+        licenseKey: license
+        secretName: fleet
+      listenPort: 8080
+      logging:
+        debug: false
+        disableBanner: false
+        json: false
+      secretName: fleet
+      securityContext:
+        runAsGroup: 3333
+        runAsUser: 3333
+      session:
+        duration: 2160h
+        keySize: 64
+      tls:
+        enabled: false
+    gke: {}
+    hostName: fleet-release-gateway.default.svc.cluster.local
+    imageRepository: fleetdm/fleet
+    imageTag: v4.66.0
+    ingress:
+      enabled: false
+      hosts:
+        - host: ""
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
+    mysql:
+      auth:
+        database: fleet
+        existingSecret: mysql
+      enabled: true
+    nodeSelector: {}
+    osquery:
+      detailUpdateInterval: 30m
+      labelUpdateInterval: 30m
+      logging:
+        filesystem: {}
+        firehose: {}
+        kinesis: {}
+        lambda: {}
+        pubsub: {}
+        resultPlugin: filesystem
+        statusPlugin: filesystem
+      nodeKeySize: 24
+      secretName: osquery
+    podAnnotations: {}
+    redis:
+      auth:
+        enabled: false
+      enabled: true
+      replica:
+        replicaCount: 0
+    replicas: 1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    serviceAccountAnnotations: {}
+    serviceAnnotations: {}
+    tolerations: []
+    vulnProcessing:
+      dedicated: true
+      resources:
+        limits:
+          cpu: 1
+          memory: 4Gi
+        requests:
+          cpu: 0.1
+          memory: 50Mi
+      schedule: 0 * * * *

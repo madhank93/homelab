@@ -1,0 +1,9 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: victoria-metrics-cluster-0.11.17
+  name: victoria-metrics-victoria-metrics-cluster
+  namespace: default
+rules: []

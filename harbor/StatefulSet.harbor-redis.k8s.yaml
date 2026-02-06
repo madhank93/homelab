@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: harbor
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/instance: harbor
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+    app.kubernetes.io/version: 2.11.1
+    chart: harbor
+    component: redis
+    heritage: Helm
+    release: harbor
+  name: harbor-redis
+  namespace: harbor-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: redis
+      release: harbor
+  serviceName: harbor-redis
+  template:
+    metadata:
+      labels:
+        app: harbor
+        app.kubernetes.io/component: redis
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.11.1
+        chart: harbor
+        component: redis
+        heritage: Helm
+        release: harbor
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: goharbor/redis-photon:v2.11.1
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            initialDelaySeconds: 300
+            periodSeconds: 10
+            tcpSocket:
+              port: 6379
+          name: redis
+          readinessProbe:
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            tcpSocket:
+              port: 6379
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /var/lib/redis
+              name: data
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+      terminationGracePeriodSeconds: 120
+  volumeClaimTemplates:
+    - metadata:
+        labels:
+          app: harbor
+          chart: harbor
+          heritage: Helm
+          release: harbor
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

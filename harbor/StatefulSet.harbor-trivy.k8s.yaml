@@ -1,0 +1,160 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: harbor
+    app.kubernetes.io/component: trivy
+    app.kubernetes.io/instance: harbor
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+    app.kubernetes.io/version: 2.11.1
+    chart: harbor
+    component: trivy
+    heritage: Helm
+    release: harbor
+  name: harbor-trivy
+  namespace: harbor-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: trivy
+      release: harbor
+  serviceName: harbor-trivy
+  template:
+    metadata:
+      annotations:
+        checksum/secret: 80d88031f1d4b9c74261b9fe36a3d50ba87b38c96dd1771c630f2d541170a0f6
+      labels:
+        app: harbor
+        app.kubernetes.io/component: trivy
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.11.1
+        chart: harbor
+        component: trivy
+        heritage: Helm
+        release: harbor
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: HTTP_PROXY
+              value: ""
+            - name: HTTPS_PROXY
+              value: ""
+            - name: NO_PROXY
+              value: harbor-core,harbor-jobservice,harbor-database,harbor-registry,harbor-portal,harbor-trivy,harbor-exporter,127.0.0.1,localhost,.local,.internal
+            - name: SCANNER_LOG_LEVEL
+              value: info
+            - name: SCANNER_TRIVY_CACHE_DIR
+              value: /home/scanner/.cache/trivy
+            - name: SCANNER_TRIVY_REPORTS_DIR
+              value: /home/scanner/.cache/reports
+            - name: SCANNER_TRIVY_DEBUG_MODE
+              value: "false"
+            - name: SCANNER_TRIVY_VULN_TYPE
+              value: os,library
+            - name: SCANNER_TRIVY_TIMEOUT
+              value: 5m0s
+            - name: SCANNER_TRIVY_GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: gitHubToken
+                  name: harbor-trivy
+            - name: SCANNER_TRIVY_SEVERITY
+              value: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+            - name: SCANNER_TRIVY_IGNORE_UNFIXED
+              value: "false"
+            - name: SCANNER_TRIVY_SKIP_UPDATE
+              value: "false"
+            - name: SCANNER_TRIVY_SKIP_JAVA_DB_UPDATE
+              value: "false"
+            - name: SCANNER_TRIVY_OFFLINE_SCAN
+              value: "false"
+            - name: SCANNER_TRIVY_SECURITY_CHECKS
+              value: vuln
+            - name: SCANNER_TRIVY_INSECURE
+              value: "false"
+            - name: SCANNER_API_SERVER_ADDR
+              value: :8080
+            - name: SCANNER_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  key: redisURL
+                  name: harbor-trivy
+            - name: SCANNER_STORE_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  key: redisURL
+                  name: harbor-trivy
+            - name: SCANNER_JOB_QUEUE_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  key: redisURL
+                  name: harbor-trivy
+          image: goharbor/trivy-adapter-photon:v2.11.1
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /probe/healthy
+              port: api-server
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+          name: trivy
+          ports:
+            - containerPort: 8080
+              name: api-server
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /probe/ready
+              port: api-server
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+          resources:
+            limits:
+              cpu: 1
+              memory: 1Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /home/scanner/.cache
+              name: data
+              readOnly: false
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+  volumeClaimTemplates:
+    - metadata:
+        labels:
+          app: harbor
+          chart: harbor
+          heritage: Helm
+          release: harbor
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi

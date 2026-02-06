@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    helm.sh/chart: fleet-v6.5.1
+  name: fleet
+  namespace: cattle-fleet-system
+app.kubernetes.io/instance: fleet
+app.kubernetes.io/managed-by: Helm
+app.kubernetes.io/name: fleet
+rules:
+  - apiGroups:
+      - "*"
+    resources:
+      - "*"
+    verbs:
+      - "*"
