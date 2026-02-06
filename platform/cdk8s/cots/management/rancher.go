@@ -45,9 +45,7 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 	}
 
 	cdk8s.NewHelm(chart, jsii.String("rancher-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("rancher"),
-		Repo:        jsii.String("https://releases.rancher.com/server-charts/stable"),
-		Version:     jsii.String("2.13.2"),
+		Chart:       jsii.String("/Volumes/work/git-repos/homelab/platform/cdk8s/imports/charts/rancher"),
 		ReleaseName: jsii.String("rancher"),
 		Values:      &values,
 	})

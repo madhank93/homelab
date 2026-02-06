@@ -105,12 +105,20 @@ func main() {
 	infisicalApp.Synth()
 
 	// // Rancher
-	rancherApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/rancher", rootFolder)),
+	// rancherApp := cdk8s.NewApp(&cdk8s.AppProps{
+	// 	Outdir:         jsii.String(fmt.Sprintf("%s/rancher", rootFolder)),
+	// 	YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	// })
+	// management.NewRancherChart(rancherApp, "rancher-app", "rancher")
+	// rancherApp.Synth()
+
+	// Headlamp
+	headlampApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/headlamp", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
 	})
-	management.NewRancherChart(rancherApp, "rancher-app", "rancher")
-	rancherApp.Synth()
+	management.NewHeadlampChart(headlampApp, "headlamp-app", "headlamp")
+	headlampApp.Synth()
 
 	// Fleet
 	fleetApp := cdk8s.NewApp(&cdk8s.AppProps{
