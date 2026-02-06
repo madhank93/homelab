@@ -110,6 +110,58 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return err
 	}
 
+	// 5. Create ApplicationSet to Bootstrap GitOps (Watch v0.1.5-manifests)
+	_, err = apiextensions.NewCustomResource(ctx, "bootstrap-appset", &apiextensions.CustomResourceArgs{
+		ApiVersion: pulumi.String("argoproj.io/v1alpha1"),
+		Kind:       pulumi.String("ApplicationSet"),
+		Metadata: &metav1.ObjectMetaArgs{
+			Name:      pulumi.String("cots-applications"),
+			Namespace: pulumi.String("argocd"),
+		},
+		OtherFields: map[string]any{
+			"spec": map[string]any{
+				"generators": []map[string]any{
+					{
+						"git": map[string]any{
+							"repoURL":  "https://github.com/madhank93/homelab.git",
+							"revision": "v0.1.5-manifests", // Watch the manifests branch
+							"directories": []map[string]any{
+								{"path": "*"}, // Apps are at the root of the manifests branch
+							},
+						},
+					},
+				},
+				"template": map[string]any{
+					"metadata": map[string]any{
+						"name": "{{path.basename}}",
+					},
+					"spec": map[string]any{
+						"project": "default",
+						"source": map[string]any{
+							"repoURL":        "https://github.com/madhank93/homelab.git",
+							"targetRevision": "v0.1.5-manifests",
+							"path":           "{{path}}",
+						},
+						"destination": map[string]any{
+							"server":    "https://kubernetes.default.svc",
+							"namespace": "{{path.basename}}",
+						},
+						"syncPolicy": map[string]any{
+							"automated": map[string]any{
+								"prune":    true,
+								"selfHeal": true,
+							},
+							"syncOptions": []string{"CreateNamespace=true"},
+						},
+					},
+				},
+			},
+		},
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{chart}))
+	if err != nil {
+		return err
+	}
+
 	// 5. Create ApplicationSet to Bootstrap GitOps (Watch app/*)
 	_, err = apiextensions.NewCustomResource(ctx, "bootstrap-appset", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("argoproj.io/v1alpha1"),
