@@ -8,9 +8,7 @@ import (
 )
 
 func NewVictoriaLogsChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("monitoring"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	values := map[string]interface{}{
 		"server": map[string]interface{}{

@@ -8,9 +8,7 @@ import (
 )
 
 func NewKyvernoChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("kyverno"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	values := map[string]any{
 

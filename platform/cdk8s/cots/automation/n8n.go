@@ -8,9 +8,7 @@ import (
 )
 
 func NewN8nChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("automation"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	n8n.NewN8n(chart, jsii.String("n8n-release"), &n8n.N8nProps{
 		ReleaseName: jsii.String("n8n"),

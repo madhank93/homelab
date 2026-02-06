@@ -8,9 +8,7 @@ import (
 )
 
 func NewCertManagerChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("cert-manager"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	values := map[string]interface{}{
 		"installCRDs": jsii.Bool(true),

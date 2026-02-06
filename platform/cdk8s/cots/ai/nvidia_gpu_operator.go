@@ -8,9 +8,7 @@ import (
 )
 
 func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("gpu-operator"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	nodeSelector := map[string]any{
 		"node-role.kubernetes.io/gpu": jsii.String("true"),

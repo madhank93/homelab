@@ -8,9 +8,7 @@ import (
 )
 
 func NewTrivyChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("security"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	values := map[string]interface{}{
 		"trivy-operator": map[string]interface{}{

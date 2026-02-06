@@ -8,9 +8,7 @@ import (
 )
 
 func NewInfisicalChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("infisical-system"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	values := map[string]any{
 		"frontend": map[string]any{

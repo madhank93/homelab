@@ -8,9 +8,7 @@ import (
 )
 
 func NewRancherChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("cattle-system"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	values := &rancher.RancherValues{
 		AgentTlsMode: rancher.RancherAgentTlsMode_SYSTEM_HYPHEN_STORE,

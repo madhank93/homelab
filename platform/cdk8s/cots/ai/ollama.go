@@ -8,9 +8,7 @@ import (
 )
 
 func NewOllamaChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
-		Namespace: jsii.String("ai"),
-	})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
 	gpuNodeSelector := map[string]any{
 		"node-role.kubernetes.io/gpu": jsii.String("true"),
