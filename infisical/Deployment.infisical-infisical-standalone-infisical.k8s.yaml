@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    updatedAt: 2026-02-02 UTC 22:27:41
+    updatedAt: 2026-02-02 UTC 23:26:25
   labels:
     app: infisical-standalone
     chart: infisical-standalone-1.7.2
@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        updatedAt: 2026-02-02 UTC 22:27:41
+        updatedAt: 2026-02-02 UTC 23:26:25
       labels:
         app: infisical-standalone
         component: infisical
