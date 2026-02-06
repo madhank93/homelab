@@ -124,9 +124,9 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 					{
 						"git": map[string]any{
 							"repoURL":  "https://github.com/madhank93/homelab.git",
-							"revision": "main",
+							"revision": "v0.1.5-manifests", // Watch the release-specific manifests branch
 							"directories": []map[string]any{
-								{"path": "app/*"},
+								{"path": "*"}, // Apps are at root in the manifests branch
 							},
 						},
 					},
@@ -139,7 +139,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						"project": "default",
 						"source": map[string]any{
 							"repoURL":        "https://github.com/madhank93/homelab.git",
-							"targetRevision": "main",
+							"targetRevision": "v0.1.5-manifests",
 							"path":           "{{path}}",
 						},
 						"destination": map[string]any{

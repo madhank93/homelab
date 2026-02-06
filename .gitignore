@@ -2,10 +2,10 @@
 *DS_Store
 .env*
 **/app
-platform
 # Exclude Netbird config files (management.json, openid-configuration.json, and turnserver.conf)
 infra/pulumi/bifrost/netbird/*.json
 infra/pulumi/bifrost/netbird/*.conf
 infra/pulumi/bifrost/netbird/*.env
 infra/pulumi/sdks
 *config
+platform/cdk8s/imports
