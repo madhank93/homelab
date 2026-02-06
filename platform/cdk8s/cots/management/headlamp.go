@@ -22,7 +22,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 					{
 						"host": "headlamp.madhan.app",
 						"paths": []map[string]interface{}{
-							{"path": "/", "pathType": "ImplementationSpecific"},
+							{"path": "/", "type": "ImplementationSpecific"},
 						},
 					},
 				},
