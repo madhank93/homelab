@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fleet-controller
+  namespace: fleet
+data:
+  config: |
+    {
+      "systemDefaultRegistry": "",
+      "agentImage": "rancher/fleet-agent:v0.14.2",
+      "agentImagePullPolicy": "IfNotPresent",
+      "apiServerURL": "",
+      "apiServerCA": "",
+      "agentCheckinInterval": "15m",
+      "agentTLSMode": "system-store",
+      "agentWorkers": {
+            "bundledeployment": "50",
+            "drift": "50"
+      },
+      
+      "garbageCollectionInterval": "15m",
+      
+      "ignoreClusterRegistrationLabels": false,
+      "bootstrap": {
+        "paths": "",
+        "repo": "",
+        "secret": "",
+        "branch":  "master",
+        "namespace": "fleet-local",
+        "agentNamespace": ""
+      },
+      "webhookReceiverURL": "",
+      "githubURLPrefix": "",
+      "gitClientTimeout": "30s"
+    }

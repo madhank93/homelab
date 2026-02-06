@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: alertmanager
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 65.0.0
-    chart: kube-prometheus-stack-65.0.0
+    app.kubernetes.io/version: 81.4.3
+    chart: kube-prometheus-stack-81.4.3
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-etcd
@@ -22,21 +22,21 @@ spec:
             summary: etcd cluster members are down.
           expr: |-
             max without (endpoint) (
-              sum without (instance) (up{job=~".*etcd.*"} == bool 0)
+              sum without (instance, pod) (up{job=~".*etcd.*"} == bool 0)
             or
               count without (To) (
-                sum without (instance) (rate(etcd_network_peer_sent_failures_total{job=~".*etcd.*"}[120s])) > 0.01
+                sum without (instance, pod) (rate(etcd_network_peer_sent_failures_total{job=~".*etcd.*"}[120s])) > 0.01
               )
             )
             > 0
-          for: 10m
+          for: 20m
           labels:
-            severity: critical
+            severity: warning
         - alert: etcdInsufficientMembers
           annotations:
             description: 'etcd cluster "{{ $labels.job }}": insufficient members ({{ $value }}).'
             summary: etcd cluster has insufficient number of members.
-          expr: sum(up{job=~".*etcd.*"} == bool 1) without (instance) < ((count(up{job=~".*etcd.*"}) without (instance) + 1) / 2)
+          expr: sum(up{job=~".*etcd.*"} == bool 1) without (instance, pod) < ((count(up{job=~".*etcd.*"}) without (instance, pod) + 1) / 2)
           for: 3m
           labels:
             severity: critical
@@ -52,7 +52,7 @@ spec:
           annotations:
             description: 'etcd cluster "{{ $labels.job }}": {{ $value }} leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
             summary: etcd cluster has high number of leader changes.
-          expr: increase((max without (instance) (etcd_server_leader_changes_seen_total{job=~".*etcd.*"}) or 0*absent(etcd_server_leader_changes_seen_total{job=~".*etcd.*"}))[15m:1m]) >= 4
+          expr: increase((max without (instance, pod) (etcd_server_leader_changes_seen_total{job=~".*etcd.*"}) or 0*absent(etcd_server_leader_changes_seen_total{job=~".*etcd.*"}))[15m:1m]) >= 4
           for: 5m
           labels:
             severity: warning

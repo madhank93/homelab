@@ -8,9 +8,10 @@ metadata:
     app.kubernetes.io/instance: gpu-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/version: v0.17.3
-    helm.sh/chart: node-feature-discovery-0.17.3
+    app.kubernetes.io/version: v0.18.2
+    helm.sh/chart: node-feature-discovery-0.18.2
   name: gpu-operator-node-feature-discovery-prune
+  namespace: nvidia-gpu-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: post-install, post-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded, before-hook-creation
+  name: fleet-cleanup-clusterregistrations
+  namespace: fleet
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: fleet-job
+    spec:
+      containers:
+        - args:
+            - cleanup
+            - clusterregistration
+          command:
+            - fleet
+          image: rancher/fleet:v0.14.2
+          name: cleanup
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      restartPolicy: Never
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: fleet-controller
+      tolerations:
+        - effect: NoSchedule
+          key: cattle.io/os
+          operator: Equal
+          value: linux

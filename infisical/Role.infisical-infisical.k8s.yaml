@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app: infisical-standalone
+    chart: infisical-standalone-1.7.2
+    component: infisical
+    heritage: Helm
+    release: infisical
+  name: infisical-infisical
+  namespace: default
+rules:
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - get
+      - watch
+      - list

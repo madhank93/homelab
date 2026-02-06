@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: n8n
+    chart: n8n-1.16.28
+    heritage: Helm
+    release: n8n
+  name: n8n-diagnostics-configmap
+data:
+  N8N_DIAGNOSTICS_CONFIG_BACKEND: ""
+  N8N_DIAGNOSTICS_CONFIG_FRONTEND: ""
+  N8N_DIAGNOSTICS_ENABLED: "false"
+  N8N_DIAGNOSTICS_POSTHOG_API_HOST: ""
+  N8N_DIAGNOSTICS_POSTHOG_API_KEY: ""
+  N8N_FRONTEND_SENTRY_DSN: ""
+  N8N_SENTRY_DSN: ""

@@ -6,7 +6,8 @@ metadata:
     app.kubernetes.io/instance: infisical
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: redis
-    helm.sh/chart: redis-17.15.0
+    app.kubernetes.io/version: 7.2.4
+    helm.sh/chart: redis-18.14.1
   name: redis-master
   namespace: default
 spec:
@@ -29,7 +30,8 @@ spec:
         app.kubernetes.io/instance: infisical
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-17.15.0
+        app.kubernetes.io/version: 7.2.4
+        helm.sh/chart: redis-18.14.1
     spec:
       affinity:
         podAntiAffinity:
@@ -42,7 +44,7 @@ spec:
                     app.kubernetes.io/name: redis
                 topologyKey: kubernetes.io/hostname
               weight: 1
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - args:
             - -c
@@ -60,7 +62,7 @@ spec:
               value: "no"
             - name: REDIS_PORT
               value: "6379"
-          image: docker.io/bitnami/redis:7.0.12-debian-11-r19
+          image: mirror.gcr.io/bitnamilegacy/redis:7.2.4-debian-11-r18
           imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:
@@ -88,9 +90,6 @@ spec:
             periodSeconds: 5
             successThreshold: 1
             timeoutSeconds: 2
-          resources:
-            limits: {}
-            requests: {}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -114,9 +113,13 @@ spec:
               name: redis-tmp-conf
             - mountPath: /tmp
               name: tmp
+      enableServiceLinks: true
       securityContext:
         fsGroup: 1001
-      serviceAccountName: redis
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      serviceAccountName: redis-master
       terminationGracePeriodSeconds: 30
       volumes:
         - configMap:

@@ -5,7 +5,8 @@ metadata:
     app.kubernetes.io/instance: infisical
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: redis
-    helm.sh/chart: redis-17.15.0
+    app.kubernetes.io/version: 7.2.4
+    helm.sh/chart: redis-18.14.1
   name: redis-headless
   namespace: default
 spec:

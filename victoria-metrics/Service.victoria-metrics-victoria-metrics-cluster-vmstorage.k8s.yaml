@@ -6,7 +6,8 @@ metadata:
     app.kubernetes.io/instance: victoria-metrics
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-metrics-cluster
-    helm.sh/chart: victoria-metrics-cluster-0.11.17
+    app.kubernetes.io/version: v1.134.0-cluster
+    helm.sh/chart: victoria-metrics-cluster-0.33.0
   name: victoria-metrics-victoria-metrics-cluster-vmstorage
   namespace: default
 spec:
@@ -28,3 +29,4 @@ spec:
     app: vmstorage
     app.kubernetes.io/instance: victoria-metrics
     app.kubernetes.io/name: victoria-metrics-cluster
+  type: ClusterIP

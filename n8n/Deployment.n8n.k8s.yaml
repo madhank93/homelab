@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: main
+    app.kubernetes.io/instance: n8n
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/part-of: n8n
+    app.kubernetes.io/version: 2.6.3
+    helm.sh/chart: n8n-1.16.28
+  name: n8n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: n8n
+      app.kubernetes.io/name: n8n
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: 78ba813685f258b17ee70c1e8c970aabc0e0e02d189ee2c77f1f8365e1dc12b3
+      labels:
+        app.kubernetes.io/component: main
+        app.kubernetes.io/instance: n8n
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: n8n
+        app.kubernetes.io/part-of: n8n
+        app.kubernetes.io/version: 2.6.3
+        helm.sh/chart: n8n-1.16.28
+    spec:
+      containers:
+        - env:
+            - name: N8N_HIRING_BANNER_ENABLED
+              value: "false"
+            - name: NODE_ENV
+              value: production
+            - name: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
+              value: "true"
+            - name: N8N_PORT
+              value: "5678"
+            - name: N8N_DEFAULT_LOCALE
+              value: en
+            - name: GENERIC_TIMEZONE
+              value: Europe/Berlin
+            - name: N8N_GRACEFUL_SHUTDOWN_TIMEOUT
+              value: "30"
+            - name: N8N_EDITOR_BASE_URL
+              value: http://n8n.local
+            - name: DB_POSTGRESDB_USER
+              value: n8n
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: n8n-postgresql
+                  optional: true
+            - name: N8N_HOST
+              value: n8n.local
+            - name: N8N_PORT
+              value: "5678"
+          envFrom:
+            - configMapRef:
+                name: n8n-database-configmap
+            - configMapRef:
+                name: n8n-logging-configmap
+            - configMapRef:
+                name: n8n-diagnostics-configmap
+            - configMapRef:
+                name: n8n-version-notifications-configmap
+            - configMapRef:
+                name: n8n-public-api-configmap
+            - configMapRef:
+                name: n8n-workflow-history-configmap
+            - configMapRef:
+                name: n8n-task-broker-configmap
+            - configMapRef:
+                name: n8n-metrics-configmap
+            - configMapRef:
+                name: n8n-binary-data-configmap
+            - secretRef:
+                name: n8n-encryption-key-secret-v2
+          image: n8nio/n8n:latest
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          name: n8n-main
+          ports:
+            - containerPort: 5678
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz/readiness
+              port: http
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: false
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          volumeMounts:
+            - mountPath: /home/node/.n8n
+              name: node-modules
+              readOnly: false
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      serviceAccountName: n8n
+      volumes:
+        - name: node-modules
+          persistentVolumeClaim:
+            claimName: n8n-main-persistence

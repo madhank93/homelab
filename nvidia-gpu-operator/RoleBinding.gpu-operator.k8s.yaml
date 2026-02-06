@@ -6,9 +6,10 @@ metadata:
     app.kubernetes.io/instance: gpu-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: gpu-operator
-    app.kubernetes.io/version: v25.3.2
-    helm.sh/chart: gpu-operator-v25.3.2
+    app.kubernetes.io/version: v25.10.1
+    helm.sh/chart: gpu-operator-v25.10.1
   name: gpu-operator
+  namespace: default
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

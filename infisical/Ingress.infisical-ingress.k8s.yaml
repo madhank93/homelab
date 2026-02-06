@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: infisical-ingress
+  namespace: infisical
 spec:
   ingressClassName: nginx
   rules:
@@ -9,14 +10,14 @@ spec:
         paths:
           - backend:
               service:
-                name: infisical-backend
+                name: infisical-infisical-standalone-infisical
                 port:
                   number: 8080
             path: /
             pathType: Prefix
           - backend:
               service:
-                name: infisical-backend
+                name: infisical-infisical-standalone-infisical
                 port:
                   number: 8080
             path: /ss-webhook

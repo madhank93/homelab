@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: n8n
+    chart: n8n-1.16.28
+    heritage: Helm
+    release: n8n
+  name: n8n-task-broker-configmap
+data:
+  N8N_RUNNERS_ENABLED: "true"
+  N8N_RUNNERS_HEARTBEAT_INTERVAL: "30"
+  N8N_RUNNERS_MAX_CONCURRENCY: "5"
+  N8N_RUNNERS_MODE: internal
+  N8N_RUNNERS_TASK_TIMEOUT: "60"

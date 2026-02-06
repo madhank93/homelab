@@ -5,9 +5,10 @@ metadata:
     app.kubernetes.io/instance: ollama
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: ollama
-    app.kubernetes.io/version: 0.3.12
-    helm.sh/chart: ollama-0.60.0
+    app.kubernetes.io/version: 0.15.4
+    helm.sh/chart: ollama-1.41.0
   name: ollama
+  namespace: default
 spec:
   ports:
     - name: http

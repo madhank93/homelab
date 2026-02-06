@@ -6,7 +6,8 @@ metadata:
     app.kubernetes.io/instance: victoria-logs
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-logs-single
-    helm.sh/chart: victoria-logs-single-0.5.2
+    app.kubernetes.io/version: v1.44.0
+    helm.sh/chart: victoria-logs-single-0.11.25
   name: victoria-logs-victoria-logs-single-server
   namespace: default
 spec:
@@ -25,27 +26,26 @@ spec:
         app.kubernetes.io/instance: victoria-logs
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: victoria-logs-single
-        helm.sh/chart: victoria-logs-single-0.5.2
     spec:
       containers:
         - args:
+            - --envflag.enable
+            - --envflag.prefix=VM_
+            - --http.shutdownDelay=15s
+            - --httpListenAddr=:9428
+            - --loggerFormat=json
             - --retentionPeriod=1
             - --storageDataPath=/storage
-            - --envflag.enable=true
-            - --envflag.prefix=VM_
-            - --loggerFormat=json
-          image: victoriametrics/victoria-logs:v0.15.0-victorialogs
+          image: victoriametrics/victoria-logs:v1.44.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10
-            httpGet:
-              path: /health
-              port: 9428
-              scheme: HTTP
             initialDelaySeconds: 30
             periodSeconds: 30
+            tcpSocket:
+              port: http
             timeoutSeconds: 5
-          name: victoria-logs-single-server
+          name: vlogs
           ports:
             - containerPort: 9428
               name: http
@@ -54,10 +54,10 @@ spec:
             httpGet:
               path: /health
               port: http
+              scheme: HTTP
             initialDelaySeconds: 5
-            periodSeconds: 15
+            periodSeconds: 5
             timeoutSeconds: 5
-          resources: {}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -72,8 +72,11 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
       terminationGracePeriodSeconds: 60
+  updateStrategy: {}
   volumeClaimTemplates:
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: server-volume
       spec:
         accessModes:

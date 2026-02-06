@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    updatedAt: 2026-02-02 UTC 16:17:15
+  labels:
+    app: infisical-standalone
+    chart: infisical-standalone-1.7.2
+    component: infisical
+    heritage: Helm
+    release: infisical
+  name: infisical-infisical-standalone-infisical
+  namespace: infisical
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: infisical-standalone
+      component: infisical
+      release: infisical
+  template:
+    metadata:
+      annotations:
+        updatedAt: 2026-02-02 UTC 16:17:15
+      labels:
+        app: infisical-standalone
+        component: infisical
+        release: infisical
+    spec:
+      containers:
+        - env:
+            - name: DB_CONNECTION_URI
+              value: postgresql://infisical:infisical123@postgresql:5432/infisical
+            - name: REDIS_URL
+              value: redis://default:mysecretpassword@redis-master:6379
+          envFrom:
+            - secretRef:
+                name: infisical-secrets
+          image: infisical/infisical:v0.151.0
+          imagePullPolicy: IfNotPresent
+          name: infisical-standalone-infisical
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            limits:
+              memory: 1000Mi
+            requests:
+              cpu: 350m

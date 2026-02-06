@@ -1,0 +1,109 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gitjob
+  namespace: fleet
+rules:
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - "*"
+  - apiGroups:
+      - fleet.cattle.io
+    resources:
+      - gitrepos
+      - gitrepos/status
+    verbs:
+      - "*"
+  - apiGroups:
+      - fleet.cattle.io
+    resources:
+      - gitreporestrictions
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+      - fleet.cattle.io
+    resources:
+      - bundles
+      - bundledeployments
+      - imagescans
+      - contents
+    verbs:
+      - list
+      - delete
+      - get
+      - watch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - create
+      - delete
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+    verbs:
+      - escalate
+      - create
+      - bind
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - rolebindings
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - list
+      - get
+      - watch

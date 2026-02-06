@@ -8,8 +8,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 65.0.0
-    chart: kube-prometheus-stack-65.0.0
+    app.kubernetes.io/version: 81.4.3
+    chart: kube-prometheus-stack-81.4.3
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-operator
@@ -30,8 +30,8 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
         app.kubernetes.io/part-of: kube-prometheus-stack
-        app.kubernetes.io/version: 65.0.0
-        chart: kube-prometheus-stack-65.0.0
+        app.kubernetes.io/version: 81.4.3
+        chart: kube-prometheus-stack-81.4.3
         heritage: Helm
         release: alertmanager
     spec:
@@ -39,13 +39,15 @@ spec:
       containers:
         - args:
             - --kubelet-service=kube-system/alertmanager-kube-promethe-kubelet
+            - --kubelet-endpoints=true
+            - --kubelet-endpointslice=false
             - --localhost=127.0.0.1
-            - --prometheus-config-reloader=quay.io/prometheus-operator/prometheus-config-reloader:v0.77.1
+            - --prometheus-config-reloader=quay.io/prometheus-operator/prometheus-config-reloader:v0.88.1
             - --config-reloader-cpu-request=0
             - --config-reloader-cpu-limit=0
             - --config-reloader-memory-request=0
             - --config-reloader-memory-limit=0
-            - --thanos-default-base-image=quay.io/thanos/thanos:v0.36.1
+            - --thanos-default-base-image=quay.io/thanos/thanos:v0.40.1
             - --secret-field-selector=type!=kubernetes.io/dockercfg,type!=kubernetes.io/service-account-token,type!=helm.sh/release.v1
             - --web.enable-tls=true
             - --web.cert-file=/cert/cert
@@ -55,7 +57,7 @@ spec:
           env:
             - name: GOGC
               value: "30"
-          image: quay.io/prometheus-operator/prometheus-operator:v0.77.1
+          image: quay.io/prometheus-operator/prometheus-operator:v0.88.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -100,6 +102,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: alertmanager-kube-promethe-operator
+      terminationGracePeriodSeconds: 30
       volumes:
         - name: tls-secret
           secret:

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: infisical-standalone
+    chart: infisical-standalone-1.7.2
+    component: infisical
+    heritage: Helm
+    release: infisical
+  name: infisical-infisical-standalone-infisical
+  namespace: infisical
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: infisical-standalone
+    component: infisical
+    release: infisical
+  type: ClusterIP

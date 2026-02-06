@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: n8n
+    chart: n8n-1.16.28
+    heritage: Helm
+    release: n8n
+  name: n8n-version-notifications-configmap
+data:
+  N8N_VERSION_NOTIFICATIONS_ENABLED: "false"

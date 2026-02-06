@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: alertmanager
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 65.0.0
-    chart: kube-prometheus-stack-65.0.0
+    app.kubernetes.io/version: 81.4.3
+    chart: kube-prometheus-stack-81.4.3
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-kubelet
@@ -19,6 +19,12 @@ spec:
     - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       honorLabels: true
       honorTimestamps: true
+      metricRelabelings:
+        - action: drop
+          regex: (csi_operations|storage_operation_duration)_seconds_bucket;(0.25|2.5|15|25|120|600)(\.0)?
+          sourceLabels:
+            - __name__
+            - le
       port: https-metrics
       relabelings:
         - action: replace
@@ -32,6 +38,7 @@ spec:
     - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       honorLabels: true
       honorTimestamps: true
+      interval: 10s
       metricRelabelings:
         - action: drop
           regex: container_cpu_(cfs_throttled_seconds_total|load_average_10s|system_seconds_total|user_seconds_total)
@@ -49,6 +56,16 @@ spec:
           regex: container_(file_descriptors|tasks_state|threads_max)
           sourceLabels:
             - __name__
+        - action: drop
+          regex: container_memory_failures_total;hierarchy
+          sourceLabels:
+            - __name__
+            - scope
+        - action: drop
+          regex: container_network_.*;(cali|cilium|cni|lxc|nodelocaldns|tunl).*
+          sourceLabels:
+            - __name__
+            - interface
         - action: drop
           regex: container_spec.*
           sourceLabels:
@@ -69,6 +86,7 @@ spec:
       tlsConfig:
         caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         insecureSkipVerify: true
+      trackTimestampsStaleness: true
     - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       honorLabels: true
       honorTimestamps: true

@@ -8,11 +8,12 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 65.0.0
-    chart: kube-prometheus-stack-65.0.0
+    app.kubernetes.io/version: 81.4.3
+    chart: kube-prometheus-stack-81.4.3
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-operator
+  namespace: alertmanager
 rules:
   - apiGroups:
       - monitoring.coreos.com
@@ -31,10 +32,15 @@ rules:
       - thanosrulers/finalizers
       - thanosrulers/status
       - scrapeconfigs
+      - scrapeconfigs/status
       - servicemonitors
+      - servicemonitors/status
       - podmonitors
+      - podmonitors/status
       - probes
+      - probes/status
       - prometheusrules
+      - prometheusrules/status
     verbs:
       - "*"
   - apiGroups:
@@ -85,6 +91,7 @@ rules:
       - watch
   - apiGroups:
       - ""
+      - events.k8s.io
     resources:
       - events
     verbs:
@@ -104,3 +111,14 @@ rules:
       - storageclasses
     verbs:
       - get
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - get
+      - create
+      - list
+      - watch
+      - update
+      - delete

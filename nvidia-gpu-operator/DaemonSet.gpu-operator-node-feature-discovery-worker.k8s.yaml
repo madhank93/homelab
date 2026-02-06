@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: gpu-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/version: v0.17.3
-    helm.sh/chart: node-feature-discovery-0.17.3
+    app.kubernetes.io/version: v0.18.2
+    helm.sh/chart: node-feature-discovery-0.18.2
     role: worker
   name: gpu-operator-node-feature-discovery-worker
   namespace: default
@@ -19,7 +19,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 71bec305fbf9023ea8a0777c5c53ea1654b305775b6fa15c1d5dea2219c401ac
+        checksum/config: 421dc9ea2a44bbb37a21aa0bd8cd73d56e1f49f27fe11b06ccc68d7dc754f7f0
       labels:
         app.kubernetes.io/instance: gpu-operator
         app.kubernetes.io/name: node-feature-discovery
@@ -28,8 +28,7 @@ spec:
       containers:
         - args:
             - -feature-gates=NodeFeatureGroupAPI=false
-            - -metrics=8081
-            - -grpc-health=8082
+            - -port=8080
           command:
             - nfd-worker
           env:
@@ -45,22 +44,22 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
-          image: registry.k8s.io/nfd/node-feature-discovery:v0.17.3
+          image: registry.k8s.io/nfd/node-feature-discovery:v0.18.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
-            grpc:
-              port: 8082
+            httpGet:
+              path: /healthz
+              port: http
             initialDelaySeconds: 10
           name: worker
           ports:
-            - containerPort: 8081
-              name: metrics
-            - containerPort: 8082
-              name: health
+            - containerPort: 8080
+              name: http
           readinessProbe:
             failureThreshold: 10
-            grpc:
-              port: 8082
+            httpGet:
+              path: /healthz
+              port: http
             initialDelaySeconds: 5
           resources:
             limits:
