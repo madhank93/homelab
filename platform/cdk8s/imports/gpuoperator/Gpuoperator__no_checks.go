@@ -8,6 +8,10 @@ func validateGpuoperator_IsConstructParameters(x interface{}) error {
 	return nil
 }
 
+func (j *jsiiProxy_Gpuoperator) validateSetHelmParameters(val cdk8s.Helm) error {
+	return nil
+}
+
 func validateNewGpuoperatorParameters(scope constructs.Construct, id *string, props *GpuoperatorProps) error {
 	return nil
 }

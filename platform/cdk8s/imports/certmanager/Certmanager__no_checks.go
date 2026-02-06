@@ -8,6 +8,10 @@ func validateCertmanager_IsConstructParameters(x interface{}) error {
 	return nil
 }
 
+func (j *jsiiProxy_Certmanager) validateSetHelmParameters(val cdk8s.Helm) error {
+	return nil
+}
+
 func validateNewCertmanagerParameters(scope constructs.Construct, id *string, props *CertmanagerProps) error {
 	return nil
 }

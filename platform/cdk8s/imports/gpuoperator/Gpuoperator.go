@@ -5,11 +5,14 @@ import (
 	_init_ "github.com/madhank93/homelab/cdk8s/imports/gpuoperator/jsii"
 
 	"github.com/aws/constructs-go/constructs/v10"
+	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/cdk8s/imports/gpuoperator/internal"
 )
 
 type Gpuoperator interface {
 	constructs.Construct
+	Helm() cdk8s.Helm
+	SetHelm(val cdk8s.Helm)
 	// The tree node.
 	Node() constructs.Node
 	// Returns a string representation of this construct.
@@ -19,6 +22,16 @@ type Gpuoperator interface {
 // The jsii proxy struct for Gpuoperator
 type jsiiProxy_Gpuoperator struct {
 	internal.Type__constructsConstruct
+}
+
+func (j *jsiiProxy_Gpuoperator) Helm() cdk8s.Helm {
+	var returns cdk8s.Helm
+	_jsii_.Get(
+		j,
+		"helm",
+		&returns,
+	)
+	return returns
 }
 
 func (j *jsiiProxy_Gpuoperator) Node() constructs.Node {
@@ -56,6 +69,17 @@ func NewGpuoperator_Override(g Gpuoperator, scope constructs.Construct, id *stri
 		"gpu-operator.Gpuoperator",
 		[]interface{}{scope, id, props},
 		g,
+	)
+}
+
+func (j *jsiiProxy_Gpuoperator)SetHelm(val cdk8s.Helm) {
+	if err := j.validateSetHelmParameters(val); err != nil {
+		panic(err)
+	}
+	_jsii_.Set(
+		j,
+		"helm",
+		val,
 	)
 }
 

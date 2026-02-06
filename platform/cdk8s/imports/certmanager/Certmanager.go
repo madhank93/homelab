@@ -5,11 +5,14 @@ import (
 	_init_ "github.com/madhank93/homelab/cdk8s/imports/certmanager/jsii"
 
 	"github.com/aws/constructs-go/constructs/v10"
+	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/cdk8s/imports/certmanager/internal"
 )
 
 type Certmanager interface {
 	constructs.Construct
+	Helm() cdk8s.Helm
+	SetHelm(val cdk8s.Helm)
 	// The tree node.
 	Node() constructs.Node
 	// Returns a string representation of this construct.
@@ -19,6 +22,16 @@ type Certmanager interface {
 // The jsii proxy struct for Certmanager
 type jsiiProxy_Certmanager struct {
 	internal.Type__constructsConstruct
+}
+
+func (j *jsiiProxy_Certmanager) Helm() cdk8s.Helm {
+	var returns cdk8s.Helm
+	_jsii_.Get(
+		j,
+		"helm",
+		&returns,
+	)
+	return returns
 }
 
 func (j *jsiiProxy_Certmanager) Node() constructs.Node {
@@ -56,6 +69,17 @@ func NewCertmanager_Override(c Certmanager, scope constructs.Construct, id *stri
 		"cert-manager.Certmanager",
 		[]interface{}{scope, id, props},
 		c,
+	)
+}
+
+func (j *jsiiProxy_Certmanager)SetHelm(val cdk8s.Helm) {
+	if err := j.validateSetHelmParameters(val); err != nil {
+		panic(err)
+	}
+	_jsii_.Set(
+		j,
+		"helm",
+		val,
 	)
 }
 

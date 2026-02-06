@@ -12,6 +12,7 @@ func init() {
 		"gpu-operator.Gpuoperator",
 		reflect.TypeOf((*Gpuoperator)(nil)).Elem(),
 		[]_jsii_.Member{
+			_jsii_.MemberProperty{JsiiProperty: "helm", GoGetter: "Helm"},
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
 		},

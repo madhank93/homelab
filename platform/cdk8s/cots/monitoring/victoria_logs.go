@@ -7,8 +7,10 @@ import (
 	"github.com/madhank93/homelab/cdk8s/imports/victorialogssingle"
 )
 
-func NewVictoriaLogsChart(scope constructs.Construct, id string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
+func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
+		Namespace: jsii.String(namespace),
+	})
 
 	values := map[string]interface{}{
 		"server": map[string]interface{}{
