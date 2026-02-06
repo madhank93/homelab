@@ -1,0 +1,43 @@
+name: GitOps Manifest Generation
+
+on:
+  push:
+    branches:
+      - main
+      - 'v*' # Trigger on release branches (v0.1.5, etc)
+    paths:
+      - 'platform/cdk8s/**'
+      - '.github/workflows/cdk8s-generate.yml'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'platform/cdk8s/go.mod'
+          cache-dependency-path: 'platform/cdk8s/go.sum'
+
+      - name: Generate Manifests
+        working-directory: platform/cdk8s
+        run: |
+          go run .
+          # Verify output
+          ls -R ../../app
+
+      - name: Deploy Manifests to Branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./app
+          publish_branch: manifests
+          keep_files: false # Clean deploy: only generated files exist in this branch
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'chore: update kubernetes manifests [skip ci]'

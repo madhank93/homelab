@@ -41,3 +41,8 @@ We use `just` (Justfile) as the single entry point for all operations.
 ## 5. Agent Interaction
 - **Artifacts**: Always keep `task.md` and `implementation_plan.md` up to date in the `brain/` directory.
 - **Skills**: If a new pattern emerges (e.g., "Deploying MinIO"), create a new SKILL.md for it.
+
+## 6. Versioning Strategy
+- **Explicit Pinning**: Always use specific tags/versions for software, charts, and images (e.g., `v1.2.3`, `chart: 4.5.6`).
+- **No `latest`**: Never rely on `latest` tag or implicit version fetching.
+- **Reason**: Predictability and reproducibility.
