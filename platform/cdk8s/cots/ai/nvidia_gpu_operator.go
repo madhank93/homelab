@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	nvidia "github.com/madhank93/homelab/cdk8s/imports/gpuoperator"
 )
 
 func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -25,8 +24,12 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 		"gfd":          map[string]any{"nodeSelector": nodeSelector},
 	}
 
-	nvidia.NewGpuoperator(chart, jsii.String("gpu-operator-release"), &nvidia.GpuoperatorProps{
+	cdk8s.NewHelm(chart, jsii.String("gpu-operator-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("gpu-operator"),
+		Repo:        jsii.String("https://helm.ngc.nvidia.com/nvidia"),
+		Version:     jsii.String("v24.9.1"),
 		ReleaseName: jsii.String("gpu-operator"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 

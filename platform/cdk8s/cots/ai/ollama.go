@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/ollama"
 )
 
 func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -44,8 +43,12 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 		"nodeSelector": gpuNodeSelector,
 	}
 
-	ollama.NewOllama(chart, jsii.String("ollama-release"), &ollama.OllamaProps{
+	cdk8s.NewHelm(chart, jsii.String("ollama-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("ollama"),
+		Repo:        jsii.String("https://otwld.github.io/ollama-helm"),
+		Version:     jsii.String("0.71.0"),
 		ReleaseName: jsii.String("ollama"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 
