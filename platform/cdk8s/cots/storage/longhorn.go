@@ -11,13 +11,40 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		Namespace: jsii.String(namespace),
 	})
 
+	// Create namespace first
+	cdk8s.NewApiObject(chart, jsii.String("longhorn-namespace"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("v1"),
+		Kind:       jsii.String("Namespace"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String(namespace),
+		},
+	})
+
 	values := map[string]any{
 		"defaultSettings": map[string]any{
-			"defaultReplicaCount": 3,
-			"defaultDataPath":     "/var/lib/longhorn/",
+			"defaultReplicaCount":           3,
+			"defaultDataPath":               "/var/lib/longhorn/", // Talos persistent path
+			"createDefaultDiskLabeledNodes": true,
 		},
 		"persistence": map[string]any{
-			"defaultClass": true,
+			"defaultClass":             true,
+			"defaultClassReplicaCount": 3,
+		},
+		// Talos-specific: Deploy only on worker nodes
+		"longhornManager": map[string]any{
+			"nodeSelector": map[string]any{
+				"node-role.kubernetes.io/worker": "",
+			},
+		},
+		"longhornDriver": map[string]any{
+			"nodeSelector": map[string]any{
+				"node-role.kubernetes.io/worker": "",
+			},
+		},
+		"longhornUI": map[string]any{
+			"nodeSelector": map[string]any{
+				"node-role.kubernetes.io/worker": "",
+			},
 		},
 	}
 
