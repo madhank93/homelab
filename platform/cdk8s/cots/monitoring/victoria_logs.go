@@ -32,7 +32,7 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 	cdk8s.NewHelm(chart, jsii.String("victoria-logs-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("victoria-logs-single"),
 		Repo:        jsii.String("https://victoriametrics.github.io/helm-charts"),
-		Version:     jsii.String("0.7.5"),
+		Version:     jsii.String("0.11.26"),
 		ReleaseName: jsii.String("victoria-logs"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
