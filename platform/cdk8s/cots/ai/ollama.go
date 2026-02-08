@@ -46,7 +46,7 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 	cdk8s.NewHelm(chart, jsii.String("ollama-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("ollama"),
 		Repo:        jsii.String("https://otwld.github.io/ollama-helm"),
-		Version:     jsii.String("0.71.0"),
+		Version:     jsii.String("0.79.0"),
 		ReleaseName: jsii.String("ollama"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
