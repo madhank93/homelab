@@ -40,6 +40,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	})
 	postgresSecret.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/stringData"), map[string]string{
 		"DB_PASSWORD": infisicalDbPassword,
+		"AUTH_SECRET": infisicalDbPassword, // Use same value for AUTH_SECRET (can be different in production)
 	}))
 
 	// Infisical backend + frontend + PostgreSQL + Redis
@@ -71,7 +72,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			},
 			"primary": map[string]any{
 				"persistence": map[string]any{
-					"size": "20Gi",
+					"enabled": false, // Disable persistence for now (PVC issues)
 				},
 			},
 		},
@@ -79,6 +80,11 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			"enabled": true,
 			"auth": map[string]any{
 				"enabled": false,
+			},
+			"master": map[string]any{
+				"persistence": map[string]any{
+					"enabled": false, // Disable persistence for now (PVC issues)
+				},
 			},
 		},
 		"ingress": map[string]any{
