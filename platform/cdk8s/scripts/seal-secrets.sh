@@ -7,7 +7,7 @@ set -euo pipefail
 
 DIST_DIR="${1:-../../app}"
 SEALED_DIR="${2:-./sealed}"
-CONTROLLER_NAME="sealed-secrets"
+CONTROLLER_NAME="sealed-secrets-controller"
 CONTROLLER_NAMESPACE="kube-system"
 
 echo "🔍 Scanning for Secret manifests in ${DIST_DIR}..."
@@ -40,10 +40,19 @@ find "${DIST_DIR}" -type f \( -name "*.yaml" -o -name "*.yml" \) | while read -r
                 
                 echo "🔐 Sealing Secret: ${secret_namespace}/${secret_name}"
                 
-                # Seal the secret using kubeseal
+                # Seal the secret using kubeseal with local cert
+                # Cert file should be at platform/cdk8s/sealed-secrets-cert.pem
+                CERT_FILE="$(dirname "$0")/../sealed-secrets-cert.pem"
+                
+                if [ ! -f "${CERT_FILE}" ]; then
+                    echo "❌ ERROR: Certificate file not found: ${CERT_FILE}"
+                    echo "Please fetch it from your cluster:"
+                    echo "  kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=kube-system > ${CERT_FILE}"
+                    exit 1
+                fi
+                
                 kubeseal \
-                    --controller-name="${CONTROLLER_NAME}" \
-                    --controller-namespace="${CONTROLLER_NAMESPACE}" \
+                    --cert="${CERT_FILE}" \
                     --format=yaml \
                     < "${secret_file}" \
                     > "${SEALED_DIR}/sealed-${secret_namespace}-${secret_name}.yaml"
