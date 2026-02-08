@@ -37,6 +37,8 @@ spec:
           image: docker.io/longhornio/longhorn-manager:v1.11.0
           imagePullPolicy: IfNotPresent
           name: longhorn-post-upgrade
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
       priorityClassName: longhorn-critical
       restartPolicy: OnFailure
       serviceAccountName: longhorn-service-account

@@ -102,6 +102,8 @@ spec:
           image: docker.io/longhornio/longhorn-share-manager:v1.11.0
           imagePullPolicy: IfNotPresent
           name: pre-pull-share-manager-image
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
       priorityClassName: longhorn-critical
       serviceAccountName: longhorn-service-account
       volumes:

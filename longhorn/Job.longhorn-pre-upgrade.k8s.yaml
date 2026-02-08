@@ -42,6 +42,8 @@ spec:
           volumeMounts:
             - mountPath: /host/proc/
               name: proc
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
       restartPolicy: OnFailure
       serviceAccountName: longhorn-service-account
       volumes:

@@ -56,6 +56,8 @@ spec:
               name: nginx-config
             - mountPath: /var/run/
               name: var-run
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
       priorityClassName: longhorn-critical
       serviceAccountName: longhorn-ui-service-account
       volumes:

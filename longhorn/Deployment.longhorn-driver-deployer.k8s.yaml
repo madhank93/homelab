@@ -68,6 +68,8 @@ spec:
             - while [ $(curl -m 1 -s -o /dev/null -w "%{http_code}" http://longhorn-backend:9500/v1) != "200" ]; do echo waiting; sleep 2; done
           image: docker.io/longhornio/longhorn-manager:v1.11.0
           name: wait-longhorn-manager
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
       priorityClassName: longhorn-critical
       securityContext:
         runAsUser: 0

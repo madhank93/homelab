@@ -38,6 +38,8 @@ spec:
           image: docker.io/longhornio/longhorn-manager:v1.11.0
           imagePullPolicy: IfNotPresent
           name: longhorn-uninstall
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
       priorityClassName: longhorn-critical
       restartPolicy: Never
       serviceAccountName: longhorn-service-account
