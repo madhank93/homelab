@@ -131,3 +131,5 @@ kubectl logs -n infisical-operator-system deployment/secrets-operator-controller
 kubectl describe infisicalsecret <name> -n <namespace>
 # Check status and events
 ```
+
+
