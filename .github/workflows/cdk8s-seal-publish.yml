@@ -79,7 +79,7 @@ jobs:
           find ../../app -type f \( -name "*.yaml" -o -name "*.yml" \) | while read -r file; do
             # Check if file contains any Secret resources
             if ! yq eval 'select(.kind == "Secret")' "$file" > /dev/null 2>&1; then
-              # No secrets, copy as-is
+              # No secrets, copy as-is preserving directory structure
               rel_path="${file#../../app/}"
               mkdir -p "publish/$(dirname "$rel_path")"
               cp "$file" "publish/$rel_path"
@@ -91,8 +91,23 @@ jobs:
             fi
           done
           
-          # Copy all SealedSecrets
-          cp -r sealed/* publish/ 2>/dev/null || true
+          # Copy SealedSecrets into their respective namespace directories
+          for sealed_file in sealed/sealed-*.yaml; do
+            if [ -f "$sealed_file" ]; then
+              # Extract namespace from sealed secret filename: sealed-NAMESPACE-NAME.yaml
+              filename=$(basename "$sealed_file")
+              # Remove 'sealed-' prefix and '.yaml' suffix
+              name_part="${filename#sealed-}"
+              name_part="${name_part%.yaml}"
+              # Extract namespace (first part before second dash)
+              namespace=$(echo "$name_part" | cut -d'-' -f1)
+              
+              # Copy to namespace directory
+              mkdir -p "publish/$namespace"
+              cp "$sealed_file" "publish/$namespace/"
+              echo "✅ Copied $sealed_file to publish/$namespace/"
+            fi
+          done
 
       - name: Deploy Manifests to Branch
         uses: peaceiris/actions-gh-pages@v3
