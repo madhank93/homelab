@@ -62,6 +62,7 @@ find "${DIST_DIR}" -type f \( -name "*.yaml" -o -name "*.yml" \) | while read -r
             kubeseal \
                 --cert="${CERT_FILE}" \
                 --format=yaml \
+                --allow-empty-data \
                 < "${TMP_DIR}/secret-${i}.yaml" \
                 > "${SEALED_DIR}/sealed-${secret_namespace}-${secret_name}.yaml"
             
