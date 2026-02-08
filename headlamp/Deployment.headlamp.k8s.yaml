@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/version: 0.40.0
     helm.sh/chart: headlamp-0.40.0
   name: headlamp
-  namespace: default
+  namespace: headlamp
 spec:
   replicas: 1
   selector:

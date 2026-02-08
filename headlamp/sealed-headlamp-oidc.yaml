@@ -4,12 +4,12 @@ kind: SealedSecret
 metadata:
   creationTimestamp: null
   name: oidc
-  namespace: default
+  namespace: headlamp
 spec:
   encryptedData: {}
   template:
     metadata:
       creationTimestamp: null
       name: oidc
-      namespace: default
+      namespace: headlamp
     type: Opaque
