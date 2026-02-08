@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: longhorn
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: longhorn
+    app.kubernetes.io/version: v1.11.0
+    helm.sh/chart: longhorn-1.11.0
+  name: longhorn-default-setting
+  namespace: default
+data:
+  default-setting.yaml: |-
+    default-data-path: "/var/lib/longhorn/"
+    default-replica-count: "3"
+    priority-class: "longhorn-critical"
+    disable-revision-counter: "{\"v1\":\"true\"}"

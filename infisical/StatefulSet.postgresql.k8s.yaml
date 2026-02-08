@@ -125,6 +125,8 @@ spec:
           volumeMounts:
             - mountPath: /dev/shm
               name: dshm
+            - mountPath: /bitnami/postgresql
+              name: data
       hostIPC: false
       hostNetwork: false
       securityContext:
@@ -137,8 +139,17 @@ spec:
         - emptyDir:
             medium: Memory
           name: dshm
-        - emptyDir: {}
-          name: data
   updateStrategy:
     rollingUpdate: {}
     type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

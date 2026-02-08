@@ -137,7 +137,20 @@ spec:
           name: redis-tmp-conf
         - emptyDir: {}
           name: tmp
-        - emptyDir: {}
-          name: redis-data
   updateStrategy:
     type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        labels:
+          app.kubernetes.io/component: master
+          app.kubernetes.io/instance: infisical
+          app.kubernetes.io/name: redis
+        name: redis-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 8Gi
