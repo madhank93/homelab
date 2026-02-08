@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    updatedAt: 2026-02-02 UTC 02:24:36
+    updatedAt: 2026-02-02 UTC 02:52:15
   labels:
     app: infisical-standalone
     chart: infisical-standalone-1.7.2
@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        updatedAt: 2026-02-02 UTC 02:24:36
+        updatedAt: 2026-02-02 UTC 02:52:15
       labels:
         app: infisical-standalone
         component: infisical
@@ -30,7 +30,7 @@ spec:
       containers:
         - env:
             - name: DB_CONNECTION_URI
-              value: postgresql://infisical:8Drhf20B8fLnAnMneE783KAVFWnjN7pkFLvxk/6MXAg=@postgresql:5432/infisical
+              value: postgresql://infisical:root@postgresql:5432/infisical
             - name: REDIS_URL
               value: redis://default:mysecretpassword@redis-master:6379
           envFrom:

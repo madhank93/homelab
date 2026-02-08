@@ -56,13 +56,13 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: password
-                  name: postgresql
+                  key: DB_PASSWORD
+                  name: infisical-secrets
             - name: POSTGRES_POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: postgres-password
-                  name: postgresql
+                  key: DB_PASSWORD
+                  name: infisical-secrets
             - name: POSTGRES_DATABASE
               value: infisical
             - name: POSTGRESQL_ENABLE_LDAP
