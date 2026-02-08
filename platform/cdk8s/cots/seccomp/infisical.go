@@ -29,6 +29,19 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		panic("INFISICAL_DB_PASSWORD environment variable is required")
 	}
 
+	// Create Secret for PostgreSQL password (will be sealed by CI)
+	postgresSecret := cdk8s.NewApiObject(chart, jsii.String("infisical-postgresql-secret"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("v1"),
+		Kind:       jsii.String("Secret"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("infisical-secrets"),
+			Namespace: jsii.String(namespace),
+		},
+	})
+	postgresSecret.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/stringData"), map[string]string{
+		"DB_PASSWORD": infisicalDbPassword,
+	}))
+
 	// Infisical backend + frontend + PostgreSQL + Redis
 	values := map[string]any{
 		"frontend": map[string]any{
@@ -48,9 +61,13 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		"postgresql": map[string]any{
 			"enabled": true,
 			"auth": map[string]any{
-				"database": "infisical",
-				"username": "infisical",
-				"password": infisicalDbPassword, // From env var (GitHub Secret)
+				"database":       "infisical",
+				"username":       "infisical",
+				"existingSecret": "infisical-secrets", // Use the secret we created above
+				"secretKeys": map[string]any{
+					"adminPasswordKey": "DB_PASSWORD",
+					"userPasswordKey":  "DB_PASSWORD",
+				},
 			},
 			"primary": map[string]any{
 				"persistence": map[string]any{
