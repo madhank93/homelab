@@ -7,7 +7,9 @@ import (
 )
 
 func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
+		Namespace: jsii.String(namespace),
+	})
 
 	// Create namespace
 	cdk8s.NewApiObject(chart, jsii.String("n8n-namespace"), &cdk8s.ApiObjectProps{
@@ -166,6 +168,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		Repo:        jsii.String("https://community-charts.github.io/helm-charts"),
 		Version:     jsii.String("1.16.28"),
 		ReleaseName: jsii.String("n8n"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 
