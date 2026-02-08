@@ -39,20 +39,32 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		"preUpgradeChecker": map[string]any{
 			"jobEnabled": false,
 		},
-		// Talos-specific: Deploy only on worker nodes
+		// Talos-specific: Avoid control-plane nodes using tolerations
 		"longhornManager": map[string]any{
-			"nodeSelector": map[string]any{
-				"node-role.kubernetes.io/worker": "",
+			"tolerations": []map[string]any{
+				{
+					"key":      "node-role.kubernetes.io/control-plane",
+					"operator": "Exists",
+					"effect":   "NoSchedule",
+				},
 			},
 		},
 		"longhornDriver": map[string]any{
-			"nodeSelector": map[string]any{
-				"node-role.kubernetes.io/worker": "",
+			"tolerations": []map[string]any{
+				{
+					"key":      "node-role.kubernetes.io/control-plane",
+					"operator": "Exists",
+					"effect":   "NoSchedule",
+				},
 			},
 		},
 		"longhornUI": map[string]any{
-			"nodeSelector": map[string]any{
-				"node-role.kubernetes.io/worker": "",
+			"tolerations": []map[string]any{
+				{
+					"key":      "node-role.kubernetes.io/control-plane",
+					"operator": "Exists",
+					"effect":   "NoSchedule",
+				},
 			},
 		},
 	}
