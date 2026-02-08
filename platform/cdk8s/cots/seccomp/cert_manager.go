@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/certmanager"
 )
 
 func NewCertManagerChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -12,20 +11,22 @@ func NewCertManagerChart(scope constructs.Construct, id string, namespace string
 		Namespace: jsii.String(namespace),
 	})
 
-	// Install Cert-Manager via Helm
-	// Note: ClusterIssuers and Certificates should be created separately
-	// See: platform/cdk8s/manifests/cert-manager-issuers.yaml (to be created)
-	certmanager.NewCertmanager(chart, jsii.String("cert-manager"), &certmanager.CertmanagerProps{
-		ReleaseName: jsii.String("cert-manager"),
-		Namespace:   jsii.String(namespace),
-		Values: &certmanager.HelmValues{
-			InstallCrDs: jsii.Bool(true),
-			Global: &certmanager.HelmValuesGlobal{
-				LeaderElection: &certmanager.HelmValuesGlobalLeaderElection{
-					Namespace: jsii.String(namespace),
-				},
+	values := map[string]any{
+		"installCRDs": true,
+		"global": map[string]any{
+			"leaderElection": map[string]any{
+				"namespace": namespace,
 			},
 		},
+	}
+
+	cdk8s.NewHelm(chart, jsii.String("cert-manager"), &cdk8s.HelmProps{
+		Chart:       jsii.String("cert-manager"),
+		Repo:        jsii.String("https://charts.jetstack.io"),
+		Version:     jsii.String("v1.16.2"),
+		ReleaseName: jsii.String("cert-manager"),
+		Namespace:   jsii.String(namespace),
+		Values:      &values,
 	})
 
 	return chart

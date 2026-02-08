@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/trivyoperator"
 )
 
 func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -39,8 +38,12 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 		},
 	}
 
-	trivyoperator.NewTrivyoperator(chart, jsii.String("trivy-release"), &trivyoperator.TrivyoperatorProps{
+	cdk8s.NewHelm(chart, jsii.String("trivy-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("trivy-operator"),
+		Repo:        jsii.String("https://aquasecurity.github.io/helm-charts"),
+		Version:     jsii.String("0.26.0"),
 		ReleaseName: jsii.String("trivy-operator"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 

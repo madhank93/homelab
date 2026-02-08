@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/kyverno"
 )
 
 func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -124,8 +123,12 @@ func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	}
 
-	kyverno.NewKyverno(chart, jsii.String("kyverno-release"), &kyverno.KyvernoProps{
+	cdk8s.NewHelm(chart, jsii.String("kyverno-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("kyverno"),
+		Repo:        jsii.String("https://kyverno.github.io/kyverno"),
+		Version:     jsii.String("3.3.6"),
 		ReleaseName: jsii.String("kyverno"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 
