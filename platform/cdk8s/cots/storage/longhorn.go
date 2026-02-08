@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/longhorn"
 )
 
 func NewLonghornChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -22,8 +21,12 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		},
 	}
 
-	longhorn.NewLonghorn(chart, jsii.String("longhorn"), &longhorn.LonghornProps{
+	cdk8s.NewHelm(chart, jsii.String("longhorn-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("longhorn"),
+		Repo:        jsii.String("https://charts.longhorn.io"),
+		Version:     jsii.String("1.7.2"),
 		ReleaseName: jsii.String("longhorn"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 
