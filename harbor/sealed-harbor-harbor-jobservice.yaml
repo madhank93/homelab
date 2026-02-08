@@ -1,0 +1,27 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: harbor-jobservice
+  namespace: harbor
+spec:
+  encryptedData:
+    JOBSERVICE_SECRET: AgAeTrqQQtXEH68dMs/PeXiJ7UdTMqIowaRNgbkmqG3tuhLDgQOtPv11jDrEwO/aNgiHVXrDTj3wSH3lnH1OCmUFGAmgNdviFvNg9AG00Xv2q8/HmMv43n/Q2rH+D1QbB/B9q109hy96HTLDLt7Z5YZYFsJohBlL66AMPRAmsWi2F2qLI6pEuLOz+QUnvHDvyhWQmaLIR2CooUCeDQ4zpouJIk63rTso8L8F9SRA/QnQD3v/+pXq8XOub0pEV8/nKnM+Tx9Cykh7rItnBPxa6t0xCkTDun21/RyEE3eULaIUT4SpQPeHFeU26i0vx0sUNBAGAHGBNZTGHPhLizNLlSkQp3/wC5ym5KdEAwSx4y+E2Xj389SlYAbFU6aJFy55WIXif9ZsevQ91SLHV11bcIb3g1xK+Tc8/q8nQbC4uifms5l77p3nyfLn4XlCSAPu9Lic95aHXgqI1RdL+yrUdSuM+hygaohlGm9CS6HN5PeyqXpdyOQQz208ERHLfLBK0Hgo+YvLbZYhHt4Gb6KwQHpFoxOlkVhTS7IY1OBHVvoofp/Z5+iFPCt2qaaT+t3N0YRzROmCrGQWEfRnIuJikXYlkhtb89BapjaSeCGgM54yDU+a830pXCwgz8OEKr1fNmyglqPeL5mwjznr4g4MqiN/TzppN/xk7o4lgKiU4nvVnYJksqh9NFhJS7Y4Mz8TeiRZfGQxw6224UDYU+43Unuf
+    REGISTRY_CREDENTIAL_PASSWORD: AgCk2OkcEGPk7KXTxCzURcNKHV3eLwQ2rwkokjpSjbLyBvKhzCbljSWrIOkFI1cBThihgIdo2cFASnH8uD7Xs9qkL4bYxG2fR6r124g79VmdVEaG6DgFtKTN+tWFXiju6wkTPtX4hWrIxovNuODfmggDHjP/IhDvt/yqML9lMhhy4sgQy7M5HJ492iUcow433kBcI20BosNYP8ofG0LFJPAhgWN3OyiPnZtFBLs7XNYt7VYJBway/385nBwNfoiOobCaBBYPCx70mKuod05YeSYZ4YE3rTfDOD21l7wwUoDrlxLd2wuhz6XUp7SaL9xPLmlooBdshh5xY94ovmU8RJ6FXXfz+FpSG5NfCzZE/rM2yoXMx4WngWBNaQYCNAm7yGRBJ04oyoS+z2rm6fMzsAhXo43CnUcWUK9w8r/0UhmBLwJOb7wadYi23rvLOIqepqwUGTaw38lwieIuDt9thUKEz4/iDllGeeixqekv+Nkoi4dhMSvpo6Mav5iRNDWd5dcwFbfbLYAQdARbsBXqgChaikdtqaJXpoqxiXxwoxygu0oOcLywMyTWsOd23sKiPgvot4Wf3FuHBpDbFCQSX0o5mZG9zYJ9Bd5UDTQoHwEAta/KARYsTd5rs18rwX9r6dkumDuJOHBhVnKIs3QZjwH2JZYKcrgAUdRGOFPB8hrc6NPZh6XUD2LdaL+WuVcls9Wt+Wi+4WdAO+zXpSWqq3Rfj3R0sWWNIAQ=
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: harbor
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.12.1
+        chart: harbor
+        heritage: Helm
+        release: harbor
+      name: harbor-jobservice
+      namespace: harbor
+    type: Opaque

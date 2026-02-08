@@ -8,13 +8,13 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.2
+    app.kubernetes.io/version: 2.12.1
     chart: harbor
     component: portal
     heritage: Helm
     release: harbor
   name: harbor-portal
-  namespace: default
+  namespace: harbor
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -26,7 +26,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: 540faae3fcdf44b4d0978ecccbd435baafd5379e5be47768bbc42eda6c3eeb74
+        checksum/configmap: e92a207f6b8d13e311f9b456e919735900c19c57342ea882cf2035faf76e00b6
       labels:
         app: harbor
         app.kubernetes.io/component: portal
@@ -34,7 +34,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.2
+        app.kubernetes.io/version: 2.12.1
         chart: harbor
         component: portal
         heritage: Helm
@@ -42,7 +42,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: goharbor/harbor-portal:v2.14.2
+        - image: goharbor/harbor-portal:v2.12.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

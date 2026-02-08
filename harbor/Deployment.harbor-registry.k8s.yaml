@@ -8,13 +8,13 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.2
+    app.kubernetes.io/version: 2.12.1
     chart: harbor
     component: registry
     heritage: Helm
     release: harbor
   name: harbor-registry
-  namespace: default
+  namespace: harbor
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -28,10 +28,10 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: 7acb37f5a7ec2d0752c2cf2ca02cf0fd61d0e9ced5268dbfc380b0afed022e74
-        checksum/secret: 283ff8666a251e9a95841eb940b1aacb67876de50de2b813b3450c638cb852ac
-        checksum/secret-core: a27fa02df8290540a2fffc9974243db2656a3b2c6081b2b1bece70dece865d5a
-        checksum/secret-jobservice: 6ce7ca1a2074029d721d506aab794d1e01d7047ecd6d77274a70d7eb29d04395
+        checksum/configmap: ce05f7defb8bd23f19dc887ac3b99a675d4d3d5c7635fdfbb40fe79ff91270bc
+        checksum/secret: dd14d873dc9218c6378eb949b4856153383c155f3411f5b54573981535919bab
+        checksum/secret-core: 6a29793926b5a15e73377beb1629da7471081bfa9abef0afd02131e85014cc77
+        checksum/secret-jobservice: a070937894abde6443a96b68a71ae5f47a6d883425842f0e5a96f4ca3ca86960
       labels:
         app: harbor
         app.kubernetes.io/component: registry
@@ -39,7 +39,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.2
+        app.kubernetes.io/version: 2.12.1
         chart: harbor
         component: registry
         heritage: Helm
@@ -50,7 +50,7 @@ spec:
         - envFrom:
             - secretRef:
                 name: harbor-registry
-          image: goharbor/registry-photon:v2.14.2
+          image: goharbor/registry-photon:v2.12.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
@@ -106,7 +106,7 @@ spec:
                 name: harbor-registry
             - secretRef:
                 name: harbor-registryctl
-          image: goharbor/harbor-registryctl:v2.14.2
+          image: goharbor/harbor-registryctl:v2.12.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

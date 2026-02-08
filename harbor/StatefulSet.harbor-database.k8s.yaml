@@ -8,13 +8,13 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.2
+    app.kubernetes.io/version: 2.12.1
     chart: harbor
     component: database
     heritage: Helm
     release: harbor
   name: harbor-database
-  namespace: default
+  namespace: harbor
 spec:
   replicas: 1
   selector:
@@ -26,7 +26,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/secret: bba75f7e76f4c980e6f7942edf81b98c7e5b336144097189e2ade38ec8ae9521
+        checksum/secret: f3986dccb958fe798758c98f6e1e8b848d299859498fa45532ffa652207109f6
       labels:
         app: harbor
         app.kubernetes.io/component: database
@@ -34,7 +34,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.2
+        app.kubernetes.io/version: 2.12.1
         chart: harbor
         component: database
         heritage: Helm
@@ -48,7 +48,7 @@ spec:
           envFrom:
             - secretRef:
                 name: harbor-database
-          image: goharbor/harbor-db:v2.14.2
+          image: goharbor/harbor-db:v2.12.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:
@@ -85,7 +85,7 @@ spec:
             - chmod -R 700 /var/lib/postgresql/data/pgdata || true
           command:
             - /bin/sh
-          image: goharbor/harbor-db:v2.14.2
+          image: goharbor/harbor-db:v2.12.1
           imagePullPolicy: IfNotPresent
           name: data-permissions-ensurer
           securityContext:
@@ -110,9 +110,7 @@ spec:
             sizeLimit: 512Mi
           name: shm-volume
   volumeClaimTemplates:
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
+    - metadata:
         labels:
           app: harbor
           chart: harbor

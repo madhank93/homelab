@@ -1,0 +1,27 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: harbor-registry
+  namespace: harbor
+spec:
+  encryptedData:
+    REGISTRY_HTTP_SECRET: AgDFrFcf3piCIVxy6K+kA+DweuNJydq/e4br2qbt7DrNVmINjFsaTuzN4Z+jwL3hnI1KUFWo44IrV7Jduy79uwr1WPV5wbV5m1HeUu8vfd8F/ImH/GOJroc5VEUumQJazDi9dl3ZuTH3J3gy11JeX/D4sT70nqCryK3ilrDrSHjIWCEzQil7iMIWDuVTeEdX8Vse6SeCczqx5XNr4XxmE9O+ejdIJyrt1O96wYjXmj2CysJV6OUcnlgfmQ7JmP1UB7mTdd0j2gwK+GZUvClpZw38Df3nIAYolFN9nLL+6TjG5y9i8wTxBgo+qVPe8u8NqwhC0gsq9lPSyUT4sCDDyrRLJ+6+RDRwHSsj8vwgxL7R4FsF2NydGN5cXGv1BlCnvVfFqPv6QzmO+9PUa5m2OU7P7GTuMJ+GEK3Zb6Ye1kMRp1q2yFZx8jC9C+/8mHSZbl31JdqEyh7dGBj1YdH2AwhxPDMIqBkuweskfpW0IT3ooMCGhtxgAXjGX9Cz8xNbkwfULBeXyRZcs8vgUibNYp8TsnM9RUb+hGSX7LofYV2YEFmU4IC3QP4YKbTI/ToiN0i7cLG1/2tAMGnbjFcrLclR1jhu7KSnprQLXhbug2PRgoyfqF94N0wUnu1n7rZS4Ww9fQ2ZuiwwbPF6xitwQKYdSd+sCCrTq/PRlykNKbBiKrnxIgm6GzOW8oOU6eD5TGa8ZYVmlgdbWDOCDeTMGOgy
+    REGISTRY_REDIS_PASSWORD: AgB2OejTVog/d+IEjca07iYFq2uWCXbFN3EcMgiis9F/nxzSzRwhliaSwHKmQUjxPu55VAXWUNyNT8syM9/duuP+iHeM1miUqAELqajTJLFQLVREv4y2REPgF9Na8WfS+C1LgfF2JmdHun3oovb1PY9SBoXzWzlMCwRNKinV7lKPdAMCJPX/ArC7RsX0PSy8fmkAuy/DZGPvxyDHXQYLjLvMsx3dF/YDM4KbE81jQs57oXtlhTlRwl+mNZdW77198hXxsgq6RGH+3heIuYZE0UWO/byeJWyolscMKcjt3oON++/XdqrNmDoNWbPlDqfGtqWrn8pwwOHfkMS8v0Qr5aOMbTLv3p7YuN82/BKdTDsEcoqW+lKog9ALekEGjdqvQjp9ySPhP47jX4/nPSXoWXTuu7+UD/MQsIryXAljgqClT35T42b/1LonLHqknuu1Muq+FoFomvMfCemhBG0UfM+L5dh466aOYoaGo7oJbn/nQ/OKn4nkWCbRFixn3adK/CBd+NYO3qoCft2Urqvw940wr355lr3x4bAmnZm+0G0ojaKkCqbkdMnBodfXR09jMesAo21lZMZRicGFQO30FmBrCrXfx/SeRgnUCskQCNi1R4Dy4bLySde+9iO5xEcFHIG1ukSMongTTSdUJwq3dO6b1suyyQguKQRX2kGAQLe0A8cxwJFT5+YmOwJy8PzkB3o=
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: harbor
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.12.1
+        chart: harbor
+        heritage: Helm
+        release: harbor
+      name: harbor-registry
+      namespace: harbor
+    type: Opaque

@@ -8,13 +8,13 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.2
+    app.kubernetes.io/version: 2.12.1
     chart: harbor
     component: trivy
     heritage: Helm
     release: harbor
   name: harbor-trivy
-  namespace: default
+  namespace: harbor
 spec:
   replicas: 1
   selector:
@@ -26,7 +26,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/secret: c326eeade00d328a8ee2ef6655e1c1f5469ed1cf746c31ea888f9c63b2731755
+        checksum/secret: 44fbf48cc453fca626e9190d5491e0e96d5806c8ffc0c86b7b6c01d40f1d0b2c
       labels:
         app: harbor
         app.kubernetes.io/component: trivy
@@ -34,7 +34,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.2
+        app.kubernetes.io/version: 2.12.1
         chart: harbor
         component: trivy
         heritage: Helm
@@ -74,10 +74,6 @@ spec:
               value: "false"
             - name: SCANNER_TRIVY_SKIP_JAVA_DB_UPDATE
               value: "false"
-            - name: SCANNER_TRIVY_DB_REPOSITORY
-              value: mirror.gcr.io/aquasec/trivy-db,ghcr.io/aquasecurity/trivy-db
-            - name: SCANNER_TRIVY_JAVA_DB_REPOSITORY
-              value: mirror.gcr.io/aquasec/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db
             - name: SCANNER_TRIVY_OFFLINE_SCAN
               value: "false"
             - name: SCANNER_TRIVY_SECURITY_CHECKS
@@ -101,7 +97,7 @@ spec:
                 secretKeyRef:
                   key: redisURL
                   name: harbor-trivy
-          image: goharbor/trivy-adapter-photon:v2.14.2
+          image: goharbor/trivy-adapter-photon:v2.12.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10
@@ -149,9 +145,7 @@ spec:
         fsGroup: 10000
         runAsUser: 10000
   volumeClaimTemplates:
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
+    - metadata:
         labels:
           app: harbor
           chart: harbor

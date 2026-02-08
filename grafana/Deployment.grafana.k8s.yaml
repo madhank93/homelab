@@ -4,10 +4,10 @@ metadata:
   labels:
     app.kubernetes.io/instance: grafana
     app.kubernetes.io/name: grafana
-    app.kubernetes.io/version: 12.3.1
-    helm.sh/chart: grafana-10.7.0
+    app.kubernetes.io/version: 11.4.0
+    helm.sh/chart: grafana-8.8.2
   name: grafana
-  namespace: default
+  namespace: grafana
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -20,14 +20,14 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a32f53c5fa75a8f45fd0a66631d9824b616b53f3b8c012553ad8c81993edaf8d
+        checksum/config: ac5716124f76703911f955fa71fbbc11e8ae0a7f2db7c84c5b49a7379ada9619
         checksum/sc-dashboard-provider-config: e70bf6a851099d385178a76de9757bb0bef8299da6d8443602590e44f05fdf24
         kubectl.kubernetes.io/default-container: grafana
       labels:
         app.kubernetes.io/instance: grafana
         app.kubernetes.io/name: grafana
-        app.kubernetes.io/version: 12.3.1
-        helm.sh/chart: grafana-10.7.0
+        app.kubernetes.io/version: 11.4.0
+        helm.sh/chart: grafana-8.8.2
     spec:
       automountServiceAccountToken: true
       containers:
@@ -54,15 +54,13 @@ spec:
               value: /var/lib/grafana/plugins
             - name: GF_PATHS_PROVISIONING
               value: /etc/grafana/provisioning
-            - name: GF_UNIFIED_STORAGE_INDEX_PATH
-              value: /var/lib/grafana-search/bleve
-          image: docker.io/grafana/grafana:12.3.1
+          image: docker.io/grafana/grafana:11.4.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10
             httpGet:
               path: /api/health
-              port: grafana
+              port: 3000
             initialDelaySeconds: 60
             timeoutSeconds: 30
           name: grafana
@@ -82,13 +80,12 @@ spec:
           readinessProbe:
             httpGet:
               path: /api/health
-              port: grafana
+              port: 3000
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
-            privileged: false
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
@@ -97,8 +94,6 @@ spec:
               subPath: grafana.ini
             - mountPath: /var/lib/grafana
               name: storage
-            - mountPath: /var/lib/grafana-search
-              name: search
       enableServiceLinks: true
       initContainers:
         - command:
@@ -106,16 +101,13 @@ spec:
             - -R
             - 472:472
             - /var/lib/grafana
-          image: docker.io/library/busybox:1.37.0
+          image: docker.io/library/busybox:1.31.1
           imagePullPolicy: IfNotPresent
           name: init-chown-data
           securityContext:
             capabilities:
               add:
                 - CHOWN
-              drop:
-                - ALL
-            readOnlyRootFilesystem: false
             runAsNonRoot: false
             runAsUser: 0
             seccompProfile:
@@ -129,7 +121,6 @@ spec:
         runAsNonRoot: true
         runAsUser: 472
       serviceAccountName: grafana
-      shareProcessNamespace: false
       volumes:
         - configMap:
             name: grafana
@@ -137,5 +128,3 @@ spec:
         - name: storage
           persistentVolumeClaim:
             claimName: grafana
-        - emptyDir: {}
-          name: search
