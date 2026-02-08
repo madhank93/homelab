@@ -15,6 +15,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		Chart:       jsii.String("headlamp"),
 		Repo:        jsii.String("https://kubernetes-sigs.github.io/headlamp/"),
 		ReleaseName: jsii.String("headlamp"),
+		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{
 			"ingress": map[string]any{
 				"enabled": true,
