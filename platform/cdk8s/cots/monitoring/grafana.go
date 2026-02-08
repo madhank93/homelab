@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/grafana"
 )
 
 func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -70,12 +69,16 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		},
 		"ingress": map[string]any{
 			"enabled": true,
-			"hosts":   []string{"grafana.local"},
+			"hosts":   []string{"grafana.madhan.app"},
 		},
 	}
 
-	grafana.NewGrafana(chart, jsii.String("grafana-release"), &grafana.GrafanaProps{
+	cdk8s.NewHelm(chart, jsii.String("grafana-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("grafana"),
+		Repo:        jsii.String("https://grafana.github.io/helm-charts"),
+		Version:     jsii.String("8.8.2"),
 		ReleaseName: jsii.String("grafana"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 

@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/harbor"
 )
 
 func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -59,11 +58,11 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 			"type": "ingress",
 			"ingress": map[string]any{
 				"hosts": map[string]any{
-					"core": "harbor.local",
+					"core": "harbor.madhan.app",
 				},
 			},
 		},
-		"externalURL": "https://harbor.local",
+		"externalURL": "https://harbor.madhan.app",
 		"persistence": map[string]any{
 			"enabled": true,
 			"persistentVolumeClaim": map[string]any{
@@ -79,8 +78,12 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		"existingSecret":      "harbor-admin", // Secret created by InfisicalSecret
 	}
 
-	harbor.NewHarbor(chart, jsii.String("harbor-release"), &harbor.HarborProps{
+	cdk8s.NewHelm(chart, jsii.String("harbor-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("harbor"),
+		Repo:        jsii.String("https://helm.goharbor.io"),
+		Version:     jsii.String("1.16.1"),
 		ReleaseName: jsii.String("harbor"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 
