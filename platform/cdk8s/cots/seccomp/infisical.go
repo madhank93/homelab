@@ -39,8 +39,9 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	})
 	postgresSecret.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/stringData"), map[string]string{
-		"DB_PASSWORD": infisicalDbPassword,
-		"AUTH_SECRET": infisicalDbPassword, // Use same value for AUTH_SECRET (can be different in production)
+		"DB_PASSWORD":    infisicalDbPassword,
+		"AUTH_SECRET":    infisicalDbPassword, // Use same value for AUTH_SECRET (can be different in production)
+		"ENCRYPTION_KEY": infisicalDbPassword, // Required for Infisical encryption
 	}))
 
 	// Infisical backend + frontend + PostgreSQL + Redis
