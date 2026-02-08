@@ -98,7 +98,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	cdk8s.NewHelm(chart, jsii.String("infisical-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("infisical-standalone"),
 		Repo:        jsii.String("https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts"),
-		Version:     jsii.String("0.7.4"),
+		Version:     jsii.String("1.7.2"),
 		ReleaseName: jsii.String("infisical"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
