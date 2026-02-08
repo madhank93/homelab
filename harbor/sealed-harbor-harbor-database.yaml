@@ -7,7 +7,7 @@ metadata:
   namespace: harbor
 spec:
   encryptedData:
-    POSTGRES_PASSWORD: AgDHGANwoOAJIIFvgdXuVmfiCZ73LGgSe/aas5p7riWiVRwnPok3202T0p5RxvFjd57p4XtOD3uRx/LSR+3adgunlcWRQm9kXBc4g1gNSN/IQsIDeXDaDBwG25saOP4AJbeXfZsbZw12DlmwdueBiLDpx7dckgzmnBLarFOVlPN23tEHsW+FkTkjBgvT1Zmyla+KDOWHiXfhblA20FxnXlE4iOcNvhJxNhaxiq186KQYrpCdZHzpvpBIJRcbMaaEtgUiOMS4VsnzDziMx4mKWLMKBZWC8pt94KaIiojANru127T31BjbRMgIvBXP50SEAgWfVsbhha3K4iB1bnliPl+VOKlbAOD/W0PQR9nkofLl7OuXQiQtMtuecAVOC8D6VNLTKsN7tAMfR5ulf5JGUMitQKtXh6/ySIomz3F5DjnnDy4P6A/hJmZJyvNF7cTqc9Y7fqZS70DzcNFAVLF4nvLr7d/tZeQgmIHQrnn8jG3Go3WhJfTBeqh+kklTihTxS2YPSTrO8IEh7E2tT3eVp0Y0WdvklPTPDRrCUL59RL7PL8EOodT8uh+J9R70ORL8DVW4EfkVAHJOUdNgGTCiLUt5SN6ufI5oOLJZjKYjbLgPhCwuF6O5vT0DRdrFjCJnRsJN8wfdhzvRcb386p8cvnKvRki31PMj4xfIksgXiDJO6g3Dt72izrrGk3KxPGQfwyfDLxiaieYdDw==
+    POSTGRES_PASSWORD: AgB9RIv/HaT8qCbUBMurq4WEj636JFUVmA/jFtSPFs0oRzfe+X56mYM90QPb85mrno+8QnvpyLb/KBV1v00CYmYlMbBbb5eVje/f5eIkwhe/1RVKCqOG8hi120lFpN12t2e816bWXY5cg1MQ5petSD3syFKlyXOGqyoBKK/dxbkBeOH5+vgu4e1+ev3swXkcvV++ymXJvGyB04wpWV7IZ6AnTrkQK3s9cPinMMyw0fq1tdx0W9jZaHYstKE78s5LfMPiCdR7tKvKJ7lNY6jmz+Wgxk3ZHHsMK2mc1GiTmkEj97sYaFmIxL6O7Y2cSinvqcUWUubD77Z7dKnWoD8CNdz240vjObbPzZi0hxkTEENkN/+7UEtJQwyZrFSe+Ncwto9/aoO0qfB9VMIurst5G7EGUOnIwpf/0PD6uVTxtuANscsj44xjyR/XIAc+7HvFrK9bL6T26AD6SPZPIh/autS86xnM5nWAtGTkTsoW3fRvbxNvct+yrtWIDGcRZwgvAy78Has3C9B63f+Ogw+NdwzSVtihpeRcjW0EbIfm2NwL40MEqmW7PQTRt5xmeZk4YiMKM4PslmkGCkTyjaWj/afp/4EgE6WmpUxUtirtaQ525FoDGr017RHpBA+3/Vz/nqRG1yhZlb52dgfFf3QtWA/FmNKgkz4LHfVwc87kUhN00JxAJlBn4V4n6v8bz/Dp5tjSMshGNj0zFw==
   template:
     metadata:
       creationTimestamp: null
@@ -17,7 +17,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.12.1
+        app.kubernetes.io/version: 2.14.2
         chart: harbor
         heritage: Helm
         release: harbor

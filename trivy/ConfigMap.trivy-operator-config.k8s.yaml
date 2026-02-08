@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: trivy-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: trivy-operator
-    app.kubernetes.io/version: 0.24.0
-    helm.sh/chart: trivy-operator-0.26.0
+    app.kubernetes.io/version: 0.29.0
+    helm.sh/chart: trivy-operator-0.31.0
   name: trivy-operator-config
   namespace: trivy
 data:
@@ -36,6 +36,7 @@ data:
   OPERATOR_METRICS_INFRA_ASSESSMENT_INFO_ENABLED: "false"
   OPERATOR_METRICS_RBAC_ASSESSMENT_INFO_ENABLED: "false"
   OPERATOR_METRICS_VULN_ID_ENABLED: "false"
+  OPERATOR_PPROF_BIND_ADDRESS: ""
   OPERATOR_PRIVATE_REGISTRY_SCAN_SECRETS_NAMES: "{}"
   OPERATOR_RBAC_ASSESSMENT_SCANNER_ENABLED: "true"
   OPERATOR_SBOM_GENERATION_ENABLED: "true"

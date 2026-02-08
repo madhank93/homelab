@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: alertmanager
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 69.2.0
-    chart: kube-prometheus-stack-69.2.0
+    app.kubernetes.io/version: 81.5.0
+    chart: kube-prometheus-stack-81.5.0
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-kubernetes-system-kube-proxy
@@ -21,7 +21,7 @@ spec:
             description: KubeProxy has disappeared from Prometheus target discovery.
             runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubeproxydown
             summary: Target disappeared from Prometheus target discovery.
-          expr: absent(up{job="kube-proxy"} == 1)
+          expr: absent(up{job="kube-proxy"})
           for: 15m
           labels:
             severity: critical

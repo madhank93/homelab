@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: gpu-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: gpu-operator
-    app.kubernetes.io/version: v24.9.1
-    helm.sh/chart: gpu-operator-v24.9.1
+    app.kubernetes.io/version: v25.10.1
+    helm.sh/chart: gpu-operator-v25.10.1
   name: gpu-operator
   namespace: nvidia-gpu-operator
 rules:
@@ -71,7 +71,6 @@ rules:
     verbs:
       - get
       - list
-      - create
       - watch
       - update
       - patch
@@ -79,16 +78,26 @@ rules:
       - ""
     resources:
       - events
-      - pods
-      - pods/eviction
     verbs:
       - create
       - get
       - list
       - watch
-      - update
-      - patch
       - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods/eviction
+    verbs:
+      - create
   - apiGroups:
       - apps
     resources:

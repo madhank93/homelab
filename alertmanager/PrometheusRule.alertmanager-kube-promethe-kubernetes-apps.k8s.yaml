@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: alertmanager
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 69.2.0
-    chart: kube-prometheus-stack-69.2.0
+    app.kubernetes.io/version: 81.5.0
+    chart: kube-prometheus-stack-81.5.0
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-kubernetes-apps
@@ -31,9 +31,9 @@ spec:
             runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepodnotready
             summary: Pod has been in a non-ready state for more than 15 minutes.
           expr: |-
-            sum by (namespace, pod, cluster) (
-              max by (namespace, pod, cluster) (
-                kube_pod_status_phase{job="kube-state-metrics", namespace=~".*", phase=~"Pending|Unknown|Failed"}
+            sum by (namespace, pod, job, cluster) (
+              max by (namespace, pod, job, cluster) (
+                kube_pod_status_phase{job="kube-state-metrics", namespace=~".*", phase=~"Pending|Unknown"}
               ) * on (namespace, pod, cluster) group_left(owner_kind) topk by (namespace, pod, cluster) (
                 1, max by (namespace, pod, owner_kind, cluster) (kube_pod_owner{owner_kind!="Job"})
               )
@@ -91,7 +91,7 @@ spec:
             (
               kube_statefulset_status_replicas_ready{job="kube-state-metrics", namespace=~".*"}
                 !=
-              kube_statefulset_status_replicas{job="kube-state-metrics", namespace=~".*"}
+              kube_statefulset_replicas{job="kube-state-metrics", namespace=~".*"}
             ) and (
               changes(kube_statefulset_status_replicas_updated{job="kube-state-metrics", namespace=~".*"}[10m])
                 ==
@@ -124,13 +124,13 @@ spec:
                   unless
                 kube_statefulset_status_update_revision{job="kube-state-metrics", namespace=~".*"}
               )
-                *
+                * on (namespace, statefulset, job, cluster)
               (
                 kube_statefulset_replicas{job="kube-state-metrics", namespace=~".*"}
                   !=
                 kube_statefulset_status_replicas_updated{job="kube-state-metrics", namespace=~".*"}
               )
-            )  and (
+            )  and on (namespace, statefulset, job, cluster) (
               changes(kube_statefulset_status_replicas_updated{job="kube-state-metrics", namespace=~".*"}[5m])
                 ==
               0
@@ -147,19 +147,19 @@ spec:
             (
               (
                 kube_daemonset_status_current_number_scheduled{job="kube-state-metrics", namespace=~".*"}
-                 !=
+                  !=
                 kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics", namespace=~".*"}
               ) or (
                 kube_daemonset_status_number_misscheduled{job="kube-state-metrics", namespace=~".*"}
-                 !=
+                  !=
                 0
               ) or (
                 kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics", namespace=~".*"}
-                 !=
+                  !=
                 kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics", namespace=~".*"}
               ) or (
                 kube_daemonset_status_number_available{job="kube-state-metrics", namespace=~".*"}
-                 !=
+                  !=
                 kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics", namespace=~".*"}
               )
             ) and (
@@ -251,6 +251,21 @@ spec:
             kube_horizontalpodautoscaler_status_current_replicas{job="kube-state-metrics", namespace=~".*"}
               ==
             kube_horizontalpodautoscaler_spec_max_replicas{job="kube-state-metrics", namespace=~".*"}
+          for: 15m
+          labels:
+            severity: warning
+        - alert: KubePdbNotEnoughHealthyPods
+          annotations:
+            description: PDB {{ $labels.cluster }}/{{ $labels.namespace }}/{{ $labels.poddisruptionbudget }} expects {{ $value }} more healthy pods. The desired number of healthy pods has not been met for at least 15m.
+            runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepdbnotenoughhealthypods
+            summary: PDB does not have enough healthy pods.
+          expr: |-
+            (
+              kube_poddisruptionbudget_status_desired_healthy{job="kube-state-metrics", namespace=~".*"}
+              -
+              kube_poddisruptionbudget_status_current_healthy{job="kube-state-metrics", namespace=~".*"}
+            )
+            > 0
           for: 15m
           labels:
             severity: warning

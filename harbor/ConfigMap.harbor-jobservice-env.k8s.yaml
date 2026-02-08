@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.12.1
+    app.kubernetes.io/version: 2.14.2
     chart: harbor
     heritage: Helm
     release: harbor
@@ -19,6 +19,7 @@ data:
   HTTP_PROXY: ""
   JOBSERVICE_WEBHOOK_JOB_HTTP_CLIENT_TIMEOUT: "3"
   JOBSERVICE_WEBHOOK_JOB_MAX_RETRY: "3"
+  LOG_LEVEL: info
   NO_PROXY: harbor-core,harbor-jobservice,harbor-database,harbor-registry,harbor-portal,harbor-trivy,harbor-exporter,127.0.0.1,localhost,.local,.internal
   REGISTRY_CONTROLLER_URL: http://harbor-registry:8080
   REGISTRY_CREDENTIAL_USERNAME: harbor_registry_user

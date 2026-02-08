@@ -4,6 +4,7 @@ metadata:
   name: gitjob
   namespace: fleet
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: gitjob
@@ -19,7 +20,7 @@ spec:
             - fleetcontroller
             - gitjob
             - --gitjob-image
-            - rancher/fleet:v0.11.0
+            - rancher/fleet:v0.14.2
           env:
             - name: NAMESPACE
               valueFrom:
@@ -31,9 +32,11 @@ spec:
               value: 10s
             - name: CATTLE_ELECTION_RENEW_DEADLINE
               value: 25s
+            - name: GITREPO_SYNC_PERIOD
+              value: 2h
             - name: GITREPO_RECONCILER_WORKERS
               value: "50"
-          image: rancher/fleet:v0.11.0
+          image: rancher/fleet:v0.14.2
           name: gitjob
           ports:
             - containerPort: 8081

@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.12.1
+    app.kubernetes.io/version: 2.14.2
     chart: harbor
     heritage: Helm
     release: harbor
@@ -25,7 +25,7 @@ data:
   JOBSERVICE_URL: http://harbor-jobservice
   LOG_LEVEL: info
   NO_PROXY: harbor-core,harbor-jobservice,harbor-database,harbor-registry,harbor-portal,harbor-trivy,harbor-exporter,127.0.0.1,localhost,.local,.internal
-  PERMITTED_REGISTRY_TYPES_FOR_PROXY_CACHE: docker-hub,harbor,azure-acr,aws-ecr,google-gcr,quay,docker-registry,github-ghcr,jfrog-artifactory
+  PERMITTED_REGISTRY_TYPES_FOR_PROXY_CACHE: docker-hub,harbor,azure-acr,ali-acr,aws-ecr,google-gcr,docker-registry,github-ghcr,jfrog-artifactory
   PORT: "8080"
   PORTAL_URL: http://harbor-portal
   POSTGRESQL_DATABASE: registry
@@ -40,6 +40,7 @@ data:
   REGISTRY_CREDENTIAL_USERNAME: harbor_registry_user
   REGISTRY_STORAGE_PROVIDER_NAME: filesystem
   REGISTRY_URL: http://harbor-registry:5000
+  REPLICATION_ADAPTER_WHITELIST: ali-acr,aws-ecr,azure-acr,docker-hub,docker-registry,github-ghcr,google-gcr,harbor,huawei-SWR,jfrog-artifactory,tencent-tcr,volcengine-cr
   TOKEN_SERVICE_URL: http://harbor-core:80/service/token
   TRIVY_ADAPTER_URL: http://harbor-trivy:8080
   WITH_TRIVY: "true"

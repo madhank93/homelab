@@ -2,29 +2,17 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.19.0
   labels:
     app.kubernetes.io/instance: longhorn
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: longhorn
-    app.kubernetes.io/version: v1.7.2
-    helm.sh/chart: longhorn-1.7.2
+    app.kubernetes.io/version: v1.11.0
+    helm.sh/chart: longhorn-1.11.0
     longhorn-manager: ""
   name: volumes.longhorn.io
   namespace: longhorn-system
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: longhorn-conversion-webhook
-          namespace: longhorn-system
-          path: /v1/webhook/conversion
-          port: 9501
-      conversionReviewVersions:
-        - v1beta2
-        - v1beta1
   group: longhorn.io
   names:
     kind: Volume
@@ -33,64 +21,8 @@ spec:
     shortNames:
       - lhv
     singular: volume
-  preserveUnknownFields: false
   scope: Namespaced
   versions:
-    - additionalPrinterColumns:
-        - description: The state of the volume
-          jsonPath: .status.state
-          name: State
-          type: string
-        - description: The robustness of the volume
-          jsonPath: .status.robustness
-          name: Robustness
-          type: string
-        - description: The scheduled condition of the volume
-          jsonPath: .status.conditions['scheduled']['status']
-          name: Scheduled
-          type: string
-        - description: The size of the volume
-          jsonPath: .spec.size
-          name: Size
-          type: string
-        - description: The node that the volume is currently attaching to
-          jsonPath: .status.currentNodeID
-          name: Node
-          type: string
-        - jsonPath: .metadata.creationTimestamp
-          name: Age
-          type: date
-      name: v1beta1
-      schema:
-        openAPIV3Schema:
-          description: Volume is where Longhorn stores volume object.
-          properties:
-            apiVersion:
-              description: |-
-                APIVersion defines the versioned schema of this representation of an object.
-                Servers should convert recognized schemas to the latest internal value, and
-                may reject unrecognized values.
-                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-              type: string
-            kind:
-              description: |-
-                Kind is a string value representing the REST resource this object represents.
-                Servers may infer this from the endpoint the client submits requests to.
-                Cannot be updated.
-                In CamelCase.
-                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-              type: string
-            metadata:
-              type: object
-            spec:
-              x-kubernetes-preserve-unknown-fields: true
-            status:
-              x-kubernetes-preserve-unknown-fields: true
-          type: object
-      served: true
-      storage: false
-      subresources:
-        status: {}
     - additionalPrinterColumns:
         - description: The data engine of the volume
           jsonPath: .spec.dataEngine
@@ -149,18 +81,35 @@ spec:
                 accessMode:
                   enum:
                     - rwo
+                    - rwop
                     - rwx
                   type: string
-                backendStoreDriver:
-                  description: Deprecated:Replaced by field `dataEngine`.'
-                  type: string
                 backingImage:
+                  type: string
+                  x-kubernetes-validations:
+                    - message: BackingImage is immutable
+                      rule: self == oldSelf
+                backupBlockSize:
+                  description: BackupBlockSize indicate the block size to create backups. The block size is immutable.
+                  enum:
+                    - "2097152"
+                    - "16777216"
+                  format: int64
                   type: string
                 backupCompressionMethod:
                   enum:
                     - none
                     - lz4
                     - gzip
+                  type: string
+                backupTargetName:
+                  description: The backup target name that the volume will be backed up to or is synced.
+                  type: string
+                cloneMode:
+                  enum:
+                    - ""
+                    - full-copy
+                    - linked-clone
                   type: string
                 dataEngine:
                   enum:
@@ -183,9 +132,9 @@ spec:
                   type: array
                 encrypted:
                   type: boolean
-                engineImage:
-                  description: "Deprecated: Replaced by field `image`."
-                  type: string
+                  x-kubernetes-validations:
+                    - message: Encrypted is immutable
+                      rule: self == oldSelf
                 freezeFilesystemForSnapshot:
                   description: Setting that freezes the filesystem on the root partition before a snapshot is created.
                   enum:
@@ -200,6 +149,7 @@ spec:
                     - blockdev
                     - iscsi
                     - nvmf
+                    - ublk
                     - ""
                   type: string
                 image:
@@ -218,6 +168,25 @@ spec:
                   type: array
                 numberOfReplicas:
                   type: integer
+                offlineRebuilding:
+                  description: |-
+                    Specifies whether Longhorn should rebuild replicas while the detached volume is degraded.
+                    - ignored: Use the global setting for offline replica rebuilding.
+                    - enabled: Enable offline rebuilding for this volume, regardless of the global setting.
+                    - disabled: Disable offline rebuilding for this volume, regardless of the global setting
+                  enum:
+                    - ignored
+                    - disabled
+                    - enabled
+                  type: string
+                rebuildConcurrentSyncLimit:
+                  description: |-
+                    RebuildConcurrentSyncLimit controls the maximum number of file synchronization operations that can run
+                    concurrently during a single replica rebuild.
+                    When set to 0, it means following the global setting.
+                  maximum: 5
+                  minimum: 0
+                  type: integer
                 replicaAutoBalance:
                   enum:
                     - ignored
@@ -232,6 +201,11 @@ spec:
                     - enabled
                     - disabled
                   type: string
+                replicaRebuildingBandwidthLimit:
+                  description: ReplicaRebuildingBandwidthLimit controls the maximum write bandwidth (in megabytes per second) allowed on the destination replica during the rebuilding process. Set this value to 0 to disable bandwidth limiting.
+                  format: int64
+                  minimum: 0
+                  type: integer
                 replicaSoftAntiAffinity:
                   description: Replica soft anti affinity of the volume. Set enabled to allow replicas to be scheduled on the same node.
                   enum:
@@ -270,6 +244,12 @@ spec:
                   format: int64
                   type: string
                 staleReplicaTimeout:
+                  type: integer
+                ublkNumberOfQueue:
+                  description: ublkNumberOfQueue controls the number of queues for ublk frontend.
+                  type: integer
+                ublkQueueDepth:
+                  description: ublkQueueDepth controls the depth of each queue for ublk frontend.
                   type: integer
                 unmapMarkSnapChainRemoved:
                   enum:
@@ -374,9 +354,6 @@ spec:
                 lastDegradedAt:
                   type: string
                 ownerID:
-                  type: string
-                pendingNodeID:
-                  description: Deprecated.
                   type: string
                 remountRequestedAt:
                   type: string

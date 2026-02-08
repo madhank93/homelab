@@ -11,8 +11,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 69.2.0
-    chart: kube-prometheus-stack-69.2.0
+    app.kubernetes.io/version: 81.5.0
+    chart: kube-prometheus-stack-81.5.0
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-admission-patch
@@ -27,8 +27,8 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
         app.kubernetes.io/part-of: kube-prometheus-stack
-        app.kubernetes.io/version: 69.2.0
-        chart: kube-prometheus-stack-69.2.0
+        app.kubernetes.io/version: 81.5.0
+        chart: kube-prometheus-stack-81.5.0
         heritage: Helm
         release: alertmanager
       name: alertmanager-kube-promethe-admission-patch
@@ -40,7 +40,7 @@ spec:
             - --namespace=alertmanager
             - --secret-name=alertmanager-kube-promethe-admission
             - --patch-failure-policy=
-          image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.5.1
+          image: ghcr.io/jkroepke/kube-webhook-certgen:1.7.4
           imagePullPolicy: IfNotPresent
           name: patch
           resources: {}

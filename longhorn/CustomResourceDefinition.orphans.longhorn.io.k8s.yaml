@@ -2,13 +2,13 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.19.0
   labels:
     app.kubernetes.io/instance: longhorn
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: longhorn
-    app.kubernetes.io/version: v1.7.2
-    helm.sh/chart: longhorn-1.7.2
+    app.kubernetes.io/version: v1.11.0
+    helm.sh/chart: longhorn-1.11.0
     longhorn-manager: ""
   name: orphans.longhorn.io
   namespace: longhorn-system
@@ -57,6 +57,14 @@ spec:
             spec:
               description: OrphanSpec defines the desired state of the Longhorn orphaned data
               properties:
+                dataEngine:
+                  description: |-
+                    The type of data engine for instance orphan.
+                    Can be "v1", "v2".
+                  enum:
+                    - v1
+                    - v2
+                  type: string
                 nodeID:
                   description: The node ID on which the controller is responsible to reconcile this orphan CR.
                   type: string

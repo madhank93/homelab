@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.12.1
+    app.kubernetes.io/version: 2.14.2
     chart: harbor
     component: registry
     heritage: Helm
@@ -28,10 +28,10 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: ce05f7defb8bd23f19dc887ac3b99a675d4d3d5c7635fdfbb40fe79ff91270bc
-        checksum/secret: 4041e2ae67e914013ba86ba6b5b19926b14fbb859963d7368d65b05f18f659cc
-        checksum/secret-core: d74aaeed1b3cd3591171f86ab53cb07866c4f1e24908b1cee378c9ffa069aa41
-        checksum/secret-jobservice: 8479a72bd4445c28353587f6993100110d595a3c3f70f0779b28784db37fd67f
+        checksum/configmap: 99cd8e88533e7632c94ee7344dc6d765bfa578232d8b242c8cb6756fe441556f
+        checksum/secret: b41127a0e9a2572c4bc17c5c86e0fd4b543a8b61418d243486c6c981720b6970
+        checksum/secret-core: 4f5b77e6f214ed3f436f5aa2e04f38cfeb11804a91090a8723765157ff5baf1f
+        checksum/secret-jobservice: 3608f33b53d4273e1e2ef50b641c52a0c19bf965503cf43fc516a2bfad1ccdee
       labels:
         app: harbor
         app.kubernetes.io/component: registry
@@ -39,7 +39,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.12.1
+        app.kubernetes.io/version: 2.14.2
         chart: harbor
         component: registry
         heritage: Helm
@@ -50,7 +50,7 @@ spec:
         - envFrom:
             - secretRef:
                 name: harbor-registry
-          image: goharbor/registry-photon:v2.12.1
+          image: goharbor/registry-photon:v2.14.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
@@ -106,7 +106,7 @@ spec:
                 name: harbor-registry
             - secretRef:
                 name: harbor-registryctl
-          image: goharbor/harbor-registryctl:v2.12.1
+          image: goharbor/harbor-registryctl:v2.14.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

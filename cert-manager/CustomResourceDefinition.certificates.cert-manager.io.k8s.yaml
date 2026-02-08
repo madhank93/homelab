@@ -5,11 +5,12 @@ metadata:
     helm.sh/resource-policy: keep
   labels:
     app: cert-manager
+    app.kubernetes.io/component: crds
     app.kubernetes.io/instance: cert-manager
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: cert-manager
-    app.kubernetes.io/version: v1.16.2
-    helm.sh/chart: cert-manager-v1.16.2
+    app.kubernetes.io/version: v1.19.3
+    helm.sh/chart: cert-manager-v1.19.3
   name: certificates.cert-manager.io
   namespace: cert-manager
 spec:
@@ -27,7 +28,7 @@ spec:
   scope: Namespaced
   versions:
     - additionalPrinterColumns:
-        - jsonPath: .status.conditions[?(@.type=="Ready")].status
+        - jsonPath: .status.conditions[?(@.type == "Ready")].status
           name: Ready
           type: string
         - jsonPath: .spec.secretName
@@ -37,7 +38,7 @@ spec:
           name: Issuer
           priority: 1
           type: string
-        - jsonPath: .status.conditions[?(@.type=="Ready")].message
+        - jsonPath: .status.conditions[?(@.type == "Ready")].message
           name: Status
           priority: 1
           type: string
@@ -80,10 +81,6 @@ spec:
                   description: |-
                     Defines extra output formats of the private key and signed certificate chain
                     to be written to this Certificate's target Secret.
-
-                    This is a Beta Feature enabled by default. It can be disabled with the
-                    `--feature-gates=AdditionalCertificateOutputFormats=false` option set on both
-                    the controller and webhook components.
                   items:
                     description: |-
                       CertificateAdditionalOutputFormat defines an additional output format of a
@@ -102,6 +99,7 @@ spec:
                       - type
                     type: object
                   type: array
+                  x-kubernetes-list-type: atomic
                 commonName:
                   description: |-
                     Requested common name X509 certificate subject attribute.
@@ -117,6 +115,7 @@ spec:
                   items:
                     type: string
                   type: array
+                  x-kubernetes-list-type: atomic
                 duration:
                   description: |-
                     Requested 'duration' (i.e. lifetime) of the Certificate. Note that the
@@ -132,6 +131,7 @@ spec:
                   items:
                     type: string
                   type: array
+                  x-kubernetes-list-type: atomic
                 encodeUsagesInRequest:
                   description: |-
                     Whether the KeyUsage and ExtKeyUsage extensions should be set in the encoded CSR.
@@ -144,6 +144,7 @@ spec:
                   items:
                     type: string
                   type: array
+                  x-kubernetes-list-type: atomic
                 isCA:
                   description: |-
                     Requested basic constraints isCA value.
@@ -164,13 +165,17 @@ spec:
                     The `name` field of the reference must always be specified.
                   properties:
                     group:
-                      description: Group of the resource being referred to.
+                      description: |-
+                        Group of the issuer being referred to.
+                        Defaults to 'cert-manager.io'.
                       type: string
                     kind:
-                      description: Kind of the resource being referred to.
+                      description: |-
+                        Kind of the issuer being referred to.
+                        Defaults to 'Issuer'.
                       type: string
                     name:
-                      description: Name of the resource being referred to.
+                      description: Name of the issuer being referred to.
                       type: string
                   required:
                     - name
@@ -193,17 +198,25 @@ spec:
                             Create enables JKS keystore creation for the Certificate.
                             If true, a file named `keystore.jks` will be created in the target
                             Secret resource, encrypted using the password stored in
-                            `passwordSecretRef`.
+                            `passwordSecretRef` or `password`.
                             The keystore file will be updated immediately.
                             If the issuer provided a CA certificate, a file named `truststore.jks`
                             will also be created in the target Secret resource, encrypted using the
                             password stored in `passwordSecretRef`
                             containing the issuing Certificate Authority
                           type: boolean
+                        password:
+                          description: |-
+                            Password provides a literal password used to encrypt the JKS keystore.
+                            Mutually exclusive with passwordSecretRef.
+                            One of password or passwordSecretRef must provide a password with a non-zero length.
+                          type: string
                         passwordSecretRef:
                           description: |-
-                            PasswordSecretRef is a reference to a key in a Secret resource
+                            PasswordSecretRef is a reference to a non-empty key in a Secret resource
                             containing the password used to encrypt the JKS keystore.
+                            Mutually exclusive with password.
+                            One of password or passwordSecretRef must provide a password with a non-zero length.
                           properties:
                             key:
                               description: |-
@@ -221,7 +234,6 @@ spec:
                           type: object
                       required:
                         - create
-                        - passwordSecretRef
                       type: object
                     pkcs12:
                       description: |-
@@ -233,17 +245,25 @@ spec:
                             Create enables PKCS12 keystore creation for the Certificate.
                             If true, a file named `keystore.p12` will be created in the target
                             Secret resource, encrypted using the password stored in
-                            `passwordSecretRef`.
+                            `passwordSecretRef` or in `password`.
                             The keystore file will be updated immediately.
                             If the issuer provided a CA certificate, a file named `truststore.p12` will
                             also be created in the target Secret resource, encrypted using the
                             password stored in `passwordSecretRef` containing the issuing Certificate
                             Authority
                           type: boolean
+                        password:
+                          description: |-
+                            Password provides a literal password used to encrypt the PKCS#12 keystore.
+                            Mutually exclusive with passwordSecretRef.
+                            One of password or passwordSecretRef must provide a password with a non-zero length.
+                          type: string
                         passwordSecretRef:
                           description: |-
-                            PasswordSecretRef is a reference to a key in a Secret resource
-                            containing the password used to encrypt the PKCS12 keystore.
+                            PasswordSecretRef is a reference to a non-empty key in a Secret resource
+                            containing the password used to encrypt the PKCS#12 keystore.
+                            Mutually exclusive with password.
+                            One of password or passwordSecretRef must provide a password with a non-zero length.
                           properties:
                             key:
                               description: |-
@@ -268,7 +288,7 @@ spec:
                             `LegacyRC2`: Deprecated. Not supported by default in OpenSSL 3 or Java 20.
                             `LegacyDES`: Less secure algorithm. Use this option for maximal compatibility.
                             `Modern2023`: Secure algorithm. Use this option in case you have to always use secure algorithms
-                            (eg. because of company policy). Please note that the security of the algorithm is not that important
+                            (e.g., because of company policy). Please note that the security of the algorithm is not that important
                             in reality, because the unencrypted certificate and private key are also stored in the Secret.
                           enum:
                             - LegacyRC2
@@ -277,7 +297,6 @@ spec:
                           type: string
                       required:
                         - create
-                        - passwordSecretRef
                       type: object
                   type: object
                 literalSubject:
@@ -316,11 +335,13 @@ spec:
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                         emailAddresses:
                           description: EmailAddresses is a list of Email Addresses that are permitted or excluded.
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                         ipRanges:
                           description: |-
                             IPRanges is a list of IP Ranges that are permitted or excluded.
@@ -328,11 +349,13 @@ spec:
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                         uriDomains:
                           description: URIDomains is a list of URI domains that are permitted or excluded.
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                       type: object
                     permitted:
                       description: Permitted contains the constraints in which the names must be located.
@@ -342,11 +365,13 @@ spec:
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                         emailAddresses:
                           description: EmailAddresses is a list of Email Addresses that are permitted or excluded.
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                         ipRanges:
                           description: |-
                             IPRanges is a list of IP Ranges that are permitted or excluded.
@@ -354,11 +379,13 @@ spec:
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                         uriDomains:
                           description: URIDomains is a list of URI domains that are permitted or excluded.
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                       type: object
                   type: object
                 otherNames:
@@ -382,6 +409,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                  x-kubernetes-list-type: atomic
                 privateKey:
                   description: |-
                     Private key options. These include the key algorithm and size, the used
@@ -425,7 +453,11 @@ spec:
                         to await user intervention.
                         If set to `Always`, a private key matching the specified requirements
                         will be generated whenever a re-issuance occurs.
-                        Default is `Never` for backward compatibility.
+                        Default is `Always`.
+                        The default was changed from `Never` to `Always` in cert-manager >=v1.18.0.
+                        The new default can be disabled by setting the
+                        `--feature-gates=DefaultPrivateKeyRotationPolicyAlways=false` option on
+                        the controller component.
                       enum:
                         - Never
                         - Always
@@ -486,8 +518,7 @@ spec:
                     revisions exceeds this number.
 
                     If set, revisionHistoryLimit must be a value of `1` or greater.
-                    If unset (`nil`), revisions will not be garbage collected.
-                    Default value is `nil`.
+                    Default value is `1`.
                   format: int32
                   type: integer
                 secretName:
@@ -516,6 +547,21 @@ spec:
                       description: Labels is a key value map to be copied to the target Kubernetes Secret.
                       type: object
                   type: object
+                signatureAlgorithm:
+                  description: |-
+                    Signature algorithm to use.
+                    Allowed values for RSA keys: SHA256WithRSA, SHA384WithRSA, SHA512WithRSA.
+                    Allowed values for ECDSA keys: ECDSAWithSHA256, ECDSAWithSHA384, ECDSAWithSHA512.
+                    Allowed values for Ed25519 keys: PureEd25519.
+                  enum:
+                    - SHA256WithRSA
+                    - SHA384WithRSA
+                    - SHA512WithRSA
+                    - ECDSAWithSHA256
+                    - ECDSAWithSHA384
+                    - ECDSAWithSHA512
+                    - PureEd25519
+                  type: string
                 subject:
                   description: |-
                     Requested set of X509 certificate subject attributes.
@@ -529,31 +575,37 @@ spec:
                       items:
                         type: string
                       type: array
+                      x-kubernetes-list-type: atomic
                     localities:
                       description: Cities to be used on the Certificate.
                       items:
                         type: string
                       type: array
+                      x-kubernetes-list-type: atomic
                     organizationalUnits:
                       description: Organizational Units to be used on the Certificate.
                       items:
                         type: string
                       type: array
+                      x-kubernetes-list-type: atomic
                     organizations:
                       description: Organizations to be used on the Certificate.
                       items:
                         type: string
                       type: array
+                      x-kubernetes-list-type: atomic
                     postalCodes:
                       description: Postal codes to be used on the Certificate.
                       items:
                         type: string
                       type: array
+                      x-kubernetes-list-type: atomic
                     provinces:
                       description: State/Provinces to be used on the Certificate.
                       items:
                         type: string
                       type: array
+                      x-kubernetes-list-type: atomic
                     serialNumber:
                       description: Serial number to be used on the Certificate.
                       type: string
@@ -562,12 +614,14 @@ spec:
                       items:
                         type: string
                       type: array
+                      x-kubernetes-list-type: atomic
                   type: object
                 uris:
                   description: Requested URI subject alternative names.
                   items:
                     type: string
                   type: array
+                  x-kubernetes-list-type: atomic
                 usages:
                   description: |-
                     Requested key usages and extended key usages.
@@ -633,6 +687,7 @@ spec:
                       - netscape sgc
                     type: string
                   type: array
+                  x-kubernetes-list-type: atomic
               required:
                 - issuerRef
                 - secretName
