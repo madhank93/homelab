@@ -38,6 +38,12 @@ find "${DIST_DIR}" -type f \( -name "*.yaml" -o -name "*.yml" \) | while read -r
                 secret_name=$(yq eval '.metadata.name' "${secret_file}")
                 secret_namespace=$(yq eval '.metadata.namespace // "default"' "${secret_file}")
                 
+                # Skip if secret name is null or empty
+                if [ -z "${secret_name}" ] || [ "${secret_name}" = "null" ]; then
+                    echo "⚠️  Skipping secret with empty/null name"
+                    continue
+                fi
+                
                 echo "🔐 Sealing Secret: ${secret_namespace}/${secret_name}"
                 
                 # Seal the secret using kubeseal with local cert
