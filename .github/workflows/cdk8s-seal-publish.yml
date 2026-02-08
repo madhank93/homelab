@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'v*'  # Trigger on release branches (v0.1.5, etc)
     paths:
       - 'platform/cdk8s/**'
   workflow_dispatch:
