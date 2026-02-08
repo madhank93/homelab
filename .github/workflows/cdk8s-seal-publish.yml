@@ -23,21 +23,12 @@ jobs:
     steps:
       - name: Checkout source repo
         uses: actions/checkout@v4
-        with:
-          path: source
-
-      - name: Checkout GitOps repo
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository_owner }}/homelab-gitops
-          token: ${{ secrets.GITOPS_PAT }}
-          path: gitops
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-          cache-dependency-path: source/platform/cdk8s/go.sum
+          cache-dependency-path: platform/cdk8s/go.sum
 
       - name: Install kubectl
         run: |
@@ -61,7 +52,7 @@ jobs:
         run: npm install -g cdk8s-cli
 
       - name: Synthesize CDK8s manifests
-        working-directory: source/platform/cdk8s
+        working-directory: platform/cdk8s
         env:
           INFISICAL_DB_PASSWORD: ${{ secrets.INFISICAL_DB_PASSWORD }}
         run: |
@@ -70,15 +61,14 @@ jobs:
           # Output is in ../../app (relative to platform/cdk8s)
           ls -la ../../app/
 
-      - name: Seal secrets (Bash approach)
-        working-directory: source/platform/cdk8s
+      - name: Seal secrets
+        working-directory: platform/cdk8s
         run: |
           chmod +x scripts/seal-secrets.sh
-          # Use ../../app as the CDK8s output directory
           ./scripts/seal-secrets.sh ../../app ./sealed
 
       - name: Copy non-Secret manifests to publish
-        working-directory: source/platform/cdk8s
+        working-directory: platform/cdk8s
         run: |
           mkdir -p publish
           # Copy all manifests except Secrets from ../../app
@@ -100,32 +90,20 @@ jobs:
           # Copy all SealedSecrets
           cp -r sealed/* publish/ 2>/dev/null || true
 
-      - name: Commit and push to GitOps repo
-        working-directory: gitops
-        run: |
-          # Clear existing manifests
-          rm -rf manifests/*
-          
-          # Copy new manifests
-          mkdir -p manifests
-          cp -r ../source/platform/cdk8s/publish/* manifests/
-          
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Commit changes
-          git add manifests/
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update manifests from CDK8s synth (${GITHUB_SHA::7})"
-            git push
-          fi
+      - name: Deploy Manifests to Branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./platform/cdk8s/publish
+          publish_branch: ${{ github.ref_name }}-manifests
+          keep_files: false
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'chore: update kubernetes manifests [skip ci]'
 
       - name: Cleanup (ensure no plaintext secrets)
         if: always()
         run: |
-          rm -rf source/app
-          rm -rf source/platform/cdk8s/sealed
-          rm -rf source/platform/cdk8s/publish
+          rm -rf app
+          rm -rf platform/cdk8s/sealed
+          rm -rf platform/cdk8s/publish
