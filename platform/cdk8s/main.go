@@ -11,6 +11,7 @@ import (
 	"github.com/madhank93/homelab/cdk8s/cots/monitoring"
 	"github.com/madhank93/homelab/cdk8s/cots/registry"
 	"github.com/madhank93/homelab/cdk8s/cots/seccomp"
+	"github.com/madhank93/homelab/cdk8s/cots/storage"
 )
 
 func main() {
@@ -32,7 +33,15 @@ func main() {
 	seccomp.NewCertManagerChart(certMgrApp, "cert-manager-app", "cert-manager")
 	certMgrApp.Synth()
 
-	// 3. Infisical (includes namespace, backend, frontend, operator, service token)
+	// 3. Longhorn Storage
+	longhornApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/longhorn", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	storage.NewLonghornChart(longhornApp, "longhorn-app", "longhorn-system")
+	longhornApp.Synth()
+
+	// 4. Infisical (includes namespace, backend, frontend, operator, service token)
 	infisicalApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/infisical", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,

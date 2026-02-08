@@ -72,7 +72,8 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			},
 			"primary": map[string]any{
 				"persistence": map[string]any{
-					"enabled": false, // Disable persistence for now (PVC issues)
+					"enabled": true,
+					"size":    "10Gi",
 				},
 			},
 		},
@@ -83,7 +84,8 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			},
 			"master": map[string]any{
 				"persistence": map[string]any{
-					"enabled": false, // Disable persistence for now (PVC issues)
+					"enabled": true,
+					"size":    "8Gi",
 				},
 			},
 		},
