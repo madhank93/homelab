@@ -6,7 +6,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	infisical "github.com/madhank93/homelab/cdk8s/imports/infisicalstandalone"
 )
 
 func NewInfisicalChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -96,13 +95,24 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	}
 
-	infisical.NewInfisicalstandalone(chart, jsii.String("infisical-release"), &infisical.InfisicalstandaloneProps{
+	cdk8s.NewHelm(chart, jsii.String("infisical-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("infisical-standalone"),
+		Repo:        jsii.String("https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts"),
+		Version:     jsii.String("0.7.2"),
 		ReleaseName: jsii.String("infisical"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 
-	// HTTPRoute for Infisical frontend (Gateway API + cert-manager TLS)
-	httpRouteSpec := map[string]any{
+	// Gateway API HTTPRoute for Infisical
+	cdk8s.NewApiObject(chart, jsii.String("infisical-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("infisical"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"parentRefs": []map[string]any{
 			{
 				"name":      "cilium-gateway",
@@ -113,31 +123,17 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		"rules": []map[string]any{
 			{
 				"matches": []map[string]any{
-					{
-						"path": map[string]any{
-							"type":  "PathPrefix",
-							"value": "/",
-						},
-					},
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
 					{
-						"name": "infisical-infisicalstandalone-frontend",
-						"port": 3000,
+						"name": "infisical-infisical-standalone-infisical",
+						"port": 80,
 					},
 				},
 			},
 		},
-	}
-
-	cdk8s.NewApiObject(chart, jsii.String("infisical-httproute"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
-		Kind:       jsii.String("HTTPRoute"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("infisical"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), httpRouteSpec))
+	}))
 
 	// Infisical Operator (syncs secrets from Infisical to K8s)
 	cdk8s.NewHelm(chart, jsii.String("infisical-operator-release"), &cdk8s.HelmProps{
