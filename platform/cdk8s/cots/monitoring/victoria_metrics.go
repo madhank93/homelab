@@ -12,33 +12,33 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		Namespace: jsii.String(namespace),
 	})
 
-	values := map[string]interface{}{
-		"server": map[string]interface{}{
+	values := map[string]any{
+		"server": map[string]any{
 			"enabled": true,
-			"persistentVolume": map[string]interface{}{
+			"persistentVolume": map[string]any{
 				"enabled": true,
 				"size":    "50Gi",
 			},
 			"retention": "30d",
 		},
-		"vmselect": map[string]interface{}{
+		"vmselect": map[string]any{
 			"enabled":      true,
 			"replicaCount": 1,
-			"resources": map[string]interface{}{
-				"limits": map[string]interface{}{
+			"resources": map[string]any{
+				"limits": map[string]any{
 					"memory": "1Gi",
 					"cpu":    "500m",
 				},
 			},
 		},
-		"vminsert": map[string]interface{}{
+		"vminsert": map[string]any{
 			"enabled":      true,
 			"replicaCount": 1,
 		},
-		"vmstorage": map[string]interface{}{
+		"vmstorage": map[string]any{
 			"enabled":      true,
 			"replicaCount": 1,
-			"persistentVolume": map[string]interface{}{
+			"persistentVolume": map[string]any{
 				"enabled": true,
 				"size":    "100Gi",
 			},

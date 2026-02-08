@@ -13,31 +13,31 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 	})
 
 	values := map[string]any{
-		"prometheus": map[string]interface{}{
+		"prometheus": map[string]any{
 			"enabled": false,
 		},
-		"grafana": map[string]interface{}{
+		"grafana": map[string]any{
 			"enabled": false,
 		},
-		"kubeStateMetrics": map[string]interface{}{
+		"kubeStateMetrics": map[string]any{
 			"enabled": false,
 		},
-		"nodeExporter": map[string]interface{}{
+		"nodeExporter": map[string]any{
 			"enabled": false,
 		},
-		"prometheusOperator": map[string]interface{}{
+		"prometheusOperator": map[string]any{
 			"enabled": true, // Keep for CRDs
 		},
 		// Alertmanager configuration
-		"alertmanager": map[string]interface{}{
+		"alertmanager": map[string]any{
 			"enabled": true,
-			"alertmanagerSpec": map[string]interface{}{
+			"alertmanagerSpec": map[string]any{
 				"replicas": 1,
-				"storage": map[string]interface{}{
-					"volumeClaimTemplate": map[string]interface{}{
-						"spec": map[string]interface{}{
-							"resources": map[string]interface{}{
-								"requests": map[string]interface{}{
+				"storage": map[string]any{
+					"volumeClaimTemplate": map[string]any{
+						"spec": map[string]any{
+							"resources": map[string]any{
+								"requests": map[string]any{
 									"storage": "10Gi",
 								},
 							},
@@ -45,19 +45,19 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 					},
 				},
 			},
-			"config": map[string]interface{}{
-				"global": map[string]interface{}{
+			"config": map[string]any{
+				"global": map[string]any{
 					"smtp_smarthost": "localhost:587",
 					"smtp_from":      "alertmanager@example.com",
 				},
-				"route": map[string]interface{}{
+				"route": map[string]any{
 					"group_by":        []string{"alertname"},
 					"group_wait":      "10s",
 					"group_interval":  "10s",
 					"repeat_interval": "1h",
 					"receiver":        "web.hook",
 				},
-				"receivers": []map[string]interface{}{
+				"receivers": []map[string]any{
 					{
 						"name": "web.hook",
 					},

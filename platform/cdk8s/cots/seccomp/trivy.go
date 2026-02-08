@@ -12,28 +12,28 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 		Namespace: jsii.String(namespace),
 	})
 
-	values := map[string]interface{}{
-		"trivy-operator": map[string]interface{}{
+	values := map[string]any{
+		"trivy-operator": map[string]any{
 			"enabled": true,
-			"serviceMonitor": map[string]interface{}{
+			"serviceMonitor": map[string]any{
 				"enabled": true,
 			},
 		},
-		"operator": map[string]interface{}{
+		"operator": map[string]any{
 			"replicas":                1,
 			"scanJobsConcurrentLimit": 3,
 			"scanJobsRetryDelay":      "30s",
 		},
-		"trivyOperator": map[string]interface{}{
+		"trivyOperator": map[string]any{
 			"scanJobTimeout": "5m",
 		},
-		"compliance": map[string]interface{}{
+		"compliance": map[string]any{
 			"failedChecksOnly": false,
 		},
-		"rbac": map[string]interface{}{
+		"rbac": map[string]any{
 			"create": true,
 		},
-		"serviceAccount": map[string]interface{}{
+		"serviceAccount": map[string]any{
 			"create": true,
 			"name":   "trivy-operator",
 		},

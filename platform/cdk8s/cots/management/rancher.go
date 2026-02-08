@@ -11,32 +11,76 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 		Namespace: jsii.String(namespace),
 	})
 
-	values := map[string]interface{}{
+	// Create namespace
+	cdk8s.NewApiObject(chart, jsii.String("rancher-namespace"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("v1"),
+		Kind:       jsii.String("Namespace"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String(namespace),
+		},
+	})
+
+	// Create InfisicalSecret CRD
+	infisicalSpec := map[string]any{
+		"hostAPI":        "http://infisical-infisicalstandalone-backend.infisical.svc.cluster.local:4000",
+		"resyncInterval": 60,
+		"authentication": map[string]any{
+			"serviceToken": map[string]any{
+				"serviceTokenSecretReference": map[string]any{
+					"secretName":      "infisical-service-token",
+					"secretNamespace": "infisical",
+				},
+				"secretsScope": map[string]any{
+					"projectSlug": "homelab-prod",
+					"envSlug":     "prod",
+					"secretsPath": "/rancher",
+				},
+			},
+		},
+		"managedSecretReference": map[string]any{
+			"secretName":      "rancher-bootstrap",
+			"secretNamespace": namespace,
+			"creationPolicy":  "Owner",
+		},
+	}
+
+	cdk8s.NewApiObject(chart, jsii.String("rancher-infisical-secret"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
+		Kind:       jsii.String("InfisicalSecret"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("rancher-secrets"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
+
+	values := map[string]any{
 		"agentTLSMode": "system-store",
-		"auditLog": map[string]interface{}{
+		"auditLog": map[string]any{
 			"level":       0,
 			"destination": "sidecar",
 		},
-		"ingress": map[string]interface{}{
-			"extraValues": map[string]interface{}{
-				"tls": map[string]interface{}{
+		"ingress": map[string]any{
+			"extraValues": map[string]any{
+				"tls": map[string]any{
 					"source": "secret",
 				},
 			},
 		},
-		"service": map[string]interface{}{
+		"service": map[string]any{
 			"type":        "ClusterIP",
 			"disableHttp": false,
 		},
-		"hostname":          "rancher.local",
-		"bootstrapPassword": "admin",
-		"replicas":          3,
-		"resources": map[string]interface{}{
-			"limits": map[string]interface{}{
+		"hostname":                   "rancher.local",
+		"bootstrapPassword":          "",                  // Not used when secret exists
+		"existingBootstrapPassword":  "rancher-bootstrap", // Secret created by InfisicalSecret
+		"bootstrapPasswordSecretKey": "BOOTSTRAP_PASSWORD",
+		"replicas":                   3,
+		"resources": map[string]any{
+			"limits": map[string]any{
 				"memory": "2Gi",
 				"cpu":    "1000m",
 			},
-			"requests": map[string]interface{}{
+			"requests": map[string]any{
 				"memory": "1Gi",
 				"cpu":    "500m",
 			},

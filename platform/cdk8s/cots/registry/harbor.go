@@ -12,28 +12,71 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		Namespace: jsii.String(namespace),
 	})
 
-	values := map[string]interface{}{
-		"expose": map[string]interface{}{
+	// Create namespace
+	cdk8s.NewApiObject(chart, jsii.String("harbor-namespace"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("v1"),
+		Kind:       jsii.String("Namespace"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String(namespace),
+		},
+	})
+
+	// Create InfisicalSecret CRD
+	infisicalSpec := map[string]any{
+		"hostAPI":        "http://infisical-infisicalstandalone-backend.infisical.svc.cluster.local:4000",
+		"resyncInterval": 60,
+		"authentication": map[string]any{
+			"serviceToken": map[string]any{
+				"serviceTokenSecretReference": map[string]any{
+					"secretName":      "infisical-service-token",
+					"secretNamespace": "infisical",
+				},
+				"secretsScope": map[string]any{
+					"projectSlug": "homelab-prod",
+					"envSlug":     "prod",
+					"secretsPath": "/harbor",
+				},
+			},
+		},
+		"managedSecretReference": map[string]any{
+			"secretName":      "harbor-admin",
+			"secretNamespace": namespace,
+			"creationPolicy":  "Owner",
+		},
+	}
+
+	cdk8s.NewApiObject(chart, jsii.String("harbor-infisical-secret"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
+		Kind:       jsii.String("InfisicalSecret"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("harbor-secrets"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
+
+	values := map[string]any{
+		"expose": map[string]any{
 			"type": "ingress",
-			"ingress": map[string]interface{}{
-				"hosts": map[string]interface{}{
+			"ingress": map[string]any{
+				"hosts": map[string]any{
 					"core": "harbor.local",
 				},
 			},
 		},
 		"externalURL": "https://harbor.local",
-		"persistence": map[string]interface{}{
+		"persistence": map[string]any{
 			"enabled": true,
-			"persistentVolumeClaim": map[string]interface{}{
-				"registry": map[string]interface{}{
+			"persistentVolumeClaim": map[string]any{
+				"registry": map[string]any{
 					"size": "50Gi",
 				},
-				"database": map[string]interface{}{
+				"database": map[string]any{
 					"size": "10Gi",
 				},
 			},
 		},
-		"harborAdminPassword": "Harbor12345",
+		"harborAdminPassword": "",             // Not used when existingSecret is set
+		"existingSecret":      "harbor-admin", // Secret created by InfisicalSecret
 	}
 
 	harbor.NewHarbor(chart, jsii.String("harbor-release"), &harbor.HarborProps{

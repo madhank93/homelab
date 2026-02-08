@@ -1,0 +1,55 @@
+---
+# Let's Encrypt ClusterIssuer with DNS-01 Challenge
+# IMPORTANT: Create DNS provider API credentials secret first:
+# kubectl create secret generic cloudflare-api-token \
+#   --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN \
+#   -n cert-manager
+#
+# For other DNS providers, see: https://cert-manager.io/docs/configuration/acme/dns01/
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: madhankumaravelu93@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - dns01:
+          # TODO: Update this section based on your DNS provider
+          # Example shown for Cloudflare - adjust accordingly
+          cloudflare:
+            email: madhankumaravelu93@gmail.com
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - madhan.app
+
+---
+# Self-signed ClusterIssuer for internal/testing
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: homelab-ca
+spec:
+  selfSigned: {}
+
+---
+# Wildcard Certificate for *.madhan.app
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-madhan-app
+  namespace: kube-system  # Same namespace as Gateway
+spec:
+  secretName: wildcard-madhan-app-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - madhan.app
+    - "*.madhan.app"

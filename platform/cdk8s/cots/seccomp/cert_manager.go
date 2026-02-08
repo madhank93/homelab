@@ -12,9 +12,19 @@ func NewCertManagerChart(scope constructs.Construct, id string, namespace string
 		Namespace: jsii.String(namespace),
 	})
 
-	certmanager.NewCertmanager(chart, jsii.String("app-release"), &certmanager.CertmanagerProps{
+	// Install Cert-Manager via Helm
+	// Note: ClusterIssuers and Certificates should be created separately
+	// See: platform/cdk8s/manifests/cert-manager-issuers.yaml (to be created)
+	certmanager.NewCertmanager(chart, jsii.String("cert-manager"), &certmanager.CertmanagerProps{
+		ReleaseName: jsii.String("cert-manager"),
+		Namespace:   jsii.String(namespace),
 		Values: &certmanager.HelmValues{
 			InstallCrDs: jsii.Bool(true),
+			Global: &certmanager.HelmValuesGlobal{
+				LeaderElection: &certmanager.HelmValuesGlobalLeaderElection{
+					Namespace: jsii.String(namespace),
+				},
+			},
 		},
 	})
 

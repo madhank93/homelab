@@ -9,28 +9,70 @@ import (
 func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{})
 
-	values := map[string]interface{}{
+	// Create namespace
+	cdk8s.NewApiObject(chart, jsii.String("n8n-namespace"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("v1"),
+		Kind:       jsii.String("Namespace"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String(namespace),
+		},
+	})
+
+	// Create InfisicalSecret CRD
+	infisicalSpec := map[string]any{
+		"hostAPI":        "http://infisical-infisicalstandalone-backend.infisical.svc.cluster.local:4000",
+		"resyncInterval": 60,
+		"authentication": map[string]any{
+			"serviceToken": map[string]any{
+				"serviceTokenSecretReference": map[string]any{
+					"secretName":      "infisical-service-token",
+					"secretNamespace": "infisical",
+				},
+				"secretsScope": map[string]any{
+					"projectSlug": "homelab-prod",
+					"envSlug":     "prod",
+					"secretsPath": "/n8n",
+				},
+			},
+		},
+		"managedSecretReference": map[string]any{
+			"secretName":      "n8n-db",
+			"secretNamespace": namespace,
+			"creationPolicy":  "Owner",
+		},
+	}
+
+	cdk8s.NewApiObject(chart, jsii.String("n8n-infisical-secret"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
+		Kind:       jsii.String("InfisicalSecret"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("n8n-secrets"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
+
+	values := map[string]any{
 		// Main node configuration (UI and API)
-		"main": map[string]interface{}{
+		"main": map[string]any{
 			"count": 1,
-			"resources": map[string]interface{}{
-				"requests": map[string]interface{}{
+			"resources": map[string]any{
+				"requests": map[string]any{
 					"cpu":    "100m",
 					"memory": "256Mi",
 				},
-				"limits": map[string]interface{}{
+				"limits": map[string]any{
 					"cpu":    "500m",
 					"memory": "512Mi",
 				},
 			},
 			// Persistence for main node
-			"persistence": map[string]interface{}{
+			"persistence": map[string]any{
 				"enabled":    true,
 				"size":       "10Gi",
 				"mountPath":  "/home/node/.n8n",
 				"accessMode": "ReadWriteOnce",
 			},
-			"extraEnvVars": map[string]interface{}{
+			"extraEnvVars": map[string]any{
 				"N8N_HOST": "n8n.local",
 				"N8N_PORT": "5678",
 			},
@@ -38,20 +80,20 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 
 		// Service configuration
-		"service": map[string]interface{}{
+		"service": map[string]any{
 			"enabled": true,
 			"type":    "ClusterIP",
 			"port":    5678,
 		},
 
 		// Ingress configuration
-		"ingress": map[string]interface{}{
+		"ingress": map[string]any{
 			"enabled":   true,
 			"className": "nginx",
-			"hosts": []map[string]interface{}{
+			"hosts": []map[string]any{
 				{
 					"host": "n8n.local",
-					"paths": []map[string]interface{}{
+					"paths": []map[string]any{
 						{
 							"path":     "/",
 							"pathType": "Prefix",
@@ -62,20 +104,24 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 
 		// Database configuration - PostgreSQL for production
-		"db": map[string]interface{}{
+		"db": map[string]any{
 			"type": "postgresdb",
 		},
 
 		// Built-in PostgreSQL using Bitnami chart
-		"postgresql": map[string]interface{}{
+		"postgresql": map[string]any{
 			"enabled": true,
-			"auth": map[string]interface{}{
-				"database": "n8n",
-				"username": "n8n",
-				"password": "n8n123", // Use proper secret in production
+			"auth": map[string]any{
+				"database":       "n8n",
+				"username":       "n8n",
+				"existingSecret": "n8n-db", // Secret created by InfisicalSecret
+				"secretKeys": map[string]any{ // Key mapping
+					"adminPasswordKey": "DB_PASSWORD",
+					"userPasswordKey":  "DB_PASSWORD",
+				},
 			},
-			"primary": map[string]interface{}{
-				"persistence": map[string]interface{}{
+			"primary": map[string]any{
+				"persistence": map[string]any{
 					"enabled": true,
 					"size":    "10Gi",
 				},
@@ -83,16 +129,16 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 
 		// Image configuration
-		"image": map[string]interface{}{
+		"image": map[string]any{
 			"repository": "n8nio/n8n",
 			"tag":        "latest",
 			"pullPolicy": "IfNotPresent",
 		},
 
 		// Security context
-		"securityContext": map[string]interface{}{
+		"securityContext": map[string]any{
 			"allowPrivilegeEscalation": false,
-			"capabilities": map[string]interface{}{
+			"capabilities": map[string]any{
 				"drop": []string{"ALL"},
 			},
 			"readOnlyRootFilesystem": false,
@@ -101,13 +147,13 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 			"runAsGroup":             1000,
 		},
 
-		"podSecurityContext": map[string]interface{}{
+		"podSecurityContext": map[string]any{
 			"fsGroup":             1000,
 			"fsGroupChangePolicy": "OnRootMismatch",
 		},
 
 		// Service account
-		"serviceAccount": map[string]interface{}{
+		"serviceAccount": map[string]any{
 			"create": true,
 			"name":   "",
 		},

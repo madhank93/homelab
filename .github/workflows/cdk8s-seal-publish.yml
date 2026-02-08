@@ -1,0 +1,132 @@
+name: CDK8s Seal and Publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'platform/cdk8s/**'
+  workflow_dispatch:
+
+env:
+  KUBESEAL_VERSION: '0.27.1'
+  KUBECTL_VERSION: '1.31.0'
+
+jobs:
+  seal-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/homelab-gitops
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: source/platform/cdk8s/go.sum
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Install kubeseal
+        run: |
+          curl -LO "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz"
+          tar -xzf kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz
+          chmod +x kubeseal
+          sudo mv kubeseal /usr/local/bin/
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Install CDK8s CLI
+        run: npm install -g cdk8s-cli
+
+      - name: Set Infisical DB password
+        run: |
+          # Only secret in GitHub - used for Infisical PostgreSQL bootstrap
+          echo "INFISICAL_DB_PASSWORD=${{ secrets.INFISICAL_DB_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: Synthesize CDK8s manifests
+        working-directory: source/platform/cdk8s
+        run: |
+          go mod download
+          go run main.go
+          # Output is in ../../app (relative to platform/cdk8s)
+          ls -la ../../app/
+
+      - name: Seal secrets (Bash approach)
+        working-directory: source/platform/cdk8s
+        run: |
+          chmod +x scripts/seal-secrets.sh
+          # Use ../../app as the CDK8s output directory
+          ./scripts/seal-secrets.sh ../../app ./sealed
+
+      - name: Copy non-Secret manifests to publish
+        working-directory: source/platform/cdk8s
+        run: |
+          mkdir -p publish
+          # Copy all manifests except Secrets from ../../app
+          find ../../app -type f \( -name "*.yaml" -o -name "*.yml" \) | while read -r file; do
+            # Check if file contains any Secret resources
+            if ! yq eval 'select(.kind == "Secret")' "$file" > /dev/null 2>&1; then
+              # No secrets, copy as-is
+              rel_path="${file#../../app/}"
+              mkdir -p "publish/$(dirname "$rel_path")"
+              cp "$file" "publish/$rel_path"
+            else
+              # Has secrets, extract non-Secret resources
+              rel_path="${file#../../app/}"
+              mkdir -p "publish/$(dirname "$rel_path")"
+              yq eval-all 'select(.kind != "Secret")' "$file" > "publish/$rel_path" || true
+            fi
+          done
+          
+          # Copy all SealedSecrets
+          cp -r sealed/* publish/ 2>/dev/null || true
+
+      - name: Commit and push to GitOps repo
+        working-directory: gitops
+        run: |
+          # Clear existing manifests
+          rm -rf manifests/*
+          
+          # Copy new manifests
+          mkdir -p manifests
+          cp -r ../source/platform/cdk8s/publish/* manifests/
+          
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Commit changes
+          git add manifests/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update manifests from CDK8s synth (${GITHUB_SHA::7})"
+            git push
+          fi
+
+      - name: Cleanup (ensure no plaintext secrets)
+        if: always()
+        run: |
+          rm -rf source/app
+          rm -rf source/platform/cdk8s/sealed
+          rm -rf source/platform/cdk8s/publish

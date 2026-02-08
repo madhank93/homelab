@@ -1,0 +1,18 @@
+# CDK8s output directories - NEVER commit these
+# Note: app/ is at repo root (../../app from platform/cdk8s/)
+sealed/
+publish/
+
+# Temporary files
+tmp/
+*.tmp
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -97,8 +97,8 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error
 		Metadata: &metav1.ObjectMetaArgs{
 			Name: pulumi.String("cilium"),
 		},
-		OtherFields: map[string]interface{}{
-			"spec": map[string]interface{}{
+		OtherFields: map[string]any{
+			"spec": map[string]any{
 				"controllerName": "io.cilium/gateway-controller",
 			},
 		},
@@ -115,16 +115,16 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error
 			Name:      pulumi.String("homelab-gateway"),
 			Namespace: pulumi.String("kube-system"),
 		},
-		OtherFields: map[string]interface{}{
-			"spec": map[string]interface{}{
+		OtherFields: map[string]any{
+			"spec": map[string]any{
 				"gatewayClassName": "cilium",
-				"listeners": []map[string]interface{}{
+				"listeners": []map[string]any{
 					{
 						"name":     "http",
 						"protocol": "HTTP",
 						"port":     80,
-						"allowedRoutes": map[string]interface{}{
-							"namespaces": map[string]interface{}{
+						"allowedRoutes": map[string]any{
+							"namespaces": map[string]any{
 								"from": "All",
 							},
 						},
@@ -134,12 +134,12 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error
 						"protocol": "TLS", // Must be TLS for Passthrough mode
 						"port":     443,
 						"hostname": "*.madhan.app", // Match any subddomain
-						"tls": map[string]interface{}{
+						"tls": map[string]any{
 							"mode": "Passthrough", // Let ArgoCD handle TLS, or "Terminate" if we had certs
 							// using Passthrough for now to keep it simple with self-signed upstream
 						},
 						"allowedRoutes": map[string]any{
-							"namespaces": map[string]interface{}{
+							"namespaces": map[string]any{
 								"from": "All",
 							},
 						},
@@ -156,14 +156,14 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error
 func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, nodeIP pulumi.StringInput, interfaceName string) error {
 
 	// Calculate the Blocks (CIDRs) as an Output
-	blocks := nodeIP.ToStringOutput().ApplyT(func(ip string) ([]interface{}, error) {
+	blocks := nodeIP.ToStringOutput().ApplyT(func(ip string) ([]any, error) {
 		parts := strings.Split(ip, ".")
 		if len(parts) != 4 {
 			return nil, fmt.Errorf("invalid IPv4 address: %s", ip)
 		}
 		subnet := strings.Join(parts[:3], ".") // "192.168.1"
 
-		var b []interface{}
+		var b []any
 		for i := 220; i <= 230; i++ {
 			b = append(b, map[string]string{
 				"cidr": fmt.Sprintf("%s.%d/32", subnet, i),

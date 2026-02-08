@@ -15,21 +15,21 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		Chart:       jsii.String("headlamp"),
 		Repo:        jsii.String("https://kubernetes-sigs.github.io/headlamp/"),
 		ReleaseName: jsii.String("headlamp"),
-		Values: &map[string]interface{}{
-			"ingress": map[string]interface{}{
+		Values: &map[string]any{
+			"ingress": map[string]any{
 				"enabled": true,
-				"hosts": []map[string]interface{}{
+				"hosts": []map[string]any{
 					{
 						"host": "headlamp.madhan.app",
-						"paths": []map[string]interface{}{
+						"paths": []map[string]any{
 							{"path": "/", "type": "ImplementationSpecific"},
 						},
 					},
 				},
-				"tls": []map[string]interface{}{
+				"tls": []map[string]any{
 					{
 						"secretName": "headlamp-tls",
-						"hosts":      []interface{}{"headlamp.madhan.app"},
+						"hosts":      []any{"headlamp.madhan.app"},
 					},
 				},
 			},

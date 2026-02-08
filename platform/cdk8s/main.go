@@ -16,95 +16,7 @@ import (
 func main() {
 	rootFolder := "../../app"
 
-	// Cert-Manager
-	certMgrApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/cert-manager", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	seccomp.NewCertManagerChart(certMgrApp, "cert-manager-app", "cert-manager")
-	certMgrApp.Synth()
-
-	// NVIDIA GPU Operator
-	nvidiaGpuOperatorApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/nvidia-gpu-operator", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	ai.NewNvidiaGpuOperatorChart(nvidiaGpuOperatorApp, "nvidia-gpu-operator", "nvidia-gpu-operator")
-	nvidiaGpuOperatorApp.Synth()
-
-	// Grafana
-	grafanaApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/grafana", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	monitoring.NewGrafanaChart(grafanaApp, "grafana-app", "grafana")
-	grafanaApp.Synth()
-
-	// Harbor
-	harborApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/harbor", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	registry.NewHarborChart(harborApp, "harbor-app", "harbor")
-	harborApp.Synth()
-
-	// Ollama
-	ollamaApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/ollama", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	ai.NewOllamaChart(ollamaApp, "ollama-app", "ollama")
-	ollamaApp.Synth()
-
-	// Victoria Metrics
-	victoriaMetricsApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/victoria-metrics", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	monitoring.NewVictoriaMetricsChart(victoriaMetricsApp, "victoria-metrics-app", "victoria-metrics")
-	victoriaMetricsApp.Synth()
-
-	// Victoria Logs
-	victoriaLogsApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/victoria-logs", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	monitoring.NewVictoriaLogsChart(victoriaLogsApp, "victoria-logs-app", "victoria-logs")
-	victoriaLogsApp.Synth()
-
-	// Alert Manager
-	alertManagerApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/alertmanager", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	monitoring.NewAlertManagerChart(alertManagerApp, "alertmanager-app", "alertmanager")
-	alertManagerApp.Synth()
-
-	// N8N
-	n8nApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/n8n", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	automation.NewN8nChart(n8nApp, "n8n-app", "n8n")
-	n8nApp.Synth()
-
-	// Trivy
-	trivyApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/trivy", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	seccomp.NewTrivyChart(trivyApp, "trivy-app", "trivy")
-	trivyApp.Synth()
-
-	// Infisical
-	infisicalApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/infisical", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	seccomp.NewInfisicalChart(infisicalApp, "infisical-app", "infisical")
-	infisicalApp.Synth()
-
-	// Sealed Secrets (Seccomp)
+	// 1. Sealed Secrets Controller
 	sealedSecretsApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/sealed-secrets", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
@@ -112,7 +24,90 @@ func main() {
 	seccomp.NewSealedSecretsChart(sealedSecretsApp, "sealed-secrets", "kube-system")
 	sealedSecretsApp.Synth()
 
-	// Headlamp
+	// 2. Cert-Manager
+	certMgrApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/cert-manager", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	seccomp.NewCertManagerChart(certMgrApp, "cert-manager-app", "cert-manager")
+	certMgrApp.Synth()
+
+	// 3. Infisical (includes namespace, backend, frontend, operator, service token)
+	infisicalApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/infisical", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	seccomp.NewInfisicalChart(infisicalApp, "infisical-app", "infisical")
+	infisicalApp.Synth()
+	// Monitoring Stack
+	grafanaApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/grafana", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	monitoring.NewGrafanaChart(grafanaApp, "grafana-app", "grafana")
+	grafanaApp.Synth()
+
+	victoriaMetricsApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/victoria-metrics", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	monitoring.NewVictoriaMetricsChart(victoriaMetricsApp, "victoria-metrics-app", "victoria-metrics")
+	victoriaMetricsApp.Synth()
+
+	victoriaLogsApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/victoria-logs", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	monitoring.NewVictoriaLogsChart(victoriaLogsApp, "victoria-logs-app", "victoria-logs")
+	victoriaLogsApp.Synth()
+
+	alertManagerApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/alertmanager", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	monitoring.NewAlertManagerChart(alertManagerApp, "alertmanager-app", "alertmanager")
+	alertManagerApp.Synth()
+
+	// Container Registry
+	harborApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/harbor", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	registry.NewHarborChart(harborApp, "harbor-app", "harbor")
+	harborApp.Synth()
+
+	// Automation
+	n8nApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/n8n", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	automation.NewN8nChart(n8nApp, "n8n-app", "n8n")
+	n8nApp.Synth()
+
+	// AI/ML
+	nvidiaGpuOperatorApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/nvidia-gpu-operator", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	ai.NewNvidiaGpuOperatorChart(nvidiaGpuOperatorApp, "nvidia-gpu-operator", "nvidia-gpu-operator")
+	nvidiaGpuOperatorApp.Synth()
+
+	ollamaApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/ollama", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	ai.NewOllamaChart(ollamaApp, "ollama-app", "ollama")
+	ollamaApp.Synth()
+
+	// Security & Compliance
+	trivyApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/trivy", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	seccomp.NewTrivyChart(trivyApp, "trivy-app", "trivy")
+	trivyApp.Synth()
+
+	// Management Tools
 	headlampApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/headlamp", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
@@ -120,7 +115,6 @@ func main() {
 	management.NewHeadlampChart(headlampApp, "headlamp-app", "headlamp")
 	headlampApp.Synth()
 
-	// Fleet
 	fleetApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/fleet", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,

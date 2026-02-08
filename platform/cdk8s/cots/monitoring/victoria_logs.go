@@ -12,19 +12,19 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 		Namespace: jsii.String(namespace),
 	})
 
-	values := map[string]interface{}{
-		"server": map[string]interface{}{
+	values := map[string]any{
+		"server": map[string]any{
 			"enabled": true,
-			"persistentVolume": map[string]interface{}{
+			"persistentVolume": map[string]any{
 				"enabled": true,
 				"size":    "100Gi",
 			},
 			"retention": "30d",
 		},
-		"fluent-bit": map[string]interface{}{
+		"fluent-bit": map[string]any{
 			"enabled": true,
 		},
-		"service": map[string]interface{}{
+		"service": map[string]any{
 			"type": "ClusterIP",
 			"port": 9428,
 		},
