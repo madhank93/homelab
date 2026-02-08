@@ -27,7 +27,7 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	cdk8s.NewHelm(chart, jsii.String("gpu-operator-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("gpu-operator"),
 		Repo:        jsii.String("https://helm.ngc.nvidia.com/nvidia"),
-		Version:     jsii.String("v24.9.1"),
+		Version:     jsii.String("v25.10.1"),
 		ReleaseName: jsii.String("gpu-operator"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

@@ -23,7 +23,7 @@ func NewCertManagerChart(scope constructs.Construct, id string, namespace string
 	cdk8s.NewHelm(chart, jsii.String("cert-manager"), &cdk8s.HelmProps{
 		Chart:       jsii.String("cert-manager"),
 		Repo:        jsii.String("https://charts.jetstack.io"),
-		Version:     jsii.String("v1.16.2"),
+		Version:     jsii.String("v1.19.3"),
 		ReleaseName: jsii.String("cert-manager"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

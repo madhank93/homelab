@@ -24,7 +24,7 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 	cdk8s.NewHelm(chart, jsii.String("longhorn-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("longhorn"),
 		Repo:        jsii.String("https://charts.longhorn.io"),
-		Version:     jsii.String("1.7.2"),
+		Version:     jsii.String("1.11.0"),
 		ReleaseName: jsii.String("longhorn"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

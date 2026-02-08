@@ -81,7 +81,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 	cdk8s.NewHelm(chart, jsii.String("harbor-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("harbor"),
 		Repo:        jsii.String("https://helm.goharbor.io"),
-		Version:     jsii.String("1.16.1"),
+		Version:     jsii.String("1.18.2"),
 		ReleaseName: jsii.String("harbor"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

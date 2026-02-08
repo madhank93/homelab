@@ -126,7 +126,7 @@ func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cd
 	cdk8s.NewHelm(chart, jsii.String("kyverno-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("kyverno"),
 		Repo:        jsii.String("https://kyverno.github.io/kyverno"),
-		Version:     jsii.String("3.3.6"),
+		Version:     jsii.String("3.7.0"),
 		ReleaseName: jsii.String("kyverno"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

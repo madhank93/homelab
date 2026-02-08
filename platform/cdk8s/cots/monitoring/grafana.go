@@ -76,7 +76,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 	cdk8s.NewHelm(chart, jsii.String("grafana-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("grafana"),
 		Repo:        jsii.String("https://grafana.github.io/helm-charts"),
-		Version:     jsii.String("8.8.2"),
+		Version:     jsii.String("10.5.15"),
 		ReleaseName: jsii.String("grafana"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

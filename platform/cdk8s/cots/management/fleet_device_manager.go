@@ -41,7 +41,7 @@ func NewFleetChart(scope constructs.Construct, id string, namespace string) cdk8
 	cdk8s.NewHelm(chart, jsii.String("fleet-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("fleet"),
 		Repo:        jsii.String("https://rancher.github.io/fleet-helm-charts"),
-		Version:     jsii.String("0.11.0"),
+		Version:     jsii.String("0.14.2"),
 		ReleaseName: jsii.String("fleet"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

@@ -41,7 +41,7 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 	cdk8s.NewHelm(chart, jsii.String("trivy-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("trivy-operator"),
 		Repo:        jsii.String("https://aquasecurity.github.io/helm-charts"),
-		Version:     jsii.String("0.26.0"),
+		Version:     jsii.String("0.31.0"),
 		ReleaseName: jsii.String("trivy-operator"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
