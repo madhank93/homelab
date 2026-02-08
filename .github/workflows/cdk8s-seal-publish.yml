@@ -51,6 +51,10 @@ jobs:
       - name: Install CDK8s CLI
         run: npm install -g cdk8s-cli
 
+      - name: Generate CDK8s imports
+        working-directory: platform/cdk8s
+        run: cdk8s import
+
       - name: Synthesize CDK8s manifests
         working-directory: platform/cdk8s
         env:
