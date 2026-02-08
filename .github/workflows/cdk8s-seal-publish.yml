@@ -58,13 +58,10 @@ jobs:
       - name: Install CDK8s CLI
         run: npm install -g cdk8s-cli
 
-      - name: Set Infisical DB password
-        run: |
-          # Only secret in GitHub - used for Infisical PostgreSQL bootstrap
-          echo "INFISICAL_DB_PASSWORD=${{ secrets.INFISICAL_DB_PASSWORD }}" >> $GITHUB_ENV
-
       - name: Synthesize CDK8s manifests
         working-directory: source/platform/cdk8s
+        env:
+          INFISICAL_DB_PASSWORD: ${{ secrets.INFISICAL_DB_PASSWORD }}
         run: |
           go mod download
           go run main.go
