@@ -72,8 +72,9 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			},
 			"primary": map[string]any{
 				"persistence": map[string]any{
-					"enabled": true,
-					"size":    "10Gi",
+					"enabled":      true,
+					"size":         "10Gi",
+					"storageClass": "longhorn",
 				},
 			},
 		},
@@ -84,8 +85,9 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			},
 			"master": map[string]any{
 				"persistence": map[string]any{
-					"enabled": true,
-					"size":    "8Gi",
+					"enabled":      true,
+					"size":         "8Gi",
+					"storageClass": "longhorn",
 				},
 			},
 		},
