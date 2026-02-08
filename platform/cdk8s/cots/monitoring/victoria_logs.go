@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/victorialogssingle"
 )
 
 func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -30,8 +29,12 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 		},
 	}
 
-	victorialogssingle.NewVictorialogssingle(chart, jsii.String("victoria-logs-release"), &victorialogssingle.VictorialogssingleProps{
+	cdk8s.NewHelm(chart, jsii.String("victoria-logs-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("victoria-logs-single"),
+		Repo:        jsii.String("https://victoriametrics.github.io/helm-charts"),
+		Version:     jsii.String("0.7.5"),
 		ReleaseName: jsii.String("victoria-logs"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 

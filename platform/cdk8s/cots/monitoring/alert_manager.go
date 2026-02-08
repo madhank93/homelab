@@ -4,7 +4,6 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/cdk8s/imports/kubeprometheusstack"
 )
 
 func NewAlertManagerChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -66,9 +65,12 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 		},
 	}
 
-	// Use the actual constructor function name from your generated code
-	kubeprometheusstack.NewKubeprometheusstack(chart, jsii.String("alertmanager-only"), &kubeprometheusstack.KubeprometheusstackProps{
+	cdk8s.NewHelm(chart, jsii.String("alertmanager-only"), &cdk8s.HelmProps{
+		Chart:       jsii.String("kube-prometheus-stack"),
+		Repo:        jsii.String("https://prometheus-community.github.io/helm-charts"),
+		Version:     jsii.String("67.6.1"),
 		ReleaseName: jsii.String("alertmanager"),
+		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 
