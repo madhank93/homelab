@@ -68,7 +68,7 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 	cdk8s.NewHelm(chart, jsii.String("alertmanager-only"), &cdk8s.HelmProps{
 		Chart:       jsii.String("kube-prometheus-stack"),
 		Repo:        jsii.String("https://prometheus-community.github.io/helm-charts"),
-		Version:     jsii.String("67.6.1"),
+		Version:     jsii.String("69.2.0"),
 		ReleaseName: jsii.String("alertmanager"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
