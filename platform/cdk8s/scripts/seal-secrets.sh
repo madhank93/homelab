@@ -29,42 +29,46 @@ find "${DIST_DIR}" -type f \( -name "*.yaml" -o -name "*.yml" \) | while read -r
     
     # Check if any secrets were found
     if [ -s "${TMP_DIR}/secrets.yaml" ]; then
-        # Process each secret document
-        yq eval-all --split-exp '.metadata.name' "${TMP_DIR}/secrets.yaml" "${TMP_DIR}/secret-"
+        # Count number of secrets
+        secret_count=$(yq eval-all '. | length' "${TMP_DIR}/secrets.yaml")
         
-        # Seal each extracted secret
-        for secret_file in "${TMP_DIR}"/secret-*.yml; do
-            if [ -f "${secret_file}" ]; then
-                secret_name=$(yq eval '.metadata.name' "${secret_file}")
-                secret_namespace=$(yq eval '.metadata.namespace // "default"' "${secret_file}")
-                
-                # Skip if secret name is null or empty
-                if [ -z "${secret_name}" ] || [ "${secret_name}" = "null" ]; then
-                    echo "⚠️  Skipping secret with empty/null name"
-                    continue
-                fi
-                
-                echo "🔐 Sealing Secret: ${secret_namespace}/${secret_name}"
-                
-                # Seal the secret using kubeseal with local cert
-                # Cert file should be at platform/cdk8s/sealed-secrets-cert.pem
-                CERT_FILE="$(dirname "$0")/../sealed-secrets-cert.pem"
-                
-                if [ ! -f "${CERT_FILE}" ]; then
-                    echo "❌ ERROR: Certificate file not found: ${CERT_FILE}"
-                    echo "Please fetch it from your cluster:"
-                    echo "  kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=kube-system > ${CERT_FILE}"
-                    exit 1
-                fi
-                
-                kubeseal \
-                    --cert="${CERT_FILE}" \
-                    --format=yaml \
-                    < "${secret_file}" \
-                    > "${SEALED_DIR}/sealed-${secret_namespace}-${secret_name}.yaml"
-                
-                echo "✅ Created: ${SEALED_DIR}/sealed-${secret_namespace}-${secret_name}.yaml"
+        # Process each secret by index
+        for ((i=0; i<secret_count; i++)); do
+            # Extract individual secret
+            yq eval-all "select(. | di == $i)" "${TMP_DIR}/secrets.yaml" > "${TMP_DIR}/secret-${i}.yaml"
+            
+            secret_name=$(yq eval '.metadata.name' "${TMP_DIR}/secret-${i}.yaml")
+            secret_namespace=$(yq eval '.metadata.namespace // "default"' "${TMP_DIR}/secret-${i}.yaml")
+            
+            # Skip if secret name is null or empty
+            if [ -z "${secret_name}" ] || [ "${secret_name}" = "null" ]; then
+                echo "⚠️  Skipping secret with empty/null name in ${manifest_file}"
+                rm -f "${TMP_DIR}/secret-${i}.yaml"
+                continue
             fi
+            
+            echo "🔐 Sealing Secret: ${secret_namespace}/${secret_name}"
+            
+            # Seal the secret using kubeseal with local cert
+            CERT_FILE="$(dirname "$0")/../sealed-secrets-cert.pem"
+            
+            if [ ! -f "${CERT_FILE}" ]; then
+                echo "❌ ERROR: Certificate file not found: ${CERT_FILE}"
+                echo "Please fetch it from your cluster:"
+                echo "  kubeseal --fetch-cert --controller-name=sealed-secrets-controller --controller-namespace=kube-system > ${CERT_FILE}"
+                exit 1
+            fi
+            
+            kubeseal \
+                --cert="${CERT_FILE}" \
+                --format=yaml \
+                < "${TMP_DIR}/secret-${i}.yaml" \
+                > "${SEALED_DIR}/sealed-${secret_namespace}-${secret_name}.yaml"
+            
+            echo "✅ Created: ${SEALED_DIR}/sealed-${secret_namespace}-${secret_name}.yaml"
+            
+            # Clean up this secret file
+            rm -f "${TMP_DIR}/secret-${i}.yaml"
         done
     fi
     
