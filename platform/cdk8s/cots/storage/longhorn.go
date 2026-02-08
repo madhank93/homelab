@@ -11,12 +11,17 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		Namespace: jsii.String(namespace),
 	})
 
-	// Create namespace first
+	// Create namespace first with PSA labels for privileged workloads
 	cdk8s.NewApiObject(chart, jsii.String("longhorn-namespace"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("v1"),
 		Kind:       jsii.String("Namespace"),
 		Metadata: &cdk8s.ApiObjectMetadata{
 			Name: jsii.String(namespace),
+			Labels: &map[string]*string{
+				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
+				"pod-security.kubernetes.io/audit":   jsii.String("privileged"),
+				"pod-security.kubernetes.io/warn":    jsii.String("privileged"),
+			},
 		},
 	})
 
@@ -29,6 +34,10 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		"persistence": map[string]any{
 			"defaultClass":             true,
 			"defaultClassReplicaCount": 3,
+		},
+		// Disable pre-upgrade hook for initial installation (ArgoCD/GitOps best practice)
+		"preUpgradeChecker": map[string]any{
+			"jobEnabled": false,
 		},
 		// Talos-specific: Deploy only on worker nodes
 		"longhornManager": map[string]any{
