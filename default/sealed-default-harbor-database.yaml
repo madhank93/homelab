@@ -1,0 +1,26 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: harbor-database
+  namespace: default
+spec:
+  encryptedData:
+    POSTGRES_PASSWORD: AgABGE65/Z0aLQLdIxX+9snAJYPj9V/kYt8PxsX/lIHsg0+QlVEYclkucB8bC4I4zPXHMRlwA44Rj49mC5h+CuWcPVlfCZpYLD/7bGeDkJ9deu5f7SGtJEp+NDjtKmAttnDdbo3v4k9mBOb9z87jsuQrugcRO8ESbWWb8ajYt5WP63M4KzoniAR2Mxqwu+P4ibPDENU3m/cV5TRGgQVzAiXQartY+rKU76RnUFubdZh97bXgdLpi+m5jnfORUjCGNUWvl/EzZ7qxSfrBPGaOB/NLMVnyHDEmFcGmK5+2peNxQNFuUYwo8DZvtj2BNmyx8KrTBIFqIFFe7zFw7fj4e+wSl+U8FOFpF/k/Ze7+XeVDLqnj9UUgNWKP6Piz0B49UExuub1NYpZA1oz0Ttw1LncMRCied7JdfbFonWCGz/52Gk/o3mKicjxhHjqGemqkG6g/mJnC5RvWf/WmpNTnGCZhWDxhZ8DQSxWvfwccFWexVEQ7qfM33/tQdEol45sFFtrrQ47XX/Ml5oS4qrB+KhKzYzdGyQ2dBjHAjWx9rE/Y3jNTSDqboYjHudewpMHBFHbmvKPP2OHu9fCfhkS04ummxu8uGTaChhd/N1i1LzScrHs8I9frsAkj6jJ1rrLeFU6/l3xFV638zLTkwPX+a2L1KvHUmrrX7eopTIQCtqGvXRof437QrOAtapqBCI0Dojy+DNFNL4IEqA==
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: harbor
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.14.2
+        chart: harbor
+        heritage: Helm
+        release: harbor
+      name: harbor-database
+      namespace: default
+    type: Opaque
