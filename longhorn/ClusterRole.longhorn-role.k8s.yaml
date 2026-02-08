@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: longhorn
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: longhorn
-    app.kubernetes.io/version: v1.11.0
-    helm.sh/chart: longhorn-1.11.0
+    app.kubernetes.io/version: v1.7.2
+    helm.sh/chart: longhorn-1.7.2
   name: longhorn-role
   namespace: longhorn-system
 rules:
@@ -20,33 +20,18 @@ rules:
       - ""
     resources:
       - pods
-    verbs:
-      - get
-      - list
-      - watch
-      - delete
-      - deletecollection
-  - apiGroups:
-      - ""
-    resources:
-      - secrets
-      - services
-      - endpoints
-      - configmaps
-      - serviceaccounts
-      - pods/log
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
       - events
       - persistentvolumes
       - persistentvolumeclaims
       - persistentvolumeclaims/status
       - nodes
+      - proxy/nodes
+      - pods/log
+      - secrets
+      - services
+      - endpoints
+      - configmaps
+      - serviceaccounts
     verbs:
       - "*"
   - apiGroups:
@@ -62,28 +47,22 @@ rules:
       - daemonsets
       - statefulsets
       - deployments
-      - replicasets
     verbs:
-      - get
-      - list
-      - watch
+      - "*"
   - apiGroups:
       - batch
     resources:
       - jobs
       - cronjobs
     verbs:
-      - get
-      - list
-      - watch
+      - "*"
   - apiGroups:
       - policy
     resources:
       - poddisruptionbudgets
+      - podsecuritypolicies
     verbs:
-      - get
-      - list
-      - watch
+      - "*"
   - apiGroups:
       - scheduling.k8s.io
     resources:
@@ -99,7 +78,6 @@ rules:
       - volumeattachments/status
       - csinodes
       - csidrivers
-      - csistoragecapacities
     verbs:
       - "*"
   - apiGroups:
@@ -165,9 +143,7 @@ rules:
     resources:
       - leases
     verbs:
-      - get
-      - list
-      - watch
+      - "*"
   - apiGroups:
       - metrics.k8s.io
     resources:
@@ -199,21 +175,6 @@ rules:
     resources:
       - roles
       - rolebindings
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - discovery.k8s.io
-    resources:
-      - endpointslices
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - rbac.authorization.k8s.io
-    resources:
       - clusterrolebindings
       - clusterroles
     verbs:
