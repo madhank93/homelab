@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/version: 1.1.0
     helm.sh/chart: ingress-nginx-4.0.13
   name: infisical-ingress-nginx-admission
-  namespace: default
+  namespace: infisical
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -20,4 +20,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: infisical-ingress-nginx-admission
-    namespace: default
+    namespace: infisical

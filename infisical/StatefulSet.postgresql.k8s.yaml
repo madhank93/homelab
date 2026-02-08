@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/version: 16.2.0
     helm.sh/chart: postgresql-14.1.10
   name: postgresql
-  namespace: default
+  namespace: infisical
 spec:
   replicas: 1
   selector:

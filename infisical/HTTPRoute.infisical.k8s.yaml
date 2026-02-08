@@ -11,8 +11,8 @@ spec:
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: infisical-infisicalstandalone-frontend
-          port: 3000
+        - name: infisical-infisical-standalone-infisical
+          port: 80
       matches:
         - path:
             type: PathPrefix

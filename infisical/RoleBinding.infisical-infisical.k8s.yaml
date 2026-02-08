@@ -8,7 +8,7 @@ metadata:
     heritage: Helm
     release: infisical
   name: infisical-infisical
-  namespace: default
+  namespace: infisical
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -16,4 +16,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: infisical-infisical
-    namespace: default
+    namespace: infisical

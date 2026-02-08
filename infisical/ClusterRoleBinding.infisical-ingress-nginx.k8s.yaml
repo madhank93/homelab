@@ -16,4 +16,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: infisical-ingress-nginx
-    namespace: default
+    namespace: infisical

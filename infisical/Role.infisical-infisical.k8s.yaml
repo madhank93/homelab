@@ -8,7 +8,7 @@ metadata:
     heritage: Helm
     release: infisical
   name: infisical-infisical
-  namespace: default
+  namespace: infisical
 rules:
   - apiGroups:
       - batch

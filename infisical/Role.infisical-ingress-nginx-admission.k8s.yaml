@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/version: 1.1.0
     helm.sh/chart: ingress-nginx-4.0.13
   name: infisical-ingress-nginx-admission
-  namespace: default
+  namespace: infisical
 rules:
   - apiGroups:
       - ""

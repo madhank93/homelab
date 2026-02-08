@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/version: 7.2.4
     helm.sh/chart: redis-18.14.1
   name: redis-scripts
-  namespace: default
+  namespace: infisical
 data:
   start-master.sh: |
     #!/bin/bash

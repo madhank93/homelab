@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/version: 7.2.4
     helm.sh/chart: redis-18.14.1
   name: redis-health
-  namespace: default
+  namespace: infisical
 data:
   ping_liveness_local.sh: |-
     #!/bin/bash

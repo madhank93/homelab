@@ -16,7 +16,7 @@ webhooks:
     clientConfig:
       service:
         name: infisical-ingress-nginx-controller-admission
-        namespace: default
+        namespace: infisical
         path: /networking/v1/ingresses
     failurePolicy: Fail
     matchPolicy: Equivalent

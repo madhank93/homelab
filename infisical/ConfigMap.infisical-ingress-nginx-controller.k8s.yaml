@@ -9,6 +9,6 @@ metadata:
     app.kubernetes.io/version: 1.1.0
     helm.sh/chart: ingress-nginx-4.0.13
   name: infisical-ingress-nginx-controller
-  namespace: default
+  namespace: infisical
 data:
   allow-snippet-annotations: "true"
