@@ -7,6 +7,7 @@ metadata:
     heritage: Helm
     release: n8n
   name: n8n-database-configmap
+  namespace: n8n
 data:
   DB_POSTGRESDB_CONNECTION_TIMEOUT: "20000"
   DB_POSTGRESDB_DATABASE: n8n

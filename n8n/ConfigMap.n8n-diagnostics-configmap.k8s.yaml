@@ -7,6 +7,7 @@ metadata:
     heritage: Helm
     release: n8n
   name: n8n-diagnostics-configmap
+  namespace: n8n
 data:
   N8N_DIAGNOSTICS_CONFIG_BACKEND: ""
   N8N_DIAGNOSTICS_CONFIG_FRONTEND: ""
