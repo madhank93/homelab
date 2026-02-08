@@ -22,7 +22,6 @@ spec:
       annotations:
         checksum/config: a32f53c5fa75a8f45fd0a66631d9824b616b53f3b8c012553ad8c81993edaf8d
         checksum/sc-dashboard-provider-config: e70bf6a851099d385178a76de9757bb0bef8299da6d8443602590e44f05fdf24
-        checksum/secret: 255dcce8b67f5c37243e6ea276cff641014c46a38d3b0f5e8dfcd0452562869e
         kubectl.kubernetes.io/default-container: grafana
       labels:
         app.kubernetes.io/instance: grafana
@@ -41,12 +40,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   key: admin-user
-                  name: grafana
+                  name: grafana-admin
             - name: GF_SECURITY_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: admin-password
-                  name: grafana
+                  key: ADMIN_PASSWORD
+                  name: grafana-admin
             - name: GF_PATHS_DATA
               value: /var/lib/grafana/
             - name: GF_PATHS_LOGS

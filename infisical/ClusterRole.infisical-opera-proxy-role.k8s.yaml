@@ -1,0 +1,27 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/component: kube-rbac-proxy
+    app.kubernetes.io/created-by: k8-operator
+    app.kubernetes.io/instance: infisical-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/part-of: k8-operator
+    app.kubernetes.io/version: v0.8.1
+    helm.sh/chart: secrets-operator-v0.8.1
+  name: infisical-opera-proxy-role
+  namespace: infisical
+rules:
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create

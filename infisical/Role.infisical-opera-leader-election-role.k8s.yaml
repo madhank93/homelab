@@ -1,0 +1,46 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: k8-operator
+    app.kubernetes.io/instance: infisical-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/part-of: k8-operator
+    app.kubernetes.io/version: v0.8.1
+    helm.sh/chart: secrets-operator-v0.8.1
+  name: infisical-opera-leader-election-role
+  namespace: infisical
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch

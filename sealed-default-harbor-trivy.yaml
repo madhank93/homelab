@@ -1,0 +1,27 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: harbor-trivy
+  namespace: default
+spec:
+  encryptedData:
+    gitHubToken: AgC+MFMHPA6UORHmlwFncPBEuO0lYtQSqz8LMUTkDyrfgAOGV8NSf6xRqjk5uQMyWPVZCGonebKTe6FD4qKXCMmHYgQvuTTY4eC9aOgS8WfKQKcd4EqZ+GwPfJaI64tcxulcfyn01u446mFviTGYDVeS3U4SqCbTY3TGY+dCYt+eESgqO4A6DyBJysdc72c7DixZdZxHKUxwBU8YxRC6tPf6wy8ci/oYICdZHx+k3nKq3GZJiSaxcW1oCkTNruUYupkEB2XO1zkyjGU8qjvhmPjIWwFs/NQ1RzPJgy/W7EDEBlCMj4g0StTGJdy3EZ6VYPTeRTuHyuEr6k+HZDEbg6LcWOcU6a2XReb+J1dEWijc1yWZqAT7v14WxNz/JHF3lKwCNn3kJfO1vg+5Mk1s6P0x5/6aCUDe1kmqKnWeTDEQpAF6MJmkYiuJOIvPOETbr4DY0+NGeqGGZGWHPKe0t6uV2tLp056t089csgO2ds07jOfR/YI9XGZEsyQ4uYr0nT6Y77RdeKa9Kk3PjXIJclN/dVmKg/x5gbDVQtP00c+mq/KuQ/ukk7dqbOmh06tUM0iVl4lgYCWBjaNH9NtrZyUX+OlCrZdXNe1Jv3+0u4+Lom8YUJJ4XWvopfNcGJqNoFdQDtFujz/wW3jYRgT312MJt7+NTeewrH8nrP18Ux5trfryGKyd3rzUDCZgCGf7sjE=
+    redisURL: AgC2iTb95Vw/pBW8eyR/YWs+Ch8HH27oEvm88f+DAkcRUqPLfbmuwCQCVa3qsi365c6DnJUCtrDmyLf/h+Ef/4WYklrkbzPNy2b69x7usp0DicZlm6PLjKsty/xsYAUKvHb/huxKYp+Jhxa72/6Uy6roOGeDhT4UWd7A52qYbfhxyIl4t0q42vCfY9o2GXxzYPHZYnGHzsmLrYJ27fmeiGLGpufJUZLnnGAW9Ai7l2F9d60FiLJtKHtfpP8c61E2KxoCEwObLCkSeG+Afcpev0IZx+wIkZHwfalaQqniuc71Gcvt8i/6YGLffh12CfIrypg1Bc7gvVQdgeSt2y4Yk2fM9gucLG3IswTx5iTGclDTWi+6gDkQaowSOmNYYQcajs372OXZw/40IlwassfgQlStfOAych4IudFf0Jb0706G3GgQ1fvBJmlaM4mdkAPLeCWLMTcW5sZUbdGiD4MXEevDK1fEGfHfj6YBmC6A6fBHLr2xdaxtDtLRVLYP+XO3hL10g2j39R4XEAuF+us9pMEcLdvH6w2M2vyEQkftFKbJYXMjbvIyMDBmfx5u7f7ttx0zitNRFuIY78ZazLQSHwn55vM4+XNkTwKtxLDf4QFD+TRM2cbJ6560UDbbLKiIcI6CKB6X4qrVoS+5kaNmA46bLWiDt6eorGK0IuHzPB15xPg3/Dg3bUYOCZZHey2jqCfln+L1tVUapUKhYCt4oyaZ7QFDs69ODMysqaxOIwAw+y9nffau3LaALIE2+Qo0D4bbJck=
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: harbor
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.14.2
+        chart: harbor
+        heritage: Helm
+        release: harbor
+      name: harbor-trivy
+      namespace: default
+    type: Opaque

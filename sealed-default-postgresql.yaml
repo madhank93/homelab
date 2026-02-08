@@ -1,0 +1,23 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: postgresql
+  namespace: default
+spec:
+  encryptedData:
+    password: AgCKuIxRG5aT5O12x+PqPwFweAt8VsFfSATwm0kN8p3J+P9F45KlPpC+84VZCFmMfGzNIykIbCrKFSKm7fuA8+kW+z+XTqiGKue68Jq1Cho0t/SXubCijcCHIN1MBwb+i7+RkmvtUgQXpt7EkLmlmjJf5T6YaBJX8RDtYotWw4Z+3J5d2ysi22CeDUIlVCysdGeVJ4vp6Dj+LG/NprJHO5DQdlLK6CVhcM1sbVehNnRUACiAvDReRkKnaoTvXQfahk4t82vNhB1dYGKyFOWFCA9rmggbfGDxyOgcpITMxX4B5QNzEt9QBdaS2vChgRJHDBwsk/mjlbp6lr9TP51H56JnpiJNh6jbmQb3TPds8M3RJAFAcrMiqZUlf0bYqG/hpzhOfefulNMUgD1Qc6OKc7WUbPqTQQBhytnTxRwCyYQvagQMe70UARqv36Nj2ln6DOeBicVp/eX51I5mNwKT7rQxLYWEXWjqWLFLcpAeLWzWQK0ydnjI+hlAv71pzCm+4TifU4onWAh98APpTnAUhWKS/xcVOP/LVp6KiKIG+DLxIx7UBLX8KISKF+4GJKtgrBoCqNlYJjzKI+BfrUQXXGFw1fzPgpRT2d3ynVjoNzK65AwDmWmOg1+QT4OsaFiQ84Y1DWgpjkcbXEScrNx7Hxqrpsb0yKt1w3Hn2+D8EJDxIHGVLsZDPpIF4CWhujaObgESaEW5lZm0THwhypUl4IHAah+svcZTmTwJpqWMvwjxZn/4L3yKhhGtdDmkTA==
+    postgres-password: AgCezzachzzZNLS5Btz5n27BaaM18T0C6ydhO0R3Ht8llaWED4Me6T3ZsW13s3zZXO2k+7lWrCSO8ZqnY3ckW3Mw+X93V17ZJDvuYqTBNQSBFu3sCdwMiCQDU8r5CIT+Ek8m0BxtEg/reV7zt48KMJ2eyVQyCy2Y9PRd5l/lNxC8jnrxeS8BILtK1usFDOJXjxrjS7uVrmkaWXQksciGT52KWd1zfhBniL+r9RprsFUyGzBN+Ugth2dbVuM0vuULRtRGelv5T61JBWqY8DN6o0lRn30ca0JDshAaD4FfZ14cFV5ioAVOvPUQf3aC6tbVQuYjbkN3ZhHd3jVEIN89dmqt5MoVIlvfkapbY4DVzdaIK/2+ycbZTVNs4jfGlJZvdAcgjWdNeKd63lz9Ff8665NPqIrvzPITzExZEqQ2q/sGmEiUDt2LSI2iSQYzQycQluSUGBKKCqKhIptjwlcQmax5oQxKlZydOnvOYJfuci6syirTmp5RqrgtQecyErEy13n4YhsXO66yqHzjwUm0Q5TL7iltSelE3cvulCwSdSeQnwx7aVyDyeR10MMNkgswuYtQ2JblOPacKKsFGvVCmn8VWV6UnzHbtCrhkquyMnWuJWzIDsZEuyO1mQ8aTUlyr1F5p3pBw95CLNGR6QGfZJqJr0Jm2YOuIcwQdMGJduVu6a/AhmwqJsWU33DS+E0LK//UwyJb8Y+9rEI+
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: infisical
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: postgresql
+        app.kubernetes.io/version: 16.2.0
+        helm.sh/chart: postgresql-14.1.10
+      name: postgresql
+      namespace: default
+    type: Opaque

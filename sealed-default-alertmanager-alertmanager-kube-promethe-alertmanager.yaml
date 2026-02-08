@@ -1,0 +1,24 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: alertmanager-alertmanager-kube-promethe-alertmanager
+  namespace: default
+spec:
+  encryptedData:
+    alertmanager.yaml: AgBCFNDpoGzfIJnVlcPJZ8LnQX6mOWt+29hgsKf7zvv1grpWiKM/GLoXxqeP1hRzgw7Bh93IglRskdzTView5usyL2T3b49betriEMavfvgsHGOyXvQ9Itxox0OgQWX/3jkJ1hB4sA5eEQO6NCfwL2OGbBimUHl7l7rrgLT+9NQKeSAQpj2eyBeM0Qhcw/Vjz3fZ9lBOGEVSJ/6FfmUd/kJZV/Hj5JYxVwyheyYW5UvGTHgGiksuRZgjj6ilsiupugy3RG6JMvXFgJ6rPqntrAdCqiwtE/yJ6ZfLFToI2uhb8RYgjU8Oq2n2rcPF876Xkz3OZ9j2R/5ElByLuIBT6GKe3nwhasbMSUVWSTQc7bk8PlI4LiS12U00XnVRXym+AwzceYrQKFA1vU5eo4kyS+TNdLsMQQpbQdpkwaSBHQ3YUY1Ak8a5LAW99h66/GphDp8+DuburzivKubxSxS6c2Ug/WMfJMNexAKFgZSRl2HCbLQbRXnnm0/CjYpEx3SAiFF+sawY9nfEP1yvPyJguYPMRpW0DBHE3XxkSD2PwFzbLA1Vt8ExQzGOfar5BZ9MPrJDQ3n6026XZkT4KHAIxQuuzWeemaZJ89NNhYLvYrIn66S8fH2Kk9oR8MFVRNCoRb76X+uPcmfMfQCZxEAu1eNfj7b05qMIGO8lR7wjJp+lomSvLPGE3f4J2cljpPBHjoDI3dOBkZtMp5P3TcOguK6nAWKkGAM2+XNqjCGGqRDflsuWfoVbqf3J2EJi4ZsFlC+QCgmNIj/uzZdC2XTT7WDp848Pit6+phhS98GfTpQm4jrTGvy6lxHHBrKzEdhxVb++oIC87bAPXkz0mltsJpFOAcTFl1k+eB+bE4i06DjJG+AfSBqY+UmP1j6NeJh+wok1enKjoFHVkyn0hQJpDveyu2Mc/Gix8qPjXj8VMCqz259POVTyd9bi34p8vO0GXHDotNN8Iyv6uv10KilNJcB+3U/zwi0KMbtPNyLtJCy/zaAnaMBkSWnXneD2s+b4a+TAUiGPH0lVkbk8Ib01bAUFftbfPMAXQlawLGBS1RqoMu9/h09G9wP0rhXzXxPIcDYvTkwrT0nM4rhmxpLws072GtC59wV++TbPh4aChCnhFRnGb6ynEZw3S9IXCp6mSnxXtXq9AcERgg96pRkQU6bYUM61yt4UxyVvAqfWHmCwuRMAod8h07e27s3wnO/sD2MO/BqytTO9+TplTy39UxO2+tK0XJ1S9gK/BGmEl+1UxNdxRTALt/k40/C36srzQcAOxumm7cU9SGQlTa83xHsGYEqTkkusoSdIKJmXq8QVVw+MJsOHVzOmdlOjlyL+cl6K3nBBi9V4R+2MIJ+kZQeiHFqt/Va8dWB0EwQO05zNNTzGKLWTr3qqGwVcQz0sY1WLmyFqxMeKpUCB25cFgbiihnlVQ5sSPdqVYK8eHUhEpF15UzZcKbqjvRR3YiUtA0iRLtaDNHx2/GfZw9rhjGN5jWcbFvvTvsH3MUXGGpZhCUvP21kVt57/fr6781cQJii1wv4bUdUKsW7CGHHj9sOHhvW//Uz/BKO2CczkHSL+6L376INqcIMkq/p6Gnt9R2aA/kN0R6MhcmRQaajdv8utDwHKIfCDUtQkoeMP0tsTvXOLmDkyoUgpWcLtKsTynOwj3TNgPyyHTgh5BVoEV71SziREA8PPQu/2fNdCP4k3kqkgTfkzNoGytShM8TTnpYhx2aMZGcejIxB1ifsoxG8=
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: kube-prometheus-stack-alertmanager
+        app.kubernetes.io/instance: alertmanager
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: kube-prometheus-stack
+        app.kubernetes.io/version: 81.4.3
+        chart: kube-prometheus-stack-81.4.3
+        heritage: Helm
+        release: alertmanager
+      name: alertmanager-alertmanager-kube-promethe-alertmanager
+      namespace: default

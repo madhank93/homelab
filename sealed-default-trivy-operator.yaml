@@ -1,0 +1,20 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: trivy-operator
+  namespace: default
+spec:
+  encryptedData: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: trivy-operator
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: trivy-operator
+        app.kubernetes.io/version: 0.29.0
+        helm.sh/chart: trivy-operator-0.31.0
+      name: trivy-operator
+      namespace: default
