@@ -5,11 +5,11 @@ metadata:
     app.kubernetes.io/instance: gpu-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/version: v0.18.2
-    helm.sh/chart: node-feature-discovery-0.18.2
+    app.kubernetes.io/version: v0.16.6
+    helm.sh/chart: node-feature-discovery-0.16.6
     role: gc
   name: gpu-operator-node-feature-discovery-gc
-  namespace: default
+  namespace: nvidia-gpu-operator
 spec:
   replicas: 1
   selector:
@@ -34,22 +34,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          image: registry.k8s.io/nfd/node-feature-discovery:v0.18.2
+          image: registry.k8s.io/nfd/node-feature-discovery:v0.16.6
           imagePullPolicy: IfNotPresent
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 10
           name: gc
           ports:
-            - containerPort: 8080
-              name: http
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 5
+            - containerPort: 8081
+              name: metrics
           resources:
             limits:
               memory: 1Gi

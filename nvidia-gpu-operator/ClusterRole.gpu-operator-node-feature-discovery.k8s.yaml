@@ -5,18 +5,11 @@ metadata:
     app.kubernetes.io/instance: gpu-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/version: v0.18.2
-    helm.sh/chart: node-feature-discovery-0.18.2
+    app.kubernetes.io/version: v0.16.6
+    helm.sh/chart: node-feature-discovery-0.16.6
   name: gpu-operator-node-feature-discovery
   namespace: nvidia-gpu-operator
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - namespaces
-    verbs:
-      - watch
-      - list
   - apiGroups:
       - ""
     resources:

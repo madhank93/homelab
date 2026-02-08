@@ -10,4 +10,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: fleet-controller-bootstrap
-    namespace: default
+    namespace: fleet

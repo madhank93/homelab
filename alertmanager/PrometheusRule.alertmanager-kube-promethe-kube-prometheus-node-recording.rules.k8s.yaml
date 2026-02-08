@@ -6,12 +6,12 @@ metadata:
     app.kubernetes.io/instance: alertmanager
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 81.4.3
-    chart: kube-prometheus-stack-81.4.3
+    app.kubernetes.io/version: 69.2.0
+    chart: kube-prometheus-stack-69.2.0
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-kube-prometheus-node-recording.rules
-  namespace: default
+  namespace: alertmanager
 spec:
   groups:
     - name: kube-prometheus-node-recording.rules

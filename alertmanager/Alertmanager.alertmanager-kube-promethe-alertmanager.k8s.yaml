@@ -6,12 +6,12 @@ metadata:
     app.kubernetes.io/instance: alertmanager
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 81.4.3
-    chart: kube-prometheus-stack-81.4.3
+    app.kubernetes.io/version: 69.2.0
+    chart: kube-prometheus-stack-69.2.0
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-alertmanager
-  namespace: default
+  namespace: alertmanager
 spec:
   affinity:
     podAntiAffinity:
@@ -32,9 +32,8 @@ spec:
   alertmanagerConfigNamespaceSelector: {}
   alertmanagerConfigSelector: {}
   automountServiceAccountToken: true
-  externalUrl: http://alertmanager-kube-promethe-alertmanager.default:9093
-  image: quay.io/prometheus/alertmanager:v0.30.1
-  imagePullPolicy: IfNotPresent
+  externalUrl: http://alertmanager-kube-promethe-alertmanager.alertmanager:9093
+  image: quay.io/prometheus/alertmanager:v0.28.0
   listenLocal: false
   logFormat: logfmt
   logLevel: info
@@ -57,4 +56,4 @@ spec:
         resources:
           requests:
             storage: 10Gi
-  version: v0.30.1
+  version: v0.28.0

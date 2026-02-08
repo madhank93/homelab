@@ -39,11 +39,3 @@ rules:
       - events
     verbs:
       - "*"
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-    verbs:
-      - watch
-      - list
-      - get

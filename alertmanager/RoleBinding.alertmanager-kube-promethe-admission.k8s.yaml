@@ -11,12 +11,12 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
     app.kubernetes.io/part-of: kube-prometheus-stack
-    app.kubernetes.io/version: 81.4.3
-    chart: kube-prometheus-stack-81.4.3
+    app.kubernetes.io/version: 69.2.0
+    chart: kube-prometheus-stack-69.2.0
     heritage: Helm
     release: alertmanager
   name: alertmanager-kube-promethe-admission
-  namespace: default
+  namespace: alertmanager
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -24,4 +24,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: alertmanager-kube-promethe-admission
-    namespace: default
+    namespace: alertmanager

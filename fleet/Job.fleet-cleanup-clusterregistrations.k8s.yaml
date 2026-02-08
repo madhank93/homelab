@@ -19,7 +19,7 @@ spec:
             - clusterregistration
           command:
             - fleet
-          image: rancher/fleet:v0.14.2
+          image: rancher/fleet:v0.11.0
           name: cleanup
           securityContext:
             allowPrivilegeEscalation: false

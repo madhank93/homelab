@@ -6,11 +6,11 @@ metadata:
     app.kubernetes.io/instance: gpu-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: gpu-operator
-    app.kubernetes.io/version: v25.10.1
-    helm.sh/chart: gpu-operator-v25.10.1
+    app.kubernetes.io/version: v24.9.1
+    helm.sh/chart: gpu-operator-v24.9.1
     nvidia.com/gpu-driver-upgrade-drain.skip: "true"
   name: gpu-operator
-  namespace: default
+  namespace: nvidia-gpu-operator
 spec:
   replicas: 1
   selector:
@@ -27,8 +27,8 @@ spec:
         app.kubernetes.io/instance: gpu-operator
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: gpu-operator
-        app.kubernetes.io/version: v25.10.1
-        helm.sh/chart: gpu-operator-v25.10.1
+        app.kubernetes.io/version: v24.9.1
+        helm.sh/chart: gpu-operator-v24.9.1
         nvidia.com/gpu-driver-upgrade-drain.skip: "true"
     spec:
       affinity:
@@ -63,8 +63,8 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: DRIVER_MANAGER_IMAGE
-              value: nvcr.io/nvidia/cloud-native/k8s-driver-manager:v0.9.1
-          image: nvcr.io/nvidia/gpu-operator:v25.10.1
+              value: nvcr.io/nvidia/cloud-native/k8s-driver-manager:v0.7.0
+          image: nvcr.io/nvidia/gpu-operator:v24.9.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

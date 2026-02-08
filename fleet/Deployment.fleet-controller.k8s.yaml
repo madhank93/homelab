@@ -4,7 +4,6 @@ metadata:
   name: fleet-controller
   namespace: fleet
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: fleet-controller
@@ -33,17 +32,7 @@ spec:
               value: "50"
             - name: BUNDLEDEPLOYMENT_RECONCILER_WORKERS
               value: "50"
-            - name: CLUSTER_RECONCILER_WORKERS
-              value: "50"
-            - name: CLUSTERGROUP_RECONCILER_WORKERS
-              value: "50"
-            - name: IMAGESCAN_RECONCILER_WORKERS
-              value: "50"
-            - name: SCHEDULE_RECONCILER_WORKERS
-              value: "50"
-            - name: CONTENT_RECONCILER_WORKERS
-              value: "50"
-          image: rancher/fleet:v0.14.2
+          image: rancher/fleet:v0.11.0
           imagePullPolicy: IfNotPresent
           name: fleet-controller
           ports:
@@ -73,7 +62,13 @@ spec:
               value: 10s
             - name: CATTLE_ELECTION_RENEW_DEADLINE
               value: 25s
-          image: rancher/fleet:v0.14.2
+            - name: GITREPO_RECONCILER_WORKERS
+              value: "50"
+            - name: BUNDLE_RECONCILER_WORKERS
+              value: "50"
+            - name: BUNDLEDEPLOYMENT_RECONCILER_WORKERS
+              value: "50"
+          image: rancher/fleet:v0.11.0
           imagePullPolicy: IfNotPresent
           name: fleet-cleanup
           securityContext:
@@ -101,15 +96,7 @@ spec:
               value: 10s
             - name: CATTLE_ELECTION_RENEW_DEADLINE
               value: 25s
-            - name: FLEET_AGENT_REPLICA_COUNT
-              value: "1"
-            - name: FLEET_AGENT_ELECTION_LEASE_DURATION
-              value: 30s
-            - name: FLEET_AGENT_ELECTION_RETRY_PERIOD
-              value: 10s
-            - name: FLEET_AGENT_ELECTION_RENEW_DEADLINE
-              value: 25s
-          image: rancher/fleet:v0.14.2
+          image: rancher/fleet:v0.11.0
           imagePullPolicy: IfNotPresent
           name: fleet-agentmanagement
           securityContext:

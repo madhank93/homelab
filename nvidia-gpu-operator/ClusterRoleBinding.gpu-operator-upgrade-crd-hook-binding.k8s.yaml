@@ -14,4 +14,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: gpu-operator-upgrade-crd-hook-sa
-    namespace: default
+    namespace: nvidia-gpu-operator

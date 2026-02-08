@@ -6,10 +6,10 @@ metadata:
     app.kubernetes.io/instance: victoria-metrics
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-metrics-cluster
-    app.kubernetes.io/version: v1.134.0-cluster
-    helm.sh/chart: victoria-metrics-cluster-0.33.0
+    app.kubernetes.io/version: v1.135.0-cluster
+    helm.sh/chart: victoria-metrics-cluster-0.34.0
   name: victoria-metrics-victoria-metrics-cluster-vmselect
-  namespace: default
+  namespace: victoria-metrics
 spec:
   ports:
     - name: http
