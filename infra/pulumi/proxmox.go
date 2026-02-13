@@ -63,7 +63,7 @@ func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceNa
 		Url:                    pulumi.String(url),
 		FileName:               pulumi.String(fileName),
 		DecompressionAlgorithm: pulumi.String(compression),
-		Overwrite:              pulumi.Bool(false),
+		Overwrite:              pulumi.Bool(true),
 	}, pulumi.Provider(provider))
 }
 
@@ -106,6 +106,11 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 		OnBoot:  pulumi.Bool(true),
 		Bios:    pulumi.String("ovmf"),
 		Machine: pulumi.String("q35"),
+		EfiDisk: &vm.VirtualMachineEfiDiskArgs{
+			DatastoreId: pulumi.String("local-lvm"),
+			FileFormat:  pulumi.String("raw"),
+			Type:        pulumi.String("4m"),
+		},
 	}
 
 	if config.HasGPU {

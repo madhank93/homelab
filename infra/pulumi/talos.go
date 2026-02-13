@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	talos_client "github.com/pulumiverse/pulumi-talos/sdk/go/talos/client"
 	talos_cluster "github.com/pulumiverse/pulumi-talos/sdk/go/talos/cluster"
@@ -26,15 +27,20 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Download Talos Image
+	// Download Talos Image with System Extensions
+	// Schematic ID: e187c9b90f773cd8c84e5a3265c5554ee787b2fe67b508d9f955e90e7ae8c96c
+	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent
+	// See: docs/talos-upgrade-guide.md for schematic configuration
 	talosImage, err := DownloadImage(ctx, provider, "talos-image", cfg.NodeName,
-		"https://factory.talos.dev/image/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515/v1.9.3/nocloud-amd64.raw.gz",
+		"https://factory.talos.dev/image/e187c9b90f773cd8c84e5a3265c5554ee787b2fe67b508d9f955e90e7ae8c96c/v1.9.3/nocloud-amd64.raw.gz",
 		"talos-nocloud-amd64.img",
 		"gz",
 	)
 	if err != nil {
 		return err
 	}
+
+	talosImageID := pulumi.ID("local:iso/talos-nocloud-amd64.img")
 
 	// Generate Talos Secrets
 	secrets, err := talos_machine.NewSecrets(ctx, "talos-secrets", &talos_machine.SecretsArgs{
@@ -100,6 +106,12 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
       - deviceSelector:
           physical: true
         dhcp: true
+  kernel:
+    modules:
+      - name: nbd
+      - name: iscsi_tcp
+      - name: iscsi_generic
+      - name: configfs
 `
 
 	basePatch := `cluster:
