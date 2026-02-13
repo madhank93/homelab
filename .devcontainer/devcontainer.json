@@ -4,6 +4,9 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
+  "runArgs": [
+    "--network=host"
+  ],
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
     "ghcr.io/devcontainers/features/common-utils:2": {
@@ -42,12 +45,14 @@
     "GOPATH": "/home/vscode/go",
     "PULUMI_SKIP_UPDATE_CHECK": "true",
     "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
-    "HOST_HOME": "${env:HOME}"
+    "HOST_HOME": "${env:HOME}",
+    "TALOSCONFIG": "/workspace/infra/pulumi/talosconfig",
+    "KUBECONFIG": "/workspace/infra/pulumi/kubeconfig"
   },
   "hostRequirements": {
     "cpus": 2,
     "memory": "4gb"
   },
-  "postCreateCommand": "sudo usermod -aG docker vscode && cdk8s --version && pulumi version",
+  "postCreateCommand": "sudo usermod -aG docker vscode && cdk8s --version && pulumi version && talosctl version --client",
   "shutdownAction": "stopContainer"
 }

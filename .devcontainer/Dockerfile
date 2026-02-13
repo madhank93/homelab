@@ -13,6 +13,7 @@ ARG DELVE_VERSION=1.26.0
 ARG GOFUMPT_VERSION=0.9.2
 ARG GOLANGCI_LINT_VERSION=2.8.0
 ARG KUBESEAL_VERSION=0.34.0
+ARG TALOSCTL_VERSION=1.9.3
 
 USER root
 
@@ -88,7 +89,11 @@ RUN ARCH=$(dpkg --print-architecture) && \
     curl -L "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-${KUBESEAL_ARCH}.tar.gz" -o kubeseal.tar.gz && \
     tar -xvzf kubeseal.tar.gz kubeseal && \
     install -m 755 kubeseal /usr/local/bin/kubeseal && \
-    rm kubeseal.tar.gz
+    rm kubeseal.tar.gz && \
+    # Install talosctl
+    curl -fsSL -o /usr/local/bin/talosctl \
+    "https://github.com/siderolabs/talos/releases/download/v${TALOSCTL_VERSION}/talosctl-linux-${KUBECTL_ARCH}" && \
+    chmod +x /usr/local/bin/talosctl
 
 # Install cdk8s CLI
 RUN npm install -g cdk8s-cli@${CDK8S_VERSION}
@@ -97,7 +102,8 @@ RUN npm install -g cdk8s-cli@${CDK8S_VERSION}
 RUN just --completions bash > /etc/bash_completion.d/just \
     && echo 'complete -C /usr/local/bin/pulumi pulumi' > /etc/bash_completion.d/pulumi \
     && kubectl completion bash > /etc/bash_completion.d/kubectl \
-    && helm completion bash > /etc/bash_completion.d/helm
+    && helm completion bash > /etc/bash_completion.d/helm \
+    && talosctl completion bash > /etc/bash_completion.d/talosctl
 
 # Fix Go module cache permissions
 RUN mkdir -p /home/vscode/go/pkg/mod/cache /home/vscode/go/pkg/mod/download \
