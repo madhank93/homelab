@@ -117,7 +117,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"parentRefs": []map[string]any{
 			{
-				"name":      "cilium-gateway",
+				"name":      "homelab-gateway",
 				"namespace": "kube-system",
 			},
 		},

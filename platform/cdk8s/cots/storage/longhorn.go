@@ -39,7 +39,7 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		"preUpgradeChecker": map[string]any{
 			"jobEnabled": false,
 		},
-		// Talos-specific: Avoid control-plane nodes using tolerations
+		// Talos-specific: Allow control-plane components to run on control-plane nodes
 		"longhornManager": map[string]any{
 			"tolerations": []map[string]any{
 				{
