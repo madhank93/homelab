@@ -7,7 +7,7 @@ spec:
   hostnames:
     - infisical.madhan.app
   parentRefs:
-    - name: cilium-gateway
+    - name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
