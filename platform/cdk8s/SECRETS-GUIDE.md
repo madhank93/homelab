@@ -24,8 +24,8 @@
 # Generate DB Password
 openssl rand -base64 32
 
-# Generate Encryption Key (256-bit hex)
-openssl rand -hex 32
+# Generate Encryption Key (128-bit / 16-byte hex = 32 chars)
+openssl rand -hex 16
 
 # Generate Auth Secret (for JWT signing)
 openssl rand -base64 32

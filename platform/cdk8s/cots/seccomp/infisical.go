@@ -33,6 +33,10 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	if infisicalEncryptionKey == "" {
 		panic("INFISICAL_ENCRYPTION_KEY environment variable is required")
 	}
+	// Basic validation for key length (16 bytes hex = 32 chars)
+	if len(infisicalEncryptionKey) != 32 {
+		panic("INFISICAL_ENCRYPTION_KEY must be a 16-byte hex string (32 characters)")
+	}
 
 	// Create Secret for PostgreSQL password (will be sealed by CI)
 	postgresSecret := cdk8s.NewApiObject(chart, jsii.String("infisical-postgresql-secret"), &cdk8s.ApiObjectProps{
