@@ -69,7 +69,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	values := map[string]any{
 		"infisical": map[string]any{
 			"kubeSecretRef": "infisical-secrets",
-			"replicaCount":  1, // Start with 1 to detect issues easier
+			"replicaCount":  1,
 			"resources": map[string]any{
 				"requests": map[string]any{
 					"cpu":    "200m",
@@ -81,16 +81,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			},
 		},
 		"postgresql": map[string]any{
-			"enabled": true,
-			"auth": map[string]any{
-				"database":       "infisical",
-				"username":       "infisical",
-				"existingSecret": "infisical-secrets",
-				"secretKeys": map[string]any{
-					"adminPasswordKey": "DB_PASSWORD",
-					"userPasswordKey":  "DB_PASSWORD",
-				},
-			},
+			"enabled": false, // Disable embedded Postgres to handle it separately
 			"useExistingPostgresSecret": map[string]any{
 				"enabled": true,
 				"existingConnectionStringSecret": map[string]any{
@@ -98,33 +89,20 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 					"key":  "DB_CONNECTION_URI",
 				},
 			},
-			"primary": map[string]any{
-				"persistence": map[string]any{
-					"enabled":      true,
-					"size":         "10Gi",
-					"storageClass": "longhorn",
-				},
-			},
 		},
 		"redis": map[string]any{
-			"enabled": true,
+			"enabled": true, // Keep embedded Redis for now
 			"auth": map[string]any{
 				"enabled": false,
 			},
-			"master": map[string]any{
-				"persistence": map[string]any{
-					"enabled":      true,
-					"size":         "8Gi",
-					"storageClass": "longhorn",
-				},
-			},
 		},
 		"ingress": map[string]any{
-			"enabled":  false, // Disabled - using Gateway API HTTPRoute instead
+			"enabled":  false,
 			"hostname": "infisical.madhan.app",
 		},
 	}
 
+	// Deploy Infisical Application
 	cdk8s.NewHelm(chart, jsii.String("infisical-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("infisical-standalone"),
 		Repo:        jsii.String("https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts"),
@@ -132,6 +110,37 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		ReleaseName: jsii.String("infisical"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
+	})
+
+	// Deploy PostgreSQL parameters
+	postgresValues := map[string]any{
+		"fullnameOverride": "postgresql", // Force service name to 'postgresql' to match URI
+		"auth": map[string]any{
+			"username":       "infisical",
+			"database":       "infisical",
+			"existingSecret": "infisical-secrets",
+			"secretKeys": map[string]any{
+				"adminPasswordKey": "DB_PASSWORD",
+				"userPasswordKey":  "DB_PASSWORD",
+			},
+		},
+		"primary": map[string]any{
+			"persistence": map[string]any{
+				"enabled":      true,
+				"size":         "10Gi",
+				"storageClass": "longhorn",
+			},
+		},
+	}
+
+	// Deploy PostgreSQL Separately
+	cdk8s.NewHelm(chart, jsii.String("infisical-postgresql-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("postgresql"),
+		Repo:        jsii.String("https://charts.bitnami.com/bitnami"),
+		Version:     jsii.String("16.2.5"), // Use specific stable version
+		ReleaseName: jsii.String("postgresql"),
+		Namespace:   jsii.String(namespace),
+		Values:      &postgresValues,
 	})
 
 	// Gateway API HTTPRoute for Infisical
