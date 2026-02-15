@@ -38,6 +38,12 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		panic("INFISICAL_ENCRYPTION_KEY must be a 16-byte hex string (32 characters)")
 	}
 
+	// Get Infisical Auth Secret
+	infisicalAuthSecret := os.Getenv("INFISICAL_AUTH_SECRET")
+	if infisicalAuthSecret == "" {
+		panic("INFISICAL_AUTH_SECRET environment variable is required")
+	}
+
 	// Create Secret for PostgreSQL password (will be sealed by CI)
 	postgresSecret := cdk8s.NewApiObject(chart, jsii.String("infisical-postgresql-secret"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("v1"),
@@ -47,10 +53,16 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			Namespace: jsii.String(namespace),
 		},
 	})
+	// Create full connection URI from password (to override Chart default which defaults to 'root')
+	// URI Format: postgresql://infisical:<password>@postgresql:5432/infisical
+	// Note: failing to provide this explicitly often causes the chart to use 'root'
+	dbConnectionUri := "postgresql://infisical:" + infisicalDbPassword + "@postgresql:5432/infisical"
+
 	postgresSecret.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/stringData"), map[string]string{
-		"DB_PASSWORD":    infisicalDbPassword,
-		"AUTH_SECRET":    infisicalDbPassword,    // Use same value for AUTH_SECRET (can be different in production)
-		"ENCRYPTION_KEY": infisicalEncryptionKey, // Required for Infisical encryption
+		"DB_PASSWORD":       infisicalDbPassword,
+		"AUTH_SECRET":       infisicalAuthSecret,
+		"ENCRYPTION_KEY":    infisicalEncryptionKey,
+		"DB_CONNECTION_URI": dbConnectionUri, // Pre-calculated URI
 	}))
 
 	// Infisical backend + frontend + PostgreSQL + Redis
@@ -67,6 +79,17 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			"service": map[string]any{
 				"type": "ClusterIP",
 				"port": 4000,
+			},
+			"extraEnv": []map[string]any{
+				{
+					"name": "DB_CONNECTION_URI",
+					"valueFrom": map[string]any{
+						"secretKeyRef": map[string]any{
+							"name": "infisical-secrets",
+							"key":  "DB_CONNECTION_URI",
+						},
+					},
+				},
 			},
 		},
 		"postgresql": map[string]any{
@@ -140,7 +163,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 				"backendRefs": []map[string]any{
 					{
 						"name": "infisical-infisical-standalone-infisical",
-						"port": 80,
+						"port": 8080,
 					},
 				},
 			},
