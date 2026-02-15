@@ -4,7 +4,10 @@
 
 **Total Secrets Needed: 6**
 
-1. **GitHub Secret (1):** `INFISICAL_DB_PASSWORD`
+1. **GitHub Secrets (3):**
+    - `INFISICAL_DB_PASSWORD`
+    - `INFISICAL_ENCRYPTION_KEY`
+    - `INFISICAL_AUTH_SECRET`
 2. **Infisical UI Secrets (4):** App passwords
 3. **Kubernetes Secret (1):** `infisical-service-token`
 
@@ -18,10 +21,19 @@
 **Where:** GitHub Repository → Settings → Secrets → Actions
 
 ```bash
-# Generate password
+# Generate DB Password
 openssl rand -base64 32
 
-# Add to GitHub as: INFISICAL_DB_PASSWORD
+# Generate Encryption Key (256-bit hex)
+openssl rand -hex 32
+
+# Generate Auth Secret (for JWT signing)
+openssl rand -base64 32
+
+# Add to GitHub Secrets:
+# - INFISICAL_DB_PASSWORD
+# - INFISICAL_ENCRYPTION_KEY
+# - INFISICAL_AUTH_SECRET
 ```
 
 ---

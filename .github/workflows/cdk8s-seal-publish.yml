@@ -59,6 +59,7 @@ jobs:
         working-directory: platform/cdk8s
         env:
           INFISICAL_DB_PASSWORD: ${{ secrets.INFISICAL_DB_PASSWORD }}
+          INFISICAL_ENCRYPTION_KEY: ${{ secrets.INFISICAL_ENCRYPTION_KEY }}
         run: |
           go mod download
           go run main.go

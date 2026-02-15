@@ -28,6 +28,12 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		panic("INFISICAL_DB_PASSWORD environment variable is required")
 	}
 
+	// Get Infisical Encryption Key (must be 16 bytes / 32 hex chars)
+	infisicalEncryptionKey := os.Getenv("INFISICAL_ENCRYPTION_KEY")
+	if infisicalEncryptionKey == "" {
+		panic("INFISICAL_ENCRYPTION_KEY environment variable is required")
+	}
+
 	// Create Secret for PostgreSQL password (will be sealed by CI)
 	postgresSecret := cdk8s.NewApiObject(chart, jsii.String("infisical-postgresql-secret"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("v1"),
@@ -39,8 +45,8 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	})
 	postgresSecret.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/stringData"), map[string]string{
 		"DB_PASSWORD":    infisicalDbPassword,
-		"AUTH_SECRET":    infisicalDbPassword, // Use same value for AUTH_SECRET (can be different in production)
-		"ENCRYPTION_KEY": infisicalDbPassword, // Required for Infisical encryption
+		"AUTH_SECRET":    infisicalDbPassword,    // Use same value for AUTH_SECRET (can be different in production)
+		"ENCRYPTION_KEY": infisicalEncryptionKey, // Required for Infisical encryption
 	}))
 
 	// Infisical backend + frontend + PostgreSQL + Redis
