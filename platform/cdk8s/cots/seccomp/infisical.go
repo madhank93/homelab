@@ -65,30 +65,18 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		"DB_CONNECTION_URI": dbConnectionUri, // Pre-calculated URI
 	}))
 
-	// Infisical backend + frontend + PostgreSQL + Redis
+	// Infisical standalone chart values
 	values := map[string]any{
-		"frontend": map[string]any{
-			"enabled": true,
-			"service": map[string]any{
-				"type": "ClusterIP",
-				"port": 3000,
-			},
-		},
-		"backend": map[string]any{
-			"enabled": true,
-			"service": map[string]any{
-				"type": "ClusterIP",
-				"port": 4000,
-			},
-			"extraEnv": []map[string]any{
-				{
-					"name": "DB_CONNECTION_URI",
-					"valueFrom": map[string]any{
-						"secretKeyRef": map[string]any{
-							"name": "infisical-secrets",
-							"key":  "DB_CONNECTION_URI",
-						},
-					},
+		"infisical": map[string]any{
+			"kubeSecretRef": "infisical-secrets",
+			"replicaCount":  1, // Start with 1 to detect issues easier
+			"resources": map[string]any{
+				"requests": map[string]any{
+					"cpu":    "200m",
+					"memory": "512Mi",
+				},
+				"limits": map[string]any{
+					"memory": "1024Mi",
 				},
 			},
 		},
@@ -97,10 +85,17 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			"auth": map[string]any{
 				"database":       "infisical",
 				"username":       "infisical",
-				"existingSecret": "infisical-secrets", // Use the secret we created above
+				"existingSecret": "infisical-secrets",
 				"secretKeys": map[string]any{
 					"adminPasswordKey": "DB_PASSWORD",
 					"userPasswordKey":  "DB_PASSWORD",
+				},
+			},
+			"useExistingPostgresSecret": map[string]any{
+				"enabled": true,
+				"existingConnectionStringSecret": map[string]any{
+					"name": "infisical-secrets",
+					"key":  "DB_CONNECTION_URI",
 				},
 			},
 			"primary": map[string]any{
