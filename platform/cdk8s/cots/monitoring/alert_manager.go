@@ -4,11 +4,18 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/cdk8s/imports/k8s"
 )
 
 func NewAlertManagerChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
+	})
+
+	k8s.NewKubeNamespace(chart, jsii.String("namespace"), &k8s.KubeNamespaceProps{
+		Metadata: &k8s.ObjectMeta{
+			Name: jsii.String(namespace),
+		},
 	})
 
 	values := map[string]any{
@@ -65,10 +72,25 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 		},
 	}
 
+	// CRDs
+	// CRDs
+	cdk8s.NewInclude(chart, jsii.String("prometheus-crds"), &cdk8s.IncludeProps{
+		Url: jsii.String("https://raw.githubusercontent.com/prometheus-community/helm-charts/kube-prometheus-stack-82.0.1/charts/kube-prometheus-stack/charts/crds/crds/crd-prometheusrules.yaml"),
+	})
+	cdk8s.NewInclude(chart, jsii.String("servicemonitor-crds"), &cdk8s.IncludeProps{
+		Url: jsii.String("https://raw.githubusercontent.com/prometheus-community/helm-charts/kube-prometheus-stack-82.0.1/charts/kube-prometheus-stack/charts/crds/crds/crd-servicemonitors.yaml"),
+	})
+	cdk8s.NewInclude(chart, jsii.String("alertmanager-crds"), &cdk8s.IncludeProps{
+		Url: jsii.String("https://raw.githubusercontent.com/prometheus-community/helm-charts/kube-prometheus-stack-82.0.1/charts/kube-prometheus-stack/charts/crds/crds/crd-alertmanagers.yaml"),
+	})
+	cdk8s.NewInclude(chart, jsii.String("prometheus-crd"), &cdk8s.IncludeProps{
+		Url: jsii.String("https://raw.githubusercontent.com/prometheus-community/helm-charts/kube-prometheus-stack-82.0.1/charts/kube-prometheus-stack/charts/crds/crds/crd-prometheuses.yaml"),
+	})
+
 	cdk8s.NewHelm(chart, jsii.String("alertmanager-only"), &cdk8s.HelmProps{
 		Chart:       jsii.String("kube-prometheus-stack"),
 		Repo:        jsii.String("https://prometheus-community.github.io/helm-charts"),
-		Version:     jsii.String("81.5.0"),
+		Version:     jsii.String("82.0.1"),
 		ReleaseName: jsii.String("alertmanager"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
