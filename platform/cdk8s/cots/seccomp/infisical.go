@@ -115,6 +115,9 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	// Deploy PostgreSQL parameters
 	postgresValues := map[string]any{
 		"fullnameOverride": "postgresql", // Force service name to 'postgresql' to match URI
+		"image": map[string]any{
+			"tag": "latest",
+		},
 		"auth": map[string]any{
 			"username":       "infisical",
 			"database":       "infisical",
@@ -130,6 +133,9 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 				"size":         "10Gi",
 				"storageClass": "longhorn",
 			},
+		},
+		"networkPolicy": map[string]any{
+			"enabled": false,
 		},
 	}
 
@@ -158,7 +164,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 				"namespace": "kube-system",
 			},
 		},
-		"hostnames": []string{"infisical.madhan.app"},
+		"hostnames": []string{"infisical.madhan.app", "infisical.local"},
 		"rules": []map[string]any{
 			{
 				"matches": []map[string]any{
