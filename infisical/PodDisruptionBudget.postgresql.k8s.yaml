@@ -1,5 +1,5 @@
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+apiVersion: policy/v1
+kind: PodDisruptionBudget
 metadata:
   labels:
     app.kubernetes.io/component: primary
@@ -11,16 +11,9 @@ metadata:
   name: postgresql
   namespace: infisical
 spec:
-  egress:
-    - {}
-  ingress:
-    - ports:
-        - port: 5432
-  podSelector:
+  maxUnavailable: 1
+  selector:
     matchLabels:
       app.kubernetes.io/component: primary
       app.kubernetes.io/instance: postgresql
       app.kubernetes.io/name: postgresql
-  policyTypes:
-    - Ingress
-    - Egress

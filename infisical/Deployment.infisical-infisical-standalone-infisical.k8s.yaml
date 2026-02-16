@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    updatedAt: 2026-02-02 UTC 02:55:06
+    updatedAt: 2026-02-02 UTC 04:12:08
   labels:
     app: infisical-standalone
     chart: infisical-standalone-1.7.2
@@ -12,7 +12,7 @@ metadata:
   name: infisical-infisical-standalone-infisical
   namespace: infisical
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: infisical-standalone
@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        updatedAt: 2026-02-02 UTC 02:55:06
+        updatedAt: 2026-02-02 UTC 04:12:08
       labels:
         app: infisical-standalone
         component: infisical
@@ -30,7 +30,10 @@ spec:
       containers:
         - env:
             - name: DB_CONNECTION_URI
-              value: postgresql://infisical:root@postgresql:5432/infisical
+              valueFrom:
+                secretKeyRef:
+                  key: DB_CONNECTION_URI
+                  name: infisical-secrets
             - name: REDIS_URL
               value: redis://default:mysecretpassword@redis-master:6379
           envFrom:
@@ -49,6 +52,7 @@ spec:
             periodSeconds: 5
           resources:
             limits:
-              memory: 1000Mi
+              memory: 1024Mi
             requests:
-              cpu: 350m
+              cpu: 200m
+              memory: 512Mi
