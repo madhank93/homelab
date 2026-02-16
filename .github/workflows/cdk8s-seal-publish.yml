@@ -60,6 +60,7 @@ jobs:
         env:
           INFISICAL_DB_PASSWORD: ${{ secrets.INFISICAL_DB_PASSWORD }}
           INFISICAL_ENCRYPTION_KEY: ${{ secrets.INFISICAL_ENCRYPTION_KEY }}
+          INFISICAL_AUTH_SECRET: ${{ secrets.INFISICAL_AUTH_SECRET }}
         run: |
           go mod download
           go run main.go
