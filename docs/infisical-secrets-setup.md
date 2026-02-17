@@ -40,6 +40,11 @@ Navigate to the **Secrets Dashboard** for the `prod` environment and create the 
 | :--- | :--- | :--- |
 | `CLOUDFLARE_API_TOKEN` | `<your-cloudflare-api-token>` | API Token for DNS-01 challenges. |
 
+#### Path: `/rancher`
+| Secret Key | Value | Description |
+| :--- | :--- | :--- |
+| `BOOTSTRAP_PASSWORD` | `<your-secure-password>` | Initial bootstrap password for Rancher. |
+
 ### 4. Generate Service Token
 1.  Go to **Project Settings** -> **Service Tokens**.
 2.  Create a new token with the following settings:
@@ -49,6 +54,7 @@ Navigate to the **Secrets Dashboard** for the `prod` environment and create the 
         -   `/n8n` (Read)
         -   `/grafana` (Read)
         -   `/cert-manager` (Read)
+        -   `/rancher` (Read)
     -   **Expiration**: Set as desired (e.g., Never or 1 year).
 3.  **Copy the generated token immediately.** You will not be able to see it again.
 

@@ -27,6 +27,8 @@ type NodeConfig struct {
 	PcieIDs    []string
 	IsTemplate bool
 	TemplateID pulumi.IntInput
+	CpuUnits   int
+	Balloon    int
 }
 
 // Initializes the Proxmox provider
@@ -85,9 +87,11 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 		Cpu: &vm.VirtualMachineCpuArgs{
 			Cores: pulumi.Int(config.Cores),
 			Type:  pulumi.String("host"),
+			Units: pulumi.Int(config.CpuUnits), // CPU Weight
 		},
 		Memory: &vm.VirtualMachineMemoryArgs{
 			Dedicated: pulumi.Int(config.Memory),
+			Shared:    pulumi.Int(config.Balloon), // Balloon Minimum (Guaranteed)
 		},
 		Disks: &vm.VirtualMachineDiskArray{
 			diskArgs,

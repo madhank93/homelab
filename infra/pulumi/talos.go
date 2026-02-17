@@ -40,8 +40,6 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
-	talosImageID := pulumi.ID("local:iso/talos-nocloud-amd64.img")
-
 	// Generate Talos Secrets
 	secrets, err := talos_machine.NewSecrets(ctx, "talos-secrets", &talos_machine.SecretsArgs{
 		TalosVersion: pulumi.String(talosVersion),
@@ -68,24 +66,25 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	// Write Talosconfig to local file
 	clientConfig.TalosConfig().ApplyT(func(tc string) (any, error) {
-		err := os.WriteFile("talosconfig", []byte(tc), 0600)
+		err := os.WriteFile("talosconfig", []byte(tc), 0o600)
 		return nil, err
 	})
 
 	// Define nodes
 	nodes := []NodeConfig{
-		// Control Plane (3 Nodes)
-		{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30},
-		// Workers (4 Nodes)
-		{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
-		{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
-		{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125},
+		// Control Plane (3 Nodes) - High Priority
+		{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		// Workers (4 Nodes) - Standard Priority
+		{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
+		{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
+		{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
 		// Worker 4 with GPU
 		{
-			Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 125,
+			Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125,
 			HasGPU: true, PcieIDs: []string{"0000:28:00.0"},
+			CpuUnits: 100, Balloon: 2048,
 		},
 	}
 
@@ -241,7 +240,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	// Write Kubeconfig to local file
 	kubeconfigRes.KubeconfigRaw.ApplyT(func(kc string) (any, error) {
-		err := os.WriteFile("kubeconfig", []byte(kc), 0600)
+		err := os.WriteFile("kubeconfig", []byte(kc), 0o600)
 		return nil, err
 	})
 

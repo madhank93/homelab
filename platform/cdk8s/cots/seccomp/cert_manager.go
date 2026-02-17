@@ -84,7 +84,7 @@ func NewCertManagerChart(scope constructs.Construct, id string, namespace string
 							"email": "madhankumaravelu93@gmail.com",
 							"apiTokenSecretRef": map[string]any{
 								"name": "cloudflare-api-token",
-								"key":  "api-token",
+								"key":  "CLOUDFLARE_API_TOKEN",
 							},
 						},
 					},
