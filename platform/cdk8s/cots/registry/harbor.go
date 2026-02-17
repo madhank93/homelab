@@ -83,6 +83,24 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		},
 		"harborAdminPassword": "",             // Not used when existingSecret is set
 		"existingSecret":      "harbor-admin", // Secret created by InfisicalSecret
+		"core": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
+			},
+		},
+		"jobservice": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+			},
+		},
+		"registry": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
+			},
+		},
 	}
 
 	cdk8s.NewHelm(chart, jsii.String("harbor-release"), &cdk8s.HelmProps{

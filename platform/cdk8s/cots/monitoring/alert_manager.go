@@ -39,6 +39,10 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 			"enabled": true,
 			"alertmanagerSpec": map[string]any{
 				"replicas": 1,
+				"resources": map[string]any{
+					"limits":   map[string]any{"cpu": "200m", "memory": "256Mi"},
+					"requests": map[string]any{"cpu": "50m", "memory": "64Mi"},
+				},
 				"storage": map[string]any{
 					"volumeClaimTemplate": map[string]any{
 						"spec": map[string]any{

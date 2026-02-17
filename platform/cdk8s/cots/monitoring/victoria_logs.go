@@ -19,6 +19,10 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 				"size":    "100Gi",
 			},
 			"retention": "30d",
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},
+			},
 		},
 		"fluent-bit": map[string]any{
 			"enabled": true,

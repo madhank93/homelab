@@ -41,6 +41,10 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		},
 		// Talos-specific: Allow control-plane components to run on control-plane nodes
 		"longhornManager": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},
+			},
 			"tolerations": []map[string]any{
 				{
 					"key":      "node-role.kubernetes.io/control-plane",
@@ -50,6 +54,10 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 			},
 		},
 		"longhornDriver": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+			},
 			"tolerations": []map[string]any{
 				{
 					"key":      "node-role.kubernetes.io/control-plane",
@@ -59,6 +67,10 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 			},
 		},
 		"longhornUI": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+			},
 			"tolerations": []map[string]any{
 				{
 					"key":      "node-role.kubernetes.io/control-plane",

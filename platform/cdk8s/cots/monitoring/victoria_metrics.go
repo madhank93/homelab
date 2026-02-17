@@ -33,6 +33,10 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		"vminsert": map[string]any{
 			"enabled":      true,
 			"replicaCount": 1,
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+			},
 		},
 		"vmstorage": map[string]any{
 			"enabled":      true,
@@ -40,6 +44,10 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 			"persistentVolume": map[string]any{
 				"enabled": true,
 				"size":    "100Gi",
+			},
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},
 			},
 		},
 	}

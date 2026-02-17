@@ -17,6 +17,10 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		ReleaseName: jsii.String("headlamp"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+			},
 			"ingress": map[string]any{
 				"enabled": true,
 				"hosts": []map[string]any{

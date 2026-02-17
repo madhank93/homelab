@@ -18,6 +18,22 @@ func NewCertManagerChart(scope constructs.Construct, id string, namespace string
 				"namespace": namespace,
 			},
 		},
+		"resources": map[string]any{
+			"limits":   map[string]any{"cpu": "200m", "memory": "256Mi"},
+			"requests": map[string]any{"cpu": "50m", "memory": "64Mi"},
+		},
+		"webhook": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "100m", "memory": "128Mi"},
+				"requests": map[string]any{"cpu": "50m", "memory": "64Mi"},
+			},
+		},
+		"cainjector": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "100m", "memory": "128Mi"},
+				"requests": map[string]any{"cpu": "50m", "memory": "64Mi"},
+			},
+		},
 	}
 
 	// Sync Cloudflare API Token from Infisical

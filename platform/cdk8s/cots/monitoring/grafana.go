@@ -59,6 +59,16 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 			"existingSecret": "grafana-admin",  // Secret created by InfisicalSecret
 			"passwordKey":    "ADMIN_PASSWORD", // Key from Infisical
 		},
+		"resources": map[string]any{
+			"limits": map[string]any{
+				"cpu":    "500m",
+				"memory": "512Mi",
+			},
+			"requests": map[string]any{
+				"cpu":    "100m",
+				"memory": "128Mi",
+			},
+		},
 		"persistence": map[string]any{
 			"enabled": true,
 			"size":    "10Gi",

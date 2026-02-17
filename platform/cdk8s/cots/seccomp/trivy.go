@@ -47,6 +47,10 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 			"replicas":                1,
 			"scanJobsConcurrentLimit": 3,
 			"scanJobsRetryDelay":      "30s",
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+			},
 		},
 		"trivyOperator": map[string]any{
 			"scanJobTimeout": "5m",
