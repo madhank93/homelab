@@ -22,7 +22,7 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 
 	// Create InfisicalSecret CRD
 	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisicalstandalone-backend.infisical.svc.cluster.local:4000",
+		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
 		"resyncInterval": 60,
 		"authentication": map[string]any{
 			"serviceToken": map[string]any{
@@ -60,19 +60,20 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 			"destination": "sidecar",
 		},
 		"ingress": map[string]any{
-			"extraValues": map[string]any{
-				"tls": map[string]any{
-					"source": "secret",
-				},
+			"tls": map[string]any{
+				"source": "secret",
+			},
+			"extraAnnotations": map[string]string{
+				"cert-manager.io/cluster-issuer": "letsencrypt-prod",
 			},
 		},
 		"service": map[string]any{
 			"type":        "ClusterIP",
 			"disableHttp": false,
 		},
-		"hostname":                   "rancher.local",
-		"bootstrapPassword":          "",                  // Not used when secret exists
-		"existingBootstrapPassword":  "rancher-bootstrap", // Secret created by InfisicalSecret
+		"hostname":                   "rancher.madhan.app", // Updated to real domain
+		"bootstrapPassword":          "",                   // Not used when secret exists
+		"existingBootstrapPassword":  "rancher-bootstrap",  // Secret created by InfisicalSecret
 		"bootstrapPasswordSecretKey": "BOOTSTRAP_PASSWORD",
 		"replicas":                   3,
 		"resources": map[string]any{
@@ -89,8 +90,12 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 	}
 
 	cdk8s.NewHelm(chart, jsii.String("rancher-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("/Volumes/work/git-repos/homelab/platform/cdk8s/imports/charts/rancher"),
+		Chart:       jsii.String("rancher"),
+		Repo:        jsii.String("https://releases.rancher.com/server-charts/stable"),
 		ReleaseName: jsii.String("rancher"),
+		Namespace:   jsii.String(namespace),
+		Version:     jsii.String("v2.9.2"),
+		HelmFlags:   &[]*string{jsii.String("--kube-version"), jsii.String("1.30.0")},
 		Values:      &values,
 	})
 	return chart

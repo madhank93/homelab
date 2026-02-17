@@ -22,7 +22,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 
 	// Create InfisicalSecret CRD to sync secrets from Infisical
 	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisicalstandalone-backend.infisical.svc.cluster.local:4000",
+		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
 		"resyncInterval": 60,
 		"authentication": map[string]any{
 			"serviceToken": map[string]any{
@@ -70,6 +70,15 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		"ingress": map[string]any{
 			"enabled": true,
 			"hosts":   []string{"grafana.madhan.app"},
+			"annotations": map[string]string{
+				"cert-manager.io/cluster-issuer": "letsencrypt-prod",
+			},
+			"tls": []map[string]any{
+				{
+					"hosts":      []string{"grafana.madhan.app"},
+					"secretName": "grafana-tls",
+				},
+			},
 		},
 	}
 

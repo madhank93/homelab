@@ -130,4 +130,11 @@ func main() {
 	})
 	management.NewFleetChart(fleetApp, "fleet-app", "fleet")
 	fleetApp.Synth()
+
+	rancherApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/rancher", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	management.NewRancherChart(rancherApp, "rancher-app", "cattle-system")
+	rancherApp.Synth()
 }

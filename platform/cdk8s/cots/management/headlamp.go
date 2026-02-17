@@ -27,6 +27,9 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 						},
 					},
 				},
+				"annotations": map[string]string{
+					"cert-manager.io/cluster-issuer": "letsencrypt-prod",
+				},
 				"tls": []map[string]any{
 					{
 						"secretName": "headlamp-tls",

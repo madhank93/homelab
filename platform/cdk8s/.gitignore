@@ -2,6 +2,7 @@
 # Note: app/ is at repo root (../../app from platform/cdk8s/)
 sealed/
 publish/
+imports/
 
 # Temporary files
 tmp/

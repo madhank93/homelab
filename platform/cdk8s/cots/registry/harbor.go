@@ -22,7 +22,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 
 	// Create InfisicalSecret CRD
 	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisicalstandalone-backend.infisical.svc.cluster.local:4000",
+		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
 		"resyncInterval": 60,
 		"authentication": map[string]any{
 			"serviceToken": map[string]any{
@@ -60,6 +60,13 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 				"hosts": map[string]any{
 					"core": "harbor.madhan.app",
 				},
+				"annotations": map[string]string{
+					"cert-manager.io/cluster-issuer": "letsencrypt-prod",
+				},
+			},
+			"tls": map[string]any{
+				"enabled":    true,
+				"secretName": "harbor-tls",
 			},
 		},
 		"externalURL": "https://harbor.madhan.app",

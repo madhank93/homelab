@@ -22,7 +22,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 
 	// Create InfisicalSecret CRD
 	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisicalstandalone-backend.infisical.svc.cluster.local:4000",
+		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
 		"resyncInterval": 60,
 		"authentication": map[string]any{
 			"serviceToken": map[string]any{
@@ -75,7 +75,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 				"accessMode": "ReadWriteOnce",
 			},
 			"extraEnvVars": map[string]any{
-				"N8N_HOST": "n8n.local",
+				"N8N_HOST": "n8n.madhan.app", // Updated to real domain
 				"N8N_PORT": "5678",
 			},
 			// No affinity field at all - let Kubernetes handle scheduling
@@ -92,15 +92,24 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		"ingress": map[string]any{
 			"enabled":   true,
 			"className": "nginx",
+			"annotations": map[string]string{
+				"cert-manager.io/cluster-issuer": "letsencrypt-prod",
+			},
 			"hosts": []map[string]any{
 				{
-					"host": "n8n.local",
+					"host": "n8n.madhan.app", // Updated to real domain
 					"paths": []map[string]any{
 						{
 							"path":     "/",
 							"pathType": "Prefix",
 						},
 					},
+				},
+			},
+			"tls": []map[string]any{
+				{
+					"hosts":      []string{"n8n.madhan.app"},
+					"secretName": "n8n-tls",
 				},
 			},
 		},

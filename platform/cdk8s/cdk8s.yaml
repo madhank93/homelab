@@ -1,7 +1,7 @@
 language: go
 app: go run .
 imports:
-  - k8s
+  - k8s@1.30.0
   - helm:https://helm.ngc.nvidia.com/nvidia/gpu-operator@25.10.1
   - helm:https://charts.jetstack.io/cert-manager@1.19.2
   - helm:https://grafana-community.github.io/helm-charts/grafana@10.7.0
@@ -14,7 +14,7 @@ imports:
   - helm:https://aquasecurity.github.io/helm-charts/trivy-operator@0.31.0
   - helm:https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/infisical-standalone@1.7.2
   - helm:https://bitnami-labs.github.io/sealed-secrets/sealed-secrets@1.16.0
-  # - helm:https://releases.rancher.com/server-charts/stable/rancher@2.13.2
+  - helm:https://releases.rancher.com/server-charts/stable/rancher@2.13.2
   - helm:https://kubernetes-sigs.github.io/headlamp/headlamp@0.40.0
   - helm:https://rancher.github.io/fleet-helm-charts/fleet@0.14.2
   - helm:https://kyverno.github.io/kyverno/kyverno@3.6.2
