@@ -52,7 +52,7 @@ spec:
             - name: N8N_GRACEFUL_SHUTDOWN_TIMEOUT
               value: "30"
             - name: N8N_EDITOR_BASE_URL
-              value: http://n8n.local
+              value: https://n8n.madhan.app
             - name: DB_POSTGRESDB_USER
               value: n8n
             - name: DB_POSTGRESDB_PASSWORD
@@ -62,7 +62,7 @@ spec:
                   name: n8n-postgresql
                   optional: true
             - name: N8N_HOST
-              value: n8n.local
+              value: n8n.madhan.app
             - name: N8N_PORT
               value: "5678"
           envFrom:

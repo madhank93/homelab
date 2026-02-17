@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: rancher
+    chart: rancher-2.9.2
+    heritage: Helm
+    release: rancher
+  name: rancher
+  namespace: cattle-system
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rancher
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: rancher
+        release: rancher
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: NotIn
+                    values:
+                      - windows
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - rancher
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      containers:
+        - args:
+            - --no-cacerts
+            - --http-listen-port=80
+            - --https-listen-port=443
+            - --add-local=true
+          env:
+            - name: CATTLE_NAMESPACE
+              value: cattle-system
+            - name: CATTLE_PEER_SERVICE
+              value: rancher
+            - name: CATTLE_AGENT_TLS_MODE
+              value: system-store
+          image: rancher/rancher:v2.9.2
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: 80
+            periodSeconds: 30
+            timeoutSeconds: 5
+          name: rancher
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: 80
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          startupProbe:
+            failureThreshold: 12
+            httpGet:
+              path: /healthz
+              port: 80
+            periodSeconds: 10
+            timeoutSeconds: 5
+      priorityClassName: rancher-critical
+      serviceAccountName: rancher
+      tolerations:
+        - effect: NoSchedule
+          key: cattle.io/os
+          operator: Equal
+          value: linux

@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-madhan-app
+  namespace: kube-system
+spec:
+  dnsNames:
+    - madhan.app
+    - "*.madhan.app"
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  secretName: wildcard-madhan-app-tls

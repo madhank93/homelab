@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: rancher
+    app.kubernetes.io/part-of: rancher
+    chart: rancher-2.9.2
+    heritage: Helm
+    release: rancher
+  name: rancher-config
+  namespace: cattle-system
+data:
+  priorityClassName: rancher-critical

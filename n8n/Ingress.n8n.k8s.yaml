@@ -1,6 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
   labels:
     app.kubernetes.io/component: main
     app.kubernetes.io/instance: n8n
@@ -14,7 +16,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: n8n.local
+    - host: n8n.madhan.app
       http:
         paths:
           - backend:
@@ -24,3 +26,7 @@ spec:
                   number: 5678
             path: /
             pathType: Prefix
+  tls:
+    - hosts:
+        - n8n.madhan.app
+      secretName: n8n-tls
