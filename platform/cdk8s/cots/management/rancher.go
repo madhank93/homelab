@@ -94,7 +94,7 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 		Repo:        jsii.String("https://releases.rancher.com/server-charts/stable"),
 		ReleaseName: jsii.String("rancher"),
 		Namespace:   jsii.String(namespace),
-		Version:     jsii.String("v2.9.2"),
+		Version:     jsii.String("2.13.2"),
 		HelmFlags:   &[]*string{jsii.String("--kube-version"), jsii.String("1.30.0")},
 		Values:      &values,
 	})

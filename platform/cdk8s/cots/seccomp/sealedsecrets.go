@@ -12,9 +12,9 @@ func NewSealedSecretsChart(scope constructs.Construct, id string, namespace stri
 		Namespace: jsii.String(namespace),
 	})
 
-	// Install CRD from v0.34.0 release (matches controller version)
+	// Install CRD from v0.36.0 release (matches controller version)
 	cdk8s.NewInclude(chart, jsii.String("sealed-secrets-crd"), &cdk8s.IncludeProps{
-		Url: jsii.String("https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.34.0/controller.yaml"),
+		Url: jsii.String("https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.36.0/controller.yaml"),
 	})
 
 	// Install controller via Helm with custom image and RBAC disabled
@@ -23,12 +23,12 @@ func NewSealedSecretsChart(scope constructs.Construct, id string, namespace stri
 		Namespace:   jsii.String("kube-system"),
 		Repo:        jsii.String("https://bitnami-labs.github.io/sealed-secrets"),
 		ReleaseName: jsii.String("sealed-secrets-controller"),
-		Version:     jsii.String("1.16.0"),
+		Version:     jsii.String("2.18.1"),
 		Values: &map[string]any{
 			"fullnameOverride": "sealed-secrets-controller",
 			"image": map[string]any{
 				"repository": "ghcr.io/bitnami-labs/sealed-secrets-controller",
-				"tag":        "0.34.0",
+				"tag":        "0.36.0",
 			},
 			"rbac": map[string]any{
 				"create": true, // Use default chart RBAC

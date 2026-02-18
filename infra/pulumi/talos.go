@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	talosVersion    = "v1.9.3"
+	talosVersion    = "v1.12.4"
 	clusterEndpoint = "https://192.168.1.100:6443" // VIP
 	vipIP           = "192.168.1.100"
 )
@@ -28,11 +28,10 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	}
 
 	// Download Talos Image with System Extensions
-	// Schematic ID: e187c9b90f773cd8c84e5a3265c5554ee787b2fe67b508d9f955e90e7ae8c96c
-	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent
-	// See: docs/talos-upgrade-guide.md for schematic configuration
+	// Schematic ID: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829
+	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent, nvidia-container-toolkit, nvidia-open-gpu-kernel-modules
 	talosImage, err := DownloadImage(ctx, provider, "talos-image", cfg.NodeName,
-		"https://factory.talos.dev/image/e187c9b90f773cd8c84e5a3265c5554ee787b2fe67b508d9f955e90e7ae8c96c/v1.9.3/nocloud-amd64.raw.gz",
+		"https://factory.talos.dev/image/901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829/v1.12.4/nocloud-amd64.raw.gz",
 		"talos-nocloud-amd64.img",
 		"gz",
 	)
@@ -113,6 +112,25 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
       - name: configfs
 `
 
+	// GPU Worker Patch - Includes worker networking/modules + Nvidia modules
+	gpuWorkerPatch := `machine:
+  network:
+    interfaces:
+      - deviceSelector:
+          physical: true
+        dhcp: true
+  kernel:
+    modules:
+      - name: nbd
+      - name: iscsi_tcp
+      - name: iscsi_generic
+      - name: configfs
+      - name: nvidia
+      - name: nvidia_uvm
+      - name: nvidia_drm
+      - name: nvidia_modeset
+`
+
 	basePatch := `cluster:
   network:
     cni:
@@ -138,6 +156,15 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		MachineSecrets:  secrets.MachineSecrets,
 		TalosVersion:    pulumi.String(talosVersion),
 		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(workerPatch)},
+	})
+
+	gpuConfig := talos_machine.GetConfigurationOutput(ctx, talos_machine.GetConfigurationOutputArgs{
+		ClusterName:     pulumi.String("talos-cluster"),
+		MachineType:     pulumi.String("worker"),
+		ClusterEndpoint: pulumi.String(clusterEndpoint),
+		MachineSecrets:  secrets.MachineSecrets,
+		TalosVersion:    pulumi.String(talosVersion),
+		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(gpuWorkerPatch)},
 	})
 
 	// Export sanitized configs
@@ -176,6 +203,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		var baseConfig pulumi.StringOutput
 		if node.Role == "control" {
 			baseConfig = cpConfig.MachineConfiguration()
+		} else if node.HasGPU {
+			baseConfig = gpuConfig.MachineConfiguration()
 		} else {
 			baseConfig = workerConfig.MachineConfiguration()
 		}

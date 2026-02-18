@@ -184,7 +184,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	cdk8s.NewHelm(chart, jsii.String("infisical-operator-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("secrets-operator"),
 		Repo:        jsii.String("https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/"),
-		Version:     jsii.String("0.8.1"),
+		Version:     jsii.String("0.10.23"),
 		ReleaseName: jsii.String("infisical-operator"),
 
 		Values: &map[string]any{

@@ -26,7 +26,6 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 		"driver": map[string]any{"enabled": false},
 		"operator": map[string]any{
 			"defaultRuntime": "nvidia",
-			"nodeSelector":   nodeSelector,
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
