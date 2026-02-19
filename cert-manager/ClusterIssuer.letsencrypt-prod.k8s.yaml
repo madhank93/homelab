@@ -13,7 +13,7 @@ spec:
       - dns01:
           cloudflare:
             apiTokenSecretRef:
-              key: api-token
+              key: CLOUDFLARE_API_TOKEN
               name: cloudflare-api-token
             email: madhankumaravelu93@gmail.com
         selector:

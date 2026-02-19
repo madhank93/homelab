@@ -85,16 +85,14 @@ spec:
           resources:
             limits:
               cpu: 500m
-              memory: 350Mi
+              memory: 512Mi
             requests:
-              cpu: 200m
-              memory: 100Mi
+              cpu: 100m
+              memory: 128Mi
           volumeMounts:
             - mountPath: /host-etc/os-release
               name: host-os-release
               readOnly: true
-      nodeSelector:
-        node-role.kubernetes.io/gpu: "true"
       priorityClassName: system-node-critical
       serviceAccountName: gpu-operator
       tolerations:

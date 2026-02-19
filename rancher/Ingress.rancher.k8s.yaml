@@ -8,7 +8,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
   labels:
     app: rancher
-    chart: rancher-2.9.2
+    chart: rancher-2.13.2
     heritage: Helm
     release: rancher
   name: rancher

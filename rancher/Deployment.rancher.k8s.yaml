@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: rancher
-    chart: rancher-2.9.2
+    chart: rancher-2.13.2
     heritage: Helm
     release: rancher
   name: rancher
@@ -57,7 +57,11 @@ spec:
               value: rancher
             - name: CATTLE_AGENT_TLS_MODE
               value: system-store
-          image: rancher/rancher:v2.9.2
+            - name: IMPERATIVE_API_DIRECT
+              value: "true"
+            - name: IMPERATIVE_API_APP_SELECTOR
+              value: rancher
+          image: rancher/rancher:v2.13.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 5
@@ -69,6 +73,8 @@ spec:
           name: rancher
           ports:
             - containerPort: 80
+              protocol: TCP
+            - containerPort: 6666
               protocol: TCP
           readinessProbe:
             failureThreshold: 5

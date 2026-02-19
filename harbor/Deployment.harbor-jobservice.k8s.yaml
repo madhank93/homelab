@@ -30,8 +30,8 @@ spec:
       annotations:
         checksum/configmap: d97ed98c4f1a6a67a9e3beb515866b76bdc366f85a505c6630ab8b715a1d3596
         checksum/configmap-env: 75613fb585c5d54506092929c28b7ab86212a69b20882acd118ae0780a1c48de
-        checksum/secret: 6580d5391a91aa2728dbfcab48b7a6aeb2f7809410396626ddaf990e22ab8c33
-        checksum/secret-core: e063e9aad6a443e04119964836c19be35323f99ad9a897bc4ed0de285d0e4616
+        checksum/secret: 0703f575300b6c7351096265f810a9bdf046dbf38a5dd13df3f9aec85e6cd04d
+        checksum/secret-core: 0a3fff9b41735da132dde0aec54eab99ee2655a70dcd511725f088e517ba67e1
       labels:
         app: harbor
         app.kubernetes.io/component: jobservice
@@ -77,6 +77,13 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 20
             periodSeconds: 10
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

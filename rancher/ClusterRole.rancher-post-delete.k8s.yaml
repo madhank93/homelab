@@ -7,7 +7,7 @@ metadata:
     helm.sh/hook-weight: "1"
   labels:
     app: rancher
-    chart: rancher-2.9.2
+    chart: rancher-2.13.2
     heritage: Helm
     release: rancher
   name: rancher-post-delete
@@ -26,6 +26,7 @@ rules:
       - batch
     resources:
       - jobs
+      - cronjobs
     verbs:
       - get
       - list
@@ -91,5 +92,11 @@ rules:
       - cert-manager.io
     resources:
       - issuers
+    verbs:
+      - delete
+  - apiGroups:
+      - apiregistration.k8s.io
+    resources:
+      - apiservices
     verbs:
       - delete

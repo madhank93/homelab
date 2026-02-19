@@ -2,51 +2,42 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   annotations:
-    helm.sh/hook: post-delete
+    helm.sh/hook: pre-upgrade
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
-    helm.sh/hook-weight: "3"
+    helm.sh/hook-weight: "-1"
   labels:
-    app: rancher
+    app: rancher-pre-upgrade
     chart: rancher-2.13.2
     heritage: Helm
     release: rancher
-  name: rancher-post-delete
+  name: rancher-pre-upgrade
   namespace: cattle-system
 spec:
   backoffLimit: 3
   template:
     metadata:
       labels:
-        app: rancher
+        app: rancher-pre-upgrade
         chart: rancher-2.13.2
         heritage: Helm
         release: rancher
-      name: rancher-post-delete
+      name: rancher-pre-upgrade
     spec:
       containers:
         - command:
-            - /scripts/post-delete-hook.sh
-          env:
-            - name: NAMESPACES
-              value: cattle-fleet-system cattle-system rancher-operator-system
-            - name: RANCHER_NAMESPACE
-              value: cattle-system
-            - name: TIMEOUT
-              value: "120"
-            - name: IGNORETIMEOUTERROR
-              value: "false"
+            - /scripts/pre-upgrade-hook.sh
           image: rancher/shell:v0.6.1
           imagePullPolicy: IfNotPresent
-          name: rancher-post-delete
+          name: rancher-pre-upgrade
           securityContext:
             runAsUser: 0
           volumeMounts:
             - mountPath: /scripts
               name: config-volume
-      restartPolicy: OnFailure
-      serviceAccountName: rancher-post-delete
+      restartPolicy: Never
+      serviceAccountName: rancher-pre-upgrade
       volumes:
         - configMap:
             defaultMode: 511
-            name: rancher-post-delete
+            name: rancher-pre-upgrade
           name: config-volume
