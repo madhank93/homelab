@@ -75,6 +75,11 @@ install-addons addon_tags:
 ##### CDK8s ######
 ##################
 [working-directory: 'platform/cdk8s']
+import:
+	cdk8s import
+	bash scripts/fix-imports.sh
+
+[working-directory: 'platform/cdk8s']
 synth:
 	go mod tidy
 	cdk8s synth --output ../../app
