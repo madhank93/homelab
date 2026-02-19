@@ -16,8 +16,8 @@ import (
 
 const (
 	talosVersion    = "v1.12.4"
-	clusterEndpoint = "https://192.168.1.100:6443" // VIP
-	vipIP           = "192.168.1.100"
+	clusterEndpoint = "https://192.168.2.10:6443" // VIP
+	vipIP           = "192.168.2.10"
 )
 
 func DeployTalosCluster(ctx *pulumi.Context) error {
@@ -72,16 +72,16 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Define nodes
 	nodes := []NodeConfig{
 		// Control Plane (3 Nodes) - High Priority
-		{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller1", IP: "192.168.2.11", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller2", IP: "192.168.2.12", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller3", IP: "192.168.2.13", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
 		// Workers (4 Nodes) - Standard Priority
-		{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
-		{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
-		{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
+		{Name: "k8s-worker1", IP: "192.168.2.21", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
+		{Name: "k8s-worker2", IP: "192.168.2.22", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
+		{Name: "k8s-worker3", IP: "192.168.2.23", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
 		// Worker 4 with GPU
 		{
-			Name: "k8s-worker4", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125,
+			Name: "k8s-worker4", IP: "192.168.2.24", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125,
 			HasGPU: true, PcieIDs: []string{"0000:28:00.0"},
 			CpuUnits: 100, Balloon: 2048,
 		},
@@ -172,7 +172,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	ctx.Export("worker-config", workerConfig.MachineConfiguration())
 
 	var cpConfigApplies []pulumi.Resource
-	var controllerIP pulumi.StringOutput
+	var controllerIP pulumi.String
 
 	for _, node := range nodes {
 		// Create VM
@@ -181,17 +181,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 			return err
 		}
 
-		// Capture IP from Agent
-		nodeIP := vmRes.Ipv4Addresses.ApplyT(func(ips [][]string) (string, error) {
-			for _, netInterface := range ips {
-				for _, ip := range netInterface {
-					if strings.HasPrefix(ip, "192.168.") {
-						return ip, nil
-					}
-				}
-			}
-			return "", fmt.Errorf("waiting for ip address (run pulumi refresh if vm is running)")
-		}).(pulumi.StringOutput)
+		// Use Static IP
+		nodeIP := pulumi.String(node.IP)
 
 		ctx.Export(node.Name+"-ip", nodeIP)
 
@@ -211,7 +202,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 		// Patch Hostname and Sanitize
 		finalConfig := baseConfig.ApplyT(func(c string) (string, error) {
-			return patchTalosConfig(c, node.Name)
+			return patchTalosConfig(c, node.Name, node.IP)
 		}).(pulumi.StringOutput)
 
 		// Client Config construct
@@ -314,7 +305,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 }
 
 // patchTalosConfig removes HostnameConfig, machine.install, and sets the hostname.
-func patchTalosConfig(rawConfig, hostname string) (string, error) {
+func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
 	reader := strings.NewReader(rawConfig)
 	decoder := yaml.NewDecoder(reader)
 	var documents []map[string]any
@@ -341,6 +332,19 @@ func patchTalosConfig(rawConfig, hostname string) (string, error) {
 				}
 				if networkMap, ok := machineMap["network"].(map[string]any); ok {
 					networkMap["hostname"] = hostname
+					if interfaces, ok := networkMap["interfaces"].([]any); ok && len(interfaces) > 0 {
+						if iface, ok := interfaces[0].(map[string]any); ok {
+							iface["dhcp"] = false
+							iface["addresses"] = []string{fmt.Sprintf("%s/23", ip)}
+							iface["routes"] = []any{
+								map[string]any{
+									"network": "0.0.0.0/0",
+									"gateway": "192.168.1.254",
+								},
+							}
+						}
+					}
+					networkMap["nameservers"] = []string{"1.1.1.1", "192.168.1.254"}
 				}
 			}
 		}

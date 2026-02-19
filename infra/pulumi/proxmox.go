@@ -19,6 +19,7 @@ type ProxmoxClusterConfig struct {
 
 type NodeConfig struct {
 	Name       string
+	IP         string
 	Role       string
 	Cores      int
 	Memory     int

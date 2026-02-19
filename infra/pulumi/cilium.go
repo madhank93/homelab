@@ -48,7 +48,7 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				},
 				"hostRoot": pulumi.String("/sys/fs/cgroup"),
 			},
-			"k8sServiceHost": pulumi.String("192.168.1.100"), // VIP
+			"k8sServiceHost": pulumi.String("192.168.2.10"), // VIP
 			"k8sServicePort": pulumi.Int(6443),
 			"hubble": pulumi.Map{
 				"enabled": pulumi.Bool(true),
