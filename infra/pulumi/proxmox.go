@@ -57,7 +57,17 @@ func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, *ProxmoxClust
 	return provider, &cfg, nil
 }
 
-// DownloadImage
+// DownloadImage downloads a file to the Proxmox datastore.
+//
+// Reliability notes:
+//   - IgnoreChanges("fileName"): prevents state drift from triggering unintended
+//     replacements. If the resource is dropped from state (e.g. after pulumi cancel),
+//     Pulumi will reconcile without forcing a re-download.
+//   - DeleteBeforeReplace: when a replacement IS intentional (URL/schematic change),
+//     Pulumi deletes the Proxmox file first (physically removing it from disk), then
+//     re-downloads — eliminating the "refusing to override existing file" error.
+//   - OverwriteUnmanaged: safety net for files that exist on Proxmox but were never
+//     in Pulumi state (e.g. manually uploaded files with the same name).
 func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceName, nodeName, url, fileName, compression string) (*download.File, error) {
 	return download.NewFile(ctx, resourceName, &download.FileArgs{
 		ContentType:            pulumi.String("iso"),
@@ -67,7 +77,12 @@ func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceNa
 		FileName:               pulumi.String(fileName),
 		DecompressionAlgorithm: pulumi.String(compression),
 		Overwrite:              pulumi.Bool(true),
-	}, pulumi.Provider(provider))
+		OverwriteUnmanaged:     pulumi.Bool(true),
+	},
+		pulumi.Provider(provider),
+		pulumi.IgnoreChanges([]string{"fileName"}),
+		pulumi.DeleteBeforeReplace(true),
+	)
 }
 
 // Virtual Machine

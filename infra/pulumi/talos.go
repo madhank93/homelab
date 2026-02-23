@@ -16,8 +16,8 @@ import (
 
 const (
 	talosVersion    = "v1.12.4"
-	clusterEndpoint = "https://192.168.2.10:6443" // VIP
-	vipIP           = "192.168.2.10"
+	clusterEndpoint = "https://192.168.1.210:6443" // VIP
+	vipIP           = "192.168.1.210"
 )
 
 func DeployTalosCluster(ctx *pulumi.Context) error {
@@ -27,12 +27,24 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Download Talos Image with System Extensions
+	// Download Base Talos Image (without Nvidia extensions)
+	// Schematic ID: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b
+	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent
+	baseTalosImage, err := DownloadImage(ctx, provider, "talos-base-image", cfg.NodeName,
+		"https://factory.talos.dev/image/88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b/v1.12.4/nocloud-amd64.raw.gz",
+		"talos-nocloud-amd64-base.img",
+		"gz",
+	)
+	if err != nil {
+		return err
+	}
+
+	// Download GPU Talos Image (with Nvidia extensions)
 	// Schematic ID: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829
 	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent, nvidia-container-toolkit, nvidia-open-gpu-kernel-modules
-	talosImage, err := DownloadImage(ctx, provider, "talos-image", cfg.NodeName,
+	gpuTalosImage, err := DownloadImage(ctx, provider, "talos-gpu-image", cfg.NodeName,
 		"https://factory.talos.dev/image/901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829/v1.12.4/nocloud-amd64.raw.gz",
-		"talos-nocloud-amd64.img",
+		"talos-nocloud-amd64-gpu.img",
 		"gz",
 	)
 	if err != nil {
@@ -72,16 +84,16 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Define nodes
 	nodes := []NodeConfig{
 		// Control Plane (3 Nodes) - High Priority
-		{Name: "k8s-controller1", IP: "192.168.2.11", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller2", IP: "192.168.2.12", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller3", IP: "192.168.2.13", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller1", IP: "192.168.1.211", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller2", IP: "192.168.1.212", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller3", IP: "192.168.1.213", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
 		// Workers (4 Nodes) - Standard Priority
-		{Name: "k8s-worker1", IP: "192.168.2.21", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
-		{Name: "k8s-worker2", IP: "192.168.2.22", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
-		{Name: "k8s-worker3", IP: "192.168.2.23", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
+		{Name: "k8s-worker1", IP: "192.168.1.221", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
+		{Name: "k8s-worker2", IP: "192.168.1.222", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
+		{Name: "k8s-worker3", IP: "192.168.1.223", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
 		// Worker 4 with GPU
 		{
-			Name: "k8s-worker4", IP: "192.168.2.24", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125,
+			Name: "k8s-worker4", IP: "192.168.1.224", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125,
 			HasGPU: true, PcieIDs: []string{"0000:28:00.0"},
 			CpuUnits: 100, Balloon: 2048,
 		},
@@ -175,8 +187,16 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	var controllerIP pulumi.String
 
 	for _, node := range nodes {
+		// Select Image Based on GPU
+		var imageID pulumi.IDOutput
+		if node.HasGPU {
+			imageID = gpuTalosImage.ID()
+		} else {
+			imageID = baseTalosImage.ID()
+		}
+
 		// Create VM
-		vmRes, err := NewProxmoxVM(ctx, provider, cfg.NodeName, node, talosImage.ID())
+		vmRes, err := NewProxmoxVM(ctx, provider, cfg.NodeName, node, imageID)
 		if err != nil {
 			return err
 		}
@@ -205,6 +225,19 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 			return patchTalosConfig(c, node.Name, node.IP)
 		}).(pulumi.StringOutput)
 
+		// Dynamically discovered IP from QEMU agent for bootstrapping
+		dynamicEndpoint := vmRes.Ipv4Addresses.ApplyT(func(ips [][]string) (string, error) {
+			for _, net := range ips {
+				for _, ip := range net {
+					// Filter out loopback, link-local APIPA, and IPv6 addresses
+					if ip != "127.0.0.1" && ip != "" && !strings.HasPrefix(ip, "169.254.") && !strings.Contains(ip, ":") {
+						return ip, nil
+					}
+				}
+			}
+			return "", fmt.Errorf("no valid IPv4 address reported by QEMU agent yet")
+		}).(pulumi.StringOutput)
+
 		// Client Config construct
 		clientConfigArgs := talos_machine.ClientConfigurationArgs{
 			CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
@@ -217,6 +250,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 			ClientConfiguration:       clientConfigArgs,
 			MachineConfigurationInput: finalConfig,
 			Node:                      nodeIP,
+			Endpoint:                  dynamicEndpoint,
 		}, pulumi.DependsOn([]pulumi.Resource{vmRes}))
 		if err != nil {
 			return err
@@ -335,10 +369,9 @@ func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
 					if interfaces, ok := networkMap["interfaces"].([]any); ok && len(interfaces) > 0 {
 						if iface, ok := interfaces[0].(map[string]any); ok {
 							iface["dhcp"] = false
-							iface["addresses"] = []string{fmt.Sprintf("%s/23", ip)}
+							iface["addresses"] = []string{fmt.Sprintf("%s/24", ip)}
 							iface["routes"] = []any{
 								map[string]any{
-									"network": "0.0.0.0/0",
 									"gateway": "192.168.1.254",
 								},
 							}
