@@ -11,7 +11,7 @@ metadata:
   namespace: longhorn-system
 data:
   default-setting.yaml: |-
-    create-default-disk-labeled-nodes: true
+    create-default-disk-labeled-nodes: false
     default-data-path: "/var/lib/longhorn/"
     default-replica-count: "3"
     priority-class: "longhorn-critical"
