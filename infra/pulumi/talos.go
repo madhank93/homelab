@@ -111,6 +111,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 `, vipIP)
 
 	workerPatch := `machine:
+  kubelet:
+    nodeLabels:
+      node.longhorn.io/create-default-disk: config  # Longhorn auto-provisions default disk on this node
   network:
     interfaces:
       - deviceSelector:
@@ -126,6 +129,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	// GPU Worker Patch - Includes worker networking/modules + Nvidia modules
 	gpuWorkerPatch := `machine:
+  kubelet:
+    nodeLabels:
+      node.longhorn.io/create-default-disk: config  # Longhorn auto-provisions default disk on this node
   network:
     interfaces:
       - deviceSelector:

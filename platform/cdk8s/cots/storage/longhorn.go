@@ -29,7 +29,7 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		"defaultSettings": map[string]any{
 			"defaultReplicaCount":           3,
 			"defaultDataPath":               "/var/lib/longhorn/", // Talos persistent path
-			"createDefaultDiskLabeledNodes": true,
+			"createDefaultDiskLabeledNodes": false, // Auto-provision default disk on ALL nodes (not just labelled ones)
 		},
 		"persistence": map[string]any{
 			"defaultClass":             true,
