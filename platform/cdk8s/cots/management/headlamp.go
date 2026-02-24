@@ -21,27 +21,37 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
+			// Ingress disabled — traffic routed via Gateway API HTTPRoute below
 			"ingress": map[string]any{
-				"enabled": true,
-				"hosts": []map[string]any{
-					{
-						"host": "headlamp.madhan.app",
-						"paths": []map[string]any{
-							{"path": "/", "type": "ImplementationSpecific"},
-						},
-					},
-				},
-				"annotations": map[string]string{
-					"cert-manager.io/cluster-issuer": "letsencrypt-prod",
-				},
-				"tls": []map[string]any{
-					{
-						"secretName": "headlamp-tls",
-						"hosts":      []any{"headlamp.madhan.app"},
-					},
-				},
+				"enabled": false,
 			},
 		},
 	})
+
+	// Gateway API HTTPRoute — routes headlamp.madhan.app → headlamp:4466
+	cdk8s.NewApiObject(chart, jsii.String("headlamp-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("headlamp"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"headlamp.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"name": "headlamp", "port": 4466},
+				},
+			},
+		},
+	}))
+
 	return chart
 }

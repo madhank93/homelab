@@ -88,30 +88,9 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 			"port":    5678,
 		},
 
-		// Ingress configuration
+		// Ingress disabled — traffic routed via Gateway API HTTPRoute below
 		"ingress": map[string]any{
-			"enabled":   true,
-			"className": "nginx",
-			"annotations": map[string]string{
-				"cert-manager.io/cluster-issuer": "letsencrypt-prod",
-			},
-			"hosts": []map[string]any{
-				{
-					"host": "n8n.madhan.app", // Updated to real domain
-					"paths": []map[string]any{
-						{
-							"path":     "/",
-							"pathType": "Prefix",
-						},
-					},
-				},
-			},
-			"tls": []map[string]any{
-				{
-					"hosts":      []string{"n8n.madhan.app"},
-					"secretName": "n8n-tls",
-				},
-			},
+			"enabled": false,
 		},
 
 		// Database configuration - PostgreSQL for production
@@ -180,6 +159,31 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
+
+	// Gateway API HTTPRoute — routes n8n.madhan.app → n8n-main:5678
+	cdk8s.NewApiObject(chart, jsii.String("n8n-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("n8n"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"n8n.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"name": "n8n-main", "port": 5678},
+				},
+			},
+		},
+	}))
 
 	return chart
 }

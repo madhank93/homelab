@@ -77,18 +77,9 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 			"type": "ClusterIP",
 			"port": 3000,
 		},
+		// Ingress disabled — traffic routed via Gateway API HTTPRoute below
 		"ingress": map[string]any{
-			"enabled": true,
-			"hosts":   []string{"grafana.madhan.app"},
-			"annotations": map[string]string{
-				"cert-manager.io/cluster-issuer": "letsencrypt-prod",
-			},
-			"tls": []map[string]any{
-				{
-					"hosts":      []string{"grafana.madhan.app"},
-					"secretName": "grafana-tls",
-				},
-			},
+			"enabled": false,
 		},
 	}
 
@@ -100,6 +91,31 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
+
+	// Gateway API HTTPRoute — routes grafana.madhan.app → grafana:3000
+	cdk8s.NewApiObject(chart, jsii.String("grafana-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("grafana"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"grafana.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"name": "grafana", "port": 3000},
+				},
+			},
+		},
+	}))
 
 	return chart
 }

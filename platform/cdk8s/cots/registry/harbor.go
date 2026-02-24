@@ -55,18 +55,10 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 
 	values := map[string]any{
 		"expose": map[string]any{
-			"type": "ingress",
-			"ingress": map[string]any{
-				"hosts": map[string]any{
-					"core": "harbor.madhan.app",
-				},
-				"annotations": map[string]string{
-					"cert-manager.io/cluster-issuer": "letsencrypt-prod",
-				},
-			},
+			// Use clusterIP; TLS terminated at homelab-gateway (wildcard-madhan-app-tls)
+			"type": "clusterIP",
 			"tls": map[string]any{
-				"enabled":    true,
-				"secretName": "harbor-tls",
+				"enabled": false,
 			},
 		},
 		"externalURL": "https://harbor.madhan.app",
@@ -111,6 +103,31 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
+
+	// Gateway API HTTPRoute — routes harbor.madhan.app → harbor-core:80
+	cdk8s.NewApiObject(chart, jsii.String("harbor-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("harbor"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"harbor.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"name": "harbor-core", "port": 80},
+				},
+			},
+		},
+	}))
 
 	return chart
 }
