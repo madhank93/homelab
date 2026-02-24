@@ -29,7 +29,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		},
 	})
 
-	// Gateway API HTTPRoute — routes headlamp.madhan.app → headlamp:4466
+	// Gateway API HTTPRoute — routes headlamp.madhan.app → headlamp:80
 	cdk8s.NewApiObject(chart, jsii.String("headlamp-httproute"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
 		Kind:       jsii.String("HTTPRoute"),
@@ -48,7 +48,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"name": "headlamp", "port": 4466},
+					{"name": "headlamp", "port": 80},
 				},
 			},
 		},
