@@ -21,7 +21,8 @@ data:
         cp /opt/bitnami/redis/mounted-etc/redis.conf /opt/bitnami/redis/etc/redis.conf
     fi
     ARGS=("--port" "${REDIS_PORT}")
-    ARGS+=("--protected-mode" "no")
+    ARGS+=("--requirepass" "${REDIS_PASSWORD}")
+    ARGS+=("--masterauth" "${REDIS_PASSWORD}")
     ARGS+=("--include" "/opt/bitnami/redis/etc/redis.conf")
     ARGS+=("--include" "/opt/bitnami/redis/etc/master.conf")
     exec redis-server "${ARGS[@]}"

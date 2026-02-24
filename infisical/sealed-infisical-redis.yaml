@@ -1,0 +1,22 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: redis
+  namespace: infisical
+spec:
+  encryptedData:
+    redis-password: AgAAJGjUfd/MTG8A1ifxMCqwEum1jXeTsLgL/YQrrH4G3H86AW4F2AKSnktkZcTuKi8QKjHHPeYSTzjab4SF/fsjZdgKX152NojoeOw8CHFoPkRtXtmMnn1OskFPJqhCnYyIYbsTe9mimS1dh2Nk5gOY2TF+56zAl0rWMQRtJqFC44KBIxFdh8PaxTviLrFE/ae7ZXrErFBNyTk7xCYVb4VuqTVwT5QY9fivK7+wAeeYqOgoDsPU0//GzM8muz0EHXZUqsbxSRYtDOZDMLApucAUDVuDJNEnjB6MqM0LTerubl/Isue4eA80ZScfik1xXpPjZCVvmDPqS6EUeGZtxVOflh9Chgv1CFXCJb0fPek5dzqGGd60ThBPgIMsx1lJV+mntljslZII4cEAQTvFWgT2SJSch9SIL1mDsdyNS4SMljGDhoM/ohBUfA72kILvoZvPlkOYD0dvRwDmx0IXsf8szOf6hjHSb3pvVFxeSmQSnqFXp3Tsk84xtUlQJj0OPHWelhd3C2sCaSLecdDbss6gdYShKUXMZyYqs9pkch1TmJmleTLISNSBz7yeXFXVRE8YMIP/If/xEfOlRfBILdLYQk/dDl6iV85OQGWgmQHx+NsWj6bT2eXbs5aPicmhzk9qdeg4w1VQKXFCXElP9l077N8t7GCAR+H7/bUxGQd810ZYIkQyMBFWWJN3Mk3SQj9n9Uxp439ZybyiPNoiQkrYTrfPu6FJNTA=
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: infisical
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: redis
+        app.kubernetes.io/version: 7.2.4
+        helm.sh/chart: redis-18.14.1
+      name: redis
+      namespace: infisical
+    type: Opaque
