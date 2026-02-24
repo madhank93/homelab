@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: n8n
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: postgresql
-    app.kubernetes.io/version: 18.1.0
-    helm.sh/chart: postgresql-18.2.3
+    app.kubernetes.io/version: 18.2.0
+    helm.sh/chart: postgresql-18.4.0
   name: n8n-postgresql
   namespace: n8n
 spec:

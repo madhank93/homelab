@@ -30,8 +30,8 @@ spec:
       annotations:
         checksum/configmap: d97ed98c4f1a6a67a9e3beb515866b76bdc366f85a505c6630ab8b715a1d3596
         checksum/configmap-env: 75613fb585c5d54506092929c28b7ab86212a69b20882acd118ae0780a1c48de
-        checksum/secret: d313b7d9c168611cbd0b9ec30c08cfc9352577d849b6df87be36bd8897764115
-        checksum/secret-core: 5e363d738330530d5c9fb82ba5af9c51fec5474357fdc33dcc2b939ebaf239ab
+        checksum/secret: cbf8e60ef2d1ed415f82d51ca8de384473c0672eadb827495f09ab2e25d36a20
+        checksum/secret-core: fbd803a292849c88aa89a3b1c5d28a77bb674199bd26b9a63e9d2359edf2dd29
       labels:
         app: harbor
         app.kubernetes.io/component: jobservice

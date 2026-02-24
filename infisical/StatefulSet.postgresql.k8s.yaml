@@ -81,7 +81,7 @@ spec:
               value: error
             - name: POSTGRESQL_SHARED_PRELOAD_LIBRARIES
               value: pgaudit
-          image: docker.io/bitnami/postgresql:latest
+          image: docker.io/bitnami/postgresql:17.2.0-debian-12-r2
           imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:
