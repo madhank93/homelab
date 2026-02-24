@@ -15,6 +15,9 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	k8s.NewKubeNamespace(chart, jsii.String("namespace"), &k8s.KubeNamespaceProps{
 		Metadata: &k8s.ObjectMeta{
 			Name: jsii.String(namespace),
+			Labels: &map[string]*string{
+				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
+			},
 		},
 	})
 
