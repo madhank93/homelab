@@ -44,6 +44,12 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		panic("INFISICAL_AUTH_SECRET environment variable is required")
 	}
 
+	// Get Redis password for internal Redis auth
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+	if redisPassword == "" {
+		panic("REDIS_PASSWORD environment variable is required")
+	}
+
 	// Create Secret for PostgreSQL password (will be sealed by CI)
 	postgresSecret := cdk8s.NewApiObject(chart, jsii.String("infisical-postgresql-secret"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("v1"),
@@ -91,9 +97,10 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			},
 		},
 		"redis": map[string]any{
-			"enabled": true, // Keep embedded Redis for now
+			"enabled": true,
 			"auth": map[string]any{
-				"enabled": false,
+				"enabled":  true,
+				"password": redisPassword,
 			},
 		},
 		"ingress": map[string]any{
