@@ -51,8 +51,6 @@ spec:
               value: Europe/Berlin
             - name: N8N_GRACEFUL_SHUTDOWN_TIMEOUT
               value: "30"
-            - name: N8N_EDITOR_BASE_URL
-              value: https://n8n.madhan.app
             - name: DB_POSTGRESDB_USER
               value: n8n
             - name: DB_POSTGRESDB_PASSWORD

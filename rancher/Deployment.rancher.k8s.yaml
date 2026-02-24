@@ -46,7 +46,6 @@ spec:
               weight: 100
       containers:
         - args:
-            - --no-cacerts
             - --http-listen-port=80
             - --https-listen-port=443
             - --add-local=true

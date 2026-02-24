@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    app.kubernetes.io/component: nginx
+    app.kubernetes.io/instance: harbor
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+    app.kubernetes.io/version: 2.14.2
+    chart: harbor
+    component: nginx
+    heritage: Helm
+    release: harbor
+  name: harbor-nginx
+  namespace: harbor
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: nginx
+      release: harbor
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 002f96767b3f203be4c31d35874966a9db6acfb52454e1e23ece89c9b0bb3cbc
+      labels:
+        app: harbor
+        app.kubernetes.io/component: nginx
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.14.2
+        chart: harbor
+        component: nginx
+        heritage: Helm
+        release: harbor
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: goharbor/nginx-photon:v2.14.2
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 300
+            periodSeconds: 10
+          name: nginx
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 1
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /etc/nginx/nginx.conf
+              name: config
+              subPath: nginx.conf
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      volumes:
+        - configMap:
+            name: harbor-nginx
+          name: config

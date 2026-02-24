@@ -20,6 +20,6 @@ data:
     plugins = /var/lib/grafana/plugins
     provisioning = /etc/grafana/provisioning
     [server]
-    domain = grafana.madhan.app
+    domain = ''
     [unified_storage]
     index_path = /var/lib/grafana-search/bleve
