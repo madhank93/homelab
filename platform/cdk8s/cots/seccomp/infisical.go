@@ -100,6 +100,12 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			"enabled":  false,
 			"hostname": "infisical.madhan.app",
 		},
+		// Disable the bundled nginx subchart entirely.
+		// Even with ingress.enabled=false the subchart still renders a Deployment
+		// and a ValidatingWebhookConfiguration that can block all pod creation.
+		"ingress-nginx": map[string]any{
+			"enabled": false,
+		},
 	}
 
 	// Deploy Infisical Application
@@ -115,9 +121,9 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	// Deploy PostgreSQL parameters
 	postgresValues := map[string]any{
 		"fullnameOverride": "postgresql", // Force service name to 'postgresql' to match URI
-		"image": map[string]any{
-			"tag": "latest",
-		},
+		// No image.tag override — Bitnami chart 16.2.5 ships PostgreSQL 16 by default.
+		// Pinning to 'latest' violates the explicit-version policy and risks silent
+		// major-version upgrades that corrupt the data directory on restart.
 		"auth": map[string]any{
 			"username":       "infisical",
 			"database":       "infisical",

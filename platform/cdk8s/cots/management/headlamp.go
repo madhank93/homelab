@@ -14,6 +14,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 	cdk8s.NewHelm(chart, jsii.String("headlamp-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("headlamp"),
 		Repo:        jsii.String("https://kubernetes-sigs.github.io/headlamp/"),
+		Version:     jsii.String("0.40.0"), // Pinned (released 2026-02-05)
 		ReleaseName: jsii.String("headlamp"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{

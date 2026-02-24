@@ -121,7 +121,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		// Image configuration
 		"image": map[string]any{
 			"repository": "n8nio/n8n",
-			"tag":        "latest",
+			"tag":        "1.78.0", // Pinned — never use 'latest' (violates versioning policy)
 			"pullPolicy": "IfNotPresent",
 		},
 
@@ -154,7 +154,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 	cdk8s.NewHelm(chart, jsii.String("n8n-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("n8n"),
 		Repo:        jsii.String("https://community-charts.github.io/helm-charts"),
-		Version:     jsii.String("1.16.28"),
+		Version:     jsii.String("1.16.29"), // Bumped from 1.16.28 (released 2026-02-20)
 		ReleaseName: jsii.String("n8n"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
