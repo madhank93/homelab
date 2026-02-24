@@ -12,7 +12,7 @@ spec:
   rules:
     - backendRefs:
         - name: headlamp
-          port: 4466
+          port: 80
       matches:
         - path:
             type: PathPrefix
