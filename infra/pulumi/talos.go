@@ -84,9 +84,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Define nodes
 	nodes := []NodeConfig{
 		// Control Plane (3 Nodes) - High Priority
-		{Name: "k8s-controller1", IP: "192.168.1.211", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller2", IP: "192.168.1.212", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller3", IP: "192.168.1.213", Role: "control", Cores: 2, Memory: 4096, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller1", IP: "192.168.1.211", Role: "control", Cores: 4, Memory: 6144, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller2", IP: "192.168.1.212", Role: "control", Cores: 4, Memory: 6144, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller3", IP: "192.168.1.213", Role: "control", Cores: 4, Memory: 6144, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
 		// Workers (4 Nodes) - Standard Priority
 		{Name: "k8s-worker1", IP: "192.168.1.221", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
 		{Name: "k8s-worker2", IP: "192.168.1.222", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
@@ -111,9 +111,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 `, vipIP)
 
 	workerPatch := `machine:
-  kubelet:
-    nodeLabels:
-      node.longhorn.io/create-default-disk: config  # Longhorn auto-provisions default disk on this node
+  nodeLabels:
+    "node.longhorn.io/create-default-disk": "config"
   network:
     interfaces:
       - deviceSelector:
@@ -129,9 +128,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	// GPU Worker Patch - Includes worker networking/modules + Nvidia modules
 	gpuWorkerPatch := `machine:
-  kubelet:
-    nodeLabels:
-      node.longhorn.io/create-default-disk: config  # Longhorn auto-provisions default disk on this node
+  nodeLabels:
+    "node.longhorn.io/create-default-disk": "config"
   network:
     interfaces:
       - deviceSelector:

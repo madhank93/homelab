@@ -112,21 +112,8 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error
 							},
 						},
 					},
-					{
-						"name":     "https",
-						"protocol": "TLS", // Must be TLS for Passthrough mode
-						"port":     443,
-						"hostname": "*.madhan.app", // Match any subddomain
-						"tls": map[string]any{
-							"mode": "Passthrough", // Let ArgoCD handle TLS, or "Terminate" if we had certs
-							// using Passthrough for now to keep it simple with self-signed upstream
-						},
-						"allowedRoutes": map[string]any{
-							"namespaces": map[string]any{
-								"from": "All",
-							},
-						},
-					},
+					// HTTPS listener (port 443): re-enable once wildcard-madhan-app-tls is provisioned.
+					// See platform/cdk8s/cots/seccomp/cert_manager.go (wildcard-madhan-app Certificate).
 				},
 			},
 		},

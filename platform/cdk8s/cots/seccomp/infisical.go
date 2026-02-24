@@ -125,42 +125,86 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		Values:      &values,
 	})
 
-	// Deploy PostgreSQL parameters
-	postgresValues := map[string]any{
-		"fullnameOverride": "postgresql", // Force service name to 'postgresql' to match URI
-		// No image.tag override — Bitnami chart 16.2.5 ships PostgreSQL 16 by default.
-		// Pinning to 'latest' violates the explicit-version policy and risks silent
-		// major-version upgrades that corrupt the data directory on restart.
-		"auth": map[string]any{
-			"username":       "infisical",
-			"database":       "infisical",
-			"existingSecret": "infisical-secrets",
-			"secretKeys": map[string]any{
-				"adminPasswordKey": "DB_PASSWORD",
-				"userPasswordKey":  "DB_PASSWORD",
-			},
+	// Deploy PostgreSQL using official image (docker.io/library/postgres:17).
+	// Bitnami images were removed from Docker Hub and are no longer publicly pullable.
+	// The official postgres image uses POSTGRES_USER/PASSWORD/DB env vars.
+	cdk8s.NewApiObject(chart, jsii.String("postgresql-service"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("v1"),
+		Kind:       jsii.String("Service"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("postgresql"),
+			Namespace: jsii.String(namespace),
 		},
-		"primary": map[string]any{
-			"persistence": map[string]any{
-				"enabled":      true,
-				"size":         "10Gi",
-				"storageClass": "longhorn",
-			},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"selector": map[string]any{"app": "postgresql"},
+		"ports": []map[string]any{
+			{"port": 5432, "targetPort": 5432, "name": "postgres"},
 		},
-		"networkPolicy": map[string]any{
-			"enabled": false,
-		},
-	}
+	}))
 
-	// Deploy PostgreSQL Separately
-	cdk8s.NewHelm(chart, jsii.String("infisical-postgresql-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("postgresql"),
-		Repo:        jsii.String("https://charts.bitnami.com/bitnami"),
-		Version:     jsii.String("16.2.5"), // Use specific stable version
-		ReleaseName: jsii.String("postgresql"),
-		Namespace:   jsii.String(namespace),
-		Values:      &postgresValues,
-	})
+	cdk8s.NewApiObject(chart, jsii.String("postgresql-statefulset"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("apps/v1"),
+		Kind:       jsii.String("StatefulSet"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("postgresql"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"serviceName": "postgresql",
+		"replicas":    1,
+		"selector": map[string]any{
+			"matchLabels": map[string]any{"app": "postgresql"},
+		},
+		"template": map[string]any{
+			"metadata": map[string]any{
+				"labels": map[string]any{"app": "postgresql"},
+			},
+			"spec": map[string]any{
+				"containers": []map[string]any{
+					{
+						"name":  "postgresql",
+						"image": "docker.io/library/postgres:17",
+						"ports": []map[string]any{
+							{"containerPort": 5432, "name": "postgres"},
+						},
+						"env": []map[string]any{
+							{"name": "POSTGRES_USER", "value": "infisical"},
+							{"name": "POSTGRES_DB", "value": "infisical"},
+							{
+								"name": "POSTGRES_PASSWORD",
+								"valueFrom": map[string]any{
+									"secretKeyRef": map[string]any{
+										"name": "infisical-secrets",
+										"key":  "DB_PASSWORD",
+									},
+								},
+							},
+							{"name": "PGDATA", "value": "/var/lib/postgresql/data/pgdata"},
+						},
+						"resources": map[string]any{
+							"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
+							"limits":   map[string]any{"memory": "512Mi"},
+						},
+						"volumeMounts": []map[string]any{
+							{"name": "data", "mountPath": "/var/lib/postgresql/data"},
+						},
+					},
+				},
+			},
+		},
+		"volumeClaimTemplates": []map[string]any{
+			{
+				"metadata": map[string]any{"name": "data"},
+				"spec": map[string]any{
+					"accessModes":      []string{"ReadWriteOnce"},
+					"storageClassName": "longhorn",
+					"resources": map[string]any{
+						"requests": map[string]any{"storage": "10Gi"},
+					},
+				},
+			},
+		},
+	}))
 
 	// Gateway API HTTPRoute for Infisical
 	cdk8s.NewApiObject(chart, jsii.String("infisical-httproute"), &cdk8s.ApiObjectProps{
