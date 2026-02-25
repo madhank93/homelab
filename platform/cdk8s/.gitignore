@@ -2,7 +2,8 @@
 # Note: app/ is at repo root (../../app from platform/cdk8s/)
 sealed/
 publish/
-imports/
+# imports/ are committed per CDK8s team recommendation (pre-generated Go bindings)
+# Regenerate with: cdk8s import  (run inside devcontainer)
 
 # Temporary files
 tmp/

@@ -26,16 +26,6 @@ jobs:
           go-version: '1.23'
           cache-dependency-path: platform/cdk8s/go.sum
 
-      - name: Install CDK8s CLI
-        run: npm install -g cdk8s-cli@2.204.9
-
-      - name: Generate CDK8s imports
-        working-directory: platform/cdk8s
-        run: |
-          cdk8s import
-          chmod +x scripts/fix-imports.sh
-          ./scripts/fix-imports.sh
-
       - name: Synthesize CDK8s manifests
         working-directory: platform/cdk8s
         run: |
