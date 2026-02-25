@@ -112,8 +112,25 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error
 							},
 						},
 					},
-					// HTTPS listener (port 443): re-enable once wildcard-madhan-app-tls is provisioned.
-					// See platform/cdk8s/cots/seccomp/cert_manager.go (wildcard-madhan-app Certificate).
+					{
+						"name":     "https",
+						"protocol": "HTTPS",
+						"port":     443,
+						"allowedRoutes": map[string]any{
+							"namespaces": map[string]any{
+								"from": "All",
+							},
+						},
+						"tls": map[string]any{
+							"mode": "Terminate",
+							"certificateRefs": []map[string]any{
+								{
+									"name":      "wildcard-madhan-app-tls",
+									"namespace": "kube-system",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
