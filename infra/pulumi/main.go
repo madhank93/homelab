@@ -42,6 +42,10 @@ func main() {
 			configKey: "services.cloudflare.enabled",
 			deploy:    ManageCloudflare,
 		},
+		"platform": {
+			configKey: "services.platform.enabled",
+			deploy:    DeployPlatform,
+		},
 	}
 
 	pulumi.Run(func(ctx *pulumi.Context) error {
