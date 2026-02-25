@@ -22,7 +22,7 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 	// Wildcard A record — routes all *.madhan.app to the homelab gateway LAN IP
 	_, err = cf.NewRecord(ctx, "wildcard-madhan-app", &cf.RecordArgs{
 		ZoneId:  pulumi.String(zoneID),
-		Name:    pulumi.String("*.madhan.app"),
+		Name:    pulumi.String("*"),
 		Type:    pulumi.String("A"),
 		Content: pulumi.String("192.168.1.220"),
 		Ttl:     pulumi.Int(1), // Auto TTL
