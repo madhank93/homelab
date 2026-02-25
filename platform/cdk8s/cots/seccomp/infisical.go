@@ -140,8 +140,12 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 						},
 						"volumeMounts": []map[string]any{
 							{"name": "data", "mountPath": "/var/lib/postgresql/data"},
+							{"name": "run", "mountPath": "/var/run/postgresql"},
 						},
 					},
+				},
+				"volumes": []map[string]any{
+					{"name": "run", "emptyDir": map[string]any{}},
 				},
 			},
 		},
