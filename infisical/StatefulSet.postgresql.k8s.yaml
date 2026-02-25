@@ -41,6 +41,11 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: data
+            - mountPath: /var/run/postgresql
+              name: run
+      volumes:
+        - emptyDir: {}
+          name: run
   volumeClaimTemplates:
     - metadata:
         name: data
