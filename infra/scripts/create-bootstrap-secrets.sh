@@ -6,7 +6,7 @@
 # they persist across ArgoCD syncs.
 #
 # Usage (always via SOPS to inject env vars):
-#   sops exec-env infra/secrets/bootstrap.env.sops -- bash infra/scripts/create-bootstrap-secrets.sh
+#   sops exec-env infra/secrets/bootstrap.sops.yaml -- bash infra/scripts/create-bootstrap-secrets.sh
 #
 # Or via Justfile:
 #   just create-secrets
@@ -35,7 +35,7 @@ for var in "${required_vars[@]}"; do
   if [[ -z "${!var:-}" ]]; then
     echo "❌  Required environment variable '$var' is not set."
     echo "    Run this script via SOPS:"
-    echo "    sops exec-env infra/secrets/bootstrap.env.sops -- bash infra/scripts/create-bootstrap-secrets.sh"
+    echo "    sops exec-env infra/secrets/bootstrap.sops.yaml -- bash infra/scripts/create-bootstrap-secrets.sh"
     exit 1
   fi
 done

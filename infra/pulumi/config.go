@@ -16,7 +16,7 @@ var k = koanf.New(".")
 // InitConfig loads configuration in priority order (last load wins):
 //  1. config.yml  — non-sensitive base config, checked into git
 //  2. .env file   — optional local override, gitignored (legacy / dev convenience)
-//  3. env vars    — highest priority; injected by: sops exec-env infra/secrets/bootstrap.env.sops -- pulumi ...
+//  3. env vars    — highest priority; injected by: sops exec-env infra/secrets/bootstrap.sops.yaml -- pulumi ...
 func InitConfig() error {
 	// 1. Base config (non-sensitive, required)
 	if err := k.Load(file.Provider("config.yml"), yaml.Parser()); err != nil {

@@ -45,12 +45,14 @@ pulumi stack action:
 
     echo "🚀 [{{stack}}] pulumi {{action}} ${FLAGS}"
     pulumi stack select "{{stack}}"
-    sops exec-env ../secrets/bootstrap.env.sops -- pulumi "{{action}}" ${FLAGS}
+    SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
+      sops exec-env ../secrets/bootstrap.sops.yaml "pulumi {{action}} ${FLAGS}"
 
 # Create bootstrap Kubernetes secrets from encrypted SOPS file.
 # Requires: sops + age key at ~/.config/sops/age/keys.txt
 create-secrets:
-    sops exec-env infra/secrets/bootstrap.env.sops -- bash infra/scripts/create-bootstrap-secrets.sh
+    SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
+      sops exec-env infra/secrets/bootstrap.sops.yaml 'bash infra/scripts/create-bootstrap-secrets.sh'
 
 # Full fresh-cluster bootstrap: create secrets then provision with Pulumi.
 bootstrap: create-secrets

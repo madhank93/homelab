@@ -17,6 +17,7 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 
 	// Install cert-manager via Helm (CRDs bundled via installCRDs: true)
 	chart, err := helm.NewRelease(ctx, "cert-manager", &helm.ReleaseArgs{
+		Name:    pulumi.String("cert-manager"),
 		Chart:   pulumi.String("cert-manager"),
 		Version: pulumi.String("v1.19.3"),
 		RepositoryOpts: &helm.RepositoryOptsArgs{

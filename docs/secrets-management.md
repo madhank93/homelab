@@ -4,7 +4,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  infra/secrets/bootstrap.env.sops  ◄─ encrypted with age, in git    │
+│  infra/secrets/bootstrap.sops.yaml  ◄─ encrypted with age, in git    │
 └──────────────────┬───────────────────────────────────────────────────┘
                    │  sops exec-env (decrypts at runtime, never on disk)
          ┌─────────▼──────────┐          ┌────────────────────┐
@@ -58,6 +58,15 @@ age-keygen -o ~/.config/sops/age/keys.txt
 
 The file `~/.config/sops/age/keys.txt` holds both keys. **Never commit it.**
 
+Add to your shell profile (`~/.zshrc` or `~/.bashrc`) so sops can find the key:
+
+```bash
+export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
+```
+
+> **Note:** sops 3.12.x does **not** auto-discover `~/.config/sops/age/keys.txt` — the
+> env var must be set explicitly, otherwise decryption fails with "Failed to get the data key".
+
 ### 3. Register your public key in `.sops.yaml`
 
 Edit `.sops.yaml` at the repo root and replace the placeholder:
@@ -105,37 +114,43 @@ Copy the generated token string; it is shown **only once**.
 | `INFISICAL_DB_PASSWORD` | `openssl rand -hex 16` |
 | `INFISICAL_ENCRYPTION_KEY` | `openssl rand -hex 16` |
 | `INFISICAL_AUTH_SECRET` | `openssl rand -base64 32` |
-| `REDIS_PASSWORD` | `openssl rand -hex 24` (48 hex chars) |
+| `REDIS_PASSWORD` | `openssl rand -hex 16` |
 
 ### 5. Create and encrypt the bootstrap secrets file
 
-The template contains only `KEY=changeme` lines — no comments. SOPS encrypts
-comments too, so keeping them out produces a readable encrypted file where keys
-remain visible.
+The template contains YAML `KEY: 'changeme'` lines. SOPS uses YAML as its
+native format — keys remain visible in the encrypted file, only values are
+ciphertext.
 
 ```bash
 # Copy the template
-cp infra/secrets/bootstrap.env.sops.example infra/secrets/bootstrap.env
+cp infra/secrets/bootstrap.sops.yaml.example infra/secrets/bootstrap.yaml
 
-# Fill in every value collected in step 4 (no comments — keys only)
-$EDITOR infra/secrets/bootstrap.env
+# Fill in every value collected in step 4
+$EDITOR infra/secrets/bootstrap.yaml
 
 # Encrypt (requires age key from step 2 and .sops.yaml from step 3)
-sops --encrypt infra/secrets/bootstrap.env > infra/secrets/bootstrap.env.sops
+# SOPS_AGE_KEY_FILE must point to your age private key
+SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
+  sops --encrypt infra/secrets/bootstrap.yaml > infra/secrets/bootstrap.sops.yaml
 
 # Delete the plaintext file — gitignored, but remove it anyway
-rm infra/secrets/bootstrap.env
+rm infra/secrets/bootstrap.yaml
 ```
 
 The encrypted file will look like:
-```
-PROXMOX_PASSWORD=ENC[AES256_GCM,data:...,type:str]
-HCLOUD_TOKEN=ENC[AES256_GCM,data:...,type:str]
+```yaml
+PROXMOX_PASSWORD: ENC[AES256_GCM,data:...,type:str]
+HCLOUD_TOKEN: ENC[AES256_GCM,data:...,type:str]
 ...
-sops_version=3.x.x
+sops:
+    age:
+        - recipient: age1...
+    lastmodified: "..."
+    version: 3.x.x
 ```
 
-Keys are visible, values are ciphertext. Commit `infra/secrets/bootstrap.env.sops` — safe to push to a public repo.
+Keys are visible, values are ciphertext. Commit `infra/secrets/bootstrap.sops.yaml` — safe to push to a public repo.
 
 ---
 
@@ -148,7 +163,7 @@ just pulumi talos preview
 just pulumi talos up
 ```
 
-SOPS decrypts `bootstrap.env.sops` into memory and injects vars as environment
+SOPS decrypts `bootstrap.sops.yaml` into memory and injects vars as environment
 variables for the duration of the `pulumi` command. Nothing is written to disk.
 
 ### Bootstrap a fresh cluster
@@ -165,8 +180,9 @@ just pulumi talos up       # provisions VMs, Talos, ArgoCD
 ### Update a secret
 
 ```bash
-# Decrypt in-place for editing
-sops infra/secrets/bootstrap.env.sops
+# Decrypt in-place for editing (SOPS_AGE_KEY_FILE must be set)
+SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
+  sops infra/secrets/bootstrap.sops.yaml
 
 # sops opens $EDITOR with the decrypted content, re-encrypts on save
 ```
@@ -217,7 +233,8 @@ resources in those namespaces without conflicting with the secrets.
 
 ```bash
 # 1. Edit the encrypted file
-sops infra/secrets/bootstrap.env.sops
+SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
+  sops infra/secrets/bootstrap.sops.yaml
 
 # 2. Re-run the bootstrap script to update the k8s Secret
 just create-secrets
@@ -245,9 +262,9 @@ the Sealed Secrets controller:
 
 1. Get their age public key (`age1...`)
 2. Add it to `.sops.yaml` under the same rule (comma-separated or as a list)
-3. Run `sops updatekeys infra/secrets/bootstrap.env.sops` to re-encrypt with
+3. Run `SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" sops updatekeys infra/secrets/bootstrap.sops.yaml` to re-encrypt with
    the new key set
-4. Commit the updated `.sops.yaml` and `bootstrap.env.sops`
+4. Commit the updated `.sops.yaml` and `bootstrap.sops.yaml`
 
 ### GitHub Actions (CI)
 

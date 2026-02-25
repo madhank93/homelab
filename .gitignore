@@ -2,12 +2,14 @@
 *DS_Store
 .env*
 **/app
-# Bootstrap secrets: encrypted *.sops files are safe to commit; plaintext *.env are not
+# Bootstrap secrets: encrypted *.sops.yaml files are safe to commit; plaintext files are not
 infra/secrets/*.env
+infra/secrets/bootstrap.yaml
 # Exclude Netbird config files (management.json, openid-configuration.json, and turnserver.conf)
 infra/pulumi/bifrost/netbird/*.json
 infra/pulumi/bifrost/netbird/*.conf
 infra/pulumi/bifrost/netbird/*.env
 infra/pulumi/sdks
 *config
+*config.yaml
 platform/cdk8s/imports
