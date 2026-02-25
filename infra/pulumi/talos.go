@@ -323,6 +323,12 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
+	// Install cert-manager (TLS certificate management)
+	// Requires cert-manager/cloudflare-api-token Secret — run `just create-secrets` first.
+	if err := InstallCertManager(ctx, k8sProvider); err != nil {
+		return err
+	}
+
 	// Install ArgoCD (GitOps)
 	if err := InstallArgoCD(ctx, k8sProvider); err != nil {
 		return err

@@ -1,4 +1,4 @@
-name: CDK8s Seal and Publish
+name: CDK8s Publish
 
 on:
   push:
@@ -10,16 +10,12 @@ on:
       - '.github/workflows/cdk8s-seal-publish.yml'
   workflow_dispatch:
 
-env:
-  KUBESEAL_VERSION: '0.27.1'
-  KUBECTL_VERSION: '1.31.0'
-
 jobs:
-  seal-and-publish:
+  publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout source repo
         uses: actions/checkout@v4
@@ -29,24 +25,6 @@ jobs:
         with:
           go-version: '1.23'
           cache-dependency-path: platform/cdk8s/go.sum
-
-      - name: Install kubectl
-        run: |
-          curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-
-      - name: Install kubeseal
-        run: |
-          curl -LO "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz"
-          tar -xzf kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz
-          chmod +x kubeseal
-          sudo mv kubeseal /usr/local/bin/
-
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
 
       - name: Install CDK8s CLI
         run: npm install -g cdk8s-cli@2.204.9
@@ -60,75 +38,22 @@ jobs:
 
       - name: Synthesize CDK8s manifests
         working-directory: platform/cdk8s
-        env:
-          INFISICAL_DB_PASSWORD: ${{ secrets.INFISICAL_DB_PASSWORD }}
-          INFISICAL_ENCRYPTION_KEY: ${{ secrets.INFISICAL_ENCRYPTION_KEY }}
-          INFISICAL_AUTH_SECRET: ${{ secrets.INFISICAL_AUTH_SECRET }}
-          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         run: |
           go mod download
           go run main.go
-          # Output is in ../../app (relative to platform/cdk8s)
           ls -la ../../app/
-
-      - name: Seal secrets
-        working-directory: platform/cdk8s
-        run: |
-          chmod +x scripts/seal-secrets.sh
-          ./scripts/seal-secrets.sh ../../app ./sealed
-
-      - name: Copy non-Secret manifests to publish
-        working-directory: platform/cdk8s
-        run: |
-          mkdir -p publish
-          # Copy all manifests except Secrets from ../../app
-          find ../../app -type f \( -name "*.yaml" -o -name "*.yml" \) | while read -r file; do
-            # Check if file contains any Secret resources
-            if ! yq eval 'select(.kind == "Secret")' "$file" > /dev/null 2>&1; then
-              # No secrets, copy as-is preserving directory structure
-              rel_path="${file#../../app/}"
-              mkdir -p "publish/$(dirname "$rel_path")"
-              cp "$file" "publish/$rel_path"
-            else
-              # Has secrets, extract non-Secret resources
-              rel_path="${file#../../app/}"
-              mkdir -p "publish/$(dirname "$rel_path")"
-              yq eval-all 'select(.kind != "Secret")' "$file" > "publish/$rel_path" || true
-            fi
-          done
-          
-          # Copy SealedSecrets into their respective namespace directories
-          for sealed_file in sealed/sealed-*.yaml; do
-            if [ -f "$sealed_file" ]; then
-              # Extract namespace from sealed secret filename: sealed-NAMESPACE-NAME.yaml
-              filename=$(basename "$sealed_file")
-              # Remove 'sealed-' prefix and '.yaml' suffix
-              name_part="${filename#sealed-}"
-              name_part="${name_part%.yaml}"
-              # Extract namespace (first part before second dash)
-              namespace=$(echo "$name_part" | cut -d'-' -f1)
-              
-              # Copy to namespace directory
-              mkdir -p "publish/$namespace"
-              cp "$sealed_file" "publish/$namespace/"
-              echo "✅ Copied $sealed_file to publish/$namespace/"
-            fi
-          done
 
       - name: Deploy Manifests to Branch
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./platform/cdk8s/publish
+          publish_dir: ./app
           publish_branch: ${{ github.ref_name }}-manifests
           keep_files: false
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: 'chore: update kubernetes manifests [skip ci]'
 
-      - name: Cleanup (ensure no plaintext secrets)
+      - name: Cleanup
         if: always()
-        run: |
-          rm -rf app
-          rm -rf platform/cdk8s/sealed
-          rm -rf platform/cdk8s/publish
+        run: rm -rf app

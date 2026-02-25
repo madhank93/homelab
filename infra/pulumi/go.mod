@@ -17,7 +17,10 @@ require (
 	github.com/pulumiverse/pulumi-talos/sdk v0.7.1
 )
 
-require github.com/spf13/cast v1.7.0 // indirect
+require (
+	github.com/knadh/koanf/providers/env v1.1.0 // indirect
+	github.com/spf13/cast v1.7.0 // indirect
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect

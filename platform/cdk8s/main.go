@@ -17,23 +17,7 @@ import (
 func main() {
 	rootFolder := "../../app"
 
-	// 1. Sealed Secrets Controller
-	sealedSecretsApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/sealed-secrets", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	seccomp.NewSealedSecretsChart(sealedSecretsApp, "sealed-secrets", "kube-system")
-	sealedSecretsApp.Synth()
-
-	// 2. Cert-Manager
-	certMgrApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/cert-manager", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	seccomp.NewCertManagerChart(certMgrApp, "cert-manager-app", "cert-manager")
-	certMgrApp.Synth()
-
-	// 3. Longhorn Storage
+	// 1. Longhorn Storage
 	longhornApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/longhorn", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,

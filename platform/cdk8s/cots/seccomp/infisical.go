@@ -1,8 +1,6 @@
 package seccomp
 
 import (
-	"os"
-
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
@@ -22,54 +20,8 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	})
 
-	// Get Infisical DB password from environment (only secret in GitHub)
-	infisicalDbPassword := os.Getenv("INFISICAL_DB_PASSWORD")
-	if infisicalDbPassword == "" {
-		panic("INFISICAL_DB_PASSWORD environment variable is required")
-	}
-
-	// Get Infisical Encryption Key (must be 16 bytes / 32 hex chars)
-	infisicalEncryptionKey := os.Getenv("INFISICAL_ENCRYPTION_KEY")
-	if infisicalEncryptionKey == "" {
-		panic("INFISICAL_ENCRYPTION_KEY environment variable is required")
-	}
-	// Basic validation for key length (16 bytes hex = 32 chars)
-	if len(infisicalEncryptionKey) != 32 {
-		panic("INFISICAL_ENCRYPTION_KEY must be a 16-byte hex string (32 characters)")
-	}
-
-	// Get Infisical Auth Secret
-	infisicalAuthSecret := os.Getenv("INFISICAL_AUTH_SECRET")
-	if infisicalAuthSecret == "" {
-		panic("INFISICAL_AUTH_SECRET environment variable is required")
-	}
-
-	// Get Redis password for internal Redis auth
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-	if redisPassword == "" {
-		panic("REDIS_PASSWORD environment variable is required")
-	}
-
-	// Create Secret for PostgreSQL password (will be sealed by CI)
-	postgresSecret := cdk8s.NewApiObject(chart, jsii.String("infisical-postgresql-secret"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("v1"),
-		Kind:       jsii.String("Secret"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("infisical-secrets"),
-			Namespace: jsii.String(namespace),
-		},
-	})
-	// Create full connection URI from password (to override Chart default which defaults to 'root')
-	// URI Format: postgresql://infisical:<password>@postgresql:5432/infisical
-	// Note: failing to provide this explicitly often causes the chart to use 'root'
-	dbConnectionUri := "postgresql://infisical:" + infisicalDbPassword + "@postgresql:5432/infisical"
-
-	postgresSecret.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/stringData"), map[string]string{
-		"DB_PASSWORD":       infisicalDbPassword,
-		"AUTH_SECRET":       infisicalAuthSecret,
-		"ENCRYPTION_KEY":    infisicalEncryptionKey,
-		"DB_CONNECTION_URI": dbConnectionUri, // Pre-calculated URI
-	}))
+	// infisical-secrets is created by: infra/scripts/create-bootstrap-secrets.sh
+	// It contains: DB_PASSWORD, AUTH_SECRET, ENCRYPTION_KEY, DB_CONNECTION_URI, REDIS_PASSWORD
 
 	// Infisical standalone chart values
 	values := map[string]any{
@@ -99,8 +51,9 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		"redis": map[string]any{
 			"enabled": true,
 			"auth": map[string]any{
-				"enabled":  true,
-				"password": redisPassword,
+				"enabled":                   true,
+				"existingSecret":            "infisical-secrets",
+				"existingSecretPasswordKey": "REDIS_PASSWORD",
 			},
 		},
 		"ingress": map[string]any{

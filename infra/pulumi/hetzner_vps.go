@@ -12,7 +12,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+type HetznerConfig struct {
+	ServerName string `koanf:"server_name"`
+	Image      string `koanf:"image"`
+	ServerType string `koanf:"server_type"`
+	Location   string `koanf:"location"`
+	SshKey     string `koanf:"ssh_key"`
+}
+
 func DeployHetznerVPS(ctx *pulumi.Context) error {
+	var cfg HetznerConfig
+	if err := LoadConfig("hetzner", &cfg); err != nil {
+		return err
+	}
+
 	token := k.String("HCLOUD_TOKEN")
 	if token == "" {
 		return fmt.Errorf("HCLOUD_TOKEN not found; make sure it's in your environment")
@@ -117,12 +130,12 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 	}
 
 	server, err := hcloud.NewServer(ctx, "hetzner-vps", &hcloud.ServerArgs{
-		Name:       pulumi.String("bifrost-public-vps1"),
-		Image:      pulumi.String("ubuntu-24.04"),
-		ServerType: pulumi.String("cpx21"),
-		Location:   pulumi.String("ash"),
+		Name:       pulumi.String(cfg.ServerName),
+		Image:      pulumi.String(cfg.Image),
+		ServerType: pulumi.String(cfg.ServerType),
+		Location:   pulumi.String(cfg.Location),
 		SshKeys: pulumi.StringArray{
-			pulumi.String("mac-ssh"),
+			pulumi.String(cfg.SshKey),
 		},
 		FirewallIds: pulumi.IntArray{
 			fwID,
