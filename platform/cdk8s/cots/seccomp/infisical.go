@@ -50,11 +50,11 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 		"redis": map[string]any{
 			"enabled": true,
-			"auth": map[string]any{
-				"enabled":                   true,
-				"existingSecret":            "infisical-secrets",
-				"existingSecretPasswordKey": "REDIS_PASSWORD",
-			},
+			// The infisical-standalone chart template constructs REDIS_URL using
+			// redis.auth.password directly — there is no Kubernetes secret-ref support.
+			// Do not override auth here; the chart's built-in default password ("mysecretpassword")
+			// is what gets baked into the generated REDIS_URL env var in the infisical Deployment.
+			// Both Redis and infisical will use the same default, so they match.
 		},
 		"ingress": map[string]any{
 			"enabled":  false,
