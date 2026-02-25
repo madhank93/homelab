@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    updatedAt: 2026-02-02 UTC 22:04:55
+    updatedAt: 2026-02-02 UTC 05:47:30
   labels:
     app: infisical-standalone
     chart: infisical-standalone-1.7.2
@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        updatedAt: 2026-02-02 UTC 22:04:55
+        updatedAt: 2026-02-02 UTC 05:47:30
       labels:
         app: infisical-standalone
         component: infisical
@@ -35,7 +35,7 @@ spec:
                   key: DB_CONNECTION_URI
                   name: infisical-secrets
             - name: REDIS_URL
-              value: redis://default:j2kyvCMzG4BQX2X6rDItqQ==@redis-master:6379
+              value: redis://default:mysecretpassword@redis-master:6379
           envFrom:
             - secretRef:
                 name: infisical-secrets

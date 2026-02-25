@@ -4,4 +4,32 @@ metadata:
   name: fleet-controller
   namespace: fleet
 data:
-  config: "{\n  \"systemDefaultRegistry\": \"\",\n  \"agentImage\": \"rancher/fleet-agent:v0.14.2\",\n  \"agentImagePullPolicy\": \"IfNotPresent\",\n  \"apiServerURL\": \"\",\n  \"apiServerCA\": \"\",\n  \"agentCheckinInterval\": \"15m\",\n  \"agentTLSMode\": \"system-store\",\n  \"agentWorkers\": {\n        \"bundledeployment\": \"50\",\n        \"drift\": \"50\"\n  },\n  \n  \"garbageCollectionInterval\": \"15m\",\n  \n  \"ignoreClusterRegistrationLabels\": false,\n  \"bootstrap\": {\n    \"paths\": \"\",\n    \"repo\": \"\",\n    \"secret\": \"\",\n    \"branch\":  \"master\",\n    \"namespace\": \"fleet-local\",\n    \"agentNamespace\": \"\"\n  },\n  \"webhookReceiverURL\": \"\",\n  \"githubURLPrefix\": \"\",\n  \"gitClientTimeout\": \"30s\"\n}\n"
+  config: |
+    {
+      "systemDefaultRegistry": "",
+      "agentImage": "rancher/fleet-agent:v0.14.2",
+      "agentImagePullPolicy": "IfNotPresent",
+      "apiServerURL": "",
+      "apiServerCA": "",
+      "agentCheckinInterval": "15m",
+      "agentTLSMode": "system-store",
+      "agentWorkers": {
+            "bundledeployment": "50",
+            "drift": "50"
+      },
+      
+      "garbageCollectionInterval": "15m",
+      
+      "ignoreClusterRegistrationLabels": false,
+      "bootstrap": {
+        "paths": "",
+        "repo": "",
+        "secret": "",
+        "branch":  "master",
+        "namespace": "fleet-local",
+        "agentNamespace": ""
+      },
+      "webhookReceiverURL": "",
+      "githubURLPrefix": "",
+      "gitClientTimeout": "30s"
+    }
