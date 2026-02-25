@@ -38,6 +38,10 @@ func main() {
 			configKey: "services.authentik.enabled",
 			deploy:    DeployAuthentik,
 		},
+		"cloudflare": {
+			configKey: "services.cloudflare.enabled",
+			deploy:    ManageCloudflare,
+		},
 	}
 
 	pulumi.Run(func(ctx *pulumi.Context) error {

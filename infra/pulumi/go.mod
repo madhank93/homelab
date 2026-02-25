@@ -19,6 +19,7 @@ require (
 
 require (
 	github.com/knadh/koanf/providers/env v1.1.0 // indirect
+	github.com/pulumi/pulumi-cloudflare/sdk/v5 v5.49.1 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 )
 
