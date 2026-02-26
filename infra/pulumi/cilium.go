@@ -16,7 +16,7 @@ import (
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 
 	// Define Cilium Helm Chart
-	_, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
+	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
 		Chart:   pulumi.String("cilium"),
 		Version: pulumi.String("1.16.6"), // Latest Stable
 		RepositoryOpts: &helm.RepositoryOptsArgs{
@@ -75,6 +75,33 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			},
 		},
 	}, pulumi.Provider(k8sProvider))
+	if err != nil {
+		return err
+	}
+
+	// HTTPRoute for Hubble UI — routes hubble.madhan.app → hubble-ui:80 in kube-system
+	_, err = apiextensions.NewCustomResource(ctx, "hubble-ui-httproute", &apiextensions.CustomResourceArgs{
+		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
+		Kind:       pulumi.String("HTTPRoute"),
+		Metadata: &metav1.ObjectMetaArgs{
+			Name:      pulumi.String("hubble-ui"),
+			Namespace: pulumi.String("kube-system"),
+		},
+		OtherFields: map[string]any{
+			"spec": map[string]any{
+				"parentRefs": []map[string]any{
+					{"name": "homelab-gateway", "namespace": "kube-system"},
+				},
+				"hostnames": []string{"hubble.madhan.app"},
+				"rules": []map[string]any{
+					{
+						"matches":     []map[string]any{{"path": map[string]any{"type": "PathPrefix", "value": "/"}}},
+						"backendRefs": []map[string]any{{"name": "hubble-ui", "port": 80}},
+					},
+				},
+			},
+		},
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{ciliumChart}))
 
 	return err
 }
