@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: talos-nvidia-validation-bridge
+  namespace: nvidia-gpu-operator
+spec:
+  selector:
+    matchLabels:
+      app: talos-nvidia-validation-bridge
+  template:
+    metadata:
+      labels:
+        app: talos-nvidia-validation-bridge
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - mkdir -p /run/nvidia/validations && touch /run/nvidia/validations/.driver-ctr-ready /run/nvidia/validations/driver-ready /run/nvidia/validations/toolkit-ready && while true; do sleep 3600; done
+          command:
+            - /bin/sh
+            - -c
+          image: busybox:1.37
+          name: bridge
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /run/nvidia/validations
+              name: run-nvidia-validations
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      terminationGracePeriodSeconds: 0
+      volumes:
+        - hostPath:
+            path: /run/nvidia/validations
+            type: DirectoryOrCreate
+          name: run-nvidia-validations
