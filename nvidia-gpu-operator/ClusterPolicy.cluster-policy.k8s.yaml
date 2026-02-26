@@ -57,6 +57,9 @@ spec:
     version: 4.4.2-4.7.0-distroless
   devicePlugin:
     enabled: true
+    env:
+      - name: DRIVER_ROOT
+        value: /host/usr/local/glibc
     image: k8s-device-plugin
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia
