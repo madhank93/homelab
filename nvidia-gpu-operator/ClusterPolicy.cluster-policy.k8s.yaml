@@ -58,10 +58,10 @@ spec:
   devicePlugin:
     enabled: true
     env:
-      - name: DRIVER_ROOT
-        value: /usr/local/glibc
-      - name: CONTAINER_DRIVER_ROOT
-        value: /host/usr/local/glibc
+      - name: DEVICE_LIST_STRATEGY
+        value: envvars
+      - name: CDI_ENABLED
+        value: "false"
     image: k8s-device-plugin
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia

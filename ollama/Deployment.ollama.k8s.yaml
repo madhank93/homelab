@@ -30,6 +30,8 @@ spec:
         - env:
             - name: OLLAMA_HOST
               value: 0.0.0.0:11434
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
           image: ollama/ollama:0.17.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -69,6 +71,7 @@ spec:
               name: ollama-data
       nodeSelector:
         nvidia.com/gpu.present: "true"
+      runtimeClassName: nvidia
       securityContext: {}
       serviceAccountName: ollama
       terminationGracePeriodSeconds: 120
