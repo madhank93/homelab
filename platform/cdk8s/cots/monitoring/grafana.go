@@ -55,6 +55,30 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 
 	// Grafana Helm chart configuration
 	values := map[string]any{
+		// Datasources provisioned automatically — no manual UI setup required
+		"datasources": map[string]any{
+			"datasources.yaml": map[string]any{
+				"apiVersion": 1,
+				"datasources": []map[string]any{
+					{
+						"name":      "VictoriaMetrics",
+						"type":      "prometheus",
+						"url":       "http://victoria-metrics-victoria-metrics-cluster-vmselect.victoria-metrics.svc.cluster.local:8481/select/0/prometheus",
+						"access":    "proxy",
+						"isDefault": true,
+						"jsonData": map[string]any{
+							"timeInterval": "30s",
+						},
+					},
+					{
+						"name":   "VictoriaLogs",
+						"type":   "loki",
+						"url":    "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select/loki",
+						"access": "proxy",
+					},
+				},
+			},
+		},
 		"admin": map[string]any{
 			"existingSecret": "grafana-admin",  // Secret created by InfisicalSecret
 			"passwordKey":    "ADMIN_PASSWORD", // Key from Infisical
