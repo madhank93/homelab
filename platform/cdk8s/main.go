@@ -93,6 +93,13 @@ func main() {
 	ai.NewOllamaChart(ollamaApp, "ollama-app", "ollama")
 	ollamaApp.Synth()
 
+	comfyuiApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/comfyui", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	ai.NewComfyUIChart(comfyuiApp, "comfyui-app", "comfyui")
+	comfyuiApp.Synth()
+
 	// Security & Compliance
 	trivyApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/trivy", rootFolder)),
@@ -100,6 +107,21 @@ func main() {
 	})
 	compliance.NewTrivyChart(trivyApp, "trivy-app", "trivy")
 	trivyApp.Synth()
+
+	falcoApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/falco", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	compliance.NewFalcoChart(falcoApp, "falco-app", "falco")
+	falcoApp.Synth()
+
+	// Observability
+	otelApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/opentelemetry", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	monitoring.NewOtelCollectorChart(otelApp, "otel-app", "opentelemetry")
+	otelApp.Synth()
 
 	// Management Tools
 	headlampApp := cdk8s.NewApp(&cdk8s.AppProps{
