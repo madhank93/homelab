@@ -75,8 +75,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 				"accessMode": "ReadWriteOnce",
 			},
 			"extraEnvVars": map[string]any{
-				"N8N_HOST": "n8n.madhan.app", // Updated to real domain
-				"N8N_PORT": "5678",
+				"N8N_HOST": "n8n.madhan.app",
 			},
 			// No affinity field at all - let Kubernetes handle scheduling
 		},

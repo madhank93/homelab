@@ -152,8 +152,18 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 								"selfHeal": true,
 							},
 							// ServerSideApply=true: required for kube-prometheus-stack CRDs which
-					// exceed the 262KB kubectl.kubernetes.io/last-applied-configuration limit
-					"syncOptions": []string{"CreateNamespace=true", "ServerSideApply=true"},
+							// exceed the 262KB kubectl.kubernetes.io/last-applied-configuration limit
+							"syncOptions": []string{"CreateNamespace=true", "ServerSideApply=true"},
+						},
+						// Infisical CRD schema omits projectSlug from secretsScope —
+						// skip structured merge diff for InfisicalSecret spec to avoid
+						// "field not declared in schema" comparison errors
+						"ignoreDifferences": []map[string]any{
+							{
+								"group":        "secrets.infisical.com",
+								"kind":         "InfisicalSecret",
+								"jsonPointers": []string{"/spec"},
+							},
 						},
 					},
 				},
