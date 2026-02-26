@@ -100,10 +100,21 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 								jsii.String("/bin/sh"), jsii.String("-c"),
 							},
 							Args: &[]*string{jsii.String(
+								// 1. Create validation marker files so GPU operator components
+								//    can coordinate readiness without the driver container.
 								"mkdir -p /run/nvidia/validations && " +
 									"touch /run/nvidia/validations/.driver-ctr-ready " +
 									"/run/nvidia/validations/driver-ready " +
 									"/run/nvidia/validations/toolkit-ready && " +
+									// 2. Symlink the Talos glibc CUDA/NVIDIA userspace libs into
+									//    /run/nvidia/driver/usr/lib/ so the device plugin's CDI
+									//    spec builder (which looks in /driver-root = /run/nvidia/driver)
+									//    can discover libcuda.so and friends.
+									"mkdir -p /run/nvidia/driver/usr/lib && " +
+									"for f in /host-glibc-lib/*.so* ; do " +
+									"  bn=$(basename $f); " +
+									"  [ -e /run/nvidia/driver/usr/lib/$bn ] || ln -sf $f /run/nvidia/driver/usr/lib/$bn; " +
+									"done && " +
 									"while true; do sleep 3600; done",
 							)},
 							SecurityContext: &k8s.SecurityContext{
@@ -114,6 +125,15 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 									Name:      jsii.String("run-nvidia-validations"),
 									MountPath: jsii.String("/run/nvidia/validations"),
 								},
+								{
+									Name:      jsii.String("run-nvidia-driver"),
+									MountPath: jsii.String("/run/nvidia/driver"),
+								},
+								{
+									Name:      jsii.String("host-glibc-lib"),
+									MountPath: jsii.String("/host-glibc-lib"),
+									ReadOnly:  jsii.Bool(true),
+								},
 							},
 						},
 					},
@@ -123,6 +143,21 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 							HostPath: &k8s.HostPathVolumeSource{
 								Path: jsii.String("/run/nvidia/validations"),
 								Type: jsii.String("DirectoryOrCreate"),
+							},
+						},
+						{
+							Name: jsii.String("run-nvidia-driver"),
+							HostPath: &k8s.HostPathVolumeSource{
+								Path: jsii.String("/run/nvidia/driver"),
+								Type: jsii.String("DirectoryOrCreate"),
+							},
+						},
+						{
+							// Talos extension places all NVIDIA userspace libs here
+							Name: jsii.String("host-glibc-lib"),
+							HostPath: &k8s.HostPathVolumeSource{
+								Path: jsii.String("/usr/local/glibc/usr/lib"),
+								Type: jsii.String("Directory"),
 							},
 						},
 					},
