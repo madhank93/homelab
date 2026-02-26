@@ -151,7 +151,9 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 								"prune":    true,
 								"selfHeal": true,
 							},
-							"syncOptions": []string{"CreateNamespace=true"},
+							// ServerSideApply=true: required for kube-prometheus-stack CRDs which
+					// exceed the 262KB kubectl.kubernetes.io/last-applied-configuration limit
+					"syncOptions": []string{"CreateNamespace=true", "ServerSideApply=true"},
 						},
 					},
 				},

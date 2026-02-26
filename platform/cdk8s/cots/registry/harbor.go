@@ -81,6 +81,11 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
 			},
 		},
+		// NOTE: harbor helm chart hardcodes RollingUpdate strategy. jobservice and registry
+		// both use RWO PVCs — if ArgoCD syncs a pod-spec change, the rolling update will
+		// deadlock (new pod can't attach PVC held by old pod on a different node).
+		// Workaround: kubectl patch deployment harbor-{jobservice,registry} -n harbor \
+		//   --type=merge -p '{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null}}}'
 		"jobservice": map[string]any{
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
