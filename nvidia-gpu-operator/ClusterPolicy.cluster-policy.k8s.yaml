@@ -187,7 +187,7 @@ spec:
     defaultWorkload: container
     enabled: false
   toolkit:
-    enabled: true
+    enabled: false
     image: container-toolkit
     imagePullPolicy: IfNotPresent
     installDir: /usr/local/nvidia

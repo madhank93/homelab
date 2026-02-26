@@ -30,7 +30,7 @@ spec:
         - env:
             - name: OLLAMA_HOST
               value: 0.0.0.0:11434
-          image: ollama/ollama:latest
+          image: ollama/ollama:0.17.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 6
@@ -57,18 +57,18 @@ spec:
             timeoutSeconds: 3
           resources:
             limits:
-              cpu: 2000m
-              memory: 8Gi
+              cpu: 4000m
+              memory: 4Gi
               nvidia.com/gpu: 1
             requests:
               cpu: 1000m
-              memory: 4Gi
+              memory: 2Gi
           securityContext: {}
           volumeMounts:
             - mountPath: /root/.ollama
               name: ollama-data
       nodeSelector:
-        node-role.kubernetes.io/gpu: "true"
+        nvidia.com/gpu.present: "true"
       securityContext: {}
       serviceAccountName: ollama
       terminationGracePeriodSeconds: 120
