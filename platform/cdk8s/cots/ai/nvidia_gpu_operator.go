@@ -53,13 +53,17 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
 		},
-		// DRIVER_ROOT tells the device plugin where to find CUDA userspace libs.
-		// Talos places them at /usr/local/glibc/usr/lib/ (custom glibc path).
-		// The device plugin pod has /host mounted → /host/usr/local/glibc is accessible.
+		// DRIVER_ROOT and CONTAINER_DRIVER_ROOT tell the device plugin where to find CUDA libs.
+		// Talos nvidia-open-gpu-kernel-modules-production places them at /usr/local/glibc/usr/lib/.
+		// DRIVER_ROOT: the HOST path used in CDI spec entries (what the container runtime bind-mounts).
+		// CONTAINER_DRIVER_ROOT: where the device plugin looks INSIDE its container to discover libs.
+		//   The device plugin has /host → / (HostToContainer), so /host/usr/local/glibc/usr/lib/ is
+		//   accessible at runtime and contains the real libcuda.so.570.211.01 (no symlinks needed).
 		"devicePlugin": map[string]any{
 			"nodeSelector": nodeSelector,
 			"env": []map[string]any{
-				{"name": "DRIVER_ROOT", "value": "/host/usr/local/glibc"},
+				{"name": "DRIVER_ROOT", "value": "/usr/local/glibc"},
+				{"name": "CONTAINER_DRIVER_ROOT", "value": "/host/usr/local/glibc"},
 			},
 		},
 		"dcgmExporter": map[string]any{"nodeSelector": nodeSelector},
@@ -67,15 +71,19 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	}
 
 	// Talos Validation Bridge DaemonSet
-	// GPU operator v25.x expects userspace libs (libnvidia-ml.so.1) at standard paths, but
-	// the Talos nvidia-open-gpu-kernel-modules-production extension places them under
-	// /usr/local/glibc/usr/lib/ — a custom path the GPU operator validator does not search.
-	// This DaemonSet creates the three validation marker files in /run/nvidia/validations/
-	// that the GPU operator uses to coordinate readiness between its components:
+	// GPU operator v25.x uses a validation chain (driver-ready, toolkit-ready) to coordinate
+	// startup between its components. On Talos, the Talos extensions (nvidia-open-gpu-kernel-
+	// modules-production, nvidia-container-toolkit-production) provide driver and toolkit without
+	// the GPU operator's own driver/toolkit containers. This DaemonSet creates the three marker
+	// files that GPU operator components watch to confirm readiness:
 	//   .driver-ctr-ready  — signals driver-validation init container to proceed
 	//   driver-ready       — signals driver is available
 	//   toolkit-ready      — signals device-plugin toolkit-validation init container to proceed
 	// Without these files, the device plugin stays in Init:0/1 forever.
+	//
+	// Library discovery is handled via CONTAINER_DRIVER_ROOT=/host/usr/local/glibc on the
+	// device plugin, which makes it look at /host/usr/local/glibc/usr/lib/ (accessible via the
+	// device plugin pod's /host → / HostToContainer volume mount) to find libcuda.so et al.
 	trueBool := true
 	privileged := true
 	zero := float64(0)
@@ -108,21 +116,10 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 								jsii.String("/bin/sh"), jsii.String("-c"),
 							},
 							Args: &[]*string{jsii.String(
-								// 1. Create validation marker files so GPU operator components
-								//    can coordinate readiness without the driver container.
 								"mkdir -p /run/nvidia/validations && " +
 									"touch /run/nvidia/validations/.driver-ctr-ready " +
 									"/run/nvidia/validations/driver-ready " +
 									"/run/nvidia/validations/toolkit-ready && " +
-									// 2. Symlink the Talos glibc CUDA/NVIDIA userspace libs into
-									//    /run/nvidia/driver/usr/lib/ so the device plugin's CDI
-									//    spec builder (which looks in /driver-root = /run/nvidia/driver)
-									//    can discover libcuda.so and friends.
-									"mkdir -p /run/nvidia/driver/usr/lib && " +
-									"for f in /host-glibc-lib/*.so* ; do " +
-									"  bn=$(basename $f); " +
-									"  [ -e /run/nvidia/driver/usr/lib/$bn ] || ln -sf $f /run/nvidia/driver/usr/lib/$bn; " +
-									"done && " +
 									"while true; do sleep 3600; done",
 							)},
 							SecurityContext: &k8s.SecurityContext{
@@ -133,15 +130,6 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 									Name:      jsii.String("run-nvidia-validations"),
 									MountPath: jsii.String("/run/nvidia/validations"),
 								},
-								{
-									Name:      jsii.String("run-nvidia-driver"),
-									MountPath: jsii.String("/run/nvidia/driver"),
-								},
-								{
-									Name:      jsii.String("host-glibc-lib"),
-									MountPath: jsii.String("/host-glibc-lib"),
-									ReadOnly:  jsii.Bool(true),
-								},
 							},
 						},
 					},
@@ -151,24 +139,6 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 							HostPath: &k8s.HostPathVolumeSource{
 								Path: jsii.String("/run/nvidia/validations"),
 								Type: jsii.String("DirectoryOrCreate"),
-							},
-						},
-						{
-							Name: jsii.String("run-nvidia-driver"),
-							HostPath: &k8s.HostPathVolumeSource{
-								Path: jsii.String("/run/nvidia/driver"),
-								Type: jsii.String("DirectoryOrCreate"),
-							},
-						},
-						{
-							// Talos extension places all NVIDIA userspace libs here.
-							// Use empty type ("") to skip the directory type check —
-							// Talos mounts /usr/local/glibc as an overlay/bind mount
-							// which fails Kubernetes's regular "Directory" type check.
-							Name: jsii.String("host-glibc-lib"),
-							HostPath: &k8s.HostPathVolumeSource{
-								Path: jsii.String("/usr/local/glibc/usr/lib"),
-								Type: jsii.String(""),
 							},
 						},
 					},
