@@ -53,17 +53,16 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
 		},
-		// DEVICE_LIST_STRATEGY=envvars: use env-var injection instead of CDI.
+		// DEVICE_LIST_STRATEGY=envvar: use env-var injection instead of CDI.
 		// CDI mode generates spec entries with hostPath=/usr/lib/libX.so which doesn't
-		// exist on Talos (libs live at /usr/local/glibc/usr/lib/). With envvars mode the
+		// exist on Talos (libs live at /usr/local/glibc/usr/lib/). With envvar mode the
 		// device plugin injects NVIDIA_VISIBLE_DEVICES=<uuid> into the container, and the
 		// Talos nvidia-container-runtime (from nvidia-container-toolkit-production extension)
 		// handles GPU device injection using its own Talos-aware library paths.
 		"devicePlugin": map[string]any{
 			"nodeSelector": nodeSelector,
 			"env": []map[string]any{
-				{"name": "DEVICE_LIST_STRATEGY", "value": "envvars"},
-				{"name": "CDI_ENABLED", "value": "false"},
+				{"name": "DEVICE_LIST_STRATEGY", "value": "envvar"},
 			},
 		},
 		"dcgmExporter": map[string]any{"nodeSelector": nodeSelector},
