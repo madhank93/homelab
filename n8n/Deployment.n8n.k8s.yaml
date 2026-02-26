@@ -61,8 +61,6 @@ spec:
                   optional: true
             - name: N8N_HOST
               value: n8n.madhan.app
-            - name: N8N_PORT
-              value: "5678"
           envFrom:
             - configMapRef:
                 name: n8n-database-configmap

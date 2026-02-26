@@ -29,9 +29,9 @@ spec:
     metadata:
       annotations:
         checksum/configmap: 99cd8e88533e7632c94ee7344dc6d765bfa578232d8b242c8cb6756fe441556f
-        checksum/secret: 118f66f2485bcd5424c21e3162238a1d68cc5f6ac8223a5dcd7f4c97e221fe0b
-        checksum/secret-core: c1f358b2c033ac52c3aab2840c869f951940ccb2c08eb54fbbcd8b280653a559
-        checksum/secret-jobservice: 71c0bba4e291d0e185deffc687ab419d2777bb96eb6732222165a07fd07ba8c5
+        checksum/secret: a9b10170946a8814db884f4cb5e3b9d966997dc2780337d08a751fcc07589140
+        checksum/secret-core: bd2ca24e5a1c1cf8d7b4b2ebccacf7e35a69a44068cb49168e7a7d5af9d16b65
+        checksum/secret-jobservice: c7260769777dd1823e811a1be542724044f3d39ef07a22e2358bebed35f23e93
       labels:
         app: harbor
         app.kubernetes.io/component: registry
