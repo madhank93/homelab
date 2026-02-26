@@ -21,6 +21,26 @@ This document is the authoritative catalog of every application managed by CDK8s
 
 ---
 
+## Apps That Require Infisical Secrets
+
+These apps use `InfisicalSecret` CRDs to pull secrets from the Infisical API. They will not
+start correctly until the `infisical-service-token` k8s secret exists in the `infisical`
+namespace and the corresponding secrets are configured in Infisical. See
+`docs/infisical-secrets-setup.md` for the full setup guide.
+
+| App | Infisical Path | k8s Secret Created | Keys |
+|-----|---------------|--------------------|------|
+| Grafana | `/grafana` | `grafana-admin` | `ADMIN_PASSWORD` |
+| Harbor | `/harbor` | `harbor-admin` | `HARBOR_ADMIN_PASSWORD` |
+| n8n | `/n8n` | `n8n-db` | `DB_PASSWORD` |
+| Rancher | `/rancher` | `rancher-bootstrap` | `BOOTSTRAP_PASSWORD` |
+
+> All InfisicalSecret resources carry `argocd.argoproj.io/sync-options: ServerSideApply=false`
+> because the Infisical CRD schema omits `projectSlug` from `serviceToken.secretsScope`,
+> which breaks ArgoCD's server-side apply validation.
+
+---
+
 ## All Apps at a Glance
 
 | Folder | App | Namespace | External Endpoint | UI? | Purpose |
@@ -154,6 +174,7 @@ Each folder maps to a distinct operational concern:
 - `toolkit.enabled: false` — Talos extension provides the container toolkit.
 - `DEVICE_LIST_STRATEGY=envvar` — avoids CDI hostPath issues on Talos (see `docs/nvidia-gpu-talos.md`).
 - Includes a Talos Validation Bridge DaemonSet that writes marker files the GPU operator needs to unblock device plugin startup.
+- **GPU time-slicing enabled**: A `time-slicing-config` ConfigMap advertises `replicas: 2` virtual GPUs per physical GPU. This allows Ollama and ComfyUI to run simultaneously on the single RTX 5070 Ti. VRAM is shared (not isolated).
 
 ---
 
@@ -187,7 +208,7 @@ Each folder maps to a distinct operational concern:
 
 **Purpose**: Node-based image generation UI for Stable Diffusion and Flux models. Downloads models to persistent Longhorn storage.
 
-**GPU configuration**: `runtimeClassName: nvidia`, `nvidia.com/gpu: 1`, strategy `Recreate` (only one GPU workload at a time).
+**GPU configuration**: `runtimeClassName: nvidia`, `nvidia.com/gpu: 1`, strategy `Recreate`. Runs alongside Ollama on k8s-worker4 via GPU time-slicing (see NVIDIA GPU Operator above). Memory request is 1Gi (limit 8Gi) to fit alongside Ollama's 2Gi request on the node's 5.4Gi allocatable.
 
 ---
 
@@ -240,13 +261,16 @@ Each folder maps to a distinct operational concern:
 |----------|-------|
 | File | `platform/cdk8s/cots/compliance/falco.go` |
 | Namespace | `falco` |
-| Helm chart | `falco` v4.8.0 (falcosecurity.github.io/charts) |
+| Helm chart | `falco` v8.0.0 / Falco 0.43 (falcosecurity.github.io/charts) |
 | HTTPRoute | None |
 | UI | No |
 
 **Purpose**: Runtime security. Monitors kernel syscalls on every node using eBPF (`modern_ebpf` driver — required on Talos because Talos locks down kernel module loading). Detects anomalies such as shell spawned in a container, unexpected network connections, and privilege escalation. Outputs JSON alerts to stdout, collected by OTel agent and forwarded to VictoriaLogs.
 
-**Key Talos note**: Must use `driver.kind: modern_ebpf`. The `kmod` and `legacy_ebpf` drivers require kernel module loading which Talos does not permit.
+**Key Talos notes**:
+- Must use `driver.kind: modern_ebpf`. The `kmod` and `legacy_ebpf` drivers require kernel module loading which Talos does not permit.
+- `driver.sysfsMountPath: /sys/kernel` — exposes BTF at `/sys/kernel/btf/vmlinux` inside the container, required for CO-RE eBPF on Talos kernel 6.18+.
+- Chart 8.0.0 uses snake_case config keys (`json_output`, `grpc_output`, `grpc_output`). Earlier chart versions used camelCase.
 
 ---
 

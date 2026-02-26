@@ -50,6 +50,12 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		Metadata: &cdk8s.ApiObjectMetadata{
 			Name:      jsii.String("harbor-secrets"),
 			Namespace: jsii.String(namespace),
+			// ServerSideApply=false: Infisical CRD schema omits projectSlug from
+			// serviceToken.secretsScope, causing SSA schema validation to fail.
+			// Use client-side apply for this resource only.
+			Annotations: &map[string]*string{
+				"argocd.argoproj.io/sync-options": jsii.String("ServerSideApply=false"),
+			},
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
 
