@@ -21,7 +21,7 @@ spec:
               value: all
             - name: CLI_ARGS
               value: --listen 0.0.0.0 --port 8188
-          image: yanwk/comfyui-boot:latest-cu128
+          image: yanwk/comfyui-boot:cu128-megapak-20260223
           imagePullPolicy: IfNotPresent
           name: comfyui
           ports:

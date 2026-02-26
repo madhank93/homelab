@@ -13,6 +13,7 @@ data:
   default-setting.yaml: |-
     create-default-disk-labeled-nodes: false
     default-data-path: "/var/lib/longhorn/"
+    storage-over-provisioning-percentage: "200"
     default-replica-count: "3"
     priority-class: "longhorn-critical"
     disable-revision-counter: "{\"v1\":\"true\"}"
