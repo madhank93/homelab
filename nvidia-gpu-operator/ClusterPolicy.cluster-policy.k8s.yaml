@@ -59,6 +59,8 @@ spec:
     enabled: true
     env:
       - name: DRIVER_ROOT
+        value: /usr/local/glibc
+      - name: CONTAINER_DRIVER_ROOT
         value: /host/usr/local/glibc
     image: k8s-device-plugin
     imagePullPolicy: IfNotPresent

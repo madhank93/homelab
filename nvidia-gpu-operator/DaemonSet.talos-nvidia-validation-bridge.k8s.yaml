@@ -15,7 +15,7 @@ spec:
       automountServiceAccountToken: true
       containers:
         - args:
-            - mkdir -p /run/nvidia/validations && touch /run/nvidia/validations/.driver-ctr-ready /run/nvidia/validations/driver-ready /run/nvidia/validations/toolkit-ready && mkdir -p /run/nvidia/driver/usr/lib && for f in /host-glibc-lib/*.so* ; do   bn=$(basename $f);   [ -e /run/nvidia/driver/usr/lib/$bn ] || ln -sf $f /run/nvidia/driver/usr/lib/$bn; done && while true; do sleep 3600; done
+            - mkdir -p /run/nvidia/validations && touch /run/nvidia/validations/.driver-ctr-ready /run/nvidia/validations/driver-ready /run/nvidia/validations/toolkit-ready && while true; do sleep 3600; done
           command:
             - /bin/sh
             - -c
@@ -26,11 +26,6 @@ spec:
           volumeMounts:
             - mountPath: /run/nvidia/validations
               name: run-nvidia-validations
-            - mountPath: /run/nvidia/driver
-              name: run-nvidia-driver
-            - mountPath: /host-glibc-lib
-              name: host-glibc-lib
-              readOnly: true
       nodeSelector:
         nvidia.com/gpu.present: "true"
       terminationGracePeriodSeconds: 0
@@ -39,11 +34,3 @@ spec:
             path: /run/nvidia/validations
             type: DirectoryOrCreate
           name: run-nvidia-validations
-        - hostPath:
-            path: /run/nvidia/driver
-            type: DirectoryOrCreate
-          name: run-nvidia-driver
-        - hostPath:
-            path: /usr/local/glibc/usr/lib
-            type: ""
-          name: host-glibc-lib
