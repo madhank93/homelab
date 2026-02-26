@@ -124,7 +124,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
       - name: configfs
 `
 
-	// GPU Worker Patch - Includes worker networking/modules + Nvidia modules
+	// GPU Worker Patch - Includes worker networking/modules + Nvidia modules + containerd runtime config
 	gpuWorkerPatch := `machine:
   nodeLabels:
     "node.longhorn.io/create-default-disk": "config"
@@ -143,6 +143,15 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
       - name: nvidia_uvm
       - name: nvidia_drm
       - name: nvidia_modeset
+  files:
+    - content: |
+        [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia]
+          privileged_without_host_devices = false
+          runtime_type = "io.containerd.runc.v2"
+          [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia.options]
+            BinaryName = "/usr/local/bin/nvidia-container-runtime"
+      path: /etc/cri/conf.d/20-nvidia.part
+      op: create
 `
 
 	basePatch := `cluster:

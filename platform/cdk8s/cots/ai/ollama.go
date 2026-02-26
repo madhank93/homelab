@@ -11,30 +11,34 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 		Namespace: jsii.String(namespace),
 	})
 
+	// nvidia.com/gpu.present is set by NFD — matches the selector used by the GPU operator.
 	gpuNodeSelector := map[string]any{
-		"node-role.kubernetes.io/gpu": jsii.String("true"),
+		"nvidia.com/gpu.present": jsii.String("true"),
 	}
 
 	values := map[string]any{
 		"replicaCount": 1,
 		"image": map[string]any{
 			"repository": "ollama/ollama",
-			"tag":        "latest",
+			"tag":        "0.17.0",
 		},
 		"resources": map[string]any{
 			"limits": map[string]any{
 				"nvidia.com/gpu": 1,
-				"memory":         "8Gi",
-				"cpu":            "2000m",
+				// memory here is host RAM (cgroup limit), NOT GPU VRAM.
+				// GPU VRAM (16GB) is fully available via nvidia.com/gpu: 1.
+				// Worker4 has 6GB host RAM total; keep limit below that.
+				"memory": "4Gi",
+				"cpu":    "4000m",
 			},
 			"requests": map[string]any{
-				"memory": "4Gi",
+				"memory": "2Gi",
 				"cpu":    "1000m",
 			},
 		},
 		"persistence": map[string]any{
 			"enabled": true,
-			"size":    "50Gi",
+			"size":    "100Gi",
 		},
 		"service": map[string]any{
 			"type": "ClusterIP",

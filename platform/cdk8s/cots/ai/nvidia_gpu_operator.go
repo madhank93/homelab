@@ -21,12 +21,24 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 		},
 	})
 
+	// nvidia.com/gpu.present is set automatically by NFD on nodes with a detected GPU.
+	// This is more reliable than a manually applied node-role label.
 	nodeSelector := map[string]any{
-		"node-role.kubernetes.io/gpu": jsii.String("true"),
+		"nvidia.com/gpu.present": jsii.String("true"),
 	}
 
 	values := map[string]any{
 		"driver": map[string]any{"enabled": false},
+		// toolkit.enabled=false: the Talos nvidia-container-toolkit-production extension
+		// installs the toolkit binaries at /usr/local/bin/. The Talos machine config
+		// drop-in at /etc/cri/conf.d/20-nvidia.part wires containerd to use them.
+		// Running the GPU operator toolkit DaemonSet on top would be redundant and its
+		// driver-validation init container blocks forever (looks for a driver container
+		// at /run/nvidia/driver which Talos never populates).
+		"toolkit": map[string]any{
+			"enabled":      false,
+			"nodeSelector": nodeSelector,
+		},
 		"operator": map[string]any{
 			"defaultRuntime": "nvidia",
 			"resources": map[string]any{
@@ -34,7 +46,6 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
 		},
-		"toolkit":      map[string]any{"nodeSelector": nodeSelector},
 		"devicePlugin": map[string]any{"nodeSelector": nodeSelector},
 		"dcgmExporter": map[string]any{"nodeSelector": nodeSelector},
 		"gfd":          map[string]any{"nodeSelector": nodeSelector},
