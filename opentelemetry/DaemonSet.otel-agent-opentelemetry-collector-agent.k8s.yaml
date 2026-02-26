@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: otel-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/version: 0.111.0
+    helm.sh/chart: opentelemetry-collector-0.108.0
+  name: otel-agent-opentelemetry-collector-agent
+  namespace: opentelemetry
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: otel-agent
+      app.kubernetes.io/name: opentelemetry-collector
+      component: agent-collector
+  template:
+    metadata:
+      annotations:
+        checksum/config: dc3175afde3a5fb25d14656f27ef2661c09db027565dbd571a752d4d36608ab9
+      labels:
+        app.kubernetes.io/instance: otel-agent
+        app.kubernetes.io/name: opentelemetry-collector
+        component: agent-collector
+    spec:
+      containers:
+        - args:
+            - --config=/conf/relay.yaml
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: GOMEMLIMIT
+              value: 409MiB
+          image: otel/opentelemetry-collector-contrib:0.111.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+          name: opentelemetry-collector
+          ports:
+            - containerPort: 6831
+              hostPort: 6831
+              name: jaeger-compact
+              protocol: UDP
+            - containerPort: 14250
+              hostPort: 14250
+              name: jaeger-grpc
+              protocol: TCP
+            - containerPort: 14268
+              hostPort: 14268
+              name: jaeger-thrift
+              protocol: TCP
+            - containerPort: 4317
+              hostPort: 4317
+              name: otlp
+              protocol: TCP
+            - containerPort: 4318
+              hostPort: 4318
+              name: otlp-http
+              protocol: TCP
+            - containerPort: 9411
+              hostPort: 9411
+              name: zipkin
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /conf
+              name: opentelemetry-collector-configmap
+            - mountPath: /var/log/pods
+              name: varlogpods
+              readOnly: true
+            - mountPath: /var/lib/docker/containers
+              name: varlibdockercontainers
+              readOnly: true
+            - mountPath: /hostfs
+              mountPropagation: HostToContainer
+              name: hostfs
+              readOnly: true
+      hostNetwork: false
+      securityContext: {}
+      serviceAccountName: otel-agent-opentelemetry-collector
+      tolerations:
+        - operator: Exists
+      volumes:
+        - configMap:
+            items:
+              - key: relay
+                path: relay.yaml
+            name: otel-agent-opentelemetry-collector-agent
+          name: opentelemetry-collector-configmap
+        - hostPath:
+            path: /var/log/pods
+          name: varlogpods
+        - hostPath:
+            path: /var/lib/docker/containers
+          name: varlibdockercontainers
+        - hostPath:
+            path: /
+          name: hostfs
+  updateStrategy:
+    type: RollingUpdate

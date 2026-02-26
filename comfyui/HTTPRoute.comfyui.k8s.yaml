@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: comfyui
+  namespace: comfyui
+spec:
+  hostnames:
+    - comfyui.madhan.app
+  parentRefs:
+    - name: homelab-gateway
+      namespace: kube-system
+  rules:
+    - backendRefs:
+        - name: comfyui
+          port: 8188
+      matches:
+        - path:
+            type: PathPrefix
+            value: /

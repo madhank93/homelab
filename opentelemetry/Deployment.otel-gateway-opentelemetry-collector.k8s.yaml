@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: otel-gateway
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/version: 0.111.0
+    helm.sh/chart: opentelemetry-collector-0.108.0
+  name: otel-gateway-opentelemetry-collector
+  namespace: opentelemetry
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: otel-gateway
+      app.kubernetes.io/name: opentelemetry-collector
+      component: standalone-collector
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: 84a96dc139b2755328ef6b23619e0245912dfda8b51fd542189758acdeb187f7
+      labels:
+        app.kubernetes.io/instance: otel-gateway
+        app.kubernetes.io/name: opentelemetry-collector
+        component: standalone-collector
+    spec:
+      containers:
+        - args:
+            - --config=/conf/relay.yaml
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: GOMEMLIMIT
+              value: 409MiB
+          image: otel/opentelemetry-collector-contrib:0.111.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+          name: opentelemetry-collector
+          ports:
+            - containerPort: 6831
+              name: jaeger-compact
+              protocol: UDP
+            - containerPort: 14250
+              name: jaeger-grpc
+              protocol: TCP
+            - containerPort: 14268
+              name: jaeger-thrift
+              protocol: TCP
+            - containerPort: 4317
+              name: otlp
+              protocol: TCP
+            - containerPort: 4318
+              name: otlp-http
+              protocol: TCP
+            - containerPort: 9411
+              name: zipkin
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /conf
+              name: opentelemetry-collector-configmap
+      hostNetwork: false
+      securityContext: {}
+      serviceAccountName: otel-gateway-opentelemetry-collector
+      volumes:
+        - configMap:
+            items:
+              - key: relay
+                path: relay.yaml
+            name: otel-gateway-opentelemetry-collector
+          name: opentelemetry-collector-configmap

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: comfyui
+  namespace: comfyui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: comfyui
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: comfyui
+    spec:
+      containers:
+        - env:
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: CLI_ARGS
+              value: --listen 0.0.0.0 --port 8188
+          image: yanwk/comfyui-boot:latest-cu128
+          imagePullPolicy: IfNotPresent
+          name: comfyui
+          ports:
+            - containerPort: 8188
+              name: http
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+              nvidia.com/gpu: 1
+            requests:
+              cpu: 1000m
+              memory: 4Gi
+          volumeMounts:
+            - mountPath: /home/user/opt/ComfyUI
+              name: data
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      runtimeClassName: nvidia
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: comfyui-data

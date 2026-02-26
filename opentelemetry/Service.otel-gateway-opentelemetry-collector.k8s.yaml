@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: otel-gateway
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/version: 0.111.0
+    component: standalone-collector
+    helm.sh/chart: opentelemetry-collector-0.108.0
+  name: otel-gateway-opentelemetry-collector
+  namespace: opentelemetry
+spec:
+  internalTrafficPolicy: Cluster
+  ports:
+    - name: jaeger-compact
+      port: 6831
+      protocol: UDP
+      targetPort: 6831
+    - name: jaeger-grpc
+      port: 14250
+      protocol: TCP
+      targetPort: 14250
+    - name: jaeger-thrift
+      port: 14268
+      protocol: TCP
+      targetPort: 14268
+    - appProtocol: grpc
+      name: otlp
+      port: 4317
+      protocol: TCP
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      protocol: TCP
+      targetPort: 4318
+    - name: zipkin
+      port: 9411
+      protocol: TCP
+      targetPort: 9411
+  selector:
+    app.kubernetes.io/instance: otel-gateway
+    app.kubernetes.io/name: opentelemetry-collector
+    component: standalone-collector
+  type: ClusterIP
