@@ -5,16 +5,25 @@ metadata:
     app.kubernetes.io/instance: falco
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: falco
-    app.kubernetes.io/version: 0.38.2
-    helm.sh/chart: falco-4.8.0
+    app.kubernetes.io/version: 0.43.0
+    helm.sh/chart: falco-8.0.0
   name: falco
   namespace: falco
 data:
   falco.yaml: |-
+    append_output:
+    - suggested_output: true
     base_syscalls:
+      all: false
       custom_set: []
       repair: false
+    buffer_format_base64: false
     buffered_outputs: false
+    capture:
+      default_duration: 5000
+      enabled: false
+      mode: rules
+      path_prefix: /tmp/falco
     config_files:
     - /etc/falco/config.d
     engine:
@@ -24,6 +33,9 @@ data:
         cpus_for_each_buffer: 2
         drop_failed_exit: false
     falco_libs:
+      snaplen: 80
+      thread_table_auto_purging_interval_s: 300
+      thread_table_auto_purging_thread_timeout_s: 300
       thread_table_size: 262144
     file_output:
       enabled: false
@@ -34,8 +46,6 @@ data:
       enabled: true
       threadiness: 0
     grpc_output:
-      enabled: false
-    grpcOutput:
       enabled: true
     http_output:
       ca_bundle: ""
@@ -48,48 +58,61 @@ data:
       enabled: false
       insecure: false
       keep_alive: false
+      max_consecutive_timeouts: 5
       mtls: false
       url: ""
       user_agent: falcosecurity/falco
+    json_include_message_property: false
+    json_include_output_fields_property: true
     json_include_output_property: true
     json_include_tags_property: true
-    json_output: false
-    jsonIncludeOutputProperty: true
-    jsonOutput: true
+    json_output: true
     libs_logger:
-      enabled: false
-      severity: debug
-    load_plugins: []
+      enabled: true
+      severity: info
+    load_plugins:
+    - container
     log_level: info
     log_stderr: true
     log_syslog: true
-    metrics:
-      convert_memory_to_mb: true
-      enabled: false
-      include_empty_values: false
-      interval: 1h
-      kernel_event_counters_enabled: true
-      libbpf_stats_enabled: true
-      output_rule: true
-      resource_utilization_enabled: true
-      rules_counters_enabled: true
-      state_counters_enabled: true
     output_timeout: 2000
-    outputs:
-      max_burst: 1000
-      rate: 0
     outputs_queue:
       capacity: 0
     plugins:
-    - init_config: null
-      library_path: libk8saudit.so
-      name: k8saudit
-      open_params: http://:9765/k8s-audit
-    - library_path: libcloudtrail.so
-      name: cloudtrail
-    - init_config: ""
-      library_path: libjson.so
-      name: json
+    - init_config:
+        engines:
+          bpm:
+            enabled: true
+          containerd:
+            enabled: true
+            sockets:
+            - /run/host-containerd/containerd.sock
+          cri:
+            enabled: true
+            sockets:
+            - /run/containerd/containerd.sock
+            - /run/crio/crio.sock
+            - /run/k3s/containerd/containerd.sock
+            - /run/host-containerd/containerd.sock
+          docker:
+            enabled: true
+            sockets:
+            - /var/run/docker.sock
+          libvirt_lxc:
+            enabled: true
+          lxc:
+            enabled: true
+          podman:
+            enabled: true
+            sockets:
+            - /run/podman/podman.sock
+        hooks:
+        - create
+        label_max_len: 100
+        with_size: false
+      library_path: libcontainer.so
+      name: container
+    plugins_hostinfo: true
     priority: debug
     program_output:
       enabled: false
@@ -119,6 +142,7 @@ data:
     webserver:
       enabled: true
       k8s_healthz_endpoint: /healthz
+      listen_address: 0.0.0.0
       listen_port: 8765
       prometheus_metrics_enabled: false
       ssl_certificate: /etc/falco/falco.pem

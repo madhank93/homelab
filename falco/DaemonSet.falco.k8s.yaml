@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: falco
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: falco
-    app.kubernetes.io/version: 0.38.2
-    helm.sh/chart: falco-4.8.0
+    app.kubernetes.io/version: 0.43.0
+    helm.sh/chart: falco-8.0.0
   name: falco
   namespace: falco
 spec:
@@ -18,7 +18,7 @@ spec:
     metadata:
       annotations:
         checksum/certs: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-        checksum/config: c9e31a992a3e5bd214149e499522009fbcb76bfad7532d4383ee8b05288f43ff
+        checksum/config: fa90021ea12b81f3b7f88160d5dcf890d3b1d3fa96d8e479168b804e983248f0
         checksum/rules: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       labels:
         app.kubernetes.io/instance: falco
@@ -28,13 +28,6 @@ spec:
       containers:
         - args:
             - /usr/bin/falco
-            - --cri
-            - /var/run/docker.sock
-            - --cri
-            - /run/containerd/containerd.sock
-            - --cri
-            - /run/crio/crio.sock
-            - -pk
           env:
             - name: HOST_ROOT
               value: /host
@@ -46,21 +39,27 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          image: docker.io/falcosecurity/falco-no-driver:0.38.2
+          image: docker.io/falcosecurity/falco:0.43.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 3
             httpGet:
               path: /healthz
               port: 8765
-            initialDelaySeconds: 60
+            initialDelaySeconds: 0
             periodSeconds: 15
             timeoutSeconds: 5
           name: falco
+          ports:
+            - containerPort: 8765
+              name: web
+              protocol: TCP
           readinessProbe:
+            failureThreshold: 3
             httpGet:
               path: /healthz
               port: 8765
-            initialDelaySeconds: 30
+            initialDelaySeconds: 0
             periodSeconds: 15
             timeoutSeconds: 5
           resources:
@@ -72,8 +71,28 @@ spec:
               memory: 512Mi
           securityContext:
             privileged: true
+          startupProbe:
+            failureThreshold: 20
+            httpGet:
+              path: /healthz
+              port: 8765
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
           tty: false
           volumeMounts:
+            - mountPath: /host/var/run/docker.sock
+              name: container-engine-socket-0
+            - mountPath: /host/run/podman/podman.sock
+              name: container-engine-socket-1
+            - mountPath: /host/run/host-containerd/containerd.sock
+              name: container-engine-socket-2
+            - mountPath: /host/run/containerd/containerd.sock
+              name: container-engine-socket-3
+            - mountPath: /host/run/crio/crio.sock
+              name: container-engine-socket-4
+            - mountPath: /host/run/k3s/containerd/containerd.sock
+              name: container-engine-socket-5
             - mountPath: /etc/falco
               name: rulesfiles-install-dir
             - mountPath: /usr/share/falco/plugins
@@ -85,12 +104,9 @@ spec:
             - mountPath: /host/etc
               name: etc-fs
               readOnly: true
-            - mountPath: /host/var/run/
-              name: docker-socket
-            - mountPath: /host/run/containerd/
-              name: containerd-socket
-            - mountPath: /host/run/crio/
-              name: crio-socket
+            - mountPath: /sys/kernel
+              name: sys-fs
+              readOnly: true
             - mountPath: /etc/falco/falco.yaml
               name: falco-yaml
               subPath: falco.yaml
@@ -100,7 +116,7 @@ spec:
             - artifact
             - follow
             - --log-format=json
-          image: docker.io/falcosecurity/falcoctl:0.9.0
+          image: docker.io/falcosecurity/falcoctl:0.12.2
           imagePullPolicy: IfNotPresent
           name: falcoctl-artifact-follow
           volumeMounts:
@@ -110,12 +126,14 @@ spec:
               name: rulesfiles-install-dir
             - mountPath: /etc/falcoctl
               name: falcoctl-config-volume
+            - mountPath: /artifactstate
+              name: artifact-state-dir
       initContainers:
         - args:
             - artifact
             - install
             - --log-format=json
-          image: docker.io/falcosecurity/falcoctl:0.9.0
+          image: docker.io/falcosecurity/falcoctl:0.12.2
           imagePullPolicy: IfNotPresent
           name: falcoctl-artifact-install
           volumeMounts:
@@ -125,14 +143,36 @@ spec:
               name: rulesfiles-install-dir
             - mountPath: /etc/falcoctl
               name: falcoctl-config-volume
+            - mountPath: /artifactstate
+              name: artifact-state-dir
       serviceAccountName: falco
       tolerations:
         - operator: Exists
       volumes:
+        - hostPath:
+            path: /var/run/docker.sock
+          name: container-engine-socket-0
+        - hostPath:
+            path: /run/podman/podman.sock
+          name: container-engine-socket-1
+        - hostPath:
+            path: /run/host-containerd/containerd.sock
+          name: container-engine-socket-2
+        - hostPath:
+            path: /run/containerd/containerd.sock
+          name: container-engine-socket-3
+        - hostPath:
+            path: /run/crio/crio.sock
+          name: container-engine-socket-4
+        - hostPath:
+            path: /run/k3s/containerd/containerd.sock
+          name: container-engine-socket-5
         - emptyDir: {}
           name: plugins-install-dir
         - emptyDir: {}
           name: rulesfiles-install-dir
+        - emptyDir: {}
+          name: artifact-state-dir
         - emptyDir: {}
           name: root-falco-fs
         - hostPath:
@@ -148,14 +188,8 @@ spec:
             path: /etc
           name: etc-fs
         - hostPath:
-            path: /var/run
-          name: docker-socket
-        - hostPath:
-            path: /run/containerd
-          name: containerd-socket
-        - hostPath:
-            path: /run/crio
-          name: crio-socket
+            path: /sys/kernel
+          name: sys-fs
         - hostPath:
             path: /proc
           name: proc-fs

@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: falco
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: falco
-    app.kubernetes.io/version: 0.38.2
-    helm.sh/chart: falco-4.8.0
+    app.kubernetes.io/version: 0.43.0
+    helm.sh/chart: falco-8.0.0
   name: falco-falcoctl
   namespace: falco
 data:
@@ -16,18 +16,21 @@ data:
       - rulesfile
       - plugin
       follow:
-        every: 6h
+        every: 168h
         falcoversions: http://localhost:8765/versions
         pluginsDir: /plugins
         refs:
-        - falco-rules:3
+        - falco-rules:5
         rulesfilesDir: /rulesfiles
+        stateDir: /artifactstate
       install:
         pluginsDir: /plugins
         refs:
-        - falco-rules:3
+        - falco-rules:5
+        - ghcr.io/falcosecurity/plugins/plugin/container:0.6.1
         resolveDeps: true
         rulesfilesDir: /rulesfiles
+        stateDir: /artifactstate
     indexes:
     - name: falcosecurity
       url: https://falcosecurity.github.io/falcoctl/index.yaml
