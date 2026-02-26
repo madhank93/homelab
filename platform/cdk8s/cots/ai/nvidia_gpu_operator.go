@@ -153,11 +153,14 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 							},
 						},
 						{
-							// Talos extension places all NVIDIA userspace libs here
+							// Talos extension places all NVIDIA userspace libs here.
+							// Use empty type ("") to skip the directory type check —
+							// Talos mounts /usr/local/glibc as an overlay/bind mount
+							// which fails Kubernetes's regular "Directory" type check.
 							Name: jsii.String("host-glibc-lib"),
 							HostPath: &k8s.HostPathVolumeSource{
 								Path: jsii.String("/usr/local/glibc/usr/lib"),
-								Type: jsii.String("Directory"),
+								Type: jsii.String(""),
 							},
 						},
 					},
