@@ -28,19 +28,30 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	}
 
 	values := map[string]any{
+		// driver.enabled=false: Talos loads NVIDIA kernel modules (570.x) via the
+		// nvidia-open-gpu-kernel-modules extension. No driver container needed.
 		"driver": map[string]any{"enabled": false},
 		// toolkit.enabled=false: the Talos nvidia-container-toolkit-production extension
-		// installs the toolkit binaries at /usr/local/bin/. The Talos machine config
-		// drop-in at /etc/cri/conf.d/20-nvidia.part wires containerd to use them.
-		// Running the GPU operator toolkit DaemonSet on top would be redundant and its
-		// driver-validation init container blocks forever (looks for a driver container
-		// at /run/nvidia/driver which Talos never populates).
+		// installs toolkit binaries at /usr/local/bin/ and writes
+		// /etc/cri/conf.d/10-nvidia-container-runtime.part automatically.
+		// The GPU operator toolkit DaemonSet is redundant on Talos.
 		"toolkit": map[string]any{
 			"enabled":      false,
 			"nodeSelector": nodeSelector,
 		},
+		// validator: tell the driver-validation init container that the driver is
+		// pre-installed (Talos kernel module), not in a GPU operator driver container.
+		// Without DISABLE_DEV_CHAR_SYMLINK_CREATION=true the validator waits forever
+		// for /run/nvidia/driver which Talos never populates.
+		"validator": map[string]any{
+			"driver": map[string]any{
+				"env": []map[string]any{
+					{"name": "DISABLE_DEV_CHAR_SYMLINK_CREATION", "value": "true"},
+				},
+			},
+		},
 		"operator": map[string]any{
-			"defaultRuntime": "nvidia",
+			"defaultRuntime": "containerd",
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
