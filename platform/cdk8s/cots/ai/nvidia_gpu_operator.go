@@ -28,9 +28,16 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	}
 
 	values := map[string]any{
-		// driver.enabled=false: Talos loads NVIDIA kernel modules (570.x) via the
-		// nvidia-open-gpu-kernel-modules extension. No driver container needed.
-		"driver": map[string]any{"enabled": false},
+		// driver.enabled=true: the Talos nvidia-open-gpu-kernel-modules extension provides
+		// the kernel modules (570.x), but NOT userspace CUDA libraries (libnvidia-ml.so.1,
+		// libcuda.so, etc.). The GPU operator driver container is still required to populate
+		// /run/nvidia/driver/ with those userspace libs. When it detects the kernel modules
+		// are already loaded (via /proc/driver/nvidia/version), it skips module reinstall
+		// and only sets up the userspace stack.
+		"driver": map[string]any{
+			"enabled":      true,
+			"nodeSelector": nodeSelector,
+		},
 		// toolkit.enabled=false: the Talos nvidia-container-toolkit-production extension
 		// installs toolkit binaries at /usr/local/bin/ and writes
 		// /etc/cri/conf.d/10-nvidia-container-runtime.part automatically.
@@ -38,17 +45,6 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 		"toolkit": map[string]any{
 			"enabled":      false,
 			"nodeSelector": nodeSelector,
-		},
-		// validator: tell the driver-validation init container that the driver is
-		// pre-installed (Talos kernel module), not in a GPU operator driver container.
-		// Without DISABLE_DEV_CHAR_SYMLINK_CREATION=true the validator waits forever
-		// for /run/nvidia/driver which Talos never populates.
-		"validator": map[string]any{
-			"driver": map[string]any{
-				"env": []map[string]any{
-					{"name": "DISABLE_DEV_CHAR_SYMLINK_CREATION", "value": "true"},
-				},
-			},
 		},
 		"operator": map[string]any{
 			"defaultRuntime": "containerd",
