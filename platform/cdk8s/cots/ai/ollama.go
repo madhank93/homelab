@@ -45,6 +45,14 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 			"port": 11434,
 		},
 		"nodeSelector": gpuNodeSelector,
+		// runtimeClassName=nvidia: routes the pod through nvidia-container-runtime
+		// (installed by Talos nvidia-container-toolkit-production extension).
+		// The runtime injects GPU devices using Talos-aware paths (/usr/local/glibc/usr/lib/)
+		// based on NVIDIA_VISIBLE_DEVICES set by the device plugin (envvars mode).
+		"runtimeClassName": "nvidia",
+		"extraEnv": []map[string]any{
+			{"name": "NVIDIA_VISIBLE_DEVICES", "value": "all"},
+		},
 	}
 
 	cdk8s.NewHelm(chart, jsii.String("ollama-release"), &cdk8s.HelmProps{

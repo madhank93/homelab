@@ -28,12 +28,12 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	}
 
 	values := map[string]any{
-		// driver.enabled=true: the Talos nvidia-open-gpu-kernel-modules extension provides
-		// the kernel modules (570.x), but NOT userspace CUDA libraries (libnvidia-ml.so.1,
-		// libcuda.so, etc.). The GPU operator driver container is still required to populate
-		// /run/nvidia/driver/ with those userspace libs. When it detects the kernel modules
-		// are already loaded (via /proc/driver/nvidia/version), it skips module reinstall
-		// and only sets up the userspace stack.
+		// driver.enabled=true: required so the GPU operator can manage driver lifecycle.
+		// In practice, because the Talos nvidia-open-gpu-kernel-modules-production extension
+		// is present (detected via extensions.talos.dev/* node labels), the GPU operator
+		// automatically labels the node nvidia.com/gpu.deploy.driver=pre-installed and sets
+		// the driver DaemonSet DESIRED=0. The driver container never runs; the Talos extension
+		// provides both kernel modules and userspace CUDA libs at /usr/local/glibc/usr/lib/.
 		"driver": map[string]any{
 			"enabled":      true,
 			"nodeSelector": nodeSelector,
@@ -53,17 +53,17 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
 		},
-		// DRIVER_ROOT and CONTAINER_DRIVER_ROOT tell the device plugin where to find CUDA libs.
-		// Talos nvidia-open-gpu-kernel-modules-production places them at /usr/local/glibc/usr/lib/.
-		// DRIVER_ROOT: the HOST path used in CDI spec entries (what the container runtime bind-mounts).
-		// CONTAINER_DRIVER_ROOT: where the device plugin looks INSIDE its container to discover libs.
-		//   The device plugin has /host → / (HostToContainer), so /host/usr/local/glibc/usr/lib/ is
-		//   accessible at runtime and contains the real libcuda.so.570.211.01 (no symlinks needed).
+		// DEVICE_LIST_STRATEGY=envvars: use env-var injection instead of CDI.
+		// CDI mode generates spec entries with hostPath=/usr/lib/libX.so which doesn't
+		// exist on Talos (libs live at /usr/local/glibc/usr/lib/). With envvars mode the
+		// device plugin injects NVIDIA_VISIBLE_DEVICES=<uuid> into the container, and the
+		// Talos nvidia-container-runtime (from nvidia-container-toolkit-production extension)
+		// handles GPU device injection using its own Talos-aware library paths.
 		"devicePlugin": map[string]any{
 			"nodeSelector": nodeSelector,
 			"env": []map[string]any{
-				{"name": "DRIVER_ROOT", "value": "/usr/local/glibc"},
-				{"name": "CONTAINER_DRIVER_ROOT", "value": "/host/usr/local/glibc"},
+				{"name": "DEVICE_LIST_STRATEGY", "value": "envvars"},
+				{"name": "CDI_ENABLED", "value": "false"},
 			},
 		},
 		"dcgmExporter": map[string]any{"nodeSelector": nodeSelector},
@@ -80,10 +80,6 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	//   driver-ready       — signals driver is available
 	//   toolkit-ready      — signals device-plugin toolkit-validation init container to proceed
 	// Without these files, the device plugin stays in Init:0/1 forever.
-	//
-	// Library discovery is handled via CONTAINER_DRIVER_ROOT=/host/usr/local/glibc on the
-	// device plugin, which makes it look at /host/usr/local/glibc/usr/lib/ (accessible via the
-	// device plugin pod's /host → / HostToContainer volume mount) to find libcuda.so et al.
 	trueBool := true
 	privileged := true
 	zero := float64(0)
