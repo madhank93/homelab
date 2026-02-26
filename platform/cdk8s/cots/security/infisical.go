@@ -1,4 +1,4 @@
-package seccomp
+package security
 
 import (
 	"github.com/aws/constructs-go/constructs/v10"

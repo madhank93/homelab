@@ -7,10 +7,11 @@ import (
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/cdk8s/cots/ai"
 	"github.com/madhank93/homelab/cdk8s/cots/automation"
+	"github.com/madhank93/homelab/cdk8s/cots/compliance"
 	"github.com/madhank93/homelab/cdk8s/cots/management"
 	"github.com/madhank93/homelab/cdk8s/cots/monitoring"
 	"github.com/madhank93/homelab/cdk8s/cots/registry"
-	"github.com/madhank93/homelab/cdk8s/cots/seccomp"
+	"github.com/madhank93/homelab/cdk8s/cots/security"
 	"github.com/madhank93/homelab/cdk8s/cots/storage"
 )
 
@@ -30,7 +31,7 @@ func main() {
 		Outdir:         jsii.String(fmt.Sprintf("%s/infisical", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
 	})
-	seccomp.NewInfisicalChart(infisicalApp, "infisical-app", "infisical")
+	security.NewInfisicalChart(infisicalApp, "infisical-app", "infisical")
 	infisicalApp.Synth()
 	// Monitoring Stack
 	grafanaApp := cdk8s.NewApp(&cdk8s.AppProps{
@@ -97,7 +98,7 @@ func main() {
 		Outdir:         jsii.String(fmt.Sprintf("%s/trivy", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
 	})
-	seccomp.NewTrivyChart(trivyApp, "trivy-app", "trivy")
+	compliance.NewTrivyChart(trivyApp, "trivy-app", "trivy")
 	trivyApp.Synth()
 
 	// Management Tools

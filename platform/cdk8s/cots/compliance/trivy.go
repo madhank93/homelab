@@ -1,4 +1,4 @@
-package seccomp
+package compliance
 
 import (
 	"archive/tar"
