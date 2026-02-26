@@ -78,7 +78,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 									"cpu":            k8s.Quantity_FromString(jsii.String("4000m")),
 								},
 								Requests: &map[string]k8s.Quantity{
-									"memory": k8s.Quantity_FromString(jsii.String("4Gi")),
+									"memory": k8s.Quantity_FromString(jsii.String("1Gi")),
 									"cpu":    k8s.Quantity_FromString(jsii.String("1000m")),
 								},
 							},

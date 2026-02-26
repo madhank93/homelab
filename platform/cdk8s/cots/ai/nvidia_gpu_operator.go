@@ -27,6 +27,29 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 		"nvidia.com/gpu.present": jsii.String("true"),
 	}
 
+	// Time-slicing config: advertise 2 virtual GPUs per physical GPU so that
+	// Ollama and ComfyUI can run simultaneously on the single RTX 5070 Ti.
+	// VRAM is NOT isolated — both pods share the 16 GB pool. Works fine for
+	// smaller models (7B Ollama ~4 GB + SDXL ComfyUI ~6 GB = ~10 GB total).
+	k8s.NewKubeConfigMap(chart, jsii.String("time-slicing-config"), &k8s.KubeConfigMapProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("time-slicing-config"),
+			Namespace: jsii.String(namespace),
+		},
+		Data: &map[string]*string{
+			"any": jsii.String(
+				"version: v1\n" +
+					"flags:\n" +
+					"  migStrategy: none\n" +
+					"sharing:\n" +
+					"  timeSlicing:\n" +
+					"    resources:\n" +
+					"    - name: nvidia.com/gpu\n" +
+					"      replicas: 2\n",
+			),
+		},
+	})
+
 	values := map[string]any{
 		// driver.enabled=true: required so the GPU operator can manage driver lifecycle.
 		// In practice, because the Talos nvidia-open-gpu-kernel-modules-production extension
@@ -63,6 +86,12 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 			"nodeSelector": nodeSelector,
 			"env": []map[string]any{
 				{"name": "DEVICE_LIST_STRATEGY", "value": "envvar"},
+			},
+			// Reference the time-slicing ConfigMap so the device plugin
+			// exposes 2 virtual nvidia.com/gpu resources per physical GPU.
+			"config": map[string]any{
+				"name":    "time-slicing-config",
+				"default": "any",
 			},
 		},
 		"dcgmExporter": map[string]any{"nodeSelector": nodeSelector},
