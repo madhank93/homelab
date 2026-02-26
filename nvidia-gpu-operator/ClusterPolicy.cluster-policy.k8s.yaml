@@ -59,9 +59,7 @@ spec:
     enabled: true
     env:
       - name: DEVICE_LIST_STRATEGY
-        value: envvars
-      - name: CDI_ENABLED
-        value: "false"
+        value: envvar
     image: k8s-device-plugin
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia
