@@ -60,8 +60,8 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 					Containers: &[]*k8s.Container{
 						{
 							Name: jsii.String("comfyui"),
-							// cu128 matches the CUDA 12.8 userspace provided by driver 570.x
-							Image:           jsii.String("yanwk/comfyui-boot:latest-cu128"),
+							// cu128-megapak: CUDA 12.8 build matching driver 570.x on Talos.
+							Image:           jsii.String("yanwk/comfyui-boot:cu128-megapak-20260223"),
 							ImagePullPolicy: jsii.String("IfNotPresent"),
 							Ports: &[]*k8s.ContainerPort{
 								{ContainerPort: jsii.Number(8188), Name: jsii.String("http"), Protocol: jsii.String("TCP")},

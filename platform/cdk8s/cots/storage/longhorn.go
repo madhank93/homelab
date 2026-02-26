@@ -29,7 +29,12 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		"defaultSettings": map[string]any{
 			"defaultReplicaCount":           3,
 			"defaultDataPath":               "/var/lib/longhorn/", // Talos persistent path
-			"createDefaultDiskLabeledNodes": false, // Auto-provision default disk on ALL nodes (not just labelled ones)
+			"createDefaultDiskLabeledNodes": false,                // Auto-provision default disk on ALL nodes (not just labelled ones)
+			// 200% overprovisioning: allows up to 240Gi scheduled per 120Gi disk.
+			// Each worker node has ~100Gi actually free but only 5Gi scheduling
+			// headroom at the default 100% limit. At 200%, headroom is ~125Gi per
+			// node — enough to schedule 100Gi replicas for AI workloads.
+			"storageOverProvisioningPercentage": 200,
 		},
 		"persistence": map[string]any{
 			"defaultClass":             true,
