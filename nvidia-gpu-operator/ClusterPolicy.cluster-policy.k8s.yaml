@@ -64,7 +64,7 @@ spec:
   driver:
     certConfig:
       name: ""
-    enabled: false
+    enabled: true
     image: driver
     imagePullPolicy: IfNotPresent
     kernelModuleConfig:
@@ -194,10 +194,6 @@ spec:
     repository: nvcr.io/nvidia/k8s
     version: v1.18.1
   validator:
-    driver:
-      env:
-        - name: DISABLE_DEV_CHAR_SYMLINK_CREATION
-          value: "true"
     image: gpu-operator
     imagePullPolicy: IfNotPresent
     plugin:
