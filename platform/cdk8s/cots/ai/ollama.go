@@ -64,5 +64,30 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 		Values:      &values,
 	})
 
+	// Gateway API HTTPRoute — routes ollama.madhan.app → ollama:11434
+	cdk8s.NewApiObject(chart, jsii.String("ollama-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("ollama"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"ollama.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"name": "ollama", "port": 11434},
+				},
+			},
+		},
+	}))
+
 	return chart
 }
