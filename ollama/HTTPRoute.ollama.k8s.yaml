@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ollama
+  namespace: ollama
+spec:
+  hostnames:
+    - ollama.madhan.app
+  parentRefs:
+    - name: homelab-gateway
+      namespace: kube-system
+  rules:
+    - backendRefs:
+        - name: ollama
+          port: 11434
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
