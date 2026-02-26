@@ -45,5 +45,5 @@ spec:
           name: run-nvidia-driver
         - hostPath:
             path: /usr/local/glibc/usr/lib
-            type: Directory
+            type: ""
           name: host-glibc-lib
