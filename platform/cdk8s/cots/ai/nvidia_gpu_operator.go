@@ -53,7 +53,15 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
 		},
-		"devicePlugin": map[string]any{"nodeSelector": nodeSelector},
+		// DRIVER_ROOT tells the device plugin where to find CUDA userspace libs.
+		// Talos places them at /usr/local/glibc/usr/lib/ (custom glibc path).
+		// The device plugin pod has /host mounted → /host/usr/local/glibc is accessible.
+		"devicePlugin": map[string]any{
+			"nodeSelector": nodeSelector,
+			"env": []map[string]any{
+				{"name": "DRIVER_ROOT", "value": "/host/usr/local/glibc"},
+			},
+		},
 		"dcgmExporter": map[string]any{"nodeSelector": nodeSelector},
 		"gfd":          map[string]any{"nodeSelector": nodeSelector},
 	}
