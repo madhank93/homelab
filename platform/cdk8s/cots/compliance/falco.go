@@ -28,17 +28,21 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 			// so the kmod and legacy ebpf drivers cannot be used. modern_ebpf uses
 			// CO-RE eBPF programs that load without a pre-compiled kernel module.
 			"kind": "modern_ebpf",
+			// sysfsMountPath: mounts /sys/kernel into the container so the modern_ebpf
+			// probe can find BTF at /sys/kernel/btf/vmlinux. Required on Talos because
+			// the container's default sysfs does not expose /sys/kernel/btf.
+			"sysfsMountPath": "/sys/kernel",
 		},
 		"falco": map[string]any{
 			"grpc": map[string]any{
 				"enabled": true,
 			},
-			"grpcOutput": map[string]any{
+			"grpc_output": map[string]any{
 				"enabled": true,
 			},
 			// json_output: easier to parse and forward to VictoriaLogs via OTel
-			"jsonOutput":         true,
-			"jsonIncludeOutputProperty": true,
+			"json_output":                    true,
+			"json_include_output_property":   true,
 		},
 		// falcosidekick: disabled for now — enable to route alerts to Slack/PagerDuty/webhook
 		"falcosidekick": map[string]any{
@@ -57,7 +61,7 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 	cdk8s.NewHelm(chart, jsii.String("falco-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("falco"),
 		Repo:        jsii.String("https://falcosecurity.github.io/charts"),
-		Version:     jsii.String("4.8.0"),
+		Version:     jsii.String("8.0.0"),
 		ReleaseName: jsii.String("falco"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
