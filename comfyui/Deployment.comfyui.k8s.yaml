@@ -35,7 +35,7 @@ spec:
               nvidia.com/gpu: 1
             requests:
               cpu: 1000m
-              memory: 4Gi
+              memory: 1Gi
           volumeMounts:
             - mountPath: /home/user/opt/ComfyUI
               name: data

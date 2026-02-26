@@ -56,6 +56,9 @@ spec:
       relabelings: []
     version: 4.4.2-4.7.0-distroless
   devicePlugin:
+    config:
+      default: any
+      name: time-slicing-config
     enabled: true
     env:
       - name: DEVICE_LIST_STRATEGY
