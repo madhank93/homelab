@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5bceeca3808849664f09f642547ce17fdf495522238ef9ce952b20cfa36b7de5
+        checksum/config: 25fa26f76b5a5bb9a8d5854f34d045b576c91cfd89e20d52a125d46f4f3fe779
         checksum/sc-dashboard-provider-config: e70bf6a851099d385178a76de9757bb0bef8299da6d8443602590e44f05fdf24
         kubectl.kubernetes.io/default-container: grafana
       labels:
@@ -111,6 +111,9 @@ spec:
               name: storage
             - mountPath: /var/lib/grafana-search
               name: search
+            - mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              name: config
+              subPath: datasources.yaml
       enableServiceLinks: true
       initContainers:
         - command:

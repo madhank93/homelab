@@ -9,6 +9,20 @@ metadata:
   name: grafana
   namespace: grafana
 data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - access: proxy
+      isDefault: true
+      jsonData:
+        timeInterval: 30s
+      name: VictoriaMetrics
+      type: prometheus
+      url: http://victoria-metrics-victoria-metrics-cluster-vmselect.victoria-metrics.svc.cluster.local:8481/select/0/prometheus
+    - access: proxy
+      name: VictoriaLogs
+      type: loki
+      url: http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select/loki
   grafana.ini: |
     [analytics]
     check_for_updates = true
