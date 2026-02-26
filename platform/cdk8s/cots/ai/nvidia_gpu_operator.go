@@ -58,6 +58,79 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 		"gfd":          map[string]any{"nodeSelector": nodeSelector},
 	}
 
+	// Talos Validation Bridge DaemonSet
+	// GPU operator v25.x expects userspace libs (libnvidia-ml.so.1) at standard paths, but
+	// the Talos nvidia-open-gpu-kernel-modules-production extension places them under
+	// /usr/local/glibc/usr/lib/ — a custom path the GPU operator validator does not search.
+	// This DaemonSet creates the three validation marker files in /run/nvidia/validations/
+	// that the GPU operator uses to coordinate readiness between its components:
+	//   .driver-ctr-ready  — signals driver-validation init container to proceed
+	//   driver-ready       — signals driver is available
+	//   toolkit-ready      — signals device-plugin toolkit-validation init container to proceed
+	// Without these files, the device plugin stays in Init:0/1 forever.
+	trueBool := true
+	privileged := true
+	zero := float64(0)
+	k8s.NewKubeDaemonSet(chart, jsii.String("talos-validation-bridge"), &k8s.KubeDaemonSetProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("talos-nvidia-validation-bridge"),
+			Namespace: jsii.String(namespace),
+		},
+		Spec: &k8s.DaemonSetSpec{
+			Selector: &k8s.LabelSelector{
+				MatchLabels: &map[string]*string{
+					"app": jsii.String("talos-nvidia-validation-bridge"),
+				},
+			},
+			Template: &k8s.PodTemplateSpec{
+				Metadata: &k8s.ObjectMeta{
+					Labels: &map[string]*string{
+						"app": jsii.String("talos-nvidia-validation-bridge"),
+					},
+				},
+				Spec: &k8s.PodSpec{
+					NodeSelector:                  &map[string]*string{"nvidia.com/gpu.present": jsii.String("true")},
+					AutomountServiceAccountToken:  &trueBool,
+					TerminationGracePeriodSeconds: &zero,
+					Containers: &[]*k8s.Container{
+						{
+							Name:  jsii.String("bridge"),
+							Image: jsii.String("busybox:1.37"),
+							Command: &[]*string{
+								jsii.String("/bin/sh"), jsii.String("-c"),
+							},
+							Args: &[]*string{jsii.String(
+								"mkdir -p /run/nvidia/validations && " +
+									"touch /run/nvidia/validations/.driver-ctr-ready " +
+									"/run/nvidia/validations/driver-ready " +
+									"/run/nvidia/validations/toolkit-ready && " +
+									"while true; do sleep 3600; done",
+							)},
+							SecurityContext: &k8s.SecurityContext{
+								Privileged: &privileged,
+							},
+							VolumeMounts: &[]*k8s.VolumeMount{
+								{
+									Name:      jsii.String("run-nvidia-validations"),
+									MountPath: jsii.String("/run/nvidia/validations"),
+								},
+							},
+						},
+					},
+					Volumes: &[]*k8s.Volume{
+						{
+							Name: jsii.String("run-nvidia-validations"),
+							HostPath: &k8s.HostPathVolumeSource{
+								Path: jsii.String("/run/nvidia/validations"),
+								Type: jsii.String("DirectoryOrCreate"),
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
 	// CRDs
 	cdk8s.NewInclude(chart, jsii.String("nvidia-cluster-policy-crd"), &cdk8s.IncludeProps{
 		Url: jsii.String("https://raw.githubusercontent.com/NVIDIA/gpu-operator/v25.10.1/deployments/gpu-operator/crds/nvidia.com_clusterpolicies.yaml"),
