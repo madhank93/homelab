@@ -1,0 +1,43 @@
+base_url = "https://madhank93.github.io/homelab"
+title = "Homelab"
+description = "Documentation for a Kubernetes homelab on Talos Linux, provisioned by Pulumi on Proxmox"
+
+theme = "goyo"
+build_search_index = true
+default_language = "en"
+generate_feeds = false
+generate_sitemap = true
+
+[markdown]
+highlight_code = true
+bottom_footnotes = true
+highlight_theme = "ayu-mirage"
+
+[extra]
+footer_html = "<span>Powered by <a href='https://www.getzola.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Zola</a> and <a href='https://github.com/hahwul/goyo' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Goyo</a></span>"
+edit_url = "https://github.com/madhank93/homelab/edit/main/docs"
+
+nav = [
+    { name = "Getting Started", url = "/getting-started", type = "url", icon = "fa-solid fa-rocket" },
+    { name = "Hardware", url = "/hardware", type = "url", icon = "fa-solid fa-server" },
+    { name = "Infrastructure", url = "/infrastructure", type = "url", icon = "fa-solid fa-network-wired" },
+    { name = "Platform", url = "/platform", type = "url", icon = "fa-solid fa-layer-group" },
+    { name = "Apps", url = "/apps", type = "url", icon = "fa-solid fa-cubes" },
+    { name = "GitHub", url = "https://github.com/madhank93/homelab", type = "url", icon = "fa-brands fa-github" },
+]
+
+[extra.logo]
+text = "Homelab"
+
+[extra.theme]
+colorset = "dark"
+brightness = "normal"
+disable_toggle = false
+
+[extra.sidebar]
+expand_depth = 2
+disable_root_hide = false
+
+[extra.share]
+copy_url = false
+x = false
