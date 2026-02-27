@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en" style="background-color: #0f172a;">
+
+<head>
+    
+        
+    
+    
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Resource Hints for better performance -->
+    
+
+    <!-- Initialize theme and brightness before CSS loads to prevent FOUC -->
+    <script>
+        (function() {
+            // Theme mapping - maps user-friendly names to actual DaisyUI theme names
+            var themeMapping = { "goyo-dark": "night", "goyo-light": "lofi" };
+            
+            
+            
+            
+                
+                
+                
+                
+            
+            // Get default values from config
+            var defaultColorset = "dark";
+            var darkBrightness = "normal";
+            var lightBrightness = "normal";
+            var themeMap = { "dark": "goyo-dark", "light": "goyo-light" };
+            var fallbackTheme = themeMap[defaultColorset] || "goyo-dark";
+            
+            // Expose brightness config for global use (e.g., goyo.js)
+            window.darkBrightness = darkBrightness;
+            window.lightBrightness = lightBrightness;
+            
+            // Get theme from localStorage or use fallback
+            var currentUserTheme = localStorage.getItem('theme') || fallbackTheme;
+            var actualTheme = themeMapping[currentUserTheme] || currentUserTheme;
+            
+            // Determine brightness based on current theme
+            var currentBrightness = (currentUserTheme === "goyo-dark") ? darkBrightness : lightBrightness;
+            
+            // Set theme and brightness attributes immediately
+            document.documentElement.setAttribute("data-theme", actualTheme);
+            document.documentElement.setAttribute("data-brightness", currentBrightness);
+        })();
+    </script>
+
+    <style>
+        
+        
+        
+            
+            
+            
+        
+        
+            
+            @font-face {
+                font-family: "Pretendard-Regular";
+                src: url('https://homelab.madhan.app/fonts/Pretendard-Regular.woff') format("woff");
+                font-weight: 400;
+                font-style: normal;
+                font-display: swap;
+            }
+            body {
+                font-family: "Pretendard-Regular", sans-serif;
+            }
+        
+    </style>
+
+    
+        
+            <meta name="description" content="DNS split strategy, public vs internal service routing, and how to expose or restrict services" />
+        
+    
+
+    <title>Service Access &amp; Internet Exposure | Homelab</title>
+
+    
+    
+
+      <!-- SEO: Open Graph / Twitter Card -->
+      <meta property="og:title" content="Service Access &amp; Internet Exposure | Homelab" />
+      <meta property="og:description" content="DNS split strategy, public vs internal service routing, and how to expose or restrict services" />
+      <meta property="og:url" content="https://homelab.madhan.app" />
+      <meta property="og:type" content="website" />
+      
+
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="Service Access &amp; Internet Exposure" />
+      <meta name="twitter:description" content="DNS split strategy, public vs internal service routing, and how to expose or restrict services" />
+      
+      
+      
+          
+          
+      
+      
+      
+      
+
+      <!-- Browser address bar color -->
+      <meta name="theme-color" content="#0f172a">
+
+      <!-- CSS -->
+    <link rel="stylesheet" href="https://homelab.madhan.app/css/main.css">
+    <link rel="stylesheet" href="https://homelab.madhan.app/css/font-awesome.min.css">
+    
+    <!-- Preload critical fonts -->
+    <link rel="preload" href="https://homelab.madhan.app/fonts/Pretendard-Regular.woff" as="font" type="font/woff" crossorigin>
+
+    <!-- Defer non-critical scripts -->
+    <script defer src="https://homelab.madhan.app/js/copy_code.js"></script>
+    <script defer src="https://homelab.madhan.app/js/copy_heading_link.js"></script>
+    
+    <!-- Lazy load Mermaid and KaTeX - only when needed -->
+    <script>
+        // Lazy load KaTeX and Mermaid when needed
+        window.addEventListener('DOMContentLoaded', function() {
+            // Check for both KaTeX inline and block elements in one pass
+            var katexInlineElements = document.querySelectorAll('.katex-inline');
+            var katexBlockElements = document.querySelectorAll('.katex-block');
+            var hasKatex = katexInlineElements.length > 0 || katexBlockElements.length > 0;
+            var hasMermaid = document.querySelector('.mermaid');
+            
+            // Load KaTeX if math elements are present
+            if (hasKatex) {
+                // Load KaTeX CSS first
+                var katexCSS = document.createElement('link');
+                katexCSS.rel = 'stylesheet';
+                katexCSS.href = 'https://homelab.madhan.app/css/katex.min.css';
+                document.head.appendChild(katexCSS);
+                
+                // Load KaTeX JS
+                var katexScript = document.createElement('script');
+                katexScript.src = 'https://homelab.madhan.app/js/katex.min.js';
+                katexScript.onload = function() {
+                    // Render inline elements
+                    katexInlineElements.forEach(function(elem) {
+                        var texContent = elem.textContent || elem.innerText;
+                        try {
+                            katex.render(texContent, elem, { 
+                                throwOnError: false,
+                                displayMode: false
+                            });
+                        } catch(e) {
+                            console.error('KaTeX render error:', e);
+                        }
+                    });
+                    
+                    // Render block elements
+                    katexBlockElements.forEach(function(elem) {
+                        var texContent = elem.textContent || elem.innerText;
+                        try {
+                            katex.render(texContent, elem, { 
+                                throwOnError: false,
+                                displayMode: true
+                            });
+                        } catch(e) {
+                            console.error('KaTeX render error:', e);
+                        }
+                    });
+                };
+                document.head.appendChild(katexScript);
+            }
+            
+            // Load Mermaid if diagram elements are present
+            if (hasMermaid) {
+                var mermaidScript = document.createElement('script');
+                mermaidScript.src = 'https://homelab.madhan.app/js/mermaid.min.js';
+                mermaidScript.onload = function() {
+                    // Initialize Mermaid after loading
+                    if (typeof window.initMermaid === 'function') {
+                        window.initMermaid();
+                    }
+                };
+                document.head.appendChild(mermaidScript);
+            }
+        });
+    </script>
+
+    
+    
+</head>
+<body>
+    
+
+<!-- Search Modal -->
+<input type="checkbox" id="search-modal" class="modal-toggle" />
+<div class="modal modal-middle">
+    <div class="modal-box relative max-w-2xl p-0 bg-base-100 shadow-2xl">
+        <label for="search-modal" class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 z-10">✕</label>
+        <div class="search-container">
+            <!-- Search Input Container -->
+            <div class="search-input-container px-6 pt-6 pb-4 border-b border-base-300/30">
+                <div class="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="search-icon absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input id="search" type="search" placeholder="Search documentation..." class="search-input w-full pl-12 pr-4 py-3 text-base bg-transparent border-0 focus:outline-none focus:ring-0 text-base-content placeholder:text-base-content/40">
+                </div>
+            </div>
+            <!-- Search Results Container -->
+            <div class="search-results-container px-2 py-2 h-96 overflow-y-auto">
+                <div class="search-results__header px-4 py-2 text-xs text-base-content/60"></div>
+                <ul class="search-results__items space-y-1"></ul>
+            </div>
+            <!-- Search Footer -->
+            <div class="search-footer px-6 py-3 border-t border-base-300/30 flex items-center justify-end gap-4 text-xs text-base-content/50">
+                <div class="flex items-center gap-1">
+                    <kbd class="kbd kbd-xs">↑</kbd>
+                    <kbd class="kbd kbd-xs">↓</kbd>
+                    <span>to navigate</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <kbd class="kbd kbd-xs">↵</kbd>
+                    <span>to select</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <kbd class="kbd kbd-xs">esc</kbd>
+                    <span>to close</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+    <div class="drawer lg:drawer-open">
+        <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
+        <div class="drawer-content flex flex-col pt-16">
+            
+
+
+
+
+
+    
+    
+    
+    
+    
+
+
+
+
+<div class="navbar opacity-95 fixed top-0 left-0 right-0 z-50 h-16 border-b border-gray-500/15 backdrop-blur-3xl">
+    <!-- Mobile hamburger -->
+    <div class="flex-none lg:hidden">
+        <label for="my-drawer-2" class="btn btn-square btn-ghost">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </label>
+    </div>
+    <!-- Logo -->
+    <div class="flex-1">
+        <a href="/" class="btn btn-ghost hover:animate-pulse hover:bg-transparent hover:border-transparent normal-case text-xl" style="background: linear-gradient(135deg, #9ca3af, #6b7280); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: bold; font-size: 1.5rem;">
+            
+                Homelab
+            
+        </a>
+    </div>
+    <!-- Desktop Menu -->
+    <div class="flex-none hidden lg:flex">
+        <ul class="menu menu-horizontal px-1 items-center">
+            
+            
+            
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/getting-started">
+                                <i class="fa-solid fa-rocket"></i>
+                                Getting Started
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/hardware">
+                                <i class="fa-solid fa-server"></i>
+                                Hardware
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/infrastructure">
+                                <i class="fa-solid fa-network-wired"></i>
+                                Infrastructure
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/platform">
+                                <i class="fa-solid fa-layer-group"></i>
+                                Platform
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/apps">
+                                <i class="fa-solid fa-cubes"></i>
+                                Apps
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="https://github.com/madhank93/homelab">
+                                <i class="fa-brands fa-github"></i>
+                                GitHub
+                            </a>
+                        </li>
+                    
+                
+            
+            
+
+            
+            
+            
+                
+            
+            
+            <li>
+                <label class="swap swap-rotate btn btn-ghost">
+                  <input type="checkbox" class="theme-controller" value="night" aria-labelledby="swap color"/>
+                  <svg class="swap-off h-5 w-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z" /></svg>
+                  <svg class="swap-on h-5 w-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" /></svg>
+                </label>
+            </li>
+            
+
+        </ul>
+    </div>
+</div>
+
+
+            
+            
+            
+            
+                
+            
+            
+            <div class="p-8 w-full flex justify-center">
+                <div class="w-full max-w-7xl lg:grid lg:grid-cols-[1fr_250px] lg:gap-8">
+                    <main class="prose w-full">
+                        
+    <div class="mb-12 pb-4 border-b border-gray-500/15">
+        <h1 class="flex items-center gap-3">
+            Service Access &amp; Internet Exposure
+            
+        </h1>
+        <p class="text-gray-500">DNS split strategy, public vs internal service routing, and how to expose or restrict services</p>
+    </div>
+    <h2 id="architecture-overview">Architecture Overview</h2>
+<p>Homelab services are LAN-only by default. Selectively exposing a service to the internet is a single-line config change, controlled by <code>publicServices</code> in <code>infra/pulumi/cloudflare.go</code>.</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>*.madhan.app          → 192.168.1.220  (wildcard, LAN gateway — default for all services)
+</span><span>*.internal.madhan.app → 192.168.1.220  (explicit internal label)
+</span><span>auth.madhan.app       → 23.121.200.108 (Authentik — always public)
+</span><span>netbird.madhan.app    → 23.121.200.108 (NetBird — always public)
+</span><span>proxy.madhan.app      → 23.121.200.108 (NetBird expose base — always public)
+</span><span>*.proxy.madhan.app    → 23.121.200.108 (NetBird expose wildcard)
+</span><span>grafana.madhan.app    → 23.121.200.108 (overrides wildcard → internet accessible)
+</span><span>harbor.madhan.app     → 23.121.200.108 (overrides wildcard → internet accessible)
+</span><span>headlamp.madhan.app   → 192.168.1.220  (no explicit record → LAN wildcard → private)
+</span></code></pre>
+<p>Cloudflare resolves specific records before wildcards. A service with no explicit A record falls through to the <code>*.madhan.app</code> wildcard → private IP → unreachable from the internet.</p>
+<h2 id="network-flow-diagrams">Network Flow Diagrams</h2>
+<h3 id="public-service-e-g-grafana">Public service (e.g. Grafana)</h3>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Internet Browser
+</span><span>  → Cloudflare: grafana.madhan.app → 23.121.200.108
+</span><span>  → Traefik (TLS termination on Hetzner VPS)
+</span><span>  → [no session] → Authentik ForwardAuth
+</span><span>      → auth.madhan.app → GitHub OAuth → redirect back
+</span><span>  → [session cookie set] → k8s-gateway (http://192.168.1.220)
+</span><span>       ↑ reachable via WireGuard (netbird-agent on Hetzner routes 192.168.1.0/24)
+</span><span>  → Cilium HTTPRoute: grafana.madhan.app → Grafana pod
+</span></code></pre>
+<h3 id="internal-service-e-g-headlamp">Internal service (e.g. Headlamp)</h3>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>LAN Browser
+</span><span>  → DNS: headlamp.madhan.app → 192.168.1.220 (LAN wildcard)
+</span><span>  → Cilium Gateway → HTTPRoute → Headlamp pod
+</span><span>  (No Traefik, no Hetzner, no SSO — direct LAN access only)
+</span></code></pre>
+<h2 id="how-to-expose-a-service-to-the-internet">How to Expose a Service to the Internet</h2>
+<p><strong>Step 1</strong>: Add the service name to <code>publicServices</code> in <code>infra/pulumi/cloudflare.go</code>:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// Before
+</span><span style="color:#ffa759;">var </span><span>publicServices </span><span style="color:#f29e74;">= </span><span>[]</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{</span><span style="color:#bae67e;">&quot;grafana&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;harbor&quot;</span><span>}
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;">// After — adding Headlamp
+</span><span style="color:#ffa759;">var </span><span>publicServices </span><span style="color:#f29e74;">= </span><span>[]</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{</span><span style="color:#bae67e;">&quot;grafana&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;harbor&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;headlamp&quot;</span><span>}
+</span></code></pre>
+<p><strong>Step 2</strong>: Add a Traefik router to <code>infra/pulumi/bifrost/traefik/dynamic/services.yml</code>:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">http</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">routers</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">headlamp</span><span style="color:#ccc9c2cc;">:
+</span><span>      </span><span style="color:#73d0ff;">rule</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">Host(`headlamp.madhan.app`)
+</span><span>      </span><span style="color:#73d0ff;">middlewares</span><span style="color:#ccc9c2cc;">: </span><span>[</span><span style="color:#bae67e;">authentik-forwardauth</span><span>]
+</span><span>      </span><span style="color:#73d0ff;">service</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">k8s-gateway
+</span><span>      </span><span style="color:#73d0ff;">tls</span><span style="color:#ccc9c2cc;">:
+</span><span>        </span><span style="color:#73d0ff;">certResolver</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">cloudflare-dns
+</span></code></pre>
+<p><strong>Step 3</strong>: Run <code>just pulumi platform up</code> — this:</p>
+<ul>
+<li>Creates the Cloudflare A record <code>headlamp.madhan.app → 23.121.200.108</code></li>
+<li>Generates <code>traefik/dynamic/public-services.yml</code> with the new router</li>
+<li>Copies updated config to Hetzner VPS via CopyToRemote</li>
+<li>Traefik file-watcher hot-reloads the new route (no container restart needed)</li>
+</ul>
+<h2 id="how-to-revoke-internet-access">How to Revoke Internet Access</h2>
+<p>Remove the service from <code>publicServices</code> in <code>cloudflare.go</code> and remove its router from <code>services.yml</code>, then run <code>just pulumi platform up</code>.</p>
+<p>The Cloudflare A record is deleted. DNS falls back to <code>*.madhan.app → 192.168.1.220</code> (private) — service becomes LAN-only again automatically.</p>
+<h2 id="dns-split-strategy">DNS Split Strategy</h2>
+<table><thead><tr><th>Domain Pattern</th><th>Resolves To</th><th>Accessible From</th></tr></thead><tbody>
+<tr><td><code>*.madhan.app</code> (wildcard)</td><td><code>192.168.1.220</code></td><td>LAN only</td></tr>
+<tr><td><code>*.internal.madhan.app</code></td><td><code>192.168.1.220</code></td><td>LAN only (explicit label)</td></tr>
+<tr><td><code>auth.madhan.app</code></td><td><code>23.121.200.108</code></td><td>Internet</td></tr>
+<tr><td><code>netbird.madhan.app</code></td><td><code>23.121.200.108</code></td><td>Internet</td></tr>
+<tr><td><code>proxy.madhan.app</code></td><td><code>23.121.200.108</code></td><td>Internet</td></tr>
+<tr><td><code>*.proxy.madhan.app</code></td><td><code>23.121.200.108</code></td><td>Internet (NetBird expose)</td></tr>
+<tr><td><code>grafana.madhan.app</code></td><td><code>23.121.200.108</code></td><td>Internet + ForwardAuth</td></tr>
+<tr><td><code>harbor.madhan.app</code></td><td><code>23.121.200.108</code></td><td>Internet + ForwardAuth</td></tr>
+</tbody></table>
+<h2 id="public-services-config-single-source-of-truth">Public Services Config (Single Source of Truth)</h2>
+<p>The <code>publicServices</code> slice in <code>cloudflare.go</code> is the authoritative list. When you run <code>pulumi up</code>:</p>
+<ol>
+<li><strong>Cloudflare</strong> receives A records for each entry (overriding the LAN wildcard)</li>
+<li><strong><code>public-services.yml</code></strong> is generated with Traefik routers (one per service)</li>
+<li>Both are applied atomically in one pulumi run</li>
+</ol>
+<h2 id="netbird-expose-feature-temporary-sharing">NetBird Expose Feature (Temporary Sharing)</h2>
+<p>For temporary access without DNS changes, use the NetBird expose feature:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># From any machine on the NetBird mesh
+</span><span style="color:#ffd580;">netbird</span><span> expose 8080
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Output: foo.proxy.madhan.app → your local port 8080
+</span></code></pre>
+<p>This routes via <code>*.proxy.madhan.app → Traefik TCP passthrough → netbird-proxy → WireGuard mesh → your machine</code>. TLS is provided by the reverse-proxy container's ACME.</p>
+<p>This is useful for:</p>
+<ul>
+<li>Sharing a dev server temporarily with a colleague</li>
+<li>Exposing a local service for webhook testing</li>
+<li>Access that doesn't need SSO (the TCP passthrough bypasses Authentik)</li>
+</ul>
+<h2 id="verification">Verification</h2>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># DNS resolves correctly
+</span><span style="color:#ffd580;">dig</span><span> grafana.madhan.app     </span><span style="font-style:italic;color:#5c6773;"># → 23.121.200.108  (public, explicit A record)
+</span><span style="color:#ffd580;">dig</span><span> headlamp.madhan.app    </span><span style="font-style:italic;color:#5c6773;"># → 192.168.1.220   (LAN wildcard, private)
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Unauthenticated access redirects to SSO
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -I</span><span> https://grafana.madhan.app   </span><span style="font-style:italic;color:#5c6773;"># → 302 to auth.madhan.app
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># K8s routing peer connected
+</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> netbird           </span><span style="font-style:italic;color:#5c6773;"># → Running
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># NetBird UI: Peers → bifrost-agent Connected, k8s-routing-peer Connected
+</span><span style="font-style:italic;color:#5c6773;"># NetBird UI: Routes → 192.168.1.0/24 → Active
+</span></code></pre>
+
+
+    
+    
+
+    
+    <div class="mt-8 pt-6 border-t border-gray-500/15">
+        <div class="flex flex-wrap items-center gap-4">
+            <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/infrastructure&#x2F;access&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span>Edit this page</span>
+            </a>
+            
+            
+            
+                
+                
+            
+            
+            
+        </div>
+    </div>
+    
+
+
+                        
+
+
+
+                        <nav class="mt-12 pt-8 border-t border-gray-500/15">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="prev-nav-item">
+                                    
+    
+        
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/infrastructure/">
+            <div class="nav-button-content">
+                <div class="nav-button-direction">
+                    <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span class="nav-button-label">Back to</span>
+                </div>
+                <div class="nav-button-title">Infrastructure</div>
+            </div>
+        </a>
+    
+
+                                </div>
+                                <div class="next-nav-item">
+                                    
+    
+        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/">
+            <div class="nav-button-content">
+                <div class="nav-button-direction">
+                    <span class="nav-button-label">Next</span>
+                    <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+                <div class="nav-button-title">Hetzner Bifrost</div>
+            </div>
+        </a>
+    
+
+                                </div>
+                            </div>
+                        </nav>
+                    </main>
+
+                    
+                        
+
+<div class="hidden lg:block" >
+    <div class="sticky top-20 px-4 py-2 border-l border-gray-500/15">
+        <h4 class="text-lg font-bold mb-1">ON THIS PAGE</h4>
+            <ul class="menu menu-sm toc-menu">
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/access/#architecture-overview" class="toc-link">Architecture Overview</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/access/#network-flow-diagrams" class="toc-link">Network Flow Diagrams</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/access/#public-service-e-g-grafana" class="toc-link">Public service (e.g. Grafana)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/access/#internal-service-e-g-headlamp" class="toc-link">Internal service (e.g. Headlamp)</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/access/#how-to-expose-a-service-to-the-internet" class="toc-link">How to Expose a Service to the Internet</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/access/#how-to-revoke-internet-access" class="toc-link">How to Revoke Internet Access</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/access/#dns-split-strategy" class="toc-link">DNS Split Strategy</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/access/#public-services-config-single-source-of-truth" class="toc-link">Public Services Config (Single Source of Truth)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/access/#netbird-expose-feature-temporary-sharing" class="toc-link">NetBird Expose Feature (Temporary Sharing)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/access/#verification" class="toc-link">Verification</a>
+                    
+                </li>
+            
+            </ul>
+    </div>
+</div>
+
+
+                    
+                    
+                </div>
+            </div>
+            
+
+            <script>
+              // Determine theme: localStorage > extra.default_colorset > goyo-dark
+              // Expose theme config for global use (e.g., goyo.js)
+              
+              
+              
+                  
+                  
+                  
+                  
+              
+              window.defaultColorset = "dark";
+              window.darkBrightness = "normal";
+              window.lightBrightness = "normal";
+              window.themeMap = { "dark": "goyo-dark", "light": "goyo-light" };
+              window.fallbackTheme = window.themeMap[window.defaultColorset] || "goyo-dark";
+
+              // Theme mapping - maps user-friendly names to actual DaisyUI theme names
+              var themeMapping = { "goyo-dark": "night", "goyo-light": "lofi" };
+              var currentUserTheme = localStorage.getItem('theme') || window.fallbackTheme;
+              var actualTheme = themeMapping[currentUserTheme] || currentUserTheme;
+
+              // Initialize and run Mermaid only when loaded
+              window.initMermaid = function() {
+                var mermaidTheme = "dark";
+                if(currentUserTheme == "goyo-light") {
+                  mermaidTheme = "light";
+                }
+
+                if (typeof mermaid !== 'undefined') {
+                  mermaid.initialize({ startOnLoad: false, theme: mermaidTheme });
+
+                  // Function to render mermaid diagrams
+                  var renderMermaid = async function() {
+                    const mermaidElements = document.querySelectorAll('.mermaid');
+                    if (mermaidElements.length > 0) {
+                        await mermaid.run({
+                            nodes: mermaidElements
+                        });
+                    }
+                  };
+
+                  // Check if DOMContentLoaded has already fired
+                  if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', renderMermaid);
+                  } else {
+                    // DOMContentLoaded already fired, run immediately
+                    renderMermaid();
+                  }
+                }
+              };
+
+              // Auto-initialize if Mermaid is already loaded
+              if (typeof mermaid !== 'undefined') {
+                window.initMermaid();
+              }
+            </script>
+
+        </div>
+
+        
+        
+        
+        <div id="sidebar" class="drawer-side pt-16 border-r border-gray-500/15 overflow-hidden">
+        
+            
+                
+
+
+
+    
+
+
+
+    
+
+<label for="my-drawer-2" class="drawer-overlay"></label>
+<div class="mt-4 w-68 h-[calc(100vh-4rem)] bg-base-100 text-base-content flex flex-col overflow-auto thin-scrollbar">
+    
+    <div class="px-2 pt-4 pb-0 flex flex-col items-center gap-2">
+        <div class="w-full flex items-center gap-2">
+            <label for="search-modal" class="input w-full flex items-center justify-between text-left bg-base-100 cursor-pointer border-gray-500/15 hover:border-gray-500/55 hover:border-1 transition" aria-label="검색">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span class="text-gray-400"><kbd class="kbd">⌘</kbd><kbd class="kbd">K</kbd></span>
+            </label>
+        </div>
+    </div>
+    
+    <ul class="menu w-full flex-grow">
+        
+        
+        
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/getting-started">Getting Started</a></summary>
+                        <ul>
+                            
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/getting-started/deployment">Deployment Guide</a></li>
+                            
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/hardware">Hardware</a></summary>
+                        <ul>
+                            
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/hardware/cluster-nodes">Cluster Nodes</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/hardware/gpu">GPU</a></li>
+                            
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/development">Development</a></summary>
+                        <ul>
+                            
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/development/devcontainer">Devcontainer</a></li>
+                            
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure">Infrastructure</a></summary>
+                        <ul>
+                            
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
+                            
+                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/secrets">Secrets</a></li>
+                            
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/platform">Platform</a></summary>
+                        <ul>
+                            
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
+                            
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps">Apps</a></summary>
+                        <ul>
+                            
+                            
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai">AI</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/ollama">Ollama</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring">Monitoring</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/grafana">Grafana</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-metrics">VictoriaMetrics</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-logs">VictoriaLogs</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/alertmanager">AlertManager</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security">Security</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/falco">Falco</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/trivy">Trivy</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp">Headlamp</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+    </ul>
+
+    
+<footer class="footer py-2 px-4 mt-2 border-t border-gray-500/50">
+    <div class="w-full">
+        <!-- Main footer content -->
+        <div class="flex flex-col items-center gap-4 mb-4">
+            <!-- Powered by section with better styling -->
+            <div class="text-center">
+                <p class="text-sm text-base-content/60 leading-relaxed">
+                    <span>Powered by <a href='https://www.getzola.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Zola</a> and <a href='https://github.com/hahwul/goyo' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Goyo</a></span>
+                </p>
+            </div>
+        </div>
+
+
+    </div>
+</footer>
+
+</div>
+
+            
+        </div>
+    </div>
+
+    
+        <script type="text/javascript" src="https://homelab.madhan.app/goyo.js"></script>
+        
+        <!-- Lazy load search functionality -->
+        <script>
+            var searchLoaded = false;
+            var searchLoadCallbacks = [];
+
+            function loadSearchLibraries(callback) {
+                // If already loaded, execute callback immediately
+                if (searchLoaded && typeof Fuse !== 'undefined' && window.searchIndex) {
+                    if (callback) callback();
+                    return;
+                }
+
+                // Add callback to queue
+                if (callback) searchLoadCallbacks.push(callback);
+
+                // If already loading, don't start again
+                if (searchLoaded) return;
+                searchLoaded = true;
+
+                // Show loading indicator in search input
+                var searchInput = document.getElementById('search');
+                if (searchInput) {
+                    searchInput.placeholder = 'Loading search...';
+                    searchInput.disabled = true;
+                }
+
+                // Load Fuse.js
+                var fuseScript = document.createElement('script');
+                fuseScript.src = 'https://homelab.madhan.app/fuse.min.js';
+
+                // Load search index after Fuse.js
+                fuseScript.onload = function() {
+                    var searchIndexScript = document.createElement('script');
+                    searchIndexScript.src = 'https://homelab.madhan.app/search_index.en.js';
+                    searchIndexScript.onload = function() {
+                        // Re-enable search input
+                        if (searchInput) {
+                            searchInput.placeholder = 'Search documentation...';
+                            searchInput.disabled = false;
+                            searchInput.focus();
+                        }
+
+                        // Initialize search functionality
+                        if (typeof initSearch === 'function') {
+                            initSearch();
+                        }
+
+                        // Execute all queued callbacks
+                        searchLoadCallbacks.forEach(function(cb) { cb(); });
+                        searchLoadCallbacks = [];
+                    };
+                    document.body.appendChild(searchIndexScript);
+                };
+
+                document.body.appendChild(fuseScript);
+            }
+
+            // Load search on first interaction with search modal
+            document.addEventListener('DOMContentLoaded', function() {
+                var searchModal = document.getElementById('search-modal');
+                if (searchModal) {
+                    searchModal.addEventListener('change', function() {
+                        if (this.checked) {
+                            loadSearchLibraries();
+                        }
+                    });
+                }
+
+                // Also load on Ctrl+K / Cmd+K
+                document.addEventListener('keydown', function(e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        loadSearchLibraries();
+                    }
+                });
+            });
+        </script>
+        
+    
+</body>
+</html>

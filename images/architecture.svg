@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 800" width="1020" height="800">
+  <defs>
+    <!-- Slight wobble filter for sketch feel -->
+    <filter id="wobble" x="-2%" y="-2%" width="104%" height="104%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="3" seed="5" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.8"
+                         xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <style>
+      .row-label { font: 700 20px 'Segoe Print','Comic Sans MS',cursive; }
+      .group-label { font: 700 12px 'Segoe UI',Arial,sans-serif; }
+      .chip-text { font: 600 11px 'Segoe UI',Arial,sans-serif; }
+      .platform-chip-text { font: 600 12px 'Segoe UI',Arial,sans-serif; }
+      .managed-by { font: 700 15px 'Segoe UI',Arial,sans-serif; }
+      .tool-name { font: 800 20px 'Segoe Print','Comic Sans MS',cursive; }
+      .tool-sub { font: 400 11px 'Segoe UI',Arial,sans-serif; }
+      .hw-item-title { font: 700 13px 'Segoe UI',Arial,sans-serif; }
+      .hw-item-sub { font: 400 11px 'Segoe UI',Arial,sans-serif; }
+    </style>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════
+       OUTER CONTAINER
+  ════════════════════════════════════════════ -->
+  <rect x="4" y="4" width="1012" height="792" rx="20" fill="#fffef8"
+        stroke="#374151" stroke-width="3" filter="url(#wobble)"/>
+
+  <!-- Vertical divider: content | managed-by -->
+  <line x1="800" y1="12" x2="800" y2="788"
+        stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="6,4"/>
+
+  <!-- ═══════════════════════════════════════════
+       ROW 1 — APPS  (y 14 → 406)
+  ════════════════════════════════════════════ -->
+  <rect x="52" y="14" width="740" height="392" rx="14"
+        fill="#eff6ff" stroke="#3b82f6" stroke-width="2.5" filter="url(#wobble)"/>
+  <text x="33" y="210" class="row-label" fill="#1d4ed8"
+        text-anchor="middle" transform="rotate(-90 33 210)">Apps</text>
+
+  <!-- ── AI group ── -->
+  <rect x="64" y="24" width="195" height="148" rx="10"
+        fill="#fef9e7" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="74" y="42" class="group-label" fill="#78350f">AI</text>
+
+  <rect x="69" y="50" width="82" height="26" rx="13" fill="#fde68a" stroke="#d97706" stroke-width="1"/>
+  <text x="110" y="67" class="chip-text" fill="#78350f" text-anchor="middle">ComfyUI</text>
+
+  <rect x="158" y="50" width="66" height="26" rx="13" fill="#fde68a" stroke="#d97706" stroke-width="1"/>
+  <text x="191" y="67" class="chip-text" fill="#78350f" text-anchor="middle">Ollama</text>
+
+  <rect x="69" y="84" width="108" height="26" rx="13" fill="#fde68a" stroke="#d97706" stroke-width="1"/>
+  <text x="123" y="101" class="chip-text" fill="#78350f" text-anchor="middle">GPU Operator</text>
+
+  <!-- GPU badge -->
+  <rect x="69" y="118" width="90" height="22" rx="11" fill="#fb923c" stroke="#c2410c" stroke-width="1"/>
+  <text x="114" y="133" class="chip-text" fill="#fff" text-anchor="middle">RTX 5070 Ti ⚡</text>
+
+  <!-- ── Monitoring group ── -->
+  <rect x="267" y="24" width="298" height="148" rx="10"
+        fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="277" y="42" class="group-label" fill="#14532d">Monitoring</text>
+
+  <rect x="272" y="50" width="70" height="26" rx="13" fill="#bbf7d0" stroke="#16a34a" stroke-width="1"/>
+  <text x="307" y="67" class="chip-text" fill="#14532d" text-anchor="middle">Grafana</text>
+
+  <rect x="350" y="50" width="116" height="26" rx="13" fill="#bbf7d0" stroke="#16a34a" stroke-width="1"/>
+  <text x="408" y="67" class="chip-text" fill="#14532d" text-anchor="middle">VictoriaMetrics</text>
+
+  <rect x="272" y="84" width="100" height="26" rx="13" fill="#bbf7d0" stroke="#16a34a" stroke-width="1"/>
+  <text x="322" y="101" class="chip-text" fill="#14532d" text-anchor="middle">VictoriaLogs</text>
+
+  <rect x="380" y="84" width="106" height="26" rx="13" fill="#bbf7d0" stroke="#16a34a" stroke-width="1"/>
+  <text x="433" y="101" class="chip-text" fill="#14532d" text-anchor="middle">AlertManager</text>
+
+  <rect x="272" y="118" width="114" height="26" rx="13" fill="#bbf7d0" stroke="#16a34a" stroke-width="1"/>
+  <text x="329" y="135" class="chip-text" fill="#14532d" text-anchor="middle">OpenTelemetry</text>
+
+  <!-- ── Security & Compliance group ── -->
+  <rect x="573" y="24" width="210" height="148" rx="10"
+        fill="#fef2f2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="583" y="42" class="group-label" fill="#7f1d1d">Security &amp; Compliance</text>
+
+  <rect x="578" y="50" width="55" height="26" rx="13" fill="#fecaca" stroke="#dc2626" stroke-width="1"/>
+  <text x="605" y="67" class="chip-text" fill="#7f1d1d" text-anchor="middle">Falco</text>
+
+  <rect x="641" y="50" width="52" height="26" rx="13" fill="#fecaca" stroke="#dc2626" stroke-width="1"/>
+  <text x="667" y="67" class="chip-text" fill="#7f1d1d" text-anchor="middle">Trivy</text>
+
+  <rect x="578" y="84" width="70" height="26" rx="13" fill="#fecaca" stroke="#dc2626" stroke-width="1"/>
+  <text x="613" y="101" class="chip-text" fill="#7f1d1d" text-anchor="middle">Kyverno</text>
+
+  <!-- ── Management group ── -->
+  <rect x="64" y="182" width="235" height="116" rx="10"
+        fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="74" y="200" class="group-label" fill="#4c1d95">Management</text>
+
+  <rect x="69" y="208" width="72" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
+  <text x="105" y="225" class="chip-text" fill="#4c1d95" text-anchor="middle">Rancher</text>
+
+  <rect x="149" y="208" width="82" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
+  <text x="190" y="225" class="chip-text" fill="#4c1d95" text-anchor="middle">Headlamp</text>
+
+  <rect x="69" y="242" width="74" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
+  <text x="106" y="259" class="chip-text" fill="#4c1d95" text-anchor="middle">Infisical</text>
+
+  <rect x="151" y="242" width="52" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
+  <text x="177" y="259" class="chip-text" fill="#4c1d95" text-anchor="middle">Fleet</text>
+
+  <!-- ── Registry group ── -->
+  <rect x="307" y="182" width="128" height="80" rx="10"
+        fill="#fff7ed" stroke="#f97316" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="317" y="200" class="group-label" fill="#7c2d12">Registry</text>
+
+  <rect x="312" y="208" width="64" height="26" rx="13" fill="#fed7aa" stroke="#ea580c" stroke-width="1"/>
+  <text x="344" y="225" class="chip-text" fill="#7c2d12" text-anchor="middle">Harbor</text>
+
+  <!-- ── Automation group ── -->
+  <rect x="443" y="182" width="128" height="80" rx="10"
+        fill="#ecfdf5" stroke="#10b981" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="453" y="200" class="group-label" fill="#064e3b">Automation</text>
+
+  <rect x="448" y="208" width="44" height="26" rx="13" fill="#a7f3d0" stroke="#059669" stroke-width="1"/>
+  <text x="470" y="225" class="chip-text" fill="#064e3b" text-anchor="middle">n8n</text>
+
+  <!-- ── Storage group ── -->
+  <rect x="579" y="182" width="128" height="80" rx="10"
+        fill="#f8fafc" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="589" y="200" class="group-label" fill="#1e293b">Storage</text>
+
+  <rect x="584" y="208" width="76" height="26" rx="13" fill="#cbd5e1" stroke="#475569" stroke-width="1"/>
+  <text x="622" y="225" class="chip-text" fill="#1e293b" text-anchor="middle">Longhorn</text>
+
+  <!-- ── CDK8s flow note ── -->
+  <text x="64" y="318" class="tool-sub" fill="#6b7280">
+    CDK8s (Go) → synthesizes YAML → v0.1.5-manifests branch → ArgoCD applies to cluster
+  </text>
+
+  <!-- ── Managed by: ArgoCD + CDK8s ── -->
+  <text x="900" y="75" class="managed-by" fill="#374151" text-anchor="middle">Managed by</text>
+
+  <rect x="840" y="84" width="120" height="42" rx="12"
+        fill="#fff3f0" stroke="#e34c26" stroke-width="2.5" filter="url(#wobble)"/>
+  <text x="900" y="111" class="tool-name" fill="#e34c26" text-anchor="middle">ArgoCD</text>
+
+  <text x="900" y="144" class="managed-by" fill="#374151" text-anchor="middle">+</text>
+
+  <rect x="840" y="153" width="120" height="42" rx="12"
+        fill="#f0f9ff" stroke="#00a8e8" stroke-width="2.5" filter="url(#wobble)"/>
+  <text x="900" y="180" class="tool-name" fill="#00a8e8" text-anchor="middle">CDK8s</text>
+
+  <text x="900" y="212" class="tool-sub" fill="#6b7280" text-anchor="middle">(GitOps)</text>
+
+  <!-- Row 1 bottom border -->
+  <line x1="52" y1="408" x2="794" y2="408" stroke="#93c5fd" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- ═══════════════════════════════════════════
+       ROW 2 — PLATFORM  (y 414 → 530)
+  ════════════════════════════════════════════ -->
+  <rect x="52" y="414" width="740" height="116" rx="14"
+        fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5" filter="url(#wobble)"/>
+  <text x="33" y="473" class="row-label" fill="#166534"
+        text-anchor="middle" transform="rotate(-90 33 473)">Platform</text>
+
+  <!-- Platform chips row 1 -->
+  <rect x="66" y="428" width="128" height="32" rx="16" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="130" y="449" class="platform-chip-text" fill="#166534" text-anchor="middle">Talos Linux (k8s)</text>
+
+  <rect x="202" y="428" width="90" height="32" rx="16" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="247" y="449" class="platform-chip-text" fill="#166534" text-anchor="middle">Cilium CNI</text>
+
+  <rect x="300" y="428" width="104" height="32" rx="16" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="352" y="449" class="platform-chip-text" fill="#166534" text-anchor="middle">Gateway API</text>
+
+  <rect x="412" y="428" width="80" height="32" rx="16" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="452" y="449" class="platform-chip-text" fill="#166534" text-anchor="middle">ArgoCD</text>
+
+  <rect x="500" y="428" width="110" height="32" rx="16" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="555" y="449" class="platform-chip-text" fill="#166534" text-anchor="middle">cert-manager</text>
+
+  <rect x="618" y="428" width="90" height="32" rx="16" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="663" y="449" class="platform-chip-text" fill="#166534" text-anchor="middle">Hubble UI</text>
+
+  <!-- Platform chips row 2 -->
+  <rect x="66" y="470" width="84" height="30" rx="15" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="108" y="489" class="platform-chip-text" fill="#166534" text-anchor="middle">SOPS / age</text>
+
+  <rect x="158" y="470" width="98" height="30" rx="15" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="207" y="489" class="platform-chip-text" fill="#166534" text-anchor="middle">Cloudflare DNS</text>
+
+  <!-- Configured by Pulumi -->
+  <text x="900" y="445" class="managed-by" fill="#374151" text-anchor="middle">Configured by</text>
+  <rect x="840" y="454" width="120" height="42" rx="12"
+        fill="#faf5ff" stroke="#8A3391" stroke-width="2.5" filter="url(#wobble)"/>
+  <text x="900" y="481" class="tool-name" fill="#8A3391" text-anchor="middle">Pulumi</text>
+  <text x="900" y="512" class="tool-sub" fill="#6b7280" text-anchor="middle">(Go IaC)</text>
+
+  <!-- Row 2 bottom border -->
+  <line x1="52" y1="532" x2="794" y2="532" stroke="#86efac" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- ═══════════════════════════════════════════
+       ROW 3 — INFRA  (y 538 → 644)
+  ════════════════════════════════════════════ -->
+  <rect x="52" y="538" width="740" height="106" rx="14"
+        fill="#fff7ed" stroke="#f97316" stroke-width="2.5" filter="url(#wobble)"/>
+  <text x="33" y="592" class="row-label" fill="#c2410c"
+        text-anchor="middle" transform="rotate(-90 33 592)">Infra</text>
+
+  <!-- Proxmox box -->
+  <rect x="66" y="552" width="178" height="78" rx="12"
+        fill="#fed7aa" stroke="#f97316" stroke-width="2" filter="url(#wobble)"/>
+  <text x="155" y="577" class="hw-item-title" fill="#7c2d12" text-anchor="middle">Proxmox</text>
+  <text x="155" y="595" class="hw-item-sub" fill="#9a3412" text-anchor="middle">7 × VMs (Talos Linux)</text>
+  <text x="155" y="612" class="hw-item-sub" fill="#9a3412" text-anchor="middle">192.168.1.211 – .224</text>
+
+  <!-- Hetzner VPS box -->
+  <rect x="254" y="552" width="178" height="78" rx="12"
+        fill="#fed7aa" stroke="#f97316" stroke-width="2" filter="url(#wobble)"/>
+  <text x="343" y="577" class="hw-item-title" fill="#7c2d12" text-anchor="middle">Hetzner VPS</text>
+  <text x="343" y="595" class="hw-item-sub" fill="#9a3412" text-anchor="middle">Bifrost</text>
+  <text x="343" y="612" class="hw-item-sub" fill="#9a3412" text-anchor="middle">NetBird VPN + TURN</text>
+
+  <!-- Managed by Pulumi (same tool) -->
+  <text x="900" y="568" class="managed-by" fill="#374151" text-anchor="middle">Managed by</text>
+  <rect x="840" y="577" width="120" height="42" rx="12"
+        fill="#faf5ff" stroke="#8A3391" stroke-width="2.5" filter="url(#wobble)"/>
+  <text x="900" y="604" class="tool-name" fill="#8A3391" text-anchor="middle">Pulumi</text>
+  <text x="900" y="634" class="tool-sub" fill="#6b7280" text-anchor="middle">(Go IaC)</text>
+
+  <!-- Row 3 bottom border -->
+  <line x1="52" y1="647" x2="794" y2="647" stroke="#fdba74" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- ═══════════════════════════════════════════
+       ROW 4 — HARDWARE  (y 653 → 775)
+  ════════════════════════════════════════════ -->
+  <rect x="52" y="653" width="740" height="122" rx="14"
+        fill="#f8fafc" stroke="#64748b" stroke-width="2.5" filter="url(#wobble)"/>
+  <text x="33" y="716" class="row-label" fill="#334155"
+        text-anchor="middle" transform="rotate(-90 33 716)">Hardware</text>
+
+  <!-- Proxmox Host box -->
+  <rect x="66" y="667" width="190" height="92" rx="12"
+        fill="#e2e8f0" stroke="#64748b" stroke-width="2" filter="url(#wobble)"/>
+  <text x="161" y="695" class="hw-item-title" fill="#1e293b" text-anchor="middle">Proxmox Host</text>
+  <text x="161" y="714" class="hw-item-sub" fill="#475569" text-anchor="middle">Intel / AMD Server</text>
+  <text x="161" y="732" class="hw-item-sub" fill="#475569" text-anchor="middle">192.168.1.x (LAN)</text>
+
+  <!-- NVIDIA GPU box -->
+  <rect x="268" y="667" width="210" height="92" rx="12"
+        fill="#e2e8f0" stroke="#64748b" stroke-width="2" filter="url(#wobble)"/>
+  <!-- NVIDIA green accent bar -->
+  <rect x="268" y="667" width="210" height="6" rx="3" fill="#76b900"/>
+  <text x="373" y="698" class="hw-item-title" fill="#1e293b" text-anchor="middle">NVIDIA RTX 5070 Ti</text>
+  <text x="373" y="717" class="hw-item-sub" fill="#76b900" font-weight="700" text-anchor="middle">16 GB GDDR7 VRAM</text>
+  <text x="373" y="735" class="hw-item-sub" fill="#475569" text-anchor="middle">PCIe passthrough → k8s-worker4</text>
+
+  <!-- Managed manually -->
+  <text x="900" y="685" class="managed-by" fill="#374151" text-anchor="middle">Managed</text>
+  <text x="900" y="706" class="managed-by" fill="#374151" text-anchor="middle">manually</text>
+  <!-- Wrench icon (unicode) -->
+  <text x="900" y="738" font-size="28" text-anchor="middle">🔧</text>
+</svg>
