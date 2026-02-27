@@ -10,6 +10,7 @@ import (
 	"github.com/madhank93/homelab/cdk8s/cots/compliance"
 	"github.com/madhank93/homelab/cdk8s/cots/management"
 	"github.com/madhank93/homelab/cdk8s/cots/monitoring"
+	"github.com/madhank93/homelab/cdk8s/cots/network"
 	"github.com/madhank93/homelab/cdk8s/cots/registry"
 	"github.com/madhank93/homelab/cdk8s/cots/security"
 	"github.com/madhank93/homelab/cdk8s/cots/storage"
@@ -122,6 +123,14 @@ func main() {
 	})
 	monitoring.NewOtelCollectorChart(otelApp, "otel-app", "opentelemetry")
 	otelApp.Synth()
+
+	// NetBird routing peer — advertises 192.168.1.0/24 into WireGuard mesh
+	netbirdApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/netbird", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	network.NewNetbirdPeerChart(netbirdApp, "netbird-app", "netbird")
+	netbirdApp.Synth()
 
 	// Management Tools
 	headlampApp := cdk8s.NewApp(&cdk8s.AppProps{

@@ -184,7 +184,61 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
+	// Homelab ForwardAuth — covers *.madhan.app public services via Traefik
+	if err := createHomelabForwardAuth(ac); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// createHomelabForwardAuth creates the Authentik proxy provider + embedded outpost
+// that backs Traefik's ForwardAuth middleware for public K8s services (grafana, harbor, etc.).
+func createHomelabForwardAuth(ac AuthentikContext) error {
+	proxyProvider, err := authentik.NewProviderProxy(ac.Ctx, "provider-homelab-forwardauth", &authentik.ProviderProxyArgs{
+		Name:              pulumi.String("Homelab ForwardAuth"),
+		Mode:              pulumi.String("forward_domain"),
+		ExternalHost:      pulumi.String("https://madhan.app"),
+		CookieDomain:      pulumi.String(".madhan.app"),
+		AuthorizationFlow: ac.FlowImplicit,
+		InvalidationFlow:  ac.FlowInvalid,
+	}, pulumi.Provider(ac.Provider))
+	if err != nil {
+		return err
+	}
+
+	_, err = authentik.NewApplication(ac.Ctx, "app-homelab-forwardauth", &authentik.ApplicationArgs{
+		Name: pulumi.String("Homelab ForwardAuth"),
+		Slug: pulumi.String("homelab-forwardauth"),
+		ProtocolProvider: proxyProvider.ID().ApplyT(func(id pulumi.ID) (*float64, error) {
+			idInt, err := strconv.Atoi(string(id))
+			if err != nil {
+				return nil, err
+			}
+			f := float64(idInt)
+			return &f, nil
+		}).(pulumi.Float64PtrOutput),
+	}, pulumi.Provider(ac.Provider))
+	if err != nil {
+		return err
+	}
+
+	proxyProviderID := proxyProvider.ID().ApplyT(func(id pulumi.ID) (float64, error) {
+		idInt, err := strconv.Atoi(string(id))
+		if err != nil {
+			return 0, err
+		}
+		return float64(idInt), nil
+	}).(pulumi.Float64Output)
+
+	_, err = authentik.NewOutpost(ac.Ctx, "outpost-homelab-embedded", &authentik.OutpostArgs{
+		Name: pulumi.String("Homelab Embedded Outpost"),
+		Type: pulumi.String("proxy"),
+		ProtocolProviders: pulumi.Float64Array{
+			proxyProviderID,
+		},
+	}, pulumi.Provider(ac.Provider))
+	return err
 }
 
 func createOIDCApp(ac AuthentikContext, app OIDCApp) error {

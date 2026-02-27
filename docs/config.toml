@@ -1,4 +1,4 @@
-base_url = "https://madhank93.github.io/homelab"
+base_url = "https://homelab.madhan.app"
 title = "Homelab"
 description = "Documentation for a Kubernetes homelab on Talos Linux, provisioned by Pulumi on Proxmox"
 

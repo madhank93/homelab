@@ -1,0 +1,38 @@
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    transport:
+      respondingTimeouts:
+        readTimeout: 0    # required for long-lived gRPC streams
+        writeTimeout: 0
+        idleTimeout: 0
+
+# Disable forwarding timeouts for gRPC backends (signal + management)
+serversTransport:
+  forwardingTimeouts:
+    responseHeaderTimeout: 0s
+    idleConnTimeout: 0s
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: bifrost_net
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+certificatesResolvers:
+  cloudflare-dns:
+    acme:
+      email: madhankumaravelu93@gmail.com
+      storage: /certs/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 10

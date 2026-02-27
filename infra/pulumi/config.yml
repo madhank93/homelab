@@ -10,3 +10,4 @@ hetzner:
   server_type: cpx21
   location: ash
   ssh_key: mac-ssh
+  vps_ip: "23.121.200.108"

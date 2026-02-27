@@ -1,0 +1,35 @@
+server:
+  listenAddress: ":80"
+  exposedAddress: "https://netbird.madhan.app:443"
+
+  stunPorts:
+    - 3478
+
+  metricsPort: 9090
+  healthcheckAddress: ":9000"
+  logLevel: "info"
+  logFile: "console"
+
+  # Relay auth secret — shared with all NetBird peers
+  authSecret: "${NB_RELAY_SECRET}"
+
+  dataDir: "/var/lib/netbird"
+
+  auth:
+    # Authentik OIDC issuer — replaces embedded Dex
+    issuer: "https://auth.madhan.app/application/o/netbird/"
+    signKeyRefreshEnabled: true
+    dashboardRedirectURIs:
+      - "https://netbird.madhan.app/nb-auth"
+      - "https://netbird.madhan.app/nb-silent-auth"
+    cliRedirectURIs:
+      - "http://localhost:53000/"
+
+  reverseProxy:
+    # Trust X-Forwarded-For from Traefik (static IP in bifrost_net 172.30.0.0/24)
+    trustedHTTPProxies:
+      - "172.30.0.10/32"
+
+  store:
+    engine: "sqlite"
+    encryptionKey: "${NB_DATA_STORE_KEY}"

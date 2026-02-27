@@ -9,51 +9,131 @@ x-default: &default
 networks:
   bifrost_net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
 
 volumes:
   authentik_postgres_data:
   authentik_media:
   authentik_certs:
-  caddy_data:
-  caddy_config:
-  netbird-mgmt:
-  netbird-signal:
+  traefik_certs:
+  netbird_data:
+  netbird_proxy_certs:
 
 services:
-  caddy:
-    image: caddy:2.11
-    container_name: caddy
+
+  # --------------------------------------------------------------------------------
+  # Traefik — TLS termination, ForwardAuth, K8s gateway routing
+  # --------------------------------------------------------------------------------
+
+  traefik:
+    <<: *default
+    image: traefik:v3.3
+    container_name: traefik
     networks:
-      - bifrost_net
+      bifrost_net:
+        ipv4_address: 172.30.0.10
     ports:
       - "80:80"
       - "443:443"
+      - "3478:3478/udp"   # STUN passthrough to netbird-server
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    restart: unless-stopped
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - traefik_certs:/certs
+    env_file:
+      - .env
+      - .secrets.env
     security_opt:
       - no-new-privileges:true
-    healthcheck:
-      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
   # --------------------------------------------------------------------------------
-  # Authentik Services
+  # NetBird v0.66.0 — Combined server (Management + Signal + Relay + STUN)
+  # --------------------------------------------------------------------------------
+
+  netbird-server:
+    <<: *default
+    image: netbirdio/netbird-server:v0.66.0
+    container_name: netbird-server
+    networks: [bifrost_net]
+    ports:
+      - "3478:3478/udp"   # STUN (UDP bypasses Traefik)
+    volumes:
+      - netbird_data:/var/lib/netbird
+      - ./netbird/config.yaml:/etc/netbird/config.yaml:ro
+    command: ["--config", "/etc/netbird/config.yaml"]
+    labels:
+      - traefik.enable=true
+      # gRPC router — signal + management (h2c backend for HTTP/2 cleartext)
+      - "traefik.http.routers.netbird-grpc.rule=Host(`netbird.madhan.app`) && (PathPrefix(`/signalexchange.SignalExchange/`) || PathPrefix(`/management.ManagementService/`))"
+      - traefik.http.routers.netbird-grpc.entrypoints=websecure
+      - traefik.http.routers.netbird-grpc.tls.certResolver=cloudflare-dns
+      - traefik.http.routers.netbird-grpc.service=netbird-server-h2c
+      - traefik.http.routers.netbird-grpc.priority=100
+      # Backend router — relay, WebSocket, API, OAuth2
+      - "traefik.http.routers.netbird-backend.rule=Host(`netbird.madhan.app`) && (PathPrefix(`/relay`) || PathPrefix(`/ws-proxy/`) || PathPrefix(`/api`) || PathPrefix(`/oauth2`))"
+      - traefik.http.routers.netbird-backend.entrypoints=websecure
+      - traefik.http.routers.netbird-backend.tls.certResolver=cloudflare-dns
+      - traefik.http.routers.netbird-backend.service=netbird-server
+      - traefik.http.routers.netbird-backend.priority=100
+      # Services
+      - traefik.http.services.netbird-server.loadbalancer.server.port=80
+      - traefik.http.services.netbird-server-h2c.loadbalancer.server.port=80
+      - traefik.http.services.netbird-server-h2c.loadbalancer.server.scheme=h2c
+
+  netbird-dashboard:
+    <<: *default
+    image: netbirdio/dashboard:latest
+    container_name: netbird-dashboard
+    networks: [bifrost_net]
+    env_file:
+      - ./netbird/dashboard.env
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.netbird-dashboard.rule=Host(`netbird.madhan.app`)"
+      - traefik.http.routers.netbird-dashboard.entrypoints=websecure
+      - traefik.http.routers.netbird-dashboard.tls.certResolver=cloudflare-dns
+      - traefik.http.routers.netbird-dashboard.service=netbird-dashboard-svc
+      - traefik.http.routers.netbird-dashboard.priority=1
+      - traefik.http.services.netbird-dashboard-svc.loadbalancer.server.port=80
+
+  # NetBird Reverse Proxy — expose feature (*.proxy.madhan.app TCP passthrough)
+  netbird-proxy:
+    <<: *default
+    image: netbirdio/reverse-proxy:latest
+    container_name: netbird-proxy
+    networks: [bifrost_net]
+    env_file:
+      - ./netbird/proxy.env
+    volumes:
+      - netbird_proxy_certs:/certs
+
+  # NetBird Agent — WireGuard routing peer, advertises 192.168.1.0/24 into mesh
+  netbird-agent:
+    <<: *default
+    image: netbirdio/netbird:latest
+    container_name: netbird-agent
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - NB_SETUP_KEY=${NB_BIFROST_SETUP_KEY}
+      - NB_MANAGEMENT_URL=https://netbird.madhan.app
+      - NB_HOSTNAME=bifrost-agent
+
+  # --------------------------------------------------------------------------------
+  # Authentik — GitHub OAuth broker + ForwardAuth for public K8s services
   # --------------------------------------------------------------------------------
 
   authentik-postgres:
+    <<: *default
     image: postgres:16.6-alpine
     container_name: authentik-postgres
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - bifrost_net
+    networks: [bifrost_net]
     volumes:
       - authentik_postgres_data:/var/lib/postgresql/data
     env_file:
@@ -68,124 +148,56 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    
-  authentik-server:
-    image: ghcr.io/goauthentik/server:2025.10.2
-    container_name: authentik-server
-    expose:
-      - "9000"
-    restart: unless-stopped
-    command: server
     security_opt:
       - no-new-privileges:true
-    networks:
-      - bifrost_net
-    env_file:
-      - .env
-    environment:
-      - AUTHENTIK_POSTGRESQL__HOST=authentik-postgres
-      - AUTHENTIK_POSTGRESQL__USER=authentik
-      - AUTHENTIK_POSTGRESQL__NAME=authentik
-      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
-    volumes:
-      - authentik_media:/media
-      - ./authentik-netbird-blueprint.yaml:/templates/netbird.yaml
-    depends_on:
-      authentik-postgres:
-        condition: service_healthy
 
-  authentik-worker:
-    image: ghcr.io/goauthentik/server:2025.10.2
-    container_name: authentik-worker
-    restart: unless-stopped
-    command: worker
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - bifrost_net
+  authentik-server:
+    <<: *default
+    image: ghcr.io/goauthentik/server:2025.10.4
+    container_name: authentik-server
+    command: server
+    networks: [bifrost_net]
     env_file:
       - .env
     environment:
-      - AUTHENTIK_POSTGRESQL__USER=authentik
       - AUTHENTIK_POSTGRESQL__HOST=authentik-postgres
+      - AUTHENTIK_POSTGRESQL__USER=authentik
       - AUTHENTIK_POSTGRESQL__NAME=authentik
       - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
     volumes:
       - authentik_media:/media
       - authentik_certs:/certs
-      - ./authentik-netbird-blueprint.yaml:/templates/netbird.yaml
     depends_on:
       authentik-postgres:
         condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.authentik.rule=Host(`auth.madhan.app`)"
+      - traefik.http.routers.authentik.entrypoints=websecure
+      - traefik.http.routers.authentik.tls.certResolver=cloudflare-dns
+      - traefik.http.routers.authentik.service=authentik-svc
+      - traefik.http.services.authentik-svc.loadbalancer.server.port=9000
+    security_opt:
+      - no-new-privileges:true
 
-  # --------------------------------------------------------------------------------
-  # Netbird Services
-  # --------------------------------------------------------------------------------
-
-  dashboard:
+  authentik-worker:
     <<: *default
-    image: netbirdio/dashboard:v2.26.1
-    container_name: netbird-dashboard
-    networks:
-      - bifrost_net
+    image: ghcr.io/goauthentik/server:2025.10.4
+    container_name: authentik-worker
+    command: worker
+    networks: [bifrost_net]
     env_file:
-      - ./netbird/dashboard.env
-
-  signal:
-    <<: *default
-    image: netbirdio/signal:0.62.2
-    container_name: netbird-signal
-    networks:
-      - bifrost_net
+      - .env
+    environment:
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-postgres
+      - AUTHENTIK_POSTGRESQL__USER=authentik
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
+    volumes:
+      - authentik_media:/media
+      - authentik_certs:/certs
     depends_on:
-      - dashboard
-    volumes:
-      - netbird-signal:/var/lib/netbird
-    ports: []
-    command: [
-      "--cert-file", "",
-      "--cert-key", "",
-      "--log-file", "console"
-    ]
-
-  relay:
-    <<: *default
-    image: netbirdio/relay:0.62.2
-    container_name: netbird-relay
-    networks:
-      - bifrost_net
-    env_file:
-      - ./netbird/relay.env
-    ports: []
-
-  management:
-    <<: *default
-    image: netbirdio/management:0.62.2
-    container_name: netbird-management
-    networks:
-      - bifrost_net
-    depends_on:
-      - dashboard
-    volumes:
-      - netbird-mgmt:/var/lib/netbird
-      - ./netbird/management.json:/etc/netbird/management.json
-    ports: []
-    command: [
-      "--port", "80",
-      "--log-file", "console",
-      "--log-level", "info",
-      "--disable-anonymous-metrics=false",
-      "--single-account-mode-domain=netbird.madhan.app",
-      "--dns-domain=netbird.selfhosted",
-      "--idp-sign-key-refresh-enabled"
-    ]
-
-  coturn:
-    <<: *default
-    image: coturn/coturn:4.7
-    container_name: netbird-coturn
-    volumes:
-      - ./netbird/turnserver.conf:/etc/turnserver.conf:ro
-    network_mode: host
-    command:
-      - -c /etc/turnserver.conf
+      authentik-postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
