@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netbird-peer
+  namespace: netbird
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: netbird-peer
+  template:
+    metadata:
+      labels:
+        app: netbird-peer
+    spec:
+      containers:
+        - command:
+            - netbird
+            - up
+            - --advertise-routes=192.168.1.0/24
+            - --hostname=k8s-routing-peer
+          env:
+            - name: NB_SETUP_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: NETBIRD_SETUP_KEY
+                  name: netbird-setup-key
+            - name: NB_MANAGEMENT_URL
+              value: https://netbird.madhan.app
+          image: netbirdio/netbird:latest
+          name: netbird
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - SYS_MODULE
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
