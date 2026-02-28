@@ -282,6 +282,15 @@
                 
                     
                         <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/architecture">
+                                <i class="fa-solid fa-diagram-project"></i>
+                                Architecture
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
                             <a class="btn btn-ghost hover:no-underline" href="/hardware">
                                 <i class="fa-solid fa-server"></i>
                                 Hardware
@@ -309,9 +318,18 @@
                 
                     
                         <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/apps">
+                            <a class="btn btn-ghost hover:no-underline" href="/workloads">
                                 <i class="fa-solid fa-cubes"></i>
-                                Apps
+                                Workloads
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/development">
+                                <i class="fa-solid fa-code"></i>
+                                Development
                             </a>
                         </li>
                     
@@ -366,19 +384,21 @@
         </h1>
         <p class="text-gray-500">Prerequisites, architecture overview, and fresh cluster bootstrap.</p>
     </div>
-    <p>This guide walks through what you need to know before running the homelab, how the components fit together, and how to bootstrap a fresh cluster.</p>
+    <p>This section covers what you need before running the homelab, how the four layers fit together, and the commands to bootstrap a fresh cluster.</p>
+<hr />
 <h2 id="architecture-overview">Architecture Overview</h2>
 <p>The homelab is organized in four layers. Each layer is managed by a specific tool:</p>
 <p><img src="/images/architecture.svg" alt="Architecture Diagram" /></p>
 <table><thead><tr><th>Layer</th><th>What's in it</th><th>Managed by</th></tr></thead><tbody>
 <tr><td><strong>Apps</strong></td><td>ComfyUI, Ollama, Grafana, Harbor, n8n, Falco, …</td><td>ArgoCD + CDK8s</td></tr>
-<tr><td><strong>Platform</strong></td><td>Talos k8s, Cilium CNI, Gateway API, ArgoCD, cert-manager</td><td>Pulumi</td></tr>
-<tr><td><strong>Infrastructure</strong></td><td>Proxmox VMs (7 nodes), Hetzner VPS (Bifrost)</td><td>Pulumi</td></tr>
+<tr><td><strong>Platform</strong></td><td>Talos K8s, Cilium CNI, Gateway API, ArgoCD, cert-manager</td><td>Pulumi</td></tr>
+<tr><td><strong>Infrastructure</strong></td><td>Proxmox VMs (7 nodes), Hetzner VPS (Bifrost edge)</td><td>Pulumi</td></tr>
 <tr><td><strong>Hardware</strong></td><td>Proxmox host, NVIDIA RTX 5070 Ti</td><td>Manual</td></tr>
 </tbody></table>
+<hr />
 <h2 id="prerequisites">Prerequisites</h2>
 <h3 id="local-tools">Local Tools</h3>
-<p>All tools are available inside the <a href="/development/devcontainer">devcontainer</a>, or install them manually:</p>
+<p>All tools are available inside the <a href="/development/devcontainer">devcontainer</a>, or install manually:</p>
 <table><thead><tr><th>Tool</th><th>Purpose</th><th>Install</th></tr></thead><tbody>
 <tr><td><code>pulumi</code></td><td>Infrastructure provisioning</td><td><code>brew install pulumi</code></td></tr>
 <tr><td><code>talosctl</code></td><td>Talos cluster management</td><td><code>brew install siderolabs/tap/talosctl</code></td></tr>
@@ -386,60 +406,87 @@
 <tr><td><code>just</code></td><td>Task runner</td><td><code>brew install just</code></td></tr>
 <tr><td><code>sops</code></td><td>Secrets encryption</td><td><code>brew install sops</code></td></tr>
 <tr><td><code>age</code></td><td>Encryption key management</td><td><code>brew install age</code></td></tr>
-<tr><td><code>cdk8s</code></td><td>Kubernetes manifest synthesis</td><td><code>npm install -g cdk8s-cli</code></td></tr>
-<tr><td><code>go</code> 1.23+</td><td>CDK8s app language</td><td><code>brew install go</code></td></tr>
+<tr><td><code>cdk8s</code></td><td>K8s manifest synthesis CLI</td><td><code>npm install -g cdk8s-cli</code></td></tr>
+<tr><td><code>go</code> 1.23+</td><td>CDK8s + Pulumi app language</td><td><code>brew install go</code></td></tr>
 </tbody></table>
-<h3 id="secrets-setup">Secrets Setup</h3>
-<p>Before running any Pulumi commands, you must set up the SOPS age key:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Generate an age key pair (one-time)
+<h3 id="secrets-setup-one-time">Secrets Setup (one-time)</h3>
+<p>Before running any Pulumi commands, set up the SOPS age key:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Generate age key pair
 </span><span style="color:#ffd580;">mkdir</span><span style="color:#ffcc66;"> -p </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.config/sops/age
 </span><span style="color:#ffd580;">age-keygen</span><span style="color:#ffcc66;"> -o </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.config/sops/age/keys.txt
+</span><span style="font-style:italic;color:#5c6773;"># Prints: Public key: age1abc123...
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Add to your shell profile — REQUIRED (sops 3.12+ won&#39;t auto-discover the key)
+</span><span style="font-style:italic;color:#5c6773;"># Add to shell profile — REQUIRED (sops 3.12+ won&#39;t auto-discover the key)
 </span><span style="color:#f28779;">echo </span><span style="color:#bae67e;">&#39;export SOPS_AGE_KEY_FILE=&quot;$HOME/.config/sops/age/keys.txt&quot;&#39; </span><span style="color:#f29e74;">&gt;&gt; </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.zshrc
 </span><span style="color:#f28779;">source </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.zshrc
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Register your public key in .sops.yaml at the repo root
-</span><span style="font-style:italic;color:#5c6773;"># Then encrypt the bootstrap secrets:
-</span><span style="color:#ffd580;">cp</span><span> infra/secrets/bootstrap.sops.yaml.example infra/secrets/bootstrap.yaml
-</span><span style="color:#ffd580;">$</span><span>EDITOR infra/secrets/bootstrap.yaml   </span><span style="font-style:italic;color:#5c6773;"># fill in real values
-</span><span style="color:#ffd580;">sops</span><span style="color:#ffcc66;"> --encrypt</span><span> infra/secrets/bootstrap.yaml </span><span style="color:#f29e74;">&gt;</span><span> infra/secrets/bootstrap.sops.yaml
-</span><span style="color:#ffd580;">rm</span><span> infra/secrets/bootstrap.yaml
+</span><span style="font-style:italic;color:#5c6773;"># Register public key in .sops.yaml at repo root, then populate secrets:
+</span><span style="color:#ffd580;">sops</span><span> secrets/bootstrap.sops.yaml
 </span></code></pre>
-<p>See <a href="/infrastructure/secrets">Secrets Architecture</a> for full details.</p>
-<h3 id="proxmox">Proxmox</h3>
-<p>A running Proxmox host with:</p>
+<p>See <a href="/infrastructure/secrets">Secrets Architecture</a> and the <a href="/getting-started/deployment">Deployment Guide</a> for the full secrets list.</p>
+<h3 id="proxmox-host">Proxmox Host</h3>
 <ul>
-<li>Enough CPU/RAM for 7 VMs (4 vCPU + 6 GiB each = 28 vCPU, 42 GiB total)</li>
-<li>~900 GiB storage (7 VMs × 125 GiB workers + 3 × 30 GiB controllers)</li>
-<li>API access (Pulumi uses the Proxmox provider)</li>
-<li>NVIDIA GPU available for PCIe passthrough to <code>k8s-worker4</code></li>
+<li>CPU/RAM for 7 VMs (4 vCPU + 6 GiB each ≈ 28 vCPU, 42 GiB)</li>
+<li>~900 GiB storage (7 × 125 GiB workers + 3 × 30 GiB controllers)</li>
+<li>Proxmox API access (the Pulumi provider uses it)</li>
+<li>NVIDIA GPU for PCIe passthrough to <code>k8s-worker4</code></li>
 </ul>
-<h2 id="fresh-cluster-bootstrap">Fresh Cluster Bootstrap</h2>
+<hr />
+<h2 id="bootstrap-quick-reference">Bootstrap Quick Reference</h2>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Create bootstrap k8s Secrets (Infisical + Cloudflare)
 </span><span style="color:#ffd580;">just</span><span> create-secrets
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 2. Provision VMs, bootstrap Talos, install Cilium + ArgoCD
-</span><span style="color:#ffd580;">just</span><span> pulumi talos up
+</span><span style="font-style:italic;color:#5c6773;"># 2. Provision VMs, bootstrap Talos, install Cilium + ArgoCD  (~15 min)
+</span><span style="color:#ffd580;">just</span><span> core talos up
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 3. Apply platform layer (Gateway, IP pool, HTTPRoutes)
-</span><span style="color:#ffd580;">just</span><span> pulumi platform up
+</span><span style="font-style:italic;color:#5c6773;"># 3. Apply Cilium Gateway, IP pool, HTTPRoutes
+</span><span style="color:#ffd580;">just</span><span> core platform up
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 4. ArgoCD will auto-sync and deploy all apps from the manifests branch
-</span><span style="font-style:italic;color:#5c6773;"># Watch progress:
+</span><span style="font-style:italic;color:#5c6773;"># 4. Deploy Bifrost VPS + run automated bootstrap sequence   (~8 min)
+</span><span style="color:#ffd580;">just</span><span> core cloudflare up </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">just</span><span> core hetzner up
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># 5. Watch ArgoCD sync apps
 </span><span style="color:#ffd580;">kubectl</span><span> get applications</span><span style="color:#ffcc66;"> -n</span><span> argocd
 </span></code></pre>
+<blockquote>
+<p>After phase 4, log in to <code>https://netbird.madhan.app</code> to complete the one-time NetBird setup (setup keys + proxy token). See the <a href="/getting-started/deployment">Deployment Guide</a> for the full sequence.</p>
+</blockquote>
+<hr />
 <h2 id="repository-structure">Repository Structure</h2>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>homelab/
-</span><span>├── infra/
-</span><span>│   ├── pulumi/          # Pulumi Go code (Talos, Cilium, ArgoCD, Hetzner)
-</span><span>│   └── secrets/         # bootstrap.sops.yaml (encrypted, safe to commit)
-</span><span>├── platform/
-</span><span>│   └── cdk8s/           # CDK8s Go code → generates Kubernetes manifests
-</span><span>├── docs/                # This documentation site (Zola + Goyo)
-</span><span>├── .devcontainer/       # VS Code devcontainer definition
-</span><span>├── .github/workflows/   # CI: CDK8s publish + docs deploy
+</span><span>├── core/                # Pulumi Go code (infra + Bifrost)
+</span><span>│   ├── cloud/           #   hetzner.go · cloudflare.go · authentik.go
+</span><span>│   │   └── bifrost/     #   docker-compose.yml · bootstrap.sh · traefik/ · netbird/
+</span><span>│   └── platform/        #   talos.go · argocd.go · cilium.go · cert_manager.go
+</span><span>├── workloads/           # CDK8s Go code → generates Kubernetes manifests
+</span><span>│   ├── ai/              #   ollama.go · comfyui.go
+</span><span>│   ├── observability/   #   victoria_metrics.go · victoria_logs.go · otel_collector.go
+</span><span>│   ├── monitoring/      #   grafana.go
+</span><span>│   ├── security/        #   falco.go · keyverno.go · trivy.go
+</span><span>│   └── ...              #   storage · registry · automation · management · networking
+</span><span>├── secrets/             # bootstrap.sops.yaml (age-encrypted — safe to commit)
+</span><span>├── scripts/             # create-bootstrap-secrets.sh
+</span><span>├── app/                 # CDK8s synthesis output (gitignored; published to *-manifests)
+</span><span>├── docs/                # This site (Zola + Goyo theme)
+</span><span>├── .devcontainer/       # VS Code devcontainer
+</span><span>├── .github/workflows/   # CDK8s publish + docs deploy
 </span><span>└── justfile             # Task runner recipes
+</span></code></pre>
+<hr />
+<h2 id="justfile-recipes">Justfile Recipes</h2>
+<table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>just create-secrets</code></td><td>Create bootstrap k8s Secrets from SOPS</td></tr>
+<tr><td><code>just core talos up</code></td><td>Provision cluster (Talos + Cilium + ArgoCD)</td></tr>
+<tr><td><code>just core platform up</code></td><td>Apply Gateway API + cert-manager config</td></tr>
+<tr><td><code>just core hetzner up</code></td><td>Deploy Bifrost VPS + automated bootstrap</td></tr>
+<tr><td><code>just core authentik up</code></td><td>Create OIDC apps + ForwardAuth in Authentik</td></tr>
+<tr><td><code>just core cloudflare up</code></td><td>Create/update DNS records</td></tr>
+<tr><td><code>just synth</code></td><td>Synthesize CDK8s manifests → <code>app/</code></td></tr>
+</tbody></table>
+<p>The <code>core &lt;stack&gt; &lt;action&gt;</code> recipe injects SOPS secrets as environment variables for every Pulumi run:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span>SOPS_AGE_KEY_FILE</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">&quot;$</span><span>HOME</span><span style="color:#bae67e;">/.config/sops/age/keys.txt&quot; </span><span style="color:#ccc9c2cc;">\
+</span><span>  </span><span style="color:#ffd580;">sops</span><span> exec-env secrets/bootstrap.sops.yaml </span><span style="color:#ccc9c2cc;">\
+</span><span>  </span><span style="color:#bae67e;">&#39;pulumi stack select &lt;stack&gt; &amp;&amp; pulumi &lt;action&gt; --yes&#39;
 </span></code></pre>
 
 
@@ -475,6 +522,16 @@
                                     
     
     
+    
+        
+        
+            
+        
+    
+        
+        
+            
+        
     
         
         
@@ -558,11 +615,11 @@
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/getting-started/#secrets-setup" class="toc-link">Secrets Setup</a>
+                                    <a href="https://homelab.madhan.app/getting-started/#secrets-setup-one-time" class="toc-link">Secrets Setup (one-time)</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/getting-started/#proxmox" class="toc-link">Proxmox</a>
+                                    <a href="https://homelab.madhan.app/getting-started/#proxmox-host" class="toc-link">Proxmox Host</a>
                                 </li>
                             
                         </ul>
@@ -572,13 +629,19 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/getting-started/#fresh-cluster-bootstrap" class="toc-link">Fresh Cluster Bootstrap</a>
+                    <a href="https://homelab.madhan.app/getting-started/#bootstrap-quick-reference" class="toc-link">Bootstrap Quick Reference</a>
                     
                 </li>
             
                 <li>
                     
                     <a href="https://homelab.madhan.app/getting-started/#repository-structure" class="toc-link">Repository Structure</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/getting-started/#justfile-recipes" class="toc-link">Justfile Recipes</a>
                     
                 </li>
             
@@ -707,6 +770,28 @@
             <li>
                 
                     <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture">Architecture</a></summary>
+                        <ul>
+                            
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/network-flow">Network Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/kubernetes-architecture">Kubernetes Architecture</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/gitops-flow">GitOps Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/secrets-flow">Secrets Flow</a></li>
+                            
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
                         <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/hardware">Hardware</a></summary>
                         <ul>
                             
@@ -752,6 +837,8 @@
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
                             
@@ -913,6 +1000,150 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
+                        <ul>
+                            
+                            
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

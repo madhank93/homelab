@@ -76,7 +76,7 @@
 
     
         
-            <meta name="description" content="ArgoCD Helm installation, ApplicationSet, and sync configuration." />
+            <meta name="description" content="ArgoCD Helm bootstrap, ApplicationSet, and sync configuration." />
         
     
 
@@ -87,14 +87,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="ArgoCD | Homelab" />
-      <meta property="og:description" content="ArgoCD Helm installation, ApplicationSet, and sync configuration." />
+      <meta property="og:description" content="ArgoCD Helm bootstrap, ApplicationSet, and sync configuration." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="ArgoCD" />
-      <meta name="twitter:description" content="ArgoCD Helm installation, ApplicationSet, and sync configuration." />
+      <meta name="twitter:description" content="ArgoCD Helm bootstrap, ApplicationSet, and sync configuration." />
       
       
       
@@ -284,6 +284,15 @@
                 
                     
                         <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/architecture">
+                                <i class="fa-solid fa-diagram-project"></i>
+                                Architecture
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
                             <a class="btn btn-ghost hover:no-underline" href="/hardware">
                                 <i class="fa-solid fa-server"></i>
                                 Hardware
@@ -311,9 +320,18 @@
                 
                     
                         <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/apps">
+                            <a class="btn btn-ghost hover:no-underline" href="/workloads">
                                 <i class="fa-solid fa-cubes"></i>
-                                Apps
+                                Workloads
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/development">
+                                <i class="fa-solid fa-code"></i>
+                                Development
                             </a>
                         </li>
                     
@@ -366,75 +384,85 @@
             ArgoCD
             
         </h1>
-        <p class="text-gray-500">ArgoCD Helm installation, ApplicationSet, and sync configuration.</p>
+        <p class="text-gray-500">ArgoCD Helm bootstrap, ApplicationSet, and sync configuration.</p>
     </div>
-    <h2 id="helm-installation">Helm Installation</h2>
-<p>ArgoCD chart v9.4.2 is installed in the <code>argocd</code> namespace by Pulumi (<code>infra/pulumi/argocd.go</code>).</p>
-<p>Key Helm values:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">server</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">service</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">type</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">LoadBalancer  </span><span style="font-style:italic;color:#5c6773;"># Cilium L2 assigns an IP from the pool
-</span><span style="color:#73d0ff;">configs</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">params</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">server.insecure</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">false
+    <h2 id="overview">Overview</h2>
+<p>ArgoCD is installed once by Pulumi (<code>core/platform/argocd.go</code>) then manages itself and all workloads via GitOps from the <code>v*-manifests</code> branch.</p>
+<p><strong>Code:</strong> <code>core/platform/argocd.go</code> · <strong>Namespace:</strong> <code>argocd</code></p>
+<h2 id="helm-installation">Helm installation</h2>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// core/platform/argocd.go
+</span><span>helm</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">NewRelease</span><span>(ctx</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;argo-cd&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#f29e74;">&amp;</span><span>helm</span><span style="color:#f29e74;">.</span><span>ReleaseArgs{
+</span><span>    Chart</span><span style="color:#ccc9c2cc;">:   </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;argo-cd&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    Version</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;9.4.2&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    RepositoryOpts</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>helm</span><span style="color:#f29e74;">.</span><span>RepositoryOptsArgs{
+</span><span>        Repo</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;https://argoproj.github.io/argo-helm&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    }</span><span style="color:#ccc9c2cc;">,
+</span><span>    Namespace</span><span style="color:#ccc9c2cc;">:       </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;argocd&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    CreateNamespace</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">Bool</span><span>(</span><span style="color:#ffcc66;">true</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    Values</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span>Map{
+</span><span>        </span><span style="color:#bae67e;">&quot;server&quot;</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span>Map{
+</span><span>            </span><span style="color:#bae67e;">&quot;service&quot;</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span>Map{
+</span><span>                </span><span style="color:#bae67e;">&quot;type&quot;</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;LoadBalancer&quot;</span><span>)</span><span style="color:#ccc9c2cc;">, </span><span style="font-style:italic;color:#5c6773;">// Cilium L2 assigns IP
+</span><span>            }</span><span style="color:#ccc9c2cc;">,
+</span><span>        }</span><span style="color:#ccc9c2cc;">,
+</span><span>    }</span><span style="color:#ccc9c2cc;">,
+</span><span>})
 </span></code></pre>
-<p>ArgoCD is accessible via:</p>
-<ul>
-<li><code>http://argocd.local</code> (HTTPRoute via Gateway API)</li>
-<li><code>https://argocd.madhan.app</code> (TLSRoute passthrough — once wildcard cert exists)</li>
-</ul>
 <h2 id="applicationset">ApplicationSet</h2>
-<p>A single <code>ApplicationSet</code> (<code>cots-applications</code>) bootstraps all platform apps. It watches the <code>v0.1.5-manifests</code> branch of the homelab repo:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
+<p>One <code>ApplicationSet</code> watches the <code>v*-manifests</code> branch. Every top-level directory under <code>app/</code> automatically becomes an ArgoCD Application.</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">argoproj.io/v1alpha1
+</span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ApplicationSet
+</span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">homelab-apps
+</span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">argocd
+</span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">goTemplate</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
 </span><span>  </span><span style="color:#73d0ff;">generators</span><span style="color:#ccc9c2cc;">:
 </span><span>    - </span><span style="color:#73d0ff;">git</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">repoURL</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://github.com/madhank93/homelab.git
 </span><span>        </span><span style="color:#73d0ff;">revision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.5-manifests
 </span><span>        </span><span style="color:#73d0ff;">directories</span><span style="color:#ccc9c2cc;">:
-</span><span>          - </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;*&quot;   </span><span style="font-style:italic;color:#5c6773;"># Each top-level directory = one Application
+</span><span>          - </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;*&quot;
 </span><span>  </span><span style="color:#73d0ff;">template</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
+</span><span>      </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{ .path.basename }}&quot;
 </span><span>    </span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
+</span><span>      </span><span style="color:#73d0ff;">project</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">default
 </span><span>      </span><span style="color:#73d0ff;">source</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">repoURL</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://github.com/madhank93/homelab.git
 </span><span>        </span><span style="color:#73d0ff;">targetRevision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.5-manifests
-</span><span>        </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{path}}&quot;
+</span><span>        </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{ .path.path }}&quot;
 </span><span>      </span><span style="color:#73d0ff;">destination</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">server</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://kubernetes.default.svc
-</span><span>        </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{path.basename}}&quot;
+</span><span>        </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{ .path.basename }}&quot;
 </span><span>      </span><span style="color:#73d0ff;">syncPolicy</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">automated</span><span style="color:#ccc9c2cc;">:
 </span><span>          </span><span style="color:#73d0ff;">prune</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
 </span><span>          </span><span style="color:#73d0ff;">selfHeal</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
 </span><span>        </span><span style="color:#73d0ff;">syncOptions</span><span style="color:#ccc9c2cc;">:
-</span><span>          - </span><span style="color:#bae67e;">CreateNamespace=true
 </span><span>          - </span><span style="color:#bae67e;">ServerSideApply=true
 </span></code></pre>
-<h2 id="sync-options">Sync Options</h2>
-<h3 id="serversideapply-true"><code>ServerSideApply=true</code></h3>
-<p>Required for <code>kube-prometheus-stack</code> CRDs which exceed the 262 KB <code>kubectl.kubernetes.io/last-applied-configuration</code> annotation limit. Without SSA, these CRDs fail to apply.</p>
-<h3 id="serversideapply-false-on-infisicalsecret"><code>ServerSideApply=false</code> on InfisicalSecret</h3>
-<p>InfisicalSecret resources must carry the annotation:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">argocd.argoproj.io/sync-options</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ServerSideApply=false
+<h2 id="key-settings">Key settings</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Reason</th></tr></thead><tbody>
+<tr><td><code>ServerSideApply=true</code></td><td>ApplicationSet level</td><td>kube-prometheus-stack CRDs exceed the 262 KB annotation limit</td></tr>
+<tr><td><code>ignoreDifferences</code> on <code>InfisicalSecret</code></td><td>per-app</td><td>Infisical CRD schema missing <code>projectSlug</code> breaks SSA validation</td></tr>
+<tr><td><code>Prune=false</code> annotation on bootstrap Secrets</td><td>per-Secret</td><td>Prevents ArgoCD deleting hand-created <code>infisical-service-token</code> / <code>cloudflare-api-token</code></td></tr>
+</tbody></table>
+<h2 id="httproute-gateway-api">HTTPRoute (Gateway API)</h2>
+<p>ArgoCD is exposed via a Gateway API <code>HTTPRoute</code> to <code>argocd.local</code> inside the LAN.</p>
+<h2 id="operations">Operations</h2>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Apply ArgoCD config changes
+</span><span style="color:#ffd580;">just</span><span> core platform up
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Manual sync
+</span><span style="color:#ffd580;">argocd</span><span> app sync </span><span style="color:#f29e74;">&lt;</span><span>app-name</span><span style="color:#f29e74;">&gt;
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># List all apps and health
+</span><span style="color:#ffd580;">argocd</span><span> app list
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Re-run bootstrap (after cluster rebuild)
+</span><span style="color:#ffd580;">just</span><span> core platform up
 </span></code></pre>
-<p>This is because the Infisical CRD schema omits <code>projectSlug</code> from <code>serviceToken.secretsScope</code>. ArgoCD's SSA validation rejects the field as "not declared in schema". Disabling SSA for these resources falls back to client-side apply.</p>
-<blockquote>
-<p><strong>Note:</strong> <code>ignoreDifferences</code> skips drift detection but does NOT bypass apply failures. The SSA annotation must be on the resource itself.</p>
-</blockquote>
-<h3 id="ignoredifferences-for-infisicalsecret"><code>ignoreDifferences</code> for InfisicalSecret</h3>
-<p>The ApplicationSet also configures <code>ignoreDifferences</code> to skip spec drift detection for <code>InfisicalSecret</code> resources:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">ignoreDifferences</span><span style="color:#ccc9c2cc;">:
-</span><span>  - </span><span style="color:#73d0ff;">group</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">secrets.infisical.com
-</span><span>    </span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">InfisicalSecret
-</span><span>    </span><span style="color:#73d0ff;">jsonPointers</span><span style="color:#ccc9c2cc;">:
-</span><span>      - </span><span style="color:#bae67e;">/spec
-</span></code></pre>
-<h3 id="prune-false-on-bootstrap-secrets"><code>Prune=false</code> on Bootstrap Secrets</h3>
-<p>The two bootstrap Secrets (<code>infisical-secrets</code>, <code>cloudflare-api-token</code>) carry:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">argocd.argoproj.io/sync-options</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">Prune=false
-</span></code></pre>
-<p>These Secrets are not in the manifests branch. Without <code>Prune=false</code>, ArgoCD would delete them on the next sync.</p>
-<h2 id="app-of-apps-pattern">App-of-Apps Pattern</h2>
-<p>Each directory under <code>app/</code> in the manifests branch becomes an ArgoCD <code>Application</code> automatically. No manual Application creation is needed when adding a new CDK8s app — just add an entry in <code>platform/cdk8s/main.go</code> and the CI pipeline creates the directory.</p>
 
 
     
@@ -517,7 +545,13 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/argocd/#helm-installation" class="toc-link">Helm Installation</a>
+                    <a href="https://homelab.madhan.app/platform/argocd/#overview" class="toc-link">Overview</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/argocd/#helm-installation" class="toc-link">Helm installation</a>
                     
                 </li>
             
@@ -529,36 +563,19 @@
             
                 <li>
                     
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/platform/argocd/#sync-options" class="toc-link">Sync Options</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/platform/argocd/#serversideapply-true" class="toc-link">ServerSideApply=true</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/platform/argocd/#serversideapply-false-on-infisicalsecret" class="toc-link">ServerSideApply=false on InfisicalSecret</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/platform/argocd/#ignoredifferences-for-infisicalsecret" class="toc-link">ignoreDifferences for InfisicalSecret</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/platform/argocd/#prune-false-on-bootstrap-secrets" class="toc-link">Prune=false on Bootstrap Secrets</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
+                    <a href="https://homelab.madhan.app/platform/argocd/#key-settings" class="toc-link">Key settings</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/argocd/#app-of-apps-pattern" class="toc-link">App-of-Apps Pattern</a>
+                    <a href="https://homelab.madhan.app/platform/argocd/#httproute-gateway-api" class="toc-link">HTTPRoute (Gateway API)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/argocd/#operations" class="toc-link">Operations</a>
                     
                 </li>
             
@@ -688,6 +705,28 @@
             <li>
                 
                     <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture">Architecture</a></summary>
+                        <ul>
+                            
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/network-flow">Network Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/kubernetes-architecture">Kubernetes Architecture</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/gitops-flow">GitOps Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/secrets-flow">Secrets Flow</a></li>
+                            
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
                         <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/hardware">Hardware</a></summary>
                         <ul>
                             
@@ -733,6 +772,8 @@
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
                             
@@ -894,6 +935,150 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
+                        <ul>
+                            
+                            
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

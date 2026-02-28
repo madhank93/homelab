@@ -76,7 +76,7 @@
 
     
         
-            <meta name="description" content="Hetzner VPS running NetBird VPN management plane and TURN server (Bifrost)." />
+            <meta name="description" content="Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab." />
         
     
 
@@ -87,14 +87,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Hetzner Bifrost | Homelab" />
-      <meta property="og:description" content="Hetzner VPS running NetBird VPN management plane and TURN server (Bifrost)." />
+      <meta property="og:description" content="Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Hetzner Bifrost" />
-      <meta name="twitter:description" content="Hetzner VPS running NetBird VPN management plane and TURN server (Bifrost)." />
+      <meta name="twitter:description" content="Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab." />
       
       
       
@@ -284,6 +284,15 @@
                 
                     
                         <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/architecture">
+                                <i class="fa-solid fa-diagram-project"></i>
+                                Architecture
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
                             <a class="btn btn-ghost hover:no-underline" href="/hardware">
                                 <i class="fa-solid fa-server"></i>
                                 Hardware
@@ -311,9 +320,18 @@
                 
                     
                         <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/apps">
+                            <a class="btn btn-ghost hover:no-underline" href="/workloads">
                                 <i class="fa-solid fa-cubes"></i>
-                                Apps
+                                Workloads
+                            </a>
+                        </li>
+                    
+                
+                    
+                        <li>
+                            <a class="btn btn-ghost hover:no-underline" href="/development">
+                                <i class="fa-solid fa-code"></i>
+                                Development
                             </a>
                         </li>
                     
@@ -366,37 +384,209 @@
             Hetzner Bifrost
             
         </h1>
-        <p class="text-gray-500">Hetzner VPS running NetBird VPN management plane and TURN server (Bifrost).</p>
+        <p class="text-gray-500">Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab.</p>
     </div>
     <h2 id="overview">Overview</h2>
-<p>A lightweight Hetzner Cloud VPS serves as <strong>Bifrost</strong> — the network bridge for the homelab. It runs:</p>
-<ul>
-<li><strong>NetBird</strong> management plane — VPN mesh coordination for remote access to the cluster</li>
-<li><strong>TURN server</strong> — WebRTC relay for NAT traversal</li>
-</ul>
-<p>The VPS is provisioned by Pulumi from <code>infra/pulumi/hetzner_vps.go</code>.</p>
-<h2 id="pulumi-configuration">Pulumi Configuration</h2>
-<p>The Hetzner stack reads config from a <code>hetzner</code> key in <code>infra/pulumi/config.yaml</code>:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">server_name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">bifrost
-</span><span style="color:#73d0ff;">image</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ubuntu-24.04
-</span><span style="color:#73d0ff;">server_type</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">cx22
-</span><span style="color:#73d0ff;">location</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nbg1
-</span><span style="color:#73d0ff;">ssh_key</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;your-hetzner-ssh-key-name&gt;
+<p><strong>Bifrost</strong> is a lightweight Hetzner Cloud VPS that acts as the public edge of the homelab. A single Pulumi command (<code>just core hetzner up</code>) provisions the server, copies all config files, and runs a bootstrap script that starts every service in dependency order — fully unattended. No manual SSH required.</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>just core hetzner up
+</span><span>    │
+</span><span>    ├─ generateBifrostSecretsEnv()   writes .secrets.env from SOPS
+</span><span>    ├─ generateBifrostDotEnv()       writes .env from SOPS
+</span><span>    ├─ CopyToRemote                  uploads /etc/bifrost/ to VPS
+</span><span>    └─ remote.Command → bootstrap.sh
+</span><span>           ├─ 1/6  traefik           TLS termination + routing
+</span><span>           ├─ 2/6  authentik-postgres
+</span><span>           ├─ 3/6  authentik-server + worker
+</span><span>           ├─      ak shell           auto-provision NB_IDP_MGMT_TOKEN
+</span><span>           ├─      sed               substitute ${VARS} in netbird/config.yaml
+</span><span>           ├─ 4/6  netbird-server    management + signal + relay + STUN
+</span><span>           ├─ 5/6  netbird-dashboard
+</span><span>           └─ 6/6  netbird-proxy     (only if NB_PROXY_TOKEN set)
 </span></code></pre>
-<p><code>HCLOUD_TOKEN</code> is injected at runtime via SOPS from <code>infra/secrets/bootstrap.sops.yaml</code>.</p>
-<h2 id="firewall-rules">Firewall Rules</h2>
-<p>The Bifrost firewall allows inbound:</p>
-<table><thead><tr><th>Protocol</th><th>Port</th><th>Purpose</th></tr></thead><tbody>
-<tr><td>TCP</td><td>22</td><td>SSH</td></tr>
-<tr><td>TCP</td><td>80</td><td>HTTP</td></tr>
-<tr><td>TCP</td><td>443</td><td>HTTPS / NetBird management</td></tr>
-<tr><td>TCP+UDP</td><td>3478</td><td>STUN</td></tr>
-<tr><td>TCP+UDP</td><td>5349</td><td>TURNS (TLS TURN)</td></tr>
+<hr />
+<h2 id="services">Services</h2>
+<p>All services run via <code>docker compose</code> from <code>/etc/bifrost/</code>:</p>
+<table><thead><tr><th>Container</th><th>Image</th><th>Role</th></tr></thead><tbody>
+<tr><td><code>traefik</code></td><td><code>traefik:v3.3</code></td><td>TLS termination, ForwardAuth, routing</td></tr>
+<tr><td><code>authentik-server</code></td><td><code>ghcr.io/goauthentik/server:2025.10.4</code></td><td>GitHub OAuth, OIDC, ForwardAuth provider</td></tr>
+<tr><td><code>authentik-worker</code></td><td><code>ghcr.io/goauthentik/server:2025.10.4</code></td><td>Background tasks, email, jobs</td></tr>
+<tr><td><code>authentik-postgres</code></td><td><code>postgres:16.6-alpine</code></td><td>Authentik database</td></tr>
+<tr><td><code>netbird-server</code></td><td><code>netbirdio/netbird-server:0.66.0</code></td><td>Combined: management + signal + relay + STUN</td></tr>
+<tr><td><code>netbird-dashboard</code></td><td><code>netbirdio/dashboard:latest</code></td><td>NetBird web UI</td></tr>
+<tr><td><code>netbird-proxy</code></td><td><code>netbirdio/reverse-proxy:latest</code></td><td><code>*.proxy.madhan.app</code> TCP passthrough</td></tr>
+<tr><td><code>netbird-agent</code></td><td><code>netbirdio/netbird:latest</code></td><td>WireGuard peer, advertises <code>192.168.1.0/24</code></td></tr>
+</tbody></table>
+<p>All containers share <code>bifrost_net</code> (172.30.0.0/24). Traefik is the only container with public ports 80/443.</p>
+<hr />
+<h2 id="pulumi-configuration">Pulumi Configuration</h2>
+<p>The Hetzner stack reads from <code>core/config.yml</code>:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">hetzner</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">server_name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">bifrost-public-vps1
+</span><span>  </span><span style="color:#73d0ff;">image</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ubuntu-24.04
+</span><span>  </span><span style="color:#73d0ff;">server_type</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">cpx21
+</span><span>  </span><span style="color:#73d0ff;">location</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ash            </span><span style="font-style:italic;color:#5c6773;"># Ashburn, VA
+</span><span>  </span><span style="color:#73d0ff;">ssh_key</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">mac-ssh
+</span><span>  </span><span style="color:#73d0ff;">vps_ip</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;178.156.199.250&quot;
+</span></code></pre>
+<p><code>HCLOUD_TOKEN</code> comes from SOPS. All other secrets are injected automatically (see <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#generated-files">Generated Files</a> below).</p>
+<hr />
+<h2 id="bootstrap-automation">Bootstrap Automation</h2>
+<h3 id="what-bootstrap-sh-does">What <code>bootstrap.sh</code> does</h3>
+<p>The bootstrap script runs on the VPS after every config or secret change. It is idempotent — safe to re-run.</p>
+<pre class="mermaid border border-gray-500/15">
+ flowchart TB
+    PF[&quot;Preflight&lt;br&#x2F;&gt;validate 4 required secrets&lt;br&#x2F;&gt;wait for cloud-init&lt;br&#x2F;&gt;check docker compose&quot;]
+
+    subgraph S1[&quot;Step 1&#x2F;6&quot;]
+        T[&quot;docker compose up -d traefik&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
+    end
+    subgraph S2[&quot;Step 2&#x2F;6&quot;]
+        AP[&quot;docker compose up -d authentik-postgres&lt;br&#x2F;&gt;wait_healthy 120s&quot;]
+    end
+    subgraph S3[&quot;Step 3&#x2F;6&quot;]
+        AS[&quot;docker compose up -d authentik-server authentik-worker&lt;br&#x2F;&gt;wait_healthy 300s&quot;]
+    end
+
+    subgraph PROV[&quot;NB_IDP_MGMT_TOKEN Provisioning&quot;]
+        CHK{&quot;NB_IDP_MGMT_TOKEN&lt;br&#x2F;&gt;already in .secrets.env?&quot;}
+        AKS[&quot;docker exec authentik-server ak shell&lt;br&#x2F;&gt;Token.objects.get_or_create&lt;br&#x2F;&gt;identifier=&#x27;netbird-mgmt-token&#x27;&lt;br&#x2F;&gt;key=AUTHENTIK_BOOTSTRAP_TOKEN&quot;]
+        WRT[&quot;echo NB_IDP_MGMT_TOKEN=TOKEN &gt;&gt; .secrets.env&quot;]
+        SKIP[&quot;skip — already provisioned&quot;]
+    end
+
+    subgraph CFG[&quot;Config Template Substitution&quot;]
+        SED[&quot;sed s|\$\{NB_RELAY_SECRET\}|...|g&lt;br&#x2F;&gt;sed s|\$\{NB_DATA_STORE_KEY\}|...|g&lt;br&#x2F;&gt;sed s|\$\{NB_IDP_MGMT_TOKEN\}|...|g&lt;br&#x2F;&gt;netbird&#x2F;config.yaml overwritten&quot;]
+    end
+
+    subgraph S4[&quot;Step 4&#x2F;6&quot;]
+        NS[&quot;docker compose up -d netbird-server&lt;br&#x2F;&gt;wait_healthy 120s&quot;]
+    end
+    subgraph S5[&quot;Step 5&#x2F;6&quot;]
+        ND[&quot;docker compose up -d netbird-dashboard&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
+    end
+    subgraph S6[&quot;Step 6&#x2F;6&quot;]
+        NP{&quot;NB_PROXY_TOKEN set?&quot;}
+        NPY[&quot;docker compose up -d netbird-proxy&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
+        NPN[&quot;skip — show setup instructions&quot;]
+    end
+
+    PF --&gt; S1 --&gt; S2 --&gt; S3
+    S3 --&gt; CHK
+    CHK --&gt;|No| AKS --&gt; WRT --&gt; CFG
+    CHK --&gt;|Yes| SKIP --&gt; CFG
+    CFG --&gt; S4 --&gt; S5 --&gt; S6
+    NP --&gt;|Yes| NPY
+    NP --&gt;|No| NPN
+</pre>
+<h3 id="health-polling">Health polling</h3>
+<p>Each <code>wait_healthy &lt;container&gt;</code> call polls <code>docker inspect</code> every 5 seconds:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>state=running + health=healthy  →  ready ✓
+</span><span>state=running + health=none     →  ready ✓ (no healthcheck configured)
+</span><span>timeout exceeded                →  prints last 30 log lines, exits 1
+</span></code></pre>
+<p>Authentik has an explicit <code>healthcheck: test: ["CMD-SHELL", "ak healthcheck"]</code> and a 60s start period. The script waits up to 300s for it.</p>
+<h3 id="nb-idp-mgmt-token-provisioning">NB_IDP_MGMT_TOKEN provisioning</h3>
+<p>NetBird requires an Authentik API token to sync users via the management API. This token can't be created until Authentik is running — a chicken-and-egg problem that <code>bootstrap.sh</code> solves automatically.</p>
+<p>After Authentik reports healthy, <code>bootstrap.sh</code> runs a Python script inside the container via <code>ak shell</code> (Authentik's Django management shell):</p>
+<pre data-lang="python" style="background-color:#212733;color:#ccc9c2;" class="language-python "><code class="language-python" data-lang="python"><span style="font-style:italic;color:#5c6773;"># Runs inside the authentik-server container
+</span><span style="color:#ffa759;">from </span><span>authentik</span><span style="color:#f29e74;">.</span><span>core</span><span style="color:#f29e74;">.</span><span>models </span><span style="color:#ffa759;">import </span><span>Token</span><span style="color:#ccc9c2cc;">, </span><span>TokenIntents</span><span style="color:#ccc9c2cc;">, </span><span>User
+</span><span>
+</span><span>key </span><span style="color:#f29e74;">= </span><span>os</span><span style="color:#f29e74;">.</span><span>environ</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">get</span><span>(</span><span style="color:#bae67e;">&#39;AUTHENTIK_BOOTSTRAP_TOKEN&#39;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&#39;&#39;</span><span>)
+</span><span>user </span><span style="color:#f29e74;">= </span><span>User</span><span style="color:#f29e74;">.</span><span>objects</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">filter</span><span>(</span><span style="color:#ffcc66;">username</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">&#39;akadmin&#39;</span><span>)</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">first</span><span>()
+</span><span>
+</span><span>t, created </span><span style="color:#f29e74;">= </span><span>Token</span><span style="color:#f29e74;">.</span><span>objects</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">get_or_create</span><span>(
+</span><span>    </span><span style="color:#ffcc66;">identifier</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">&#39;netbird-mgmt-token&#39;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#ffcc66;">defaults</span><span style="color:#f29e74;">=</span><span>{
+</span><span>        </span><span style="color:#bae67e;">&#39;user&#39;</span><span style="color:#ccc9c2cc;">: </span><span>user</span><span style="color:#ccc9c2cc;">,
+</span><span>        </span><span style="color:#bae67e;">&#39;intent&#39;</span><span style="color:#ccc9c2cc;">: </span><span>TokenIntents</span><span style="color:#f29e74;">.</span><span>INTENT_API</span><span style="color:#ccc9c2cc;">,
+</span><span>        </span><span style="color:#bae67e;">&#39;key&#39;</span><span style="color:#ccc9c2cc;">: </span><span>key</span><span style="color:#ccc9c2cc;">,          </span><span style="font-style:italic;color:#5c6773;"># same value as SOPS AUTHENTIK_TOKEN
+</span><span>        </span><span style="color:#bae67e;">&#39;expiring&#39;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">False</span><span style="color:#ccc9c2cc;">,
+</span><span>        </span><span style="color:#bae67e;">&#39;description&#39;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&#39;NetBird IDP management token (auto-provisioned)&#39;</span><span style="color:#ccc9c2cc;">,
+</span><span>    }
+</span><span>)
+</span><span style="color:#f28779;">print</span><span>(</span><span style="color:#ffa759;">f</span><span style="color:#bae67e;">&#39;TOKEN:</span><span>{t</span><span style="color:#f29e74;">.</span><span>key}</span><span style="color:#bae67e;">&#39;</span><span>)      </span><span style="font-style:italic;color:#5c6773;"># only this line goes to stdout
+</span></code></pre>
+<p>The bash wrapper greps for <code>TOKEN:</code> prefix and writes the value to <code>.secrets.env</code>:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>NB_IDP_MGMT_TOKEN=&lt;token&gt;    (appended to /etc/bifrost/.secrets.env)
+</span></code></pre>
+<p>On re-runs, if <code>NB_IDP_MGMT_TOKEN</code> is already in <code>.secrets.env</code>, provisioning is skipped entirely. The token identifier <code>netbird-mgmt-token</code> is stable — <code>get_or_create</code> never duplicates it.</p>
+<h3 id="netbird-config-yaml-template-substitution">netbird/config.yaml template substitution</h3>
+<p>NetBird v0.66 does not expand <code>${VAR}</code> in its config file. The config is read verbatim. <code>bootstrap.sh</code> uses <code>sed</code> to substitute three placeholders before starting <code>netbird-server</code>:</p>
+<table><thead><tr><th>Placeholder in <code>config.yaml</code></th><th>Replaced with</th></tr></thead><tbody>
+<tr><td><code>${NB_RELAY_SECRET}</code></td><td>relay auth secret from <code>.secrets.env</code></td></tr>
+<tr><td><code>${NB_DATA_STORE_KEY}</code></td><td>SQLite encryption key from <code>.secrets.env</code></td></tr>
+<tr><td><code>${NB_IDP_MGMT_TOKEN}</code></td><td>Authentik API token (just provisioned)</td></tr>
+</tbody></table>
+<p>This substitution is idempotent: on re-runs <code>CopyToRemote</code> restores the template, and <code>sed</code> replaces the placeholders again.</p>
+<hr />
+<h2 id="generated-files">Generated Files</h2>
+<p>Pulumi writes these files on the <strong>laptop</strong> before uploading:</p>
+<h3 id="core-cloud-bifrost-secrets-env"><code>core/cloud/bifrost/.secrets.env</code></h3>
+<p>Generated by <code>generateBifrostSecretsEnv()</code> from SOPS env vars:</p>
+<table><thead><tr><th>Variable</th><th>SOPS key</th><th>Required</th></tr></thead><tbody>
+<tr><td><code>CF_DNS_API_TOKEN</code></td><td><code>CLOUDFLARE_API_TOKEN</code></td><td>Yes</td></tr>
+<tr><td><code>NB_DATA_STORE_KEY</code></td><td><code>NB_DATA_STORE_KEY</code></td><td>Yes</td></tr>
+<tr><td><code>NB_RELAY_SECRET</code></td><td><code>NB_RELAY_SECRET</code></td><td>Yes</td></tr>
+<tr><td><code>AUTHENTIK_BOOTSTRAP_TOKEN</code></td><td><code>AUTHENTIK_TOKEN</code></td><td>Yes</td></tr>
+<tr><td><code>NB_PROXY_TOKEN</code></td><td><code>NB_PROXY_TOKEN</code></td><td>No (optional)</td></tr>
+<tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td><code>NB_BIFROST_SETUP_KEY</code></td><td>No (optional)</td></tr>
+</tbody></table>
+<p><code>NB_IDP_MGMT_TOKEN</code> is <strong>not</strong> written here by Pulumi — it is appended by <code>bootstrap.sh</code> at runtime.</p>
+<h3 id="core-cloud-bifrost-env"><code>core/cloud/bifrost/.env</code></h3>
+<p>Generated by <code>generateBifrostDotEnv()</code>. Docker Compose reads this file for <code>${VAR}</code> interpolation in <code>docker-compose.yml</code> (required for <code>POSTGRES_PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}</code>):</p>
+<table><thead><tr><th>Variable</th><th>SOPS key</th></tr></thead><tbody>
+<tr><td><code>AUTHENTIK_SECRET_KEY</code></td><td><code>AUTHENTIK_SECRET_KEY</code></td></tr>
+<tr><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td></tr>
+</tbody></table>
+<p>Both files are gitignored and regenerated on every <code>just core hetzner up</code>.</p>
+<hr />
+<h2 id="re-running-updating">Re-running / Updating</h2>
+<p><code>bootstrap.sh</code> is triggered by a SHA-256 hash of all bifrost config files plus all secret values. Pulumi re-runs the script automatically when:</p>
+<ul>
+<li>Any file in <code>core/cloud/bifrost/</code> changes</li>
+<li>Any SOPS secret value changes (detected by hashing)</li>
+</ul>
+<p>The script is idempotent:</p>
+<ul>
+<li><code>docker compose up -d</code> is a no-op for already-running containers with the same image</li>
+<li><code>NB_IDP_MGMT_TOKEN</code> provisioning is skipped if already in <code>.secrets.env</code></li>
+<li><code>sed</code> substitution in <code>config.yaml</code> is a no-op if placeholders are already replaced</li>
+</ul>
+<hr />
+<h2 id="firewall">Firewall</h2>
+<p>Hetzner Cloud firewall (<code>bifrost-fw</code>) applied to the VPS:</p>
+<table><thead><tr><th>Protocol</th><th>Port(s)</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>TCP</td><td>22</td><td>SSH (management)</td></tr>
+<tr><td>TCP</td><td>80</td><td>HTTP → Traefik (redirects to HTTPS)</td></tr>
+<tr><td>TCP</td><td>443</td><td>HTTPS → Traefik</td></tr>
+<tr><td>TCP + UDP</td><td>3478</td><td>STUN (NetBird NAT traversal)</td></tr>
+<tr><td>TCP + UDP</td><td>5349</td><td>TURNS (TLS TURN relay)</td></tr>
 <tr><td>UDP</td><td>50000–50500</td><td>TURN ephemeral relay range</td></tr>
 </tbody></table>
-<h2 id="cloud-init">Cloud-Init</h2>
-<p>Server configuration (NetBird + TURN setup) is applied via <code>infra/pulumi/cloud-init/cloud-init-hetzner.yml</code> at first boot.</p>
-<p>Additional config files are copied from <code>infra/pulumi/bifrost/</code> to <code>/etc/</code> on the remote server via <code>pulumi-command</code> <code>CopyToRemote</code>.</p>
+<hr />
+<h2 id="dns-records">DNS Records</h2>
+<p>Managed by <code>core/cloud/cloudflare.go</code>:</p>
+<table><thead><tr><th>Hostname</th><th>Points to</th><th>Traffic handled by</th></tr></thead><tbody>
+<tr><td><code>auth.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Authentik (on VPS)</td></tr>
+<tr><td><code>netbird.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird dashboard + server (on VPS)</td></tr>
+<tr><td><code>proxy.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird reverse proxy</td></tr>
+<tr><td><code>*.proxy.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird reverse proxy wildcard</td></tr>
+<tr><td><code>grafana.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Traefik → WireGuard → cluster</td></tr>
+<tr><td><code>harbor.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Traefik → WireGuard → cluster</td></tr>
+</tbody></table>
+<blockquote>
+<p><strong>Adding a new public service:</strong> add the service name to <code>publicServices</code> in <code>core/cloud/cloudflare.go</code>, then run <code>just core cloudflare up</code> and <code>just core hetzner up</code>. The DNS record and Traefik route (with ForwardAuth) are created automatically.</p>
+</blockquote>
+<hr />
+<h2 id="after-the-first-deploy">After the First Deploy</h2>
+<p>After <code>just core hetzner up</code> succeeds, log in to https://netbird.madhan.app with GitHub (via Authentik) to complete the remaining one-time steps:</p>
+<ol>
+<li>Create a <strong>Personal Access Token</strong> (Settings → Access Tokens)</li>
+<li>Create two <strong>Setup Keys</strong> (one for the Bifrost agent, one for the K8s routing peer)</li>
+<li>Add <code>NB_PROXY_TOKEN</code> and <code>NB_BIFROST_SETUP_KEY</code> to SOPS: <code>sops edit secrets/bootstrap.sops.yaml</code></li>
+<li>Run <code>just core hetzner up</code> again — bootstrap.sh picks up the new tokens and starts <code>netbird-proxy</code> and <code>netbird-agent</code></li>
+</ol>
+<p>See <a href="/infrastructure/netbird">NetBird VPN</a> and the <a href="/getting-started/deployment">Deployment Guide</a> for the complete setup sequence.</p>
 
 
     
@@ -451,7 +641,7 @@
                                 <div class="next-nav-item">
                                     
     
-        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/infrastructure/dns-tls/">
+        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/infrastructure/netbird/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <span class="nav-button-label">Next</span>
@@ -459,7 +649,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                     </svg>
                 </div>
-                <div class="nav-button-title">DNS &amp; TLS</div>
+                <div class="nav-button-title">NetBird VPN</div>
             </div>
         </a>
     
@@ -485,19 +675,87 @@
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#services" class="toc-link">Services</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#pulumi-configuration" class="toc-link">Pulumi Configuration</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#firewall-rules" class="toc-link">Firewall Rules</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#bootstrap-automation" class="toc-link">Bootstrap Automation</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#what-bootstrap-sh-does" class="toc-link">What bootstrap.sh does</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#health-polling" class="toc-link">Health polling</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#nb-idp-mgmt-token-provisioning" class="toc-link">NB_IDP_MGMT_TOKEN provisioning</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#netbird-config-yaml-template-substitution" class="toc-link">netbird&#x2F;config.yaml template substitution</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#cloud-init" class="toc-link">Cloud-Init</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#generated-files" class="toc-link">Generated Files</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#core-cloud-bifrost-secrets-env" class="toc-link">core&#x2F;cloud&#x2F;bifrost&#x2F;.secrets.env</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#core-cloud-bifrost-env" class="toc-link">core&#x2F;cloud&#x2F;bifrost&#x2F;.env</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#re-running-updating" class="toc-link">Re-running &#x2F; Updating</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#firewall" class="toc-link">Firewall</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#dns-records" class="toc-link">DNS Records</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#after-the-first-deploy" class="toc-link">After the First Deploy</a>
                     
                 </li>
             
@@ -627,6 +885,28 @@
             <li>
                 
                     <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture">Architecture</a></summary>
+                        <ul>
+                            
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/network-flow">Network Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/kubernetes-architecture">Kubernetes Architecture</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/gitops-flow">GitOps Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/secrets-flow">Secrets Flow</a></li>
+                            
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
                         <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/hardware">Hardware</a></summary>
                         <ul>
                             
@@ -672,6 +952,8 @@
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
                                 <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
                             
@@ -833,6 +1115,150 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
+                        <ul>
+                            
+                            
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

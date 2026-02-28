@@ -76,6 +76,21 @@
         <loc>https://homelab.madhan.app/apps/storage/longhorn/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/architecture/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/architecture/gitops-flow/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/architecture/kubernetes-architecture/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/architecture/network-flow/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/architecture/secrets-flow/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/development/</loc>
     </url>
     <url>
@@ -109,6 +124,9 @@
         <loc>https://homelab.madhan.app/infrastructure/hetzner-bifrost/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/infrastructure/netbird/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/infrastructure/networking/</loc>
     </url>
     <url>
@@ -125,5 +143,77 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/platform/cdk8s/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/ai/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/ai/comfyui/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/ai/ollama/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/automation/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/automation/n8n/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/management/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/management/headlamp/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/management/infisical/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/management/rancher/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/monitoring/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/monitoring/alertmanager/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/monitoring/grafana/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/monitoring/opentelemetry/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/monitoring/victoria-logs/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/monitoring/victoria-metrics/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/registry/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/registry/harbor/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/security/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/security/falco/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/security/trivy/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/storage/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/storage/longhorn/</loc>
     </url>
 </urlset>
