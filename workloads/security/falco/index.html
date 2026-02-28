@@ -1,5 +1,9 @@
+
+
+
+
 <!DOCTYPE html>
-<html lang="en" style="background-color: #0f172a;">
+<html lang="en" data-theme="goyo-dark" style="background-color: #0f172a;">
 
 <head>
     
@@ -17,8 +21,8 @@
     <script>
         (function() {
             // Theme mapping - maps user-friendly names to actual DaisyUI theme names
-            var themeMapping = { "goyo-dark": "night", "goyo-light": "lofi" };
-            
+            // var themeMapping = { "goyo-dark": "night", "goyo-light": "lofi" };
+
             
             
             
@@ -31,22 +35,42 @@
             var defaultColorset = "dark";
             var darkBrightness = "normal";
             var lightBrightness = "normal";
-            var themeMap = { "dark": "goyo-dark", "light": "goyo-light" };
-            var fallbackTheme = themeMap[defaultColorset] || "goyo-dark";
+
+            // Read configured theme names from config.toml (with defaults)
             
+                
+                
+            
+            var configuredDarkTheme = "goyo-dark";
+            var configuredLightTheme = "goyo-light";
+
+            // Expose to goyo.js
+            window.themeConfig = {
+                darkTheme: configuredDarkTheme,
+                lightTheme: configuredLightTheme
+            };
+
             // Expose brightness config for global use (e.g., goyo.js)
             window.darkBrightness = darkBrightness;
             window.lightBrightness = lightBrightness;
-            
-            // Get theme from localStorage or use fallback
-            var currentUserTheme = localStorage.getItem('theme') || fallbackTheme;
-            var actualTheme = themeMapping[currentUserTheme] || currentUserTheme;
-            
+
+            var fallbackTheme = (defaultColorset === "dark") ? configuredDarkTheme : configuredLightTheme;
+            window.fallbackTheme = fallbackTheme;
+
+            // Get theme from localStorage, but only use it if it matches configured themes
+            var storedTheme = localStorage.getItem('theme');
+            var currentTheme;
+            if (storedTheme === configuredDarkTheme || storedTheme === configuredLightTheme) {
+                currentTheme = storedTheme;
+            } else {
+                currentTheme = fallbackTheme;
+            }
+
             // Determine brightness based on current theme
-            var currentBrightness = (currentUserTheme === "goyo-dark") ? darkBrightness : lightBrightness;
-            
+            var currentBrightness = (currentTheme === configuredDarkTheme) ? darkBrightness : lightBrightness;
+
             // Set theme and brightness attributes immediately
-            document.documentElement.setAttribute("data-theme", actualTheme);
+            document.documentElement.setAttribute("data-theme", currentTheme);
             document.documentElement.setAttribute("data-brightness", currentBrightness);
         })();
     </script>
@@ -63,7 +87,7 @@
             
             @font-face {
                 font-family: "Pretendard-Regular";
-                src: url('https://homelab.madhan.app/fonts/Pretendard-Regular.woff') format("woff");
+                src: url('https://homelab.madhan.app/css/fonts/Pretendard-Regular.woff') format("woff");
                 font-weight: 400;
                 font-style: normal;
                 font-display: swap;
@@ -108,17 +132,48 @@
       <!-- Browser address bar color -->
       <meta name="theme-color" content="#0f172a">
 
+      <!-- Favicon -->
+      
+      
+      
+      
+          
+          
+          
+          
+          
+          
+      
+      <link rel="icon" type="image/png" href="/icons/favicon-96x96.png" sizes="96x96" />
+      <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />
+      <link rel="shortcut icon" href="/icons/favicon.ico" />
+      <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+      <link rel="manifest" href="/icons/site.webmanifest" />
+
       <!-- CSS -->
     <link rel="stylesheet" href="https://homelab.madhan.app/css/main.css">
-    <link rel="stylesheet" href="https://homelab.madhan.app/css/font-awesome.min.css">
     
+
     <!-- Preload critical fonts -->
-    <link rel="preload" href="https://homelab.madhan.app/fonts/Pretendard-Regular.woff" as="font" type="font/woff" crossorigin>
+    <link rel="preload" href="https://homelab.madhan.app/css/fonts/Pretendard-Regular.woff" as="font" type="font/woff" crossorigin>
+
+    <!--  Global Config to pass to different JS scripts  -->
+    <script>
+        window.GOYO_CONFIG = {
+            defaultThemeDark: "goyo-dark",
+            defaultThemeLight: "goyo-light",
+            i18n: {
+                copy: "Copy",
+                copied: "Copied!",
+                failed_to_copy: "Failed to copy!",
+            },
+        };
+    </script>
 
     <!-- Defer non-critical scripts -->
     <script defer src="https://homelab.madhan.app/js/copy_code.js"></script>
     <script defer src="https://homelab.madhan.app/js/copy_heading_link.js"></script>
-    
+
     <!-- Lazy load Mermaid and KaTeX - only when needed -->
     <script>
         // Lazy load KaTeX and Mermaid when needed
@@ -128,7 +183,7 @@
             var katexBlockElements = document.querySelectorAll('.katex-block');
             var hasKatex = katexInlineElements.length > 0 || katexBlockElements.length > 0;
             var hasMermaid = document.querySelector('.mermaid');
-            
+
             // Load KaTeX if math elements are present
             if (hasKatex) {
                 // Load KaTeX CSS first
@@ -136,7 +191,7 @@
                 katexCSS.rel = 'stylesheet';
                 katexCSS.href = 'https://homelab.madhan.app/css/katex.min.css';
                 document.head.appendChild(katexCSS);
-                
+
                 // Load KaTeX JS
                 var katexScript = document.createElement('script');
                 katexScript.src = 'https://homelab.madhan.app/js/katex.min.js';
@@ -145,7 +200,7 @@
                     katexInlineElements.forEach(function(elem) {
                         var texContent = elem.textContent || elem.innerText;
                         try {
-                            katex.render(texContent, elem, { 
+                            katex.render(texContent, elem, {
                                 throwOnError: false,
                                 displayMode: false
                             });
@@ -153,12 +208,12 @@
                             console.error('KaTeX render error:', e);
                         }
                     });
-                    
+
                     // Render block elements
                     katexBlockElements.forEach(function(elem) {
                         var texContent = elem.textContent || elem.innerText;
                         try {
-                            katex.render(texContent, elem, { 
+                            katex.render(texContent, elem, {
                                 throwOnError: false,
                                 displayMode: true
                             });
@@ -169,7 +224,7 @@
                 };
                 document.head.appendChild(katexScript);
             }
-            
+
             // Load Mermaid if diagram elements are present
             if (hasMermaid) {
                 var mermaidScript = document.createElement('script');
@@ -192,7 +247,7 @@
     
 
 <!-- Search Modal -->
-<input type="checkbox" id="search-modal" class="modal-toggle" />
+<input type="checkbox" id="search-modal" class="modal-toggle" aria-hidden="true" tabindex="-1"/>
 <div class="modal modal-middle">
     <div class="modal-box relative max-w-2xl p-0 bg-base-100 shadow-2xl">
         <label for="search-modal" class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 z-10">✕</label>
@@ -260,7 +315,7 @@
     </div>
     <!-- Logo -->
     <div class="flex-1">
-        <a href="/" class="btn btn-ghost hover:animate-pulse hover:bg-transparent hover:border-transparent normal-case text-xl" style="background: linear-gradient(135deg, #9ca3af, #6b7280); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: bold; font-size: 1.5rem;">
+        <a href="https://homelab.madhan.app" class="btn btn-ghost hover:animate-pulse hover:bg-transparent hover:border-transparent normal-case text-xl" style="background: linear-gradient(135deg, #9ca3af, #6b7280); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: bold; font-size: 1.5rem;">
             
                 Homelab
             
@@ -268,102 +323,161 @@
     </div>
     <!-- Desktop Menu -->
     <div class="flex-none hidden lg:flex">
-        <ul class="menu menu-horizontal px-1 items-center">
-            
-            
-            
-                
-                    
-                        <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/getting-started">
-                                <i class="fa-solid fa-rocket"></i>
-                                Getting Started
-                            </a>
-                        </li>
-                    
-                
-                    
-                        <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/architecture">
-                                <i class="fa-solid fa-diagram-project"></i>
-                                Architecture
-                            </a>
-                        </li>
-                    
-                
-                    
-                        <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/hardware">
-                                <i class="fa-solid fa-server"></i>
-                                Hardware
-                            </a>
-                        </li>
-                    
-                
-                    
-                        <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/infrastructure">
-                                <i class="fa-solid fa-network-wired"></i>
-                                Infrastructure
-                            </a>
-                        </li>
-                    
-                
-                    
-                        <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/platform">
-                                <i class="fa-solid fa-layer-group"></i>
-                                Platform
-                            </a>
-                        </li>
-                    
-                
-                    
-                        <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/workloads">
-                                <i class="fa-solid fa-cubes"></i>
-                                Workloads
-                            </a>
-                        </li>
-                    
-                
-                    
-                        <li>
-                            <a class="btn btn-ghost hover:no-underline" href="/development">
-                                <i class="fa-solid fa-code"></i>
-                                Development
-                            </a>
-                        </li>
-                    
-                
-                    
-                        <li>
-                            <a class="btn btn-ghost hover:no-underline" href="https://github.com/madhank93/homelab">
-                                <i class="fa-brands fa-github"></i>
-                                GitHub
-                            </a>
-                        </li>
-                    
-                
-            
-            
+        
+<ul class="menu w-full justify-end lg:menu-horizontal px-1">
+    
+    
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/getting-started">
+          
 
-            
-            
-            
-                
-            
-            
-            <li>
-                <label class="swap swap-rotate btn btn-ghost">
-                  <input type="checkbox" class="theme-controller" value="night" aria-labelledby="swap color"/>
-                  <svg class="swap-off h-5 w-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z" /></svg>
-                  <svg class="swap-on h-5 w-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" /></svg>
-                </label>
-            </li>
-            
 
-        </ul>
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-rocket.svg'); mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-rocket.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Getting Started
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/architecture">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-diagram-project.svg'); mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-diagram-project.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Architecture
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/hardware">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-server.svg'); mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-server.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Hardware
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/infrastructure">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-network-wired.svg'); mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-network-wired.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Infrastructure
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/platform">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-layer-group.svg'); mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-layer-group.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Platform
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-cubes.svg'); mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-cubes.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Workloads
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-code.svg'); mask-image: url('https://homelab.madhan.app/icons/fa-solid fa-code.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Development
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://github.com/madhank93/homelab">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/fa-brands fa-github.svg'); mask-image: url('https://homelab.madhan.app/icons/fa-brands fa-github.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          GitHub
+        </a>
+    </li>
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    <li>
+        <label class="swap swap-rotate btn btn-ghost justify-end w-full">
+            <input type="checkbox" class="theme-controller" value="goyo-dark" aria-labelledby="swap color"/>
+            <svg class="swap-off h-5 w-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z" /></svg>
+            <svg class="swap-on h-5 w-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" /></svg>
+        </label>
+    </li>
+    
+
+</ul>
+
     </div>
 </div>
 
@@ -427,29 +541,36 @@
 <p>These are collected by the OTel Agent DaemonSet and forwarded to VictoriaLogs.</p>
 
 
+    <!--  Errata section  -->
     
     
 
     
-    <div class="mt-8 pt-6 border-t border-gray-500/15">
-        <div class="flex flex-wrap items-center gap-4">
-            <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/workloads&#x2F;security&#x2F;falco&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                </svg>
-                <span>Edit this page</span>
-            </a>
-            
-            
-            
-                
-                
-            
-            
-            
-        </div>
-    </div>
     
+
+    
+        <div class="my-8 pt-6 border-t border-gray-500/15">
+            <div class="flex flex-wrap items-center gap-4">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/workloads&#x2F;security&#x2F;falco&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    <span>Edit this page</span>
+                </a>
+            </div>
+        </div>
+    
+
+    
+    
+    
+        
+        
+    
+    
+        <div><div>
+    
+    </div>
 
 
                         
@@ -482,10 +603,10 @@
         <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/workloads/security/trivy/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
-                    <span class="nav-button-label">Next</span>
                     <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                     </svg>
+                    <span class="nav-button-label">Next</span>
                 </div>
                 <div class="nav-button-title">Trivy</div>
             </div>
@@ -609,8 +730,9 @@
         
         
         
-        <div id="sidebar" class="drawer-side pt-16 border-r border-gray-500/15 overflow-hidden">
         
+        
+        <div id="sidebar" class="drawer-side pt-16 border-e border-gray-500&#x2F;15 overflow-hidden">
             
                 
 
@@ -623,7 +745,7 @@
     
 
 <label for="my-drawer-2" class="drawer-overlay"></label>
-<div class="mt-4 w-68 h-[calc(100vh-4rem)] bg-base-100 text-base-content flex flex-col overflow-auto thin-scrollbar">
+<div class="pt-4 w-68 h-[calc(100vh-4rem)] bg-base-100 text-base-content flex flex-col overflow-auto thin-scrollbar">
     
     <div class="px-2 pt-4 pb-0 flex flex-col items-center gap-2">
         <div class="w-full flex items-center gap-2">
@@ -636,7 +758,8 @@
         </div>
     </div>
     
-    <ul class="menu w-full flex-grow">
+    <!--  Sidebar is to control the double hover effect in src/main.css  -->
+    <ul class="menu sidebar w-full flex-grow">
         
         
         
@@ -753,150 +876,6 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps">Apps</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
                             
                         </ul>
                     </details>
@@ -1047,7 +1026,158 @@
                 
             </li>
         
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps">Apps</a></summary>
+                        <ul>
+                            
+                            
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai">AI</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/ollama">Ollama</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring">Monitoring</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/grafana">Grafana</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-metrics">VictoriaMetrics</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-logs">VictoriaLogs</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/alertmanager">AlertManager</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security">Security</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/falco">Falco</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/trivy">Trivy</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp">Headlamp</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+
+        
+        
+
     </ul>
+
+    
+    
 
     
 <footer class="footer py-2 px-4 mt-2 border-t border-gray-500/50">
@@ -1073,7 +1203,18 @@
     </div>
 
     
-        <script type="text/javascript" src="https://homelab.madhan.app/goyo.js"></script>
+        <script>
+            
+                
+                
+            
+            window.GOYO_CONFIG = {
+                ...window.GOYO_CONFIG,
+                defaultThemeDark: "goyo-dark",
+                defaultThemeLight: "goyo-light",
+            };
+        </script>
+        <script defer type="text/javascript" src="https://homelab.madhan.app/goyo.js"></script>
         
         <!-- Lazy load search functionality -->
         <script>

@@ -295,85 +295,120 @@ function initSearch() {
   });
 }
 
-function initTheme() {
-  var themeController = document.querySelector(".theme-controller");
-  if (!themeController) {
-    return;
-  }
+function getThemeConfig() {
+  var cfg = window.GOYO_CONFIG || {};
 
-  // Theme mapping - maps user-friendly names to actual DaisyUI theme names
-  var themeMapping = {
-    "goyo-dark": "night",
-    "goyo-light": "lofi",
+  return window.themeConfig || {
+    darkTheme: cfg.defaultThemeDark || "goyo-dark",
+    lightTheme: cfg.defaultThemeLight || "goyo-light",
   };
+}
 
-  // Reverse mapping for checking current theme
-  var reverseThemeMapping = {
-    night: "goyo-dark",
-    lofi: "goyo-light",
-  };
-
-  var fallbackTheme =
-    window && window.fallbackTheme ? window.fallbackTheme : "goyo-dark";
-  var currentUserTheme = localStorage.getItem("theme") || fallbackTheme;
-
-  // Map user theme to actual DaisyUI theme
-  var actualTheme = themeMapping[currentUserTheme] || currentUserTheme;
-  document.documentElement.setAttribute("data-theme", actualTheme);
-  
-  // Set brightness based on current theme (per-theme brightness support)
+function getBrightnessForTheme(theme, config) {
   var darkBrightness = window.darkBrightness || "normal";
   var lightBrightness = window.lightBrightness || "normal";
-  var currentBrightness = (currentUserTheme === "goyo-dark") ? darkBrightness : lightBrightness;
-  document.documentElement.setAttribute("data-brightness", currentBrightness);
+  return (theme === config.darkTheme) ? darkBrightness : lightBrightness;
+}
 
-  // Set checkbox state based on current theme
-  themeController.checked = currentUserTheme === "goyo-dark";
+function initTheme() {
+  var themeControllers = document.querySelectorAll(".theme-controller");
+  if (!themeControllers.length) return;
 
-  // Update logo visibility based on current theme
-  updateLogoForTheme(currentUserTheme);
+  var config = getThemeConfig();
 
-  themeController.addEventListener("change", function (e) {
-    var userTheme = e.target.checked ? "goyo-dark" : "goyo-light";
-    var actualTheme = themeMapping[userTheme];
+  // Prefer early-computed fallback (from head.html) to avoid FOUC
+  var fallbackTheme = window.fallbackTheme || config.darkTheme;
 
-    document.documentElement.setAttribute("data-theme", actualTheme);
-    localStorage.setItem("theme", userTheme); // Store user-friendly name
-    
-    // Update brightness based on the new theme (per-theme brightness support)
-    var newBrightness = (userTheme === "goyo-dark") ? darkBrightness : lightBrightness;
-    document.documentElement.setAttribute("data-brightness", newBrightness);
+  var storedTheme = localStorage.getItem("theme");
+  var activeTheme =
+      (storedTheme === config.darkTheme || storedTheme === config.lightTheme)
+          ? storedTheme
+          : fallbackTheme;
 
-    // Update logo when theme changes
-    updateLogoForTheme(userTheme);
+  document.documentElement.setAttribute("data-theme", activeTheme);
+  document.documentElement.setAttribute(
+      "data-brightness",
+      getBrightnessForTheme(activeTheme, config),
+  );
+
+  // Sync checkboxes (do NOT set tc.value)
+  themeControllers.forEach(tc => {
+    tc.checked = activeTheme === config.darkTheme;
+  });
+
+  updateLogoForTheme(activeTheme, config);
+
+  themeControllers.forEach(function (tc) {
+    tc.addEventListener("change", function (e) {
+      var isDark = e.target.checked;
+      var nextTheme = isDark ? config.darkTheme : config.lightTheme;
+
+      themeControllers.forEach(tc => {
+        tc.checked = isDark;
+        tc.value = nextTheme;
+      });
+
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      document.documentElement.setAttribute(
+          "data-brightness",
+          getBrightnessForTheme(nextTheme, config),
+      );
+
+      localStorage.setItem("theme", nextTheme);
+
+      updateLogoForTheme(nextTheme, config);
+      applyErrataBadges();
+      applyIssueAndForkAlert();
+    });
   });
 }
 
+// Cache logo nodes once
+var logoDarkNode = null;
+var logoLightNode = null;
+
 // Function to update logo visibility based on current theme
-function updateLogoForTheme(userTheme) {
-  var isDarkTheme = userTheme === "goyo-dark";
-
-  // Only query for logo elements once and cache the reference
-  var logoDark = updateLogoForTheme._logoDark;
-  var logoLight = updateLogoForTheme._logoLight;
-  
-  // Cache elements on first call
-  if (logoDark === undefined || logoLight === undefined) {
-    logoDark = updateLogoForTheme._logoDark = document.querySelector('.logo-dark');
-    logoLight = updateLogoForTheme._logoLight = document.querySelector('.logo-light');
+function updateLogoForTheme(theme, config) {
+  if (logoDarkNode === null && logoLightNode === null) {
+    logoDarkNode = document.querySelector(".logo-dark");
+    logoLightNode = document.querySelector(".logo-light");
   }
 
-  // If no theme-specific logos exist, nothing to do
-  if (!logoDark && !logoLight) {
-    return;
-  }
+  if (!logoDarkNode && !logoLightNode) return;
 
-  if (logoDark) {
-    logoDark.classList.toggle('hidden', !isDarkTheme);
-  }
-  if (logoLight) {
-    logoLight.classList.toggle('hidden', isDarkTheme);
-  }
+  var isDark = theme === config.darkTheme;
+  if (logoDarkNode) logoDarkNode.classList.toggle("hidden", !isDark);
+  if (logoLightNode) logoLightNode.classList.toggle("hidden", isDark);
+}
+
+function isDarkMode() {
+  const config = getThemeConfig();
+  return document.documentElement.getAttribute("data-theme") === config.darkTheme;
+}
+
+function applyThemeAwareClasses(selector, lightAttr, darkAttr) {
+  const dark = isDarkMode();
+
+  document.querySelectorAll(selector).forEach((el) => {
+    const lightCls = el.getAttribute(lightAttr) || "";
+    const darkCls = el.getAttribute(darkAttr) || "";
+
+    // remove both variants
+    for (const c of lightCls.split(/\s+/).filter(Boolean)) el.classList.remove(c);
+    for (const c of darkCls.split(/\s+/).filter(Boolean)) el.classList.remove(c);
+
+    // add chosen variant
+    const chosen = (dark ? darkCls : lightCls).split(/\s+/).filter(Boolean);
+    for (const c of chosen) el.classList.add(c);
+  });
+}
+
+function applyErrataBadges() {
+  applyThemeAwareClasses("[data-errata-badge]", "data-badge-light", "data-badge-dark");
+}
+
+function applyIssueAndForkAlert() {
+  applyThemeAwareClasses("[data-issue-and-typo-alert]", "data-issue-and-typo-alert-light", "data-issue-and-typo-alert-dark");
 }
 
 function initToc() {
@@ -395,12 +430,12 @@ function initToc() {
 
   const activateLink = (id) => {
     if (activeId === id) return; // Already active, no need to update
-    
+
     activeId = id;
-    
+
     // Remove active class from all links
     tocLinks.forEach((link) => link.classList.remove("active"));
-    
+
     // Only close details if toc_expand is not enabled
     if (!tocExpand) {
       tocDetails.forEach((detail) => (detail.open = false));
@@ -498,6 +533,8 @@ document.addEventListener("DOMContentLoaded", function () {
   initTheme();
   initToc();
   initMath();
+  applyErrataBadges();
+  applyIssueAndForkAlert();
 
   document.addEventListener("keydown", function (event) {
     if ((event.metaKey || event.ctrlKey) && event.key === "k") {
