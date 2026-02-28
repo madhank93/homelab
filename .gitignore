@@ -13,8 +13,10 @@ core/cloud/bifrost/.secrets.env
 core/cloud/bifrost/netbird/.secrets.env
 
 # ── Kubernetes / Talos cluster access files ───────────────────────────
-kubeconfig*
-talosconfig*
+kubeconfig.yaml
+kubeconfig.json
+talosconfig.yaml
+talosconfig.json
 
 # ── Pulumi ────────────────────────────────────────────────────────────
 # Generated Pulumi provider SDKs
