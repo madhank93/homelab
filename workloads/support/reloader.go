@@ -17,7 +17,7 @@ func NewReloaderChart(scope constructs.Construct, id string, namespace string) *
 
 	cdk8s.NewHelm(chart, jsii.String("reloader"), &cdk8s.HelmProps{
 		Chart:   jsii.String("stakater/reloader"),
-		Version: jsii.String("1.4.6"),
+		Version: jsii.String("2.2.8"),
 		Namespace: jsii.String(namespace),
 		ReleaseName: jsii.String("reloader"),
 		HelmFlags: &[]*string{
