@@ -16,14 +16,11 @@ func NewReloaderChart(scope constructs.Construct, id string, namespace string) *
 	})
 
 	cdk8s.NewHelm(chart, jsii.String("reloader"), &cdk8s.HelmProps{
-		Chart:   jsii.String("stakater/reloader"),
-		Version: jsii.String("2.2.8"),
-		Namespace: jsii.String(namespace),
+		Chart:       jsii.String("reloader"),
+		Repo:        jsii.String("https://stakater.github.io/stakater-charts"),
+		Version:     jsii.String("2.2.8"),
 		ReleaseName: jsii.String("reloader"),
-		HelmFlags: &[]*string{
-			jsii.String("--repo"),
-			jsii.String("https://stakater.github.io/stakater-charts"),
-		},
+		Namespace:   jsii.String(namespace),
 	})
 
 	return &ReloaderChart{chart}
