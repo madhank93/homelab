@@ -6,7 +6,7 @@ on:
       - main
       - 'v*'  # Trigger on release branches (v0.1.5, etc)
     paths:
-      - 'platform/cdk8s/**'
+      - 'workload/**'
       - '.github/workflows/cdk8s-seal-publish.yml'
   workflow_dispatch:
 
@@ -23,15 +23,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          cache-dependency-path: platform/cdk8s/go.sum
+          go-version: '1.25'
+          cache-dependency-path: workload/go.sum
 
       - name: Synthesize CDK8s manifests
-        working-directory: platform/cdk8s
+        working-directory: workload
         run: |
           go mod download
-          go run main.go
-          ls -la ../../app/
+          go run .
+          ls -la ../app/
 
       - name: Deploy Manifests to Branch
         uses: peaceiris/actions-gh-pages@v3

@@ -46,8 +46,8 @@
     "PULUMI_SKIP_UPDATE_CHECK": "true",
     "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
     "HOST_HOME": "${env:HOME}",
-    "TALOSCONFIG": "/workspace/infra/pulumi/talosconfig",
-    "KUBECONFIG": "/workspace/infra/pulumi/kubeconfig"
+    "TALOSCONFIG": "/workspace/core/talosconfig",
+    "KUBECONFIG": "/workspace/core/kubeconfig"
   },
   "hostRequirements": {
     "cpus": 2,

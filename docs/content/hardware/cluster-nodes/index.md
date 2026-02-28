@@ -6,7 +6,7 @@ weight = 10
 
 ## Node Configuration
 
-All nodes are QEMU VMs on a Proxmox host, defined in `infra/pulumi/talos.go`.
+All nodes are QEMU VMs on a Proxmox host, defined in `core/platform/talos.go`.
 
 ### Control Plane Nodes
 

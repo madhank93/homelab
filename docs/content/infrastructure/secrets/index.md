@@ -13,19 +13,19 @@ Secrets management uses a two-tier approach:
 
 {% mermaid() %}
 flowchart TD
-    SOPS["infra/secrets/bootstrap.sops.yaml\nEncrypted with age — safe in git"]
-    LAPTOP["just create-secrets\nDecrypts via sops exec-env"]
-    PULUMI["just pulumi talos up\nDecrypts via sops exec-env"]
+    SOPS["secrets/bootstrap.sops.yaml<br/>Encrypted with age — safe in git"]
+    LAPTOP["just create-secrets<br/>Decrypts via sops exec-env"]
+    PULUMI["just pulumi talos up<br/>Decrypts via sops exec-env"]
 
     subgraph Bootstrap ["Bootstrap Secrets (created once)"]
-        IS["infisical/infisical-secrets\nDB_PASSWORD, AUTH_SECRET, ENCRYPTION_KEY\nPrune=false"]
-        CF["cert-manager/cloudflare-api-token\nCLOUDFLARE_API_TOKEN\nPrune=false"]
+        IS["infisical/infisical-secrets<br/>DB_PASSWORD, AUTH_SECRET, ENCRYPTION_KEY<br/>Prune=false"]
+        CF["cert-manager/cloudflare-api-token<br/>CLOUDFLARE_API_TOKEN<br/>Prune=false"]
     end
 
     subgraph Runtime ["Runtime Secrets (Infisical)"]
-        INFISICAL["Infisical Platform\ninfisical.madhan.app"]
-        ISR["InfisicalSecret CRs\nper-app namespace"]
-        APPSEC["App Secrets\ngrafana-admin, harbor-admin\nn8n-db, rancher-bootstrap"]
+        INFISICAL["Infisical Platform<br/>infisical.madhan.app"]
+        ISR["InfisicalSecret CRs<br/>per-app namespace"]
+        APPSEC["App Secrets<br/>grafana-admin, harbor-admin<br/>n8n-db, rancher-bootstrap"]
     end
 
     SOPS --> LAPTOP
@@ -65,21 +65,21 @@ export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
 
 # 4. Register public key in .sops.yaml at repo root
 # creation_rules:
-#   - path_regex: infra/secrets/.*\.sops$
+#   - path_regex: secrets/.*\.sops$
 #     age: age1abc123...
 
 # 5. Encrypt the bootstrap secrets file
-cp infra/secrets/bootstrap.sops.yaml.example infra/secrets/bootstrap.yaml
-$EDITOR infra/secrets/bootstrap.yaml  # fill in real values
-sops --encrypt infra/secrets/bootstrap.yaml > infra/secrets/bootstrap.sops.yaml
-rm infra/secrets/bootstrap.yaml
+cp secrets/bootstrap.sops.yaml.example secrets/bootstrap.yaml
+$EDITOR secrets/bootstrap.yaml  # fill in real values
+sops --encrypt secrets/bootstrap.yaml > secrets/bootstrap.sops.yaml
+rm secrets/bootstrap.yaml
 ```
 
 ### Day-to-Day
 
 ```bash
 # Edit encrypted file (sops opens $EDITOR, re-encrypts on save)
-sops infra/secrets/bootstrap.sops.yaml
+sops secrets/bootstrap.sops.yaml
 
 # Run Pulumi (secrets injected as env vars, never written to disk)
 just pulumi talos up

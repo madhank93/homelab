@@ -1,0 +1,55 @@
+# NetBird v0.66 Combined Server Configuration
+# Generated from getting-started.sh template — adapted for Authentik IDP
+#
+# Env vars injected at runtime from bifrost/.env (via Docker env_file or sops):
+#   NB_RELAY_SECRET       — relay auth secret  (openssl rand -base64 32)
+#   NB_DATA_STORE_KEY     — datastore encryption key (openssl rand -base64 32)
+#   NB_IDP_MGMT_TOKEN     — Authentik management API token (for user sync)
+#
+# Run from bifrost/ dir:
+#   docker compose up -d netbird-server
+
+server:
+  listenAddress: ":80"
+  exposedAddress: "https://netbird.madhan.app:443"
+
+  stunPorts:
+    - 3478
+
+  metricsPort: 9090
+  healthcheckAddress: ":9000"
+  logLevel: "info"
+  logFile: "console"
+
+  # Relay authentication secret — must match NB_RELAY_SECRET in agents
+  authSecret: "${NB_RELAY_SECRET}"
+
+  dataDir: "/var/lib/netbird"
+
+  auth:
+    # Authentik OIDC issuer for the netbird application
+    issuer: "https://auth.madhan.app/application/o/netbird/"
+    signKeyRefreshEnabled: true
+    dashboardRedirectURIs:
+      - "https://netbird.madhan.app/nb-auth"
+      - "https://netbird.madhan.app/nb-silent-auth"
+    cliRedirectURIs:
+      - "http://localhost:53000/"
+
+  # Trust Traefik as the terminating reverse proxy (172.30.0.10 in bifrost_net)
+  reverseProxy:
+    trustedHTTPProxies:
+      - "172.30.0.10/32"
+
+  store:
+    engine: "sqlite"
+    encryptionKey: "${NB_DATA_STORE_KEY}"
+
+  # Authentik IDP integration — syncs users/groups from Authentik management API
+  idp:
+    managerType: "authentik"
+    authentik:
+      issuer: "https://auth.madhan.app/application/o/netbird/"
+      tokenEndpoint: "https://auth.madhan.app/application/o/token/"
+      managementEndpoint: "https://auth.madhan.app/api/v3/"
+      managementToken: "${NB_IDP_MGMT_TOKEN}"

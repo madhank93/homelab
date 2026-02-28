@@ -1,0 +1,90 @@
+http:
+  routers:
+    # Authentik SSO
+    authentik:
+      rule: "Host(`auth.madhan.app`)"
+      entrypoints: [websecure]
+      tls:
+        certResolver: cloudflare-dns
+      service: authentik-svc
+
+    # NetBird — gRPC (signal + management)
+    netbird-grpc:
+      rule: "Host(`netbird.madhan.app`) && (PathPrefix(`/signalexchange.SignalExchange/`) || PathPrefix(`/management.ManagementService/`))"
+      entrypoints: [websecure]
+      tls:
+        certResolver: cloudflare-dns
+      service: netbird-server-h2c
+      priority: 100
+
+    # NetBird — relay, WebSocket, API, OAuth2
+    netbird-backend:
+      rule: "Host(`netbird.madhan.app`) && (PathPrefix(`/relay`) || PathPrefix(`/ws-proxy/`) || PathPrefix(`/api`) || PathPrefix(`/oauth2`))"
+      entrypoints: [websecure]
+      tls:
+        certResolver: cloudflare-dns
+      service: netbird-server
+      priority: 100
+
+    # NetBird — dashboard (catch-all, lowest priority)
+    netbird-dashboard:
+      rule: "Host(`netbird.madhan.app`)"
+      entrypoints: [websecure]
+      tls:
+        certResolver: cloudflare-dns
+      service: netbird-dashboard-svc
+      priority: 1
+
+  services:
+    authentik-svc:
+      loadBalancer:
+        servers:
+          - url: "http://authentik-server:9000"
+
+    # Backend for all public K8s services (grafana, harbor, etc.)
+    # Reachable via WireGuard mesh through netbird-agent
+    k8s-gateway:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.220"
+
+    netbird-server:
+      loadBalancer:
+        servers:
+          - url: "http://netbird-server:80"
+
+    netbird-server-h2c:
+      loadBalancer:
+        servers:
+          - url: "h2c://netbird-server:80"
+
+    netbird-dashboard-svc:
+      loadBalancer:
+        servers:
+          - url: "http://netbird-dashboard:80"
+
+  middlewares:
+    authentik-forwardauth:
+      forwardAuth:
+        address: "http://authentik-server:9000/outpost.goauthentik.io/auth/nginx"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - X-authentik-username
+          - X-authentik-groups
+          - X-authentik-email
+
+tcp:
+  routers:
+    # TCP passthrough for NetBird expose feature (proxy.madhan.app)
+    # Wildcard HostSNI is not supported in Traefik TCP routers — use base domain only
+    netbird-proxy:
+      rule: "HostSNI(`proxy.madhan.app`)"
+      service: netbird-proxy-svc
+      tls:
+        passthrough: true
+      priority: 100
+  services:
+    netbird-proxy-svc:
+      loadBalancer:
+        servers:
+          - address: "netbird-proxy:8443"

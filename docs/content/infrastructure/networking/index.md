@@ -56,8 +56,8 @@ spec:
 {% mermaid() %}
 flowchart LR
     CLIENT[External Client]
-    GW[homelab-gateway\nCiliumLoadBalancerIP\n192.168.1.220]
-    HR_APP[HTTPRoute\napp.madhan.app]
+    GW[homelab-gateway<br/>CiliumLoadBalancerIP<br/>192.168.1.220]
+    HR_APP[HTTPRoute<br/>app.madhan.app]
     SVC[ClusterIP Service]
     POD[App Pod]
 

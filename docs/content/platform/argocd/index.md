@@ -1,98 +1,99 @@
 +++
 title = "ArgoCD"
-description = "ArgoCD Helm installation, ApplicationSet, and sync configuration."
+description = "ArgoCD Helm bootstrap, ApplicationSet, and sync configuration."
 weight = 10
 +++
 
-## Helm Installation
+## Overview
 
-ArgoCD chart v9.4.2 is installed in the `argocd` namespace by Pulumi (`infra/pulumi/argocd.go`).
+ArgoCD is installed once by Pulumi (`core/platform/argocd.go`) then manages itself and all workloads via GitOps from the `v*-manifests` branch.
 
-Key Helm values:
+**Code:** `core/platform/argocd.go` · **Namespace:** `argocd`
 
-```yaml
-server:
-  service:
-    type: LoadBalancer  # Cilium L2 assigns an IP from the pool
-configs:
-  params:
-    server.insecure: false
+## Helm installation
+
+```go
+// core/platform/argocd.go
+helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
+    Chart:   pulumi.String("argo-cd"),
+    Version: pulumi.String("9.4.2"),
+    RepositoryOpts: &helm.RepositoryOptsArgs{
+        Repo: pulumi.String("https://argoproj.github.io/argo-helm"),
+    },
+    Namespace:       pulumi.String("argocd"),
+    CreateNamespace: pulumi.Bool(true),
+    Values: pulumi.Map{
+        "server": pulumi.Map{
+            "service": pulumi.Map{
+                "type": pulumi.String("LoadBalancer"), // Cilium L2 assigns IP
+            },
+        },
+    },
+})
 ```
-
-ArgoCD is accessible via:
-- `http://argocd.local` (HTTPRoute via Gateway API)
-- `https://argocd.madhan.app` (TLSRoute passthrough — once wildcard cert exists)
 
 ## ApplicationSet
 
-A single `ApplicationSet` (`cots-applications`) bootstraps all platform apps. It watches the `v0.1.5-manifests` branch of the homelab repo:
+One `ApplicationSet` watches the `v*-manifests` branch. Every top-level directory under `app/` automatically becomes an ArgoCD Application.
 
 ```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: homelab-apps
+  namespace: argocd
 spec:
+  goTemplate: true
   generators:
     - git:
         repoURL: https://github.com/madhank93/homelab.git
         revision: v0.1.5-manifests
         directories:
-          - path: "*"   # Each top-level directory = one Application
+          - path: "*"
   template:
+    metadata:
+      name: "{{ .path.basename }}"
     spec:
+      project: default
       source:
         repoURL: https://github.com/madhank93/homelab.git
         targetRevision: v0.1.5-manifests
-        path: "{{path}}"
+        path: "{{ .path.path }}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: "{{path.basename}}"
+        namespace: "{{ .path.basename }}"
       syncPolicy:
         automated:
           prune: true
           selfHeal: true
         syncOptions:
-          - CreateNamespace=true
           - ServerSideApply=true
 ```
 
-## Sync Options
+## Key settings
 
-### `ServerSideApply=true`
+| Setting | Value | Reason |
+|---|---|---|
+| `ServerSideApply=true` | ApplicationSet level | kube-prometheus-stack CRDs exceed the 262 KB annotation limit |
+| `ignoreDifferences` on `InfisicalSecret` | per-app | Infisical CRD schema missing `projectSlug` breaks SSA validation |
+| `Prune=false` annotation on bootstrap Secrets | per-Secret | Prevents ArgoCD deleting hand-created `infisical-service-token` / `cloudflare-api-token` |
 
-Required for `kube-prometheus-stack` CRDs which exceed the 262 KB `kubectl.kubernetes.io/last-applied-configuration` annotation limit. Without SSA, these CRDs fail to apply.
+## HTTPRoute (Gateway API)
 
-### `ServerSideApply=false` on InfisicalSecret
+ArgoCD is exposed via a Gateway API `HTTPRoute` to `argocd.local` inside the LAN.
 
-InfisicalSecret resources must carry the annotation:
+## Operations
 
-```yaml
-argocd.argoproj.io/sync-options: ServerSideApply=false
+```bash
+# Apply ArgoCD config changes
+just core platform up
+
+# Manual sync
+argocd app sync <app-name>
+
+# List all apps and health
+argocd app list
+
+# Re-run bootstrap (after cluster rebuild)
+just core platform up
 ```
-
-This is because the Infisical CRD schema omits `projectSlug` from `serviceToken.secretsScope`. ArgoCD's SSA validation rejects the field as "not declared in schema". Disabling SSA for these resources falls back to client-side apply.
-
-> **Note:** `ignoreDifferences` skips drift detection but does NOT bypass apply failures. The SSA annotation must be on the resource itself.
-
-### `ignoreDifferences` for InfisicalSecret
-
-The ApplicationSet also configures `ignoreDifferences` to skip spec drift detection for `InfisicalSecret` resources:
-
-```yaml
-ignoreDifferences:
-  - group: secrets.infisical.com
-    kind: InfisicalSecret
-    jsonPointers:
-      - /spec
-```
-
-### `Prune=false` on Bootstrap Secrets
-
-The two bootstrap Secrets (`infisical-secrets`, `cloudflare-api-token`) carry:
-
-```yaml
-argocd.argoproj.io/sync-options: Prune=false
-```
-
-These Secrets are not in the manifests branch. Without `Prune=false`, ArgoCD would delete them on the next sync.
-
-## App-of-Apps Pattern
-
-Each directory under `app/` in the manifests branch becomes an ArgoCD `Application` automatically. No manual Application creation is needed when adding a new CDK8s app — just add an entry in `platform/cdk8s/main.go` and the CI pipeline creates the directory.

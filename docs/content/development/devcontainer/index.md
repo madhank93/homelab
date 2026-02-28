@@ -51,8 +51,8 @@ The devcontainer mounts several host paths into the container:
 |----------|-------|---------|
 | `GOPATH` | `/home/vscode/go` | Go workspace |
 | `PULUMI_SKIP_UPDATE_CHECK` | `true` | Suppress Pulumi update nags |
-| `TALOSCONFIG` | `/workspace/infra/pulumi/talosconfig` | Points `talosctl` to the cluster config |
-| `KUBECONFIG` | `/workspace/infra/pulumi/kubeconfig` | Points `kubectl` to the cluster |
+| `TALOSCONFIG` | `/workspace/core/talosconfig` | Points `talosctl` to the cluster config |
+| `KUBECONFIG` | `/workspace/core/kubeconfig` | Points `kubectl` to the cluster |
 | `LOCAL_WORKSPACE_FOLDER` | `${localWorkspaceFolder}` | Host workspace path (for scripts) |
 | `HOST_HOME` | `${env:HOME}` | Host home directory (for SOPS age key path) |
 

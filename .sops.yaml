@@ -1,6 +1,6 @@
 # SOPS configuration for homelab secrets
 # path_regex matches the INPUT file (the plaintext file being encrypted).
-# Any file under infra/secrets/ will be encrypted with the age public key below.
+# Any file under secrets/ will be encrypted with the age public key below.
 #
 # One-time setup:
 #   1. Generate an age key: age-keygen -o ~/.config/sops/age/keys.txt
@@ -11,5 +11,5 @@
 # For CI (GitHub Actions), add the full content of ~/.config/sops/age/keys.txt
 # as the repository secret: SOPS_AGE_KEY
 creation_rules:
-  - path_regex: ^infra/secrets/
+  - path_regex: ^secrets/
     age: age10u7e2mjdns45vjdel93m56m6anydtcwu3xgzz4fvfz8almnujckqkypvwn

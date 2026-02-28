@@ -19,10 +19,12 @@ edit_url = "https://github.com/madhank93/homelab/edit/main/docs"
 
 nav = [
     { name = "Getting Started", url = "/getting-started", type = "url", icon = "fa-solid fa-rocket" },
+    { name = "Architecture", url = "/architecture", type = "url", icon = "fa-solid fa-diagram-project" },
     { name = "Hardware", url = "/hardware", type = "url", icon = "fa-solid fa-server" },
     { name = "Infrastructure", url = "/infrastructure", type = "url", icon = "fa-solid fa-network-wired" },
     { name = "Platform", url = "/platform", type = "url", icon = "fa-solid fa-layer-group" },
-    { name = "Apps", url = "/apps", type = "url", icon = "fa-solid fa-cubes" },
+    { name = "Workloads", url = "/workloads", type = "url", icon = "fa-solid fa-cubes" },
+    { name = "Development", url = "/development", type = "url", icon = "fa-solid fa-code" },
     { name = "GitHub", url = "https://github.com/madhank93/homelab", type = "url", icon = "fa-brands fa-github" },
 ]
 

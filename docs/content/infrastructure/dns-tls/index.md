@@ -22,7 +22,7 @@ The TLS setup has a circular dependency that must be broken manually on a fresh 
 ```
 cert-manager needs cloudflare-api-token Secret
   → cloudflare-api-token is created by: just create-secrets
-    → just create-secrets reads from: infra/secrets/bootstrap.sops.yaml (SOPS-encrypted)
+    → just create-secrets reads from: secrets/bootstrap.sops.yaml (SOPS-encrypted)
 ```
 
 Run `just create-secrets` before `just pulumi platform up` on a fresh cluster.
