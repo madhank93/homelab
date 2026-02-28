@@ -17,6 +17,11 @@ kubeconfig.yaml
 kubeconfig.json
 talosconfig.yaml
 talosconfig.json
+core/kubeconfig
+core/talosconfig
+scripts/kubeconfig
+scripts/talosconfig
+
 
 # ── Pulumi ────────────────────────────────────────────────────────────
 # Generated Pulumi provider SDKs
