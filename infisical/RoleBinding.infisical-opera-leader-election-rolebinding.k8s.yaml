@@ -1,6 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  labels:
+    app.kubernetes.io/instance: infisical-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/version: v0.10.25
+    helm.sh/chart: secrets-operator-v0.10.25
   name: infisical-opera-leader-election-rolebinding
   namespace: infisical
 roleRef:
@@ -10,4 +16,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: infisical-opera-controller-manager
-    namespace: infisical
+    namespace: default
