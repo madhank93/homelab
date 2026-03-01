@@ -240,10 +240,14 @@ func generateBifrostSecretsEnv() error {
 		{"NB_RELAY_SECRET", "NB_RELAY_SECRET", true},
 
 		// Authentik bootstrap token — Authentik creates this as the akadmin API token
-		// on first boot (AUTHENTIK_BOOTSTRAP_TOKEN env var). bootstrap.sh then reads it
-		// to call the Authentik API and writes it as NB_IDP_MGMT_TOKEN for NetBird.
+		// on first boot (AUTHENTIK_BOOTSTRAP_TOKEN env var in docker-compose.yml).
 		// Same SOPS value reused across fresh deployments.
 		{"AUTHENTIK_TOKEN", "AUTHENTIK_BOOTSTRAP_TOKEN", true},
+
+		// NetBird initial admin password — bootstrap.sh generates a bcrypt hash from
+		// this and substitutes ${NB_OWNER_HASH} in netbird/config.yaml before starting
+		// netbird-server. Used only for the embedded Dex owner account on first login.
+		{"NB_OWNER_PASSWORD", "NB_OWNER_PASSWORD", true},
 
 		// NetBird Personal Access Token for netbird-proxy.
 		// Created in the NetBird UI after first login. Optional on initial deploy —
@@ -367,7 +371,7 @@ func computeBifrostHash() (string, error) {
 	// Mix in secret values so the hash changes on secret rotation.
 	for _, k := range []string{
 		"CLOUDFLARE_API_TOKEN", "NB_DATA_STORE_KEY", "NB_RELAY_SECRET",
-		"AUTHENTIK_TOKEN", "NB_PROXY_TOKEN", "NB_BIFROST_SETUP_KEY",
+		"AUTHENTIK_TOKEN", "NB_OWNER_PASSWORD", "NB_PROXY_TOKEN", "NB_BIFROST_SETUP_KEY",
 		"AUTHENTIK_SECRET_KEY", "AUTHENTIK_POSTGRESQL_PASSWORD",
 	} {
 		h.Write([]byte(k + "=" + os.Getenv(k) + "\n"))

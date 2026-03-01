@@ -1,11 +1,15 @@
 package cloud
 
 import (
-	"github.com/madhank93/homelab/core/internal/cfg"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/madhank93/homelab/core/internal/cfg"
 	"github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2025/authentik"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -21,12 +25,59 @@ const (
 	GithubClientId = "Ov23liUPVh4nPuUJzGFp"
 )
 
+// identStageInfo holds the fields we need from the Authentik REST API response
+// for the default-authentication-identification stage.
+type identStageInfo struct {
+	PK         string   `json:"pk"`
+	UserFields []string `json:"user_fields"`
+}
+
+// getDefaultIdentificationStage fetches the default-authentication-identification
+// stage from the Authentik REST API and returns its UUID and user_fields.
+// Used to import and update the stage via Pulumi without a Lookup data source.
+func getDefaultIdentificationStage(apiURL, token string) (*identStageInfo, error) {
+	url := apiURL + "/api/v3/stages/identification/?name=default-authentication-identification"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET identification stage: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GET identification stage HTTP %d: %s", resp.StatusCode, body)
+	}
+
+	var result struct {
+		Results []identStageInfo `json:"results"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("parse identification stage response: %w", err)
+	}
+	if len(result.Results) == 0 {
+		return nil, fmt.Errorf("default-authentication-identification stage not found in Authentik")
+	}
+	return &result.Results[0], nil
+}
+
 type AuthentikContext struct {
 	Ctx          *pulumi.Context
 	Provider     *authentik.Provider
 	FlowAuth     pulumi.StringInput
 	FlowInvalid  pulumi.StringInput
 	FlowImplicit pulumi.StringInput
+	FlowExplicit pulumi.StringInput
 	Scopes       pulumi.StringArrayInput
 	SigningKey   pulumi.StringInput
 }
@@ -73,6 +124,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		FlowAuth:     mustLookupFlow(ctx, provider, "default-authentication-flow"),
 		FlowInvalid:  mustLookupFlow(ctx, provider, "default-provider-invalidation-flow"),
 		FlowImplicit: mustLookupFlow(ctx, provider, "default-provider-authorization-implicit-consent"),
+		FlowExplicit: mustLookupFlow(ctx, provider, "default-provider-authorization-explicit-consent"),
 	}
 
 	// Signing Key (Self-signed default)
@@ -152,7 +204,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	ctx.Export("NetbirdClientID", pulumi.String("aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT"))
 
 	// GitHub SSO Source
-	_, err = authentik.NewSourceOauth(ctx, "source-github", &authentik.SourceOauthArgs{
+	githubSource, err := authentik.NewSourceOauth(ctx, "source-github", &authentik.SourceOauthArgs{
 		Name:               pulumi.String(GithubName),
 		Slug:               pulumi.String(GithubSlug),
 		AuthenticationFlow: ac.FlowAuth,
@@ -167,18 +219,60 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
+	// Bind GitHub source to the default identification stage so the "Login with
+	// GitHub" button appears on the Authentik login page.
+	// We fetch the stage UUID via REST API (no Lookup data source exists in the SDK),
+	// then import + update the stage. pulumi.Import is a no-op on re-runs once the
+	// resource is already in Pulumi state.
+	identStage, err := getDefaultIdentificationStage(AuthUrl, token)
+	if err != nil {
+		return fmt.Errorf("fetch default identification stage: %w", err)
+	}
+	fmt.Printf("DEBUG: Identification stage UUID: %s, UserFields: %v\n", identStage.PK, identStage.UserFields)
+
+	userFieldInputs := make(pulumi.StringArray, len(identStage.UserFields))
+	for i, f := range identStage.UserFields {
+		userFieldInputs[i] = pulumi.String(f)
+	}
+
+	_, err = authentik.NewStageIdentification(ctx, "stage-default-identification",
+		&authentik.StageIdentificationArgs{
+			Name:       pulumi.String("default-authentication-identification"),
+			UserFields: userFieldInputs,
+			Sources:    pulumi.StringArray{githubSource.Uuid},
+		},
+		pulumi.Provider(provider),
+		pulumi.Import(pulumi.ID(identStage.PK)),
+		pulumi.DependsOn([]pulumi.Resource{githubSource}),
+	)
+	if err != nil {
+		return err
+	}
+
 	// --- Applications ---
 
-	// Netbird (SPA -> Public)
-	// Requires a valid Signing Key for JWT verification
+	// Netbird — confidential OIDC app used by embedded Dex as an upstream connector.
+	// The combined server always runs embedded Dex; users authenticate against Dex,
+	// which federates to Authentik. Dex's callback URI is always issuer + "/callback".
+	// Configure this connector: NetBird → Settings → Identity Providers → Add → Authentik
+	//   Client ID:     aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT
+	//   Client Secret: NETBIRD_CLIENT_SECRET from sops
+	//   Issuer:        https://auth.madhan.app/application/o/netbird/
+	netbirdSecret := cfg.K.String("NETBIRD_CLIENT_SECRET")
+	if netbirdSecret == "" {
+		return fmt.Errorf("missing NETBIRD_CLIENT_SECRET in config")
+	}
 	if err := createOIDCApp(ac, OIDCApp{
-		Name:       "Netbird",
-		Slug:       "netbird",
-		ClientID:   "aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT",
-		ClientType: "public",
-		LaunchURL:  "https://netbird.madhan.app/",
+		Name:         "Netbird",
+		Slug:         "netbird",
+		ClientID:     "aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT",
+		ClientSecret: netbirdSecret,
+		ClientType:   "confidential",
+		LaunchURL:    "https://netbird.madhan.app/",
 		Redirects: []string{
-			"https://netbird.madhan.app/.*",
+			// Embedded Dex callback: issuer (/oauth2) + /callback
+			"https://netbird.madhan.app/oauth2/callback",
+			// NetBird CLI device-auth callback
 			"http://localhost:53000",
 		},
 	}); err != nil {
@@ -266,14 +360,15 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 	}
 
 	providerArgs := &authentik.ProviderOauth2Args{
-		Name:                pulumi.String(app.Name),
-		ClientId:            pulumi.String(app.ClientID),
-		ClientType:          pulumi.String(clientType),
-		AuthorizationFlow:   ac.FlowAuth,
-		InvalidationFlow:    ac.FlowInvalid,
-		PropertyMappings:    ac.Scopes,
-		AllowedRedirectUris: redirectMap,
-		SubMode:             pulumi.String("user_id"),
+		Name:                  pulumi.String(app.Name),
+		ClientId:              pulumi.String(app.ClientID),
+		ClientType:            pulumi.String(clientType),
+		AuthorizationFlow:     ac.FlowExplicit,
+		InvalidationFlow:      ac.FlowInvalid,
+		PropertyMappings:      ac.Scopes,
+		AllowedRedirectUris:   redirectMap,
+		SubMode:               pulumi.String("user_id"),
+		IncludeClaimsInIdToken: pulumi.Bool(true),
 		// IMPORTANT: Signing Key is required for verifying JWTs in OIDC (especially for Netbird)
 		SigningKey: ac.SigningKey,
 		// Match NetBird documentation recommendation

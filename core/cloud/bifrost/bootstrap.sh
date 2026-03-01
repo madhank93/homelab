@@ -2,11 +2,13 @@
 # ==============================================================================
 # bifrost/bootstrap.sh
 #
-# Starts bifrost services in dependency order, gates each step on health checks,
-# and auto-provisions NB_IDP_MGMT_TOKEN by creating an Authentik API token via
-# `docker exec authentik-server ak shell` (Django ORM — bypasses the unreliable
-# AUTHENTIK_BOOTSTRAP_TOKEN env-var mechanism in Authentik 2025.10+).
-# Logs every action with timestamps. Never prints secret values.
+# Starts bifrost services in dependency order, gates each step on health checks.
+# Processes netbird/config.yaml by substituting secret placeholders before
+# starting netbird-server.
+#
+# NetBird v0.66 combined server ALWAYS runs embedded Dex OIDC.
+# auth.issuer is the NetBird server's own /oauth2 URL.
+# After first deploy: configure Authentik connector via NetBird Settings UI.
 #
 # Invoked via: pulumi remote.Command → bash /etc/bifrost/bootstrap.sh
 # Runs as:     root on the Hetzner VPS
@@ -114,7 +116,7 @@ preflight() {
   # Validate required secrets
   log "  checking required secrets in .secrets.env ..."
   local missing=0
-  for var in CF_DNS_API_TOKEN NB_DATA_STORE_KEY NB_RELAY_SECRET AUTHENTIK_BOOTSTRAP_TOKEN; do
+  for var in CF_DNS_API_TOKEN NB_DATA_STORE_KEY NB_RELAY_SECRET AUTHENTIK_BOOTSTRAP_TOKEN NB_OWNER_PASSWORD; do
     if has_secret "$var"; then
       log "  ✓  $var  ($(secret_len "$var") chars)"
     else
@@ -128,139 +130,73 @@ preflight() {
   fi
 
   # Warn about optional secrets
-  for var in NB_IDP_MGMT_TOKEN NB_PROXY_TOKEN NB_BIFROST_SETUP_KEY; do
+  for var in NB_PROXY_TOKEN NB_BIFROST_SETUP_KEY; do
     if has_secret "$var"; then
       log "  ✓  $var  ($(secret_len "$var") chars)"
     else
-      log "  ⚠  $var  not set  (will be provisioned or skipped below)"
+      log "  ⚠  $var  not set  (will be skipped below)"
     fi
   done
 
   log "  pre-flight OK"
 }
 
-# ── Provision NB_IDP_MGMT_TOKEN ──────────────────────────────────────────────
-# Uses `docker exec authentik-server ak shell` to create or retrieve the akadmin
-# API token via the Authentik Django ORM.
-#
-# Why not AUTHENTIK_BOOTSTRAP_TOKEN env var?
-#   In Authentik ≥ 2025.10 the env var is present in the container but the
-#   bootstrap job does NOT write the token to the database on a fresh deploy.
-#   Directly calling ak shell is reliable and idempotent.
-#
-# Token identifier: 'netbird-mgmt-token' — stable across re-runs.
-# Token key:        taken from AUTHENTIK_BOOTSTRAP_TOKEN in .secrets.env so
-#                   it matches the SOPS-managed value and survives rotations.
-# Output protocol:  prints "TOKEN:<key>" to stdout on success; errors go to
-#                   stderr so they appear in logs without exposing token values.
-# Retries up to 12 times (2 min) to tolerate slow Django startup.
-
-provision_nb_idp_mgmt_token() {
-  local max_attempts=12
-  local attempt=0
-
-  log "  provisioning NB_IDP_MGMT_TOKEN via authentik-server ak shell ..."
-
-  while (( attempt < max_attempts )); do
-    attempt=$(( attempt + 1 ))
-    log "  [ak shell  attempt=${attempt}/${max_attempts}]"
-
-    local out
-    out=$(docker exec authentik-server ak shell -c "
-from authentik.core.models import Token, TokenIntents, User
-import os, sys
-
-key = os.environ.get('AUTHENTIK_BOOTSTRAP_TOKEN', '')
-if not key:
-    print('ERROR: AUTHENTIK_BOOTSTRAP_TOKEN not set in container environment', file=sys.stderr)
-    sys.exit(1)
-
-try:
-    user = User.objects.filter(username='akadmin').first()
-    if not user:
-        print('ERROR: akadmin user not found in DB', file=sys.stderr)
-        sys.exit(1)
-
-    t, created = Token.objects.get_or_create(
-        identifier='netbird-mgmt-token',
-        defaults={
-            'user': user,
-            'intent': TokenIntents.INTENT_API,
-            'key': key,
-            'expiring': False,
-            'description': 'NetBird IDP management token (auto-provisioned by bootstrap.sh)',
-        }
-    )
-    if not created and t.key != key:
-        # Secret was rotated in SOPS — update the stored key to match.
-        t.key = key
-        t.save(update_fields=['key'])
-        print('updated existing token key', file=sys.stderr)
-    elif created:
-        print('created new token', file=sys.stderr)
-    else:
-        print('token already exists with matching key', file=sys.stderr)
-
-    # Only this line goes to stdout — bash greps for the TOKEN: prefix.
-    print(f'TOKEN:{t.key}')
-    sys.exit(0)
-except Exception as exc:
-    print(f'ERROR: {exc}', file=sys.stderr)
-    sys.exit(1)
-" 2>&1)
-
-    local token
-    token=$(printf '%s\n' "$out" | grep '^TOKEN:' | cut -d: -f2-)
-
-    if [ -n "$token" ]; then
-      log "  token provisioned ($(printf '%s' "$token" | wc -c | tr -d ' ') chars)"
-      echo "NB_IDP_MGMT_TOKEN=${token}" >> "$BIFROST/.secrets.env"
-      log "  NB_IDP_MGMT_TOKEN written to .secrets.env ✓"
-      return 0
-    fi
-
-    # Log non-secret diagnostic lines (exclude any line matching TOKEN:)
-    log "  ak shell did not return a token — diagnostic output:"
-    printf '%s\n' "$out" | grep -v '^TOKEN:' | head -5 | while IFS= read -r line; do
-      log "    $line"
-    done
-    sleep 10
-  done
-
-  die "Failed to provision NB_IDP_MGMT_TOKEN after ${max_attempts} attempts — check authentik-server logs"
-}
-
 # ── Process netbird config template ──────────────────────────────────────────
 # NetBird v0.66 does NOT expand ${VAR} in its config.yaml — the YAML is read
-# verbatim. This function substitutes the three secret placeholders in-place
-# using sed before netbird-server is started.
+# verbatim. This function substitutes secret placeholders before starting
+# netbird-server.
 #
 # Placeholders in netbird/config.yaml:
-#   ${NB_RELAY_SECRET}    authSecret
-#   ${NB_DATA_STORE_KEY}  store.encryptionKey
-#   ${NB_IDP_MGMT_TOKEN}  idp.authentik.managementToken
+#   ${NB_RELAY_SECRET}    authSecret         (base64 — safe with sed)
+#   ${NB_DATA_STORE_KEY}  store.encryptionKey (base64 — safe with sed)
+#   ${NB_OWNER_HASH}      auth.owner.password (bcrypt hash — contains $ and /,
+#                                              must use Python for substitution)
 #
-# Safe: base64 values (relay/store) only use A-Za-z0-9+/= which never conflict
-# with the sed | delimiter. The IDP token is alphanumeric only.
-# Idempotent: if placeholders are already gone (re-run, CopyToRemote unchanged)
-# the sed commands match nothing and the file is unchanged.
+# Idempotent: if placeholders are already gone (re-run), the commands match
+# nothing and the file is unchanged.
 
 process_netbird_config() {
   local cfg="$BIFROST/netbird/config.yaml"
-  local relay store idp
+  local relay store owner_pass owner_hash
 
   relay=$(read_secret NB_RELAY_SECRET)
   store=$(read_secret NB_DATA_STORE_KEY)
-  idp=$(read_secret NB_IDP_MGMT_TOKEN)
+  owner_pass=$(read_secret NB_OWNER_PASSWORD)
+
+  # Generate bcrypt hash from owner password.
+  # Bcrypt hash contains $, /, and other chars that break sed — use Python.
+  log "  generating bcrypt hash for owner password ..."
+  python3 -c "import bcrypt" 2>/dev/null \
+    || { log "  installing python3-bcrypt ..."; apt-get install -y python3-bcrypt > /dev/null 2>&1; }
+
+  owner_hash=$(_OWNER_PASS="$owner_pass" python3 - <<'PYEOF'
+import bcrypt, os
+p = os.environ['_OWNER_PASS'].encode()
+print(bcrypt.hashpw(p, bcrypt.gensalt(10)).decode())
+PYEOF
+)
+  log "  bcrypt hash generated ($(printf '%s' "$owner_hash" | wc -c | tr -d ' ') chars)"
 
   log "  substituting secrets in netbird/config.yaml ..."
+
+  # Step 1: substitute base64 values via sed (safe — no special delimiter chars)
   local tmp
   tmp=$(mktemp)
   sed \
     -e 's|${NB_RELAY_SECRET}|'"${relay}"'|g' \
     -e 's|${NB_DATA_STORE_KEY}|'"${store}"'|g' \
-    -e 's|${NB_IDP_MGMT_TOKEN}|'"${idp}"'|g' \
     "$cfg" > "$tmp" && mv "$tmp" "$cfg"
+
+  # Step 2: substitute bcrypt hash via Python (safe — handles $2b$10$... correctly)
+  _OWNER_HASH="$owner_hash" python3 - "$cfg" <<'PYEOF'
+import sys, os
+with open(sys.argv[1]) as f:
+    d = f.read()
+d = d.replace('${NB_OWNER_HASH}', os.environ['_OWNER_HASH'])
+with open(sys.argv[1], 'w') as f:
+    f.write(d)
+PYEOF
+
   log "  netbird/config.yaml processed ✓"
 }
 
@@ -268,38 +204,38 @@ process_netbird_config() {
 
 preflight
 
-log_step "1/6  traefik — TLS termination + routing"
+log_step "1/5  traefik — TLS termination + routing"
 $COMPOSE up -d traefik
 wait_healthy traefik 60
 
-log_step "2/6  authentik-postgres — database"
+log_step "2/5  authentik-postgres — database"
 $COMPOSE up -d authentik-postgres
 wait_healthy authentik-postgres 120
 
-log_step "3/6  authentik-server + authentik-worker — SSO"
+log_step "3/5  authentik-server + authentik-worker — SSO"
 $COMPOSE up -d authentik-server authentik-worker
 log "  containers started — waiting for Authentik to be healthy ..."
 wait_healthy authentik-server 300
 
-# ── Provision NB_IDP_MGMT_TOKEN (between steps 3 and 4) ──────────────────────
-
-if has_secret "NB_IDP_MGMT_TOKEN"; then
-  log "  NB_IDP_MGMT_TOKEN already in .secrets.env ($(secret_len NB_IDP_MGMT_TOKEN) chars) — skipping provisioning"
-else
-  provision_nb_idp_mgmt_token
-fi
-
+# Process netbird config before starting netbird-server
 process_netbird_config
 
-log_step "4/6  netbird-server — management + signal + relay"
-$COMPOSE up -d netbird-server
+log_step "4/5  netbird-server + netbird-dashboard — NetBird"
+$COMPOSE up -d netbird-server netbird-dashboard
 wait_healthy netbird-server 120
-
-log_step "5/6  netbird-dashboard — UI"
-$COMPOSE up -d netbird-dashboard
 wait_healthy netbird-dashboard 60
 
-log_step "6/6  netbird-proxy — TCP expose feature"
+log ""
+log "  ┌─ First-time setup (if not already done) ────────────────────────┐"
+log "  │  1. Open https://netbird.madhan.app                              │"
+log "  │  2. Log in with local admin: admin@madhan.app + NB_OWNER_PASSWORD│"
+log "  │  3. Settings → Identity Providers → Add → Authentik              │"
+log "  │     Client ID:     aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT     │"
+log "  │     Client Secret: (from sops: NETBIRD_CLIENT_SECRET)            │"
+log "  │     Issuer:        https://auth.madhan.app/application/o/netbird/│"
+log "  └─────────────────────────────────────────────────────────────────┘"
+
+log_step "5/5  netbird-proxy — TCP expose feature"
 if has_secret "NB_PROXY_TOKEN"; then
   log "  NB_PROXY_TOKEN present ($(secret_len NB_PROXY_TOKEN) chars)"
   $COMPOSE up -d --force-recreate netbird-proxy
@@ -308,7 +244,7 @@ else
   log "  NB_PROXY_TOKEN not set — netbird-proxy skipped"
   log ""
   log "  ┌─ One-time setup needed ──────────────────────────────────────┐"
-  log "  │  1. Open https://netbird.madhan.app  →  log in via Authentik  │"
+  log "  │  1. Open https://netbird.madhan.app  →  log in               │"
   log "  │  2. Settings → Access Tokens → Create Personal Access Token   │"
   log "  │  3. sops edit secrets/bootstrap.sops.yaml                     │"
   log "  │     Add:  NB_PROXY_TOKEN=<token>                              │"

@@ -219,5 +219,30 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	})
 
+	// Fix: secrets-operator chart v0.10.23 hardcodes subjects[0].namespace: default
+	// in the leader election RoleBinding. This override corrects it so the controller
+	// can acquire the leader lease and actually process InfisicalSecret resources.
+	// Rendered after the Helm block so it is applied last by ArgoCD.
+	leaderRB := cdk8s.NewApiObject(chart, jsii.String("infisical-operator-leader-rb-fix"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
+		Kind:       jsii.String("RoleBinding"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("infisical-opera-leader-election-rolebinding"),
+			Namespace: jsii.String(namespace),
+		},
+	})
+	leaderRB.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/roleRef"), map[string]any{
+		"apiGroup": "rbac.authorization.k8s.io",
+		"kind":     "Role",
+		"name":     "infisical-opera-leader-election-role",
+	}))
+	leaderRB.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/subjects"), []map[string]any{
+		{
+			"kind":      "ServiceAccount",
+			"name":      "infisical-opera-controller-manager",
+			"namespace": namespace,
+		},
+	}))
+
 	return chart
 }

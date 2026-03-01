@@ -12,11 +12,12 @@ This guide walks through the complete deployment sequence. Each phase depends on
 Phase 0  →  Local prerequisites + SOPS secrets setup        (one-time)
 Phase 1  →  Bootstrap Kubernetes cluster                     (~15 min)
 Phase 2  →  Infisical first-time setup                       (~10 min)
-Phase 3  →  Authentik apps (Pulumi)                          (~2 min)
-Phase 4  →  Bifrost VPS deploy — fully automated             (~8 min)
-Phase 5  →  NetBird setup keys + proxy token                 (~5 min)
-Phase 6  →  Publish CDK8s manifests                          (~2 min)
-Phase 7  →  End-to-end verification
+Phase 3  →  Bifrost VPS deploy — fully automated             (~8 min)
+Phase 4  →  Authentik apps (Pulumi)                          (~2 min)
+Phase 5  →  NetBird first-login + Authentik connector        (~5 min)
+Phase 6  →  NetBird setup keys + proxy token                 (~5 min)
+Phase 7  →  Publish CDK8s manifests                          (~2 min)
+Phase 8  →  End-to-end verification
 ```
 
 ---
@@ -64,7 +65,7 @@ HCLOUD_TOKEN: <hetzner cloud API token>
 CLOUDFLARE_API_TOKEN: <zone:dns edit token>     # used by cert-manager + Traefik ACME
 
 # ── Authentik (Bifrost VPS) ───────────────────────────────────────────────────
-AUTHENTIK_TOKEN: <openssl rand -hex 30>         # bootstrap token → also becomes NB_IDP_MGMT_TOKEN
+AUTHENTIK_TOKEN: <openssl rand -hex 30>         # bootstrap token — becomes akadmin API token on first boot
 AUTHENTIK_SECRET_KEY: <openssl rand -base64 48> # Django secret key
 AUTHENTIK_POSTGRESQL_PASSWORD: <openssl rand -hex 16>
 AUTHENTIK_GITHUB_SECRET: <github oauth app secret>
@@ -72,8 +73,10 @@ AUTHENTIK_GITHUB_SECRET: <github oauth app secret>
 # ── NetBird (Bifrost VPS) ─────────────────────────────────────────────────────
 NB_DATA_STORE_KEY: <openssl rand -base64 32>    # SQLite encryption key — NEVER change after first deploy
 NB_RELAY_SECRET: <openssl rand -base64 32>      # relay auth secret
+NB_OWNER_PASSWORD: <strong password>            # initial NetBird local admin — used for first login only
+NETBIRD_CLIENT_SECRET: <openssl rand -hex 32>   # Dex→Authentik OIDC connector secret
 
-# NB_PROXY_TOKEN and NB_BIFROST_SETUP_KEY are added later (Phase 5)
+# NB_PROXY_TOKEN and NB_BIFROST_SETUP_KEY are added later (Phase 6)
 
 # ── Infisical (K8s secrets platform) ─────────────────────────────────────────
 INFISICAL_DB_PASSWORD: <strong random password>
@@ -84,7 +87,7 @@ REDIS_PASSWORD: <strong random password>
 
 > **`NB_DATA_STORE_KEY` is permanent.** The NetBird SQLite database is encrypted with this value. Changing it means losing all peer registrations.
 
-> **`AUTHENTIK_TOKEN`** is a strong random string you generate once. Authentik uses it as the `akadmin` bootstrap API token on first boot. The bootstrap script also uses it as the NetBird IDP management token (`NB_IDP_MGMT_TOKEN`) — no separate manual step needed.
+> **`NB_OWNER_PASSWORD`** is the password for the initial local admin account (`admin@madhan.app`) inside NetBird's embedded Dex OIDC. Used only for the first login before an external identity provider is configured. Can be changed after Authentik SSO is working.
 
 ---
 
@@ -154,7 +157,7 @@ N8N_ENCRYPTION_KEY  = <32-char random — record this, needed on every rebuild>
 BOOTSTRAP_PASSWORD = <strong password>
 ```
 
-*(Skip `/netbird` for now — add it after Phase 5.)*
+*(Skip `/netbird` for now — add it after Phase 6.)*
 
 ### 2c. Create service token
 
@@ -184,26 +187,7 @@ kubectl get applications -n argocd
 
 ---
 
-## Phase 3 — Authentik (Pulumi)
-
-```bash
-just core authentik up
-```
-
-This creates in Authentik (via the Authentik API using your `AUTHENTIK_TOKEN`):
-
-- GitHub OAuth source (for user login)
-- NetBird OIDC application + client ID/secret
-- Homelab ForwardAuth proxy provider (covers `*.madhan.app`)
-- Embedded outpost for ForwardAuth
-
-> The Authentik stack runs **after** Bifrost is up. If you're deploying for the first time and Authentik isn't running yet, skip this phase and come back after Phase 4.
-
----
-
-## Phase 4 — Bifrost VPS Deploy (Fully Automated)
-
-This is the phase that used to require manual SSH steps. **It is now entirely automated** by a single command.
+## Phase 3 — Bifrost VPS Deploy (Fully Automated)
 
 ```bash
 # Create Cloudflare DNS records for all public hostnames
@@ -220,22 +204,18 @@ just core hetzner up
 2. Uploads entire ./cloud/bifrost/ directory to /etc/bifrost/ on VPS
 3. Runs bootstrap.sh on the VPS, which:
 
-   Preflight      — validates required secrets, waits for cloud-init
-   Step 1/6  traefik            → wait healthy (60s)
-   Step 2/6  authentik-postgres → wait healthy (120s)
-   Step 3/6  authentik-server   → wait healthy (300s)
+   Preflight      — validates 5 required secrets, waits for cloud-init
+   Step 1/5  traefik            → wait healthy (60s)
+   Step 2/5  authentik-postgres → wait healthy (120s)
+   Step 3/5  authentik-server   → wait healthy (300s)
 
-   Auto-provision NB_IDP_MGMT_TOKEN:
-     docker exec authentik-server ak shell
-     → Token.objects.get_or_create(identifier='netbird-mgmt-token')
-     → NB_IDP_MGMT_TOKEN appended to .secrets.env
+   process_netbird_config():
+     sed replaces ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}
+     python3 bcrypt-hashes NB_OWNER_PASSWORD → ${NB_OWNER_HASH}
+     python3 substitutes ${NB_OWNER_HASH} in netbird/config.yaml
 
-   Substitute config.yaml template:
-     sed replaces ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}, ${NB_IDP_MGMT_TOKEN}
-
-   Step 4/6  netbird-server     → wait healthy (120s)
-   Step 5/6  netbird-dashboard  → wait healthy (60s)
-   Step 6/6  netbird-proxy      → skipped (NB_PROXY_TOKEN not set yet)
+   Step 4/5  netbird-server + netbird-dashboard → wait healthy
+   Step 5/5  netbird-proxy → skipped (NB_PROXY_TOKEN not set yet)
 ```
 
 **Expected output at the end:**
@@ -260,40 +240,81 @@ curl -sI https://grafana.madhan.app | grep -i location
 # → location: https://auth.madhan.app/...  (ForwardAuth working)
 ```
 
-### Go back and run Authentik (if skipped)
+---
+
+## Phase 4 — Authentik Apps (Pulumi)
+
+Now that Authentik is running, configure it via Pulumi:
 
 ```bash
-just core authentik up    # now Authentik is running, this can complete
+just core authentik up
 ```
+
+This creates in Authentik:
+
+- GitHub OAuth source (for user login)
+- GitHub source bound to the default identification stage → **"Login with GitHub" button appears**
+- NetBird OIDC application (`aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT`) + confidential client secret
+- Homelab ForwardAuth proxy provider (covers `*.madhan.app`)
+- Embedded outpost for ForwardAuth
 
 ---
 
-## Phase 5 — NetBird Setup Keys + Proxy Token
+## Phase 5 — NetBird First Login + Authentik Connector
 
-### 5a. Create setup keys
+NetBird v0.66 runs an embedded Dex OIDC provider. On first deploy, no external identity provider is connected — you must log in with the local admin account to wire up Authentik.
 
-Open **`https://netbird.madhan.app`** → Log in with GitHub.
+### 5a. Log in with local admin
+
+Open **`https://netbird.madhan.app`**
+
+Sign in with:
+- Email: `admin@madhan.app`
+- Password: the value of `NB_OWNER_PASSWORD` from your SOPS file
+
+### 5b. Connect Authentik as the identity provider
+
+**Settings → Identity Providers → Add → Authentik**
+
+| Field | Value |
+|-------|-------|
+| Client ID | `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT` |
+| Client Secret | value of `NETBIRD_CLIENT_SECRET` from SOPS |
+| Issuer | `https://auth.madhan.app/application/o/netbird/` |
+
+Save. The redirect URI shown should be `https://netbird.madhan.app/oauth2/callback`.
+
+### 5c. Verify GitHub login works
+
+Open a private browser window → go to `https://netbird.madhan.app` → you should now see "Login with Authentik" → which shows the GitHub button via Authentik.
+
+---
+
+## Phase 6 — NetBird Setup Keys + Proxy Token
+
+### 6a. Create setup keys and personal access token
+
+Still in **`https://netbird.madhan.app`** (logged in via GitHub now):
 
 **Setup Keys → Add Key:**
 
-| Key name | Type | Used for |
-|----------|------|---------|
-| `bifrost-agent` | Reusable | `netbird-agent` container on the VPS |
-| `k8s-routing-peer` | Reusable | `netbird-peer` pod in Kubernetes |
+| Key name | Type | Stored as |
+|----------|------|-----------|
+| `bifrost-agent` | Reusable | `NB_BIFROST_SETUP_KEY` in SOPS |
+| `k8s-routing-peer` | Reusable | `NETBIRD_SETUP_KEY` in Infisical |
 
-**Settings → Access Tokens → Create Personal Access Token** — copy it immediately.
+**Settings → Access Tokens → Create Personal Access Token** → copy it → stored as `NB_PROXY_TOKEN` in SOPS.
 
-### 5b. Add tokens to SOPS, re-run Pulumi
+### 6b. Add tokens to SOPS, re-run Pulumi
 
 ```bash
-# Add to bootstrap.sops.yaml
 sops secrets/bootstrap.sops.yaml
 ```
 
-Add these keys:
+Add:
 ```yaml
-NB_PROXY_TOKEN: <personal access token from step 5a>
-NB_BIFROST_SETUP_KEY: <bifrost-agent setup key from step 5a>
+NB_PROXY_TOKEN: <personal access token from 6a>
+NB_BIFROST_SETUP_KEY: <bifrost-agent setup key from 6a>
 ```
 
 Then re-deploy Bifrost:
@@ -303,16 +324,15 @@ just core hetzner up
 ```
 
 bootstrap.sh re-runs. This time:
-- `NB_IDP_MGMT_TOKEN` is already in `.secrets.env` → provisioning skipped
 - `NB_PROXY_TOKEN` is now set → `netbird-proxy` starts
 - `NB_BIFROST_SETUP_KEY` is now set → `netbird-agent` connects to the mesh
 
-### 5c. Add K8s routing peer key to Infisical
+### 6c. Add K8s routing peer key to Infisical
 
 Open **`http://infisical.madhan.app`** → Project `homelab-prod` → Env `prod` → Path `/netbird`:
 
 ```
-NETBIRD_SETUP_KEY = <k8s-routing-peer key from step 5a>
+NETBIRD_SETUP_KEY = <k8s-routing-peer key from step 6a>
 ```
 
 Within 60 seconds the `InfisicalSecret` in the `netbird` namespace syncs. The `netbird-peer` pod starts and connects:
@@ -321,7 +341,7 @@ Within 60 seconds the `InfisicalSecret` in the `netbird` namespace syncs. The `n
 kubectl get pods -n netbird   # → Running
 ```
 
-### 5d. Configure the LAN route
+### 6d. Configure the LAN route
 
 In the NetBird dashboard, **Network Routes → Add Route**:
 
@@ -333,7 +353,7 @@ Once active, the Bifrost `netbird-agent` can reach `192.168.1.220` through the m
 
 ---
 
-## Phase 6 — Publish CDK8s Manifests
+## Phase 7 — Publish CDK8s Manifests
 
 The NetBird peer chart needs to be synthesized and pushed to the manifests branch:
 
@@ -355,7 +375,7 @@ kubectl get application netbird -n argocd
 
 ---
 
-## Phase 7 — End-to-End Verification
+## Phase 8 — End-to-End Verification
 
 ```bash
 # DNS split working correctly
@@ -388,15 +408,17 @@ kubectl get applications -n argocd
 | `HCLOUD_TOKEN` | SOPS | Phase 0 | Hetzner API access |
 | `PROXMOX_PASSWORD` | SOPS | Phase 0 | Proxmox API access |
 | `CLOUDFLARE_API_TOKEN` | SOPS → `.secrets.env` + k8s Secret | Phase 0 | cert-manager + Traefik ACME |
-| `AUTHENTIK_TOKEN` | SOPS → `.secrets.env` as `AUTHENTIK_BOOTSTRAP_TOKEN` | Phase 0 | Also becomes `NB_IDP_MGMT_TOKEN` |
+| `AUTHENTIK_TOKEN` | SOPS → `.secrets.env` as `AUTHENTIK_BOOTSTRAP_TOKEN` | Phase 0 | Authentik akadmin API token |
 | `AUTHENTIK_SECRET_KEY` | SOPS → `.env` | Phase 0 | Django secret key |
 | `AUTHENTIK_POSTGRESQL_PASSWORD` | SOPS → `.env` | Phase 0 | Authentik Postgres |
+| `AUTHENTIK_GITHUB_SECRET` | SOPS | Phase 0 | GitHub OAuth app secret |
 | `NB_DATA_STORE_KEY` | SOPS → `.secrets.env` | Phase 0 | **Never rotate** |
 | `NB_RELAY_SECRET` | SOPS → `.secrets.env` | Phase 0 | |
-| `NB_IDP_MGMT_TOKEN` | Auto-written to `.secrets.env` by `bootstrap.sh` | Phase 4 (auto) | Via `ak shell` |
-| `NB_PROXY_TOKEN` | SOPS → `.secrets.env` | Phase 5 | |
-| `NB_BIFROST_SETUP_KEY` | SOPS → `.secrets.env` | Phase 5 | |
-| `NETBIRD_SETUP_KEY` (k8s) | Infisical `/netbird` | Phase 5 | |
+| `NB_OWNER_PASSWORD` | SOPS → `.secrets.env` | Phase 0 | Local admin for first NetBird login |
+| `NETBIRD_CLIENT_SECRET` | SOPS (used by Pulumi) | Phase 0 | Dex→Authentik OIDC connector |
+| `NB_PROXY_TOKEN` | SOPS → `.secrets.env` | Phase 6 | |
+| `NB_BIFROST_SETUP_KEY` | SOPS → `.secrets.env` | Phase 6 | |
+| `NETBIRD_SETUP_KEY` (k8s) | Infisical `/netbird` | Phase 6 | k8s-routing-peer setup key |
 | App passwords | Infisical paths | Phase 2 | |
 | Infisical service token | k8s Secret `infisical-service-token` | Phase 2 | |
 

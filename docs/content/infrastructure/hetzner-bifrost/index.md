@@ -15,14 +15,15 @@ just core hetzner up
     ├─ generateBifrostDotEnv()       writes .env from SOPS
     ├─ CopyToRemote                  uploads /etc/bifrost/ to VPS
     └─ remote.Command → bootstrap.sh
-           ├─ 1/6  traefik           TLS termination + routing
-           ├─ 2/6  authentik-postgres
-           ├─ 3/6  authentik-server + worker
-           ├─      ak shell           auto-provision NB_IDP_MGMT_TOKEN
-           ├─      sed               substitute ${VARS} in netbird/config.yaml
-           ├─ 4/6  netbird-server    management + signal + relay + STUN
-           ├─ 5/6  netbird-dashboard
-           └─ 6/6  netbird-proxy     (only if NB_PROXY_TOKEN set)
+           ├─ 1/5  traefik              TLS termination + routing
+           ├─ 2/5  authentik-postgres
+           ├─ 3/5  authentik-server + worker
+           ├─      process_netbird_config()
+           │         sed: substitute ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}
+           │         python: bcrypt hash NB_OWNER_PASSWORD → ${NB_OWNER_HASH}
+           ├─ 4/5  netbird-server     management + signal + relay + STUN + embedded Dex
+           ├─      netbird-dashboard  (started in same step)
+           └─ 5/5  netbird-proxy      (only if NB_PROXY_TOKEN set)
 ```
 
 ---
@@ -37,7 +38,7 @@ All services run via `docker compose` from `/etc/bifrost/`:
 | `authentik-server` | `ghcr.io/goauthentik/server:2025.10.4` | GitHub OAuth, OIDC, ForwardAuth provider |
 | `authentik-worker` | `ghcr.io/goauthentik/server:2025.10.4` | Background tasks, email, jobs |
 | `authentik-postgres` | `postgres:16.6-alpine` | Authentik database |
-| `netbird-server` | `netbirdio/netbird-server:0.66.0` | Combined: management + signal + relay + STUN |
+| `netbird-server` | `netbirdio/netbird-server:0.66.0` | Combined: management + signal + relay + STUN + embedded Dex OIDC |
 | `netbird-dashboard` | `netbirdio/dashboard:latest` | NetBird web UI |
 | `netbird-proxy` | `netbirdio/reverse-proxy:latest` | `*.proxy.madhan.app` TCP passthrough |
 | `netbird-agent` | `netbirdio/netbird:latest` | WireGuard peer, advertises `192.168.1.0/24` |
@@ -72,46 +73,35 @@ The bootstrap script runs on the VPS after every config or secret change. It is 
 
 {% mermaid() %}
 flowchart TB
-    PF["Preflight<br/>validate 4 required secrets<br/>wait for cloud-init<br/>check docker compose"]
+    PF["Preflight<br/>validate 5 required secrets<br/>wait for cloud-init<br/>check docker compose"]
 
-    subgraph S1["Step 1/6"]
+    subgraph S1["Step 1/5"]
         T["docker compose up -d traefik<br/>wait_healthy 60s"]
     end
-    subgraph S2["Step 2/6"]
+    subgraph S2["Step 2/5"]
         AP["docker compose up -d authentik-postgres<br/>wait_healthy 120s"]
     end
-    subgraph S3["Step 3/6"]
+    subgraph S3["Step 3/5"]
         AS["docker compose up -d authentik-server authentik-worker<br/>wait_healthy 300s"]
     end
 
-    subgraph PROV["NB_IDP_MGMT_TOKEN Provisioning"]
-        CHK{"NB_IDP_MGMT_TOKEN<br/>already in .secrets.env?"}
-        AKS["docker exec authentik-server ak shell<br/>Token.objects.get_or_create<br/>identifier='netbird-mgmt-token'<br/>key=AUTHENTIK_BOOTSTRAP_TOKEN"]
-        WRT["echo NB_IDP_MGMT_TOKEN=TOKEN >> .secrets.env"]
-        SKIP["skip — already provisioned"]
+    subgraph CFG["process_netbird_config()"]
+        SED["sed: replace base64 placeholders<br/>\${NB_RELAY_SECRET}<br/>\${NB_DATA_STORE_KEY}"]
+        PY1["python3: bcrypt.hashpw(NB_OWNER_PASSWORD)<br/>→ owner_hash"]
+        PY2["python3: replace \${NB_OWNER_HASH}<br/>in netbird/config.yaml"]
+        SED --> PY1 --> PY2
     end
 
-    subgraph CFG["Config Template Substitution"]
-        SED["sed s|\$\{NB_RELAY_SECRET\}|...|g<br/>sed s|\$\{NB_DATA_STORE_KEY\}|...|g<br/>sed s|\$\{NB_IDP_MGMT_TOKEN\}|...|g<br/>netbird/config.yaml overwritten"]
+    subgraph S4["Step 4/5"]
+        NS["docker compose up -d netbird-server netbird-dashboard<br/>wait_healthy 120s / 60s"]
     end
-
-    subgraph S4["Step 4/6"]
-        NS["docker compose up -d netbird-server<br/>wait_healthy 120s"]
-    end
-    subgraph S5["Step 5/6"]
-        ND["docker compose up -d netbird-dashboard<br/>wait_healthy 60s"]
-    end
-    subgraph S6["Step 6/6"]
+    subgraph S5["Step 5/5"]
         NP{"NB_PROXY_TOKEN set?"}
         NPY["docker compose up -d netbird-proxy<br/>wait_healthy 60s"]
         NPN["skip — show setup instructions"]
     end
 
-    PF --> S1 --> S2 --> S3
-    S3 --> CHK
-    CHK -->|No| AKS --> WRT --> CFG
-    CHK -->|Yes| SKIP --> CFG
-    CFG --> S4 --> S5 --> S6
+    PF --> S1 --> S2 --> S3 --> CFG --> S4 --> S5
     NP -->|Yes| NPY
     NP -->|No| NPN
 {% end %}
@@ -128,51 +118,30 @@ timeout exceeded                →  prints last 30 log lines, exits 1
 
 Authentik has an explicit `healthcheck: test: ["CMD-SHELL", "ak healthcheck"]` and a 60s start period. The script waits up to 300s for it.
 
-### NB_IDP_MGMT_TOKEN provisioning
-
-NetBird requires an Authentik API token to sync users via the management API. This token can't be created until Authentik is running — a chicken-and-egg problem that `bootstrap.sh` solves automatically.
-
-After Authentik reports healthy, `bootstrap.sh` runs a Python script inside the container via `ak shell` (Authentik's Django management shell):
-
-```python
-# Runs inside the authentik-server container
-from authentik.core.models import Token, TokenIntents, User
-
-key = os.environ.get('AUTHENTIK_BOOTSTRAP_TOKEN', '')
-user = User.objects.filter(username='akadmin').first()
-
-t, created = Token.objects.get_or_create(
-    identifier='netbird-mgmt-token',
-    defaults={
-        'user': user,
-        'intent': TokenIntents.INTENT_API,
-        'key': key,          # same value as SOPS AUTHENTIK_TOKEN
-        'expiring': False,
-        'description': 'NetBird IDP management token (auto-provisioned)',
-    }
-)
-print(f'TOKEN:{t.key}')      # only this line goes to stdout
-```
-
-The bash wrapper greps for `TOKEN:` prefix and writes the value to `.secrets.env`:
-
-```
-NB_IDP_MGMT_TOKEN=<token>    (appended to /etc/bifrost/.secrets.env)
-```
-
-On re-runs, if `NB_IDP_MGMT_TOKEN` is already in `.secrets.env`, provisioning is skipped entirely. The token identifier `netbird-mgmt-token` is stable — `get_or_create` never duplicates it.
-
 ### netbird/config.yaml template substitution
 
-NetBird v0.66 does not expand `${VAR}` in its config file. The config is read verbatim. `bootstrap.sh` uses `sed` to substitute three placeholders before starting `netbird-server`:
+NetBird v0.66 does not expand `${VAR}` in its config file — the YAML is read verbatim. `bootstrap.sh` substitutes three placeholders before starting `netbird-server`:
 
-| Placeholder in `config.yaml` | Replaced with |
-|-------------------------------|---------------|
-| `${NB_RELAY_SECRET}` | relay auth secret from `.secrets.env` |
-| `${NB_DATA_STORE_KEY}` | SQLite encryption key from `.secrets.env` |
-| `${NB_IDP_MGMT_TOKEN}` | Authentik API token (just provisioned) |
+| Placeholder | Substituted with | Method |
+|-------------|-----------------|--------|
+| `${NB_RELAY_SECRET}` | relay auth secret from `.secrets.env` | `sed` (base64 — safe) |
+| `${NB_DATA_STORE_KEY}` | SQLite encryption key from `.secrets.env` | `sed` (base64 — safe) |
+| `${NB_OWNER_HASH}` | bcrypt hash of `NB_OWNER_PASSWORD` | Python (bcrypt contains `$` and `/` — breaks sed) |
 
-This substitution is idempotent: on re-runs `CopyToRemote` restores the template, and `sed` replaces the placeholders again.
+The bcrypt hash is generated at runtime inside `process_netbird_config()`:
+
+```bash
+owner_hash=$(_OWNER_PASS="$owner_pass" python3 - <<'PYEOF'
+import bcrypt, os
+p = os.environ['_OWNER_PASS'].encode()
+print(bcrypt.hashpw(p, bcrypt.gensalt(10)).decode())
+PYEOF
+)
+```
+
+The password is passed via an environment variable, never via command-line arguments, and never logged.
+
+This substitution is idempotent: on re-runs `CopyToRemote` restores the original template from the laptop, then the placeholders are substituted again.
 
 ---
 
@@ -190,10 +159,9 @@ Generated by `generateBifrostSecretsEnv()` from SOPS env vars:
 | `NB_DATA_STORE_KEY` | `NB_DATA_STORE_KEY` | Yes |
 | `NB_RELAY_SECRET` | `NB_RELAY_SECRET` | Yes |
 | `AUTHENTIK_BOOTSTRAP_TOKEN` | `AUTHENTIK_TOKEN` | Yes |
+| `NB_OWNER_PASSWORD` | `NB_OWNER_PASSWORD` | Yes |
 | `NB_PROXY_TOKEN` | `NB_PROXY_TOKEN` | No (optional) |
 | `NB_BIFROST_SETUP_KEY` | `NB_BIFROST_SETUP_KEY` | No (optional) |
-
-`NB_IDP_MGMT_TOKEN` is **not** written here by Pulumi — it is appended by `bootstrap.sh` at runtime.
 
 ### `core/cloud/bifrost/.env`
 
@@ -217,8 +185,7 @@ Both files are gitignored and regenerated on every `just core hetzner up`.
 
 The script is idempotent:
 - `docker compose up -d` is a no-op for already-running containers with the same image
-- `NB_IDP_MGMT_TOKEN` provisioning is skipped if already in `.secrets.env`
-- `sed` substitution in `config.yaml` is a no-op if placeholders are already replaced
+- `sed` and Python substitutions in `config.yaml` are a no-op if placeholders are already replaced (re-deploy always restores the template via `CopyToRemote` first)
 
 ---
 
@@ -256,11 +223,42 @@ Managed by `core/cloud/cloudflare.go`:
 
 ## After the First Deploy
 
-After `just core hetzner up` succeeds, log in to https://netbird.madhan.app with GitHub (via Authentik) to complete the remaining one-time steps:
+After `just core hetzner up` succeeds, complete the one-time setup in this order:
 
-1. Create a **Personal Access Token** (Settings → Access Tokens)
-2. Create two **Setup Keys** (one for the Bifrost agent, one for the K8s routing peer)
-3. Add `NB_PROXY_TOKEN` and `NB_BIFROST_SETUP_KEY` to SOPS: `sops edit secrets/bootstrap.sops.yaml`
-4. Run `just core hetzner up` again — bootstrap.sh picks up the new tokens and starts `netbird-proxy` and `netbird-agent`
+1. **Log in to NetBird with the local admin account**
+   - Open `https://netbird.madhan.app`
+   - Sign in with email: `admin@madhan.app`, password: the value of `NB_OWNER_PASSWORD` in SOPS
+   - This uses the embedded Dex owner account, which only works before an external IdP is configured
+
+2. **Connect Authentik as the Identity Provider**
+   - Settings → Identity Providers → Add → **Authentik**
+   - Client ID: `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT`
+   - Client Secret: value of `NETBIRD_CLIENT_SECRET` from SOPS
+   - Issuer: `https://auth.madhan.app/application/o/netbird/`
+   - This configures Authentik as a connector inside embedded Dex — users will then log in via GitHub (Authentik) through Dex
+
+3. **Create a Personal Access Token**
+   - Settings → Access Tokens → Create — copy the token
+
+4. **Create Setup Keys**
+   - Setup Keys → Add key `bifrost-agent` (Reusable) for the VPS WireGuard agent
+   - Setup Keys → Add key `k8s-routing-peer` (Reusable) for the K8s pod
+
+5. **Add tokens to SOPS and re-deploy**
+   ```bash
+   sops edit secrets/bootstrap.sops.yaml
+   # Add:
+   #   NB_PROXY_TOKEN: <personal access token>
+   #   NB_BIFROST_SETUP_KEY: <bifrost-agent setup key>
+   just core hetzner up
+   ```
+   Bootstrap.sh picks up the new tokens and starts `netbird-proxy` and `netbird-agent`.
+
+6. **Add K8s routing peer setup key to Infisical**
+   - Project `homelab-prod` → Env `prod` → Path `/netbird`
+   - Add `NETBIRD_SETUP_KEY: <k8s-routing-peer key>`
+
+7. **Create the cluster route in NetBird**
+   - Network Routes → Add Route: network `192.168.1.0/24`, peer `k8s-routing-peer`
 
 See [NetBird VPN](/infrastructure/netbird) and the [Deployment Guide](/getting-started/deployment) for the complete setup sequence.
