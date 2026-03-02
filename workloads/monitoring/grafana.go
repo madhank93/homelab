@@ -25,9 +25,9 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
 		"resyncInterval": 60,
 		"authentication": map[string]any{
-			"serviceToken": map[string]any{
-				"serviceTokenSecretReference": map[string]any{
-					"secretName":      "infisical-service-token",
+			"universalAuth": map[string]any{
+				"credentialsRef": map[string]any{
+					"secretName":      "infisical-universal-auth",
 					"secretNamespace": "infisical",
 				},
 				"secretsScope": map[string]any{
