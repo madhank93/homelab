@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Central secrets management platform for all runtime app secrets." />
+            <meta name="description" content="Central secrets management platform. Operator authenticates via Kubernetes Auth — zero stored credentials." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Infisical | Homelab" />
-      <meta property="og:description" content="Central secrets management platform for all runtime app secrets." />
+      <meta property="og:description" content="Central secrets management platform. Operator authenticates via Kubernetes Auth — zero stored credentials." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Infisical" />
-      <meta name="twitter:description" content="Central secrets management platform for all runtime app secrets." />
+      <meta name="twitter:description" content="Central secrets management platform. Operator authenticates via Kubernetes Auth — zero stored credentials." />
       
       
       
@@ -506,56 +506,109 @@
             Infisical
             
         </h1>
-        <p class="text-gray-500">Central secrets management platform for all runtime app secrets.</p>
+        <p class="text-gray-500">Central secrets management platform. Operator authenticates via Kubernetes Auth — zero stored credentials.</p>
     </div>
     <h2 id="overview">Overview</h2>
 <table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/security/infisical.go</code></td></tr>
+<tr><td>CDK8s file</td><td><code>workloads/secrets/infisical.go</code></td></tr>
 <tr><td>Namespace</td><td><code>infisical</code></td></tr>
-<tr><td>HTTPRoute</td><td><code>infisical.madhan.app</code> → Infisical service</td></tr>
-<tr><td>UI</td><td>Yes</td></tr>
-<tr><td>Bootstrap Secret</td><td><code>infisical/infisical-secrets</code> (created by <code>just create-secrets</code>)</td></tr>
+<tr><td>HTTPRoute</td><td><code>infisical.madhan.app</code></td></tr>
+<tr><td>Operator version</td><td><code>secrets-operator</code> v0.10.25</td></tr>
+<tr><td>App chart</td><td><code>infisical-standalone</code> v1.7.2</td></tr>
+<tr><td>Auth method</td><td><strong>Kubernetes Auth (Option C)</strong> — zero stored credentials</td></tr>
+<tr><td>Bootstrap Secret</td><td><code>infisical/infisical-secrets</code> (from <code>just create-secrets</code>)</td></tr>
 </tbody></table>
 <h2 id="purpose">Purpose</h2>
-<p>Infisical is the central secrets management platform. All application runtime secrets are stored in Infisical projects and injected into pods via <code>InfisicalSecret</code> CRDs + the Infisical operator.</p>
+<p>Infisical is the central runtime secrets platform. All app secrets (Grafana, Harbor, n8n, Rancher, NetBird) are stored in Infisical projects and injected into Kubernetes pods via <code>InfisicalSecret</code> CRs managed by the Infisical operator.</p>
+<p>CDK8s generates zero <code>Secret</code> manifests — secrets never touch git or the manifests branch.</p>
 <h2 id="architecture">Architecture</h2>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>infisical-secrets (k8s Secret, created by bootstrap)
-</span><span>    │
-</span><span>    └── Infisical Helm chart (backend + frontend + operator + PostgreSQL)
-</span><span>            │
-</span><span>            └── InfisicalSecret CRs (one per app)
-</span><span>                    │
-</span><span>                    └── Kubernetes Secrets (grafana-admin, harbor-admin, etc.)
-</span><span>                            │
-</span><span>                            └── App pods consume secrets via envFrom or volume
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Bootstrap (SOPS/age)
+</span><span>  └── infisical-secrets (k8s Secret)
+</span><span>        └── Infisical Server (PostgreSQL backend, Redis)
+</span><span>              │
+</span><span>              └── Infisical Operator (secrets-operator)
+</span><span>                    │  ← authenticates via Kubernetes JWT (Option C)
+</span><span>                    └── InfisicalSecret CR → infisical-synced-secrets
+</span><span>                          └── App pods (envFrom / volumeMount)
 </span></code></pre>
-<h2 id="backend">Backend</h2>
-<p>Infisical backend requires:</p>
-<ul>
-<li><code>INFISICAL_DB_PASSWORD</code> — PostgreSQL password</li>
-<li><code>INFISICAL_ENCRYPTION_KEY</code> — at-rest encryption key</li>
-<li><code>INFISICAL_AUTH_SECRET</code> — JWT signing secret</li>
-</ul>
-<p>These are provided via the <code>infisical-secrets</code> k8s Secret.</p>
-<h2 id="postgresql">PostgreSQL</h2>
-<p>The PostgreSQL backend uses <code>docker.io/library/postgres:17</code>. The bitnami PostgreSQL image was removed from Docker Hub; only the official image is used.</p>
-<h2 id="bootstrap-setup">Bootstrap Setup</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Create bootstrap secrets (from SOPS-encrypted file)
-</span><span style="color:#ffd580;">just</span><span> create-secrets
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 2. After ArgoCD deploys Infisical:
-</span><span style="font-style:italic;color:#5c6773;"># - Create an org and project at http://infisical.madhan.app
-</span><span style="font-style:italic;color:#5c6773;"># - Add secrets for each app under their paths (/grafana, /harbor, etc.)
-</span><span style="font-style:italic;color:#5c6773;"># - Create a Service Token with read access
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 3. Create the service token Secret
-</span><span style="color:#ffd580;">kubectl</span><span> create secret generic infisical-service-token </span><span style="color:#ccc9c2cc;">\
-</span><span style="color:#ffcc66;">  --from-literal</span><span style="color:#f29e74;">=</span><span>infisicalToken=</span><span style="color:#f29e74;">&lt;</span><span>token</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">\
-</span><span style="color:#ffcc66;">  -n</span><span> infisical
+<h2 id="kubernetes-auth-option-c">Kubernetes Auth (Option C)</h2>
+<p>The operator authenticates to Infisical using its own ServiceAccount JWT — <strong>no service tokens, no stored credentials anywhere</strong>.</p>
+<h3 id="how-it-works">How it works</h3>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Operator reconcile loop
+</span><span>  → mounts its own SA token (/var/run/secrets/...)
+</span><span>  → POST /api/v1/auth/kubernetes-auth/login { jwt: &lt;SA token&gt; }
+</span><span>  → Infisical calls k8s tokenreviews API to verify the JWT is legitimate
+</span><span>  → Infisical returns a short-lived access token
+</span><span>  → Operator fetches secrets using that token (auto-rotates every 60s)
 </span></code></pre>
-<p>See <code>docs/infisical-secrets-setup.md</code> for the complete setup guide.</p>
-<h2 id="infisicalsecret-pattern">InfisicalSecret Pattern</h2>
-<p>All apps that use Infisical carry <code>ServerSideApply=false</code> on their InfisicalSecret resources because the Infisical CRD schema omits <code>projectSlug</code>, which breaks ArgoCD's SSA validation.</p>
+<h3 id="what-cdk8s-provisions">What CDK8s provisions</h3>
+<table><thead><tr><th>Resource</th><th>Name</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>ClusterRole</code></td><td><code>infisical-token-reviewer</code></td><td>Grants <code>create</code> on <code>tokenreviews</code></td></tr>
+<tr><td><code>ClusterRoleBinding</code></td><td><code>infisical-token-reviewer</code></td><td>Binds role to operator SA</td></tr>
+<tr><td><code>InfisicalSecret</code></td><td><code>infisical-bootstrap-secret</code></td><td>Drives secret sync with kubernetesAuth</td></tr>
+</tbody></table>
+<h3 id="one-time-setup-must-do-after-first-deploy">One-time setup (must do after first deploy)</h3>
+<p>After ArgoCD sync applies the RBAC resources, register the cluster in the Infisical UI:</p>
+<p><strong>1. Get the token reviewer JWT:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> create token infisical-operator-controller-manager </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffcc66;">  -n</span><span> infisical</span><span style="color:#ffcc66;"> --duration</span><span style="color:#f29e74;">=</span><span>8760h
+</span></code></pre>
+<p><strong>2. Infisical UI → Access Control → Machine Identities → Create → "k8s-homelab":</strong></p>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Method</td><td>Kubernetes Auth</td></tr>
+<tr><td>Kubernetes Host</td><td><code>https://192.168.1.210:6443</code></td></tr>
+<tr><td>Token Reviewer JWT</td><td><em>(paste from step 1)</em></td></tr>
+<tr><td>Allowed SA Names</td><td><code>infisical-operator-controller-manager</code></td></tr>
+<tr><td>Allowed Namespaces</td><td><code>infisical</code></td></tr>
+</tbody></table>
+<p><strong>3. Copy the <code>identityId</code></strong> and replace the placeholder in <code>workloads/secrets/infisical.go</code>:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;identityId&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;REPLACE_WITH_IDENTITY_ID&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span style="font-style:italic;color:#5c6773;">//              ↑ paste the UUID from the Infisical UI here
+</span></code></pre>
+<p>Then re-synthesize and push:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth
+</span><span style="color:#ffd580;">git</span><span> add workloads/secrets/infisical.go app/infisical/
+</span><span style="color:#ffd580;">git</span><span> commit</span><span style="color:#ffcc66;"> -m </span><span style="color:#bae67e;">&quot;feat: set Infisical kubernetesAuth identityId&quot;
+</span></code></pre>
+<h3 id="verification">Verification</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># CR created
+</span><span style="color:#ffd580;">kubectl</span><span> get infisicalsecret</span><span style="color:#ffcc66;"> -n</span><span> infisical
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Operator authenticated successfully (look for &quot;Successfully authenticated&quot; log)
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> infisical</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=secrets-operator</span><span style="color:#ffcc66;"> --tail</span><span style="color:#f29e74;">=</span><span>50
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Synced secret created by operator
+</span><span style="color:#ffd580;">kubectl</span><span> get secret infisical-synced-secrets</span><span style="color:#ffcc66;"> -n</span><span> infisical
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># CR status conditions
+</span><span style="color:#ffd580;">kubectl</span><span> describe infisicalsecret infisical-bootstrap-secret</span><span style="color:#ffcc66;"> -n</span><span> infisical
+</span></code></pre>
+<h2 id="backend-components">Backend Components</h2>
+<h3 id="infisical-server">Infisical Server</h3>
+<p>Deployed via <code>infisical-standalone</code> v1.7.2. Requires three secrets from <code>infisical-secrets</code>:</p>
+<table><thead><tr><th>Key</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>DB_PASSWORD</code></td><td>PostgreSQL password</td></tr>
+<tr><td><code>ENCRYPTION_KEY</code></td><td>At-rest secret encryption (AES-256)</td></tr>
+<tr><td><code>AUTH_SECRET</code></td><td>JWT signing secret</td></tr>
+</tbody></table>
+<h3 id="postgresql">PostgreSQL</h3>
+<p>StatefulSet using <code>docker.io/library/postgres:17</code> on Longhorn PVC (10 Gi). The Bitnami PostgreSQL image is <strong>not used</strong> — it was removed from Docker Hub.</p>
+<h3 id="redis">Redis</h3>
+<p>In-cluster Redis (from the <code>infisical-standalone</code> chart). Password is the chart default; it's only reachable inside the <code>infisical</code> namespace.</p>
+<h2 id="apps-that-use-infisical">Apps That Use Infisical</h2>
+<table><thead><tr><th>App</th><th>Infisical Path</th><th>k8s Secret synced</th></tr></thead><tbody>
+<tr><td>Grafana</td><td><code>/grafana</code></td><td><code>grafana-admin</code> (<code>ADMIN_PASSWORD</code>)</td></tr>
+<tr><td>Harbor</td><td><code>/harbor</code></td><td><code>harbor-admin</code> (<code>HARBOR_ADMIN_PASSWORD</code>)</td></tr>
+<tr><td>n8n</td><td><code>/n8n</code></td><td><code>n8n-db</code> (<code>DB_PASSWORD</code>, <code>N8N_ENCRYPTION_KEY</code>)</td></tr>
+<tr><td>Rancher</td><td><code>/rancher</code></td><td><code>rancher-bootstrap</code> (<code>BOOTSTRAP_PASSWORD</code>)</td></tr>
+<tr><td>NetBird</td><td><code>/netbird</code></td><td><code>netbird-setup-key</code> (<code>NETBIRD_SETUP_KEY</code>)</td></tr>
+</tbody></table>
+<h2 id="argocd-note">ArgoCD Note</h2>
+<p>All <code>InfisicalSecret</code> resources use:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">annotations</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">argocd.argoproj.io/sync-options</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ServerSideApply=false
+</span></code></pre>
+<p>The Infisical CRD schema omits <code>projectSlug</code> from <code>serviceToken.secretsScope</code>, which breaks ArgoCD's SSA diff engine. Disabling SSA for these resources is the correct workaround.</p>
 
 
     <!--  Errata section  -->
@@ -721,25 +774,67 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/management/infisical/#backend" class="toc-link">Backend</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/management/infisical/#kubernetes-auth-option-c" class="toc-link">Kubernetes Auth (Option C)</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/infisical/#how-it-works" class="toc-link">How it works</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/infisical/#what-cdk8s-provisions" class="toc-link">What CDK8s provisions</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/infisical/#one-time-setup-must-do-after-first-deploy" class="toc-link">One-time setup (must do after first deploy)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/infisical/#verification" class="toc-link">Verification</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/management/infisical/#postgresql" class="toc-link">PostgreSQL</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/management/infisical/#backend-components" class="toc-link">Backend Components</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/infisical/#infisical-server" class="toc-link">Infisical Server</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/infisical/#postgresql" class="toc-link">PostgreSQL</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/infisical/#redis" class="toc-link">Redis</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/management/infisical/#bootstrap-setup" class="toc-link">Bootstrap Setup</a>
+                    <a href="https://homelab.madhan.app/apps/management/infisical/#apps-that-use-infisical" class="toc-link">Apps That Use Infisical</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/management/infisical/#infisicalsecret-pattern" class="toc-link">InfisicalSecret Pattern</a>
+                    <a href="https://homelab.madhan.app/apps/management/infisical/#argocd-note" class="toc-link">ArgoCD Note</a>
                     
                 </li>
             
@@ -973,150 +1068,6 @@
             <li>
                 
                     <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps">Apps</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
                         <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
                         <ul>
                             
@@ -1245,6 +1196,164 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps">Apps</a></summary>
+                        <ul>
+                            
+                            
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai">AI</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/ollama">Ollama</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring">Monitoring</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/grafana">Grafana</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-metrics">VictoriaMetrics</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-logs">VictoriaLogs</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/alertmanager">AlertManager</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security">Security</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/falco">Falco</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/trivy">Trivy</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
+                                                
+                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                
+                                                
+                                                    
+                                                    <li>
+                                                        
+                                                            <details >
+                                                                <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp">Headlamp</a></summary>
+                                                                <ul>
+                                                                    
+                                                                    
+                                                                        <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose">Exposing Headlamp via NetBird Reverse Proxy</a></li>
+                                                                    
+                                                                    
+                                                                </ul>
+                                                            </details>
+                                                        
+                                                    </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

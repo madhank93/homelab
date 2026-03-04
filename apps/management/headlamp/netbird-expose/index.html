@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab." />
+            <meta name="description" content="Expose Headlamp to the internet through NetBird v0.66 expose with Authentik SSO group-based access control." />
         
     
 
-    <title>Hetzner Bifrost | Homelab</title>
+    <title>Exposing Headlamp via NetBird Reverse Proxy | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="Hetzner Bifrost | Homelab" />
-      <meta property="og:description" content="Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab." />
+      <meta property="og:title" content="Exposing Headlamp via NetBird Reverse Proxy | Homelab" />
+      <meta property="og:description" content="Expose Headlamp to the internet through NetBird v0.66 expose with Authentik SSO group-based access control." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Hetzner Bifrost" />
-      <meta name="twitter:description" content="Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab." />
+      <meta name="twitter:title" content="Exposing Headlamp via NetBird Reverse Proxy" />
+      <meta name="twitter:description" content="Expose Headlamp to the internet through NetBird v0.66 expose with Authentik SSO group-based access control." />
       
       
       
@@ -503,235 +503,184 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            Hetzner Bifrost
+            Exposing Headlamp via NetBird Reverse Proxy
             
         </h1>
-        <p class="text-gray-500">Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab.</p>
+        <p class="text-gray-500">Expose Headlamp to the internet through NetBird v0.66 expose with Authentik SSO group-based access control.</p>
     </div>
     <h2 id="overview">Overview</h2>
-<p><strong>Bifrost</strong> is a lightweight Hetzner Cloud VPS that acts as the public edge of the homelab. A single Pulumi command (<code>just core hetzner up</code>) provisions the server, copies all config files, and runs a bootstrap script that starts every service in dependency order — fully unattended. No manual SSH required.</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>just core hetzner up
-</span><span>    │
-</span><span>    ├─ generateBifrostSecretsEnv()   writes .secrets.env from SOPS
-</span><span>    ├─ generateBifrostDotEnv()       writes .env from SOPS
-</span><span>    ├─ CopyToRemote                  uploads /etc/bifrost/ to VPS
-</span><span>    └─ remote.Command → bootstrap.sh
-</span><span>           ├─ 1/5  traefik              TLS termination + routing
-</span><span>           ├─ 2/5  authentik-postgres
-</span><span>           ├─ 3/5  authentik-server + worker
-</span><span>           ├─      process_netbird_config()
-</span><span>           │         sed: substitute ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}
-</span><span>           │         python: bcrypt hash NB_OWNER_PASSWORD → ${NB_OWNER_HASH}
-</span><span>           ├─ 4/5  netbird-server     management + signal + relay + STUN + embedded Dex
-</span><span>           ├─      netbird-dashboard  (started in same step)
-</span><span>           └─ 5/5  netbird-proxy      (only if NB_PROXY_TOKEN set)
+<p>NetBird v0.66 introduced the <code>netbird expose</code> command — a built-in reverse proxy that publishes a local service to the internet behind your SSO provider. This guide walks through exposing Headlamp at <code>headlamp.proxy.madhan.app</code> with Authentik SSO authentication, requiring users to be in a specific Authentik group before they can reach the Headlamp UI.</p>
+<h3 id="architecture">Architecture</h3>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>User browser
+</span><span>  └─→ headlamp.proxy.madhan.app  (Cloudflare DNS → Hetzner VPS)
+</span><span>        └─→ Traefik on Bifrost   (TLS termination, *.proxy.madhan.app catch-all)
+</span><span>              └─→ NetBird Proxy Service  (port 443 on Bifrost)
+</span><span>                    └─→ WireGuard mesh tunnel
+</span><span>                          └─→ k8s-routing-peer (in cluster)
+</span><span>                                └─→ headlamp.headlamp.svc.cluster.local:80
+</span></code></pre>
+<h3 id="what-s-already-in-place">What's already in place</h3>
+<table><thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>*.proxy.madhan.app</code> Cloudflare DNS</td><td>✅ Done</td><td>Already points at Hetzner VPS</td></tr>
+<tr><td>Traefik on Bifrost</td><td>✅ Done</td><td>Handles TLS for <code>*.proxy.madhan.app</code></td></tr>
+<tr><td><code>k8s-routing-peer</code> WireGuard peer</td><td>✅ Done</td><td>Advertises <code>192.168.1.0/24</code> in the mesh</td></tr>
+<tr><td>Headlamp service in-cluster</td><td>✅ Done</td><td><code>headlamp.headlamp.svc.cluster.local:80</code></td></tr>
+<tr><td>Authentik as IdP for NetBird</td><td>✅ Done</td><td>OIDC via Dex connector</td></tr>
+</tbody></table>
+<h3 id="what-you-need-to-do">What you need to do</h3>
+<table><thead><tr><th>Step</th><th>Where</th><th>Code change?</th></tr></thead><tbody>
+<tr><td>1. Create Authentik group</td><td>Authentik UI</td><td>No</td></tr>
+<tr><td>2. Register expose redirect URI in Authentik</td><td><code>core/cloud/authentik.go</code></td><td><strong>Yes</strong></td></tr>
+<tr><td>3. Assign your user to the group</td><td>Authentik UI</td><td>No</td></tr>
+<tr><td>4. Run <code>netbird expose</code> on the k8s-routing-peer</td><td><code>workloads/networking/netbird_peer.go</code></td><td><strong>Yes</strong></td></tr>
+<tr><td>5. Verify</td><td>CLI</td><td>No</td></tr>
+</tbody></table>
+<hr />
+<h2 id="step-1-create-an-authentik-group-for-headlamp-access">Step 1 — Create an Authentik Group for Headlamp Access</h2>
+<p>In <strong>Authentik UI → Directory → Groups → Create</strong>:</p>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Name</td><td><code>homelab-admins</code></td></tr>
+<tr><td>Notes</td><td>NetBird expose SSO gate for Headlamp</td></tr>
+</tbody></table>
+<p>Then <strong>assign yourself</strong> (and any other users): <strong>Groups → homelab-admins → Users → Add User</strong>.</p>
+<hr />
+<h2 id="step-2-register-the-expose-redirect-uri-in-authentik-code-change">Step 2 — Register the Expose Redirect URI in Authentik (Code Change)</h2>
+<p>NetBird's SSO flow for exposed services redirects to <code>https://netbird.madhan.app/api/v1/sso/callback</code> after authentication. This must be added to the <strong>NetBird OIDC app</strong> in Authentik.</p>
+<p><strong>File to change:</strong> <a href="file:///Volumes/work/git-repos/homelab/core/cloud/authentik.go"><code>core/cloud/authentik.go</code></a></p>
+<p>Find the <code>createOIDCApp</code> call for the NetBird app (around line 265) and add the expose callback redirect:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// BEFORE
+</span><span>Redirects</span><span style="color:#ccc9c2cc;">: </span><span>[]</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{
+</span><span>    </span><span style="color:#bae67e;">&quot;https://netbird.madhan.app/oauth2/callback&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;http://localhost:53000&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>}</span><span style="color:#ccc9c2cc;">,
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;">// AFTER
+</span><span>Redirects</span><span style="color:#ccc9c2cc;">: </span><span>[]</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{
+</span><span>    </span><span style="color:#bae67e;">&quot;https://netbird.madhan.app/oauth2/callback&quot;</span><span style="color:#ccc9c2cc;">,      </span><span style="font-style:italic;color:#5c6773;">// Dex embedded IdP callback
+</span><span>    </span><span style="color:#bae67e;">&quot;http://localhost:53000&quot;</span><span style="color:#ccc9c2cc;">,                           </span><span style="font-style:italic;color:#5c6773;">// CLI device-auth callback
+</span><span>    </span><span style="color:#bae67e;">&quot;https://netbird.madhan.app/api/v1/sso/callback&quot;</span><span style="color:#ccc9c2cc;">,  </span><span style="font-style:italic;color:#5c6773;">// expose SSO callback (v0.66+)
+</span><span>}</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p>Then apply:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core authentik up
 </span></code></pre>
 <hr />
-<h2 id="services">Services</h2>
-<p>All services run via <code>docker compose</code> from <code>/etc/bifrost/</code>:</p>
-<table><thead><tr><th>Container</th><th>Image</th><th>Role</th></tr></thead><tbody>
-<tr><td><code>traefik</code></td><td><code>traefik:v3.3</code></td><td>TLS termination, ForwardAuth, routing</td></tr>
-<tr><td><code>authentik-server</code></td><td><code>ghcr.io/goauthentik/server:2025.10.4</code></td><td>GitHub OAuth, OIDC, ForwardAuth provider</td></tr>
-<tr><td><code>authentik-worker</code></td><td><code>ghcr.io/goauthentik/server:2025.10.4</code></td><td>Background tasks, email, jobs</td></tr>
-<tr><td><code>authentik-postgres</code></td><td><code>postgres:16.6-alpine</code></td><td>Authentik database</td></tr>
-<tr><td><code>netbird-server</code></td><td><code>netbirdio/netbird-server:0.66.0</code></td><td>Combined: management + signal + relay + STUN + embedded Dex OIDC</td></tr>
-<tr><td><code>netbird-dashboard</code></td><td><code>netbirdio/dashboard:latest</code></td><td>NetBird web UI</td></tr>
-<tr><td><code>netbird-proxy</code></td><td><code>netbirdio/reverse-proxy:latest</code></td><td><code>*.proxy.madhan.app</code> TCP passthrough</td></tr>
-<tr><td><code>netbird-agent</code></td><td><code>netbirdio/netbird:latest</code></td><td>WireGuard peer, advertises <code>192.168.1.0/24</code></td></tr>
-</tbody></table>
-<p>All containers share <code>bifrost_net</code> (172.30.0.0/24). Traefik is the only container with public ports 80/443.</p>
-<hr />
-<h2 id="pulumi-configuration">Pulumi Configuration</h2>
-<p>The Hetzner stack reads from <code>core/config.yml</code>:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">hetzner</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">server_name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">bifrost-public-vps1
-</span><span>  </span><span style="color:#73d0ff;">image</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ubuntu-24.04
-</span><span>  </span><span style="color:#73d0ff;">server_type</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">cpx21
-</span><span>  </span><span style="color:#73d0ff;">location</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ash            </span><span style="font-style:italic;color:#5c6773;"># Ashburn, VA
-</span><span>  </span><span style="color:#73d0ff;">ssh_key</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">mac-ssh
-</span><span>  </span><span style="color:#73d0ff;">vps_ip</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;178.156.199.250&quot;
+<h2 id="step-3-modify-the-netbird-peer-deployment-to-run-expose-code-change">Step 3 — Modify the netbird-peer Deployment to Run <code>expose</code> (Code Change)</h2>
+<p>The existing <code>k8s-routing-peer</code> deployment runs <code>netbird up --advertise-routes=192.168.1.0/24</code>. You need to run <code>netbird expose</code> as a <strong>second container (sidecar)</strong> in the same pod — it uses the same WireGuard interface already established by the primary container.</p>
+<p><strong>File to change:</strong> <a href="file:///Volumes/work/git-repos/homelab/workloads/networking/netbird_peer.go"><code>workloads/networking/netbird_peer.go</code></a></p>
+<p>Add a sidecar container to the existing Deployment's container list:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// Add after the existing netbird container in Containers slice:
+</span><span>{
+</span><span>    Name</span><span style="color:#ccc9c2cc;">:  </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;netbird-expose-headlamp&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    Image</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;netbirdio/netbird:0.66&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    Command</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>[]</span><span style="color:#f29e74;">*</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;netbird&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;expose&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        </span><span style="font-style:italic;color:#5c6773;">// The in-cluster service address to proxy to
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;headlamp.headlamp.svc.cluster.local:80&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        </span><span style="font-style:italic;color:#5c6773;">// Public hostname (matches *.proxy.madhan.app wildcard in Cloudflare)
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;--domain=headlamp.proxy.madhan.app&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        </span><span style="font-style:italic;color:#5c6773;">// SSO: only members of this Authentik group get through
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;--with-user-groups=homelab-admins&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;--hostname=k8s-routing-peer&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    }</span><span style="color:#ccc9c2cc;">,
+</span><span>    Env</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>[]</span><span style="color:#f29e74;">*</span><span>k8s</span><span style="color:#f29e74;">.</span><span>EnvVar{
+</span><span>        {
+</span><span>            Name</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;NB_SETUP_KEY&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>            ValueFrom</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>k8s</span><span style="color:#f29e74;">.</span><span>EnvVarSource{
+</span><span>                SecretKeyRef</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>k8s</span><span style="color:#f29e74;">.</span><span>SecretKeySelector{
+</span><span>                    Name</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;netbird-setup-key&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>                    Key</span><span style="color:#ccc9c2cc;">:  </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;NETBIRD_SETUP_KEY&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>                }</span><span style="color:#ccc9c2cc;">,
+</span><span>            }</span><span style="color:#ccc9c2cc;">,
+</span><span>        }</span><span style="color:#ccc9c2cc;">,
+</span><span>        {
+</span><span>            Name</span><span style="color:#ccc9c2cc;">:  </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;NB_MANAGEMENT_URL&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>            Value</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;https://netbird.madhan.app&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        }</span><span style="color:#ccc9c2cc;">,
+</span><span>    }</span><span style="color:#ccc9c2cc;">,
+</span><span>    SecurityContext</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>k8s</span><span style="color:#f29e74;">.</span><span>SecurityContext{
+</span><span>        Capabilities</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>k8s</span><span style="color:#f29e74;">.</span><span>Capabilities{
+</span><span>            Add</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>[]</span><span style="color:#f29e74;">*</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{
+</span><span>                jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;NET_ADMIN&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>                jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;SYS_MODULE&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>            }</span><span style="color:#ccc9c2cc;">,
+</span><span>        }</span><span style="color:#ccc9c2cc;">,
+</span><span>    }</span><span style="color:#ccc9c2cc;">,
+</span><span>}</span><span style="color:#ccc9c2cc;">,
 </span></code></pre>
-<p><code>HCLOUD_TOKEN</code> comes from SOPS. All other secrets are injected automatically (see <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#generated-files">Generated Files</a> below).</p>
-<hr />
-<h2 id="bootstrap-automation">Bootstrap Automation</h2>
-<h3 id="what-bootstrap-sh-does">What <code>bootstrap.sh</code> does</h3>
-<p>The bootstrap script runs on the VPS after every config or secret change. It is idempotent — safe to re-run.</p>
-<pre class="mermaid border border-gray-500/15">
- flowchart TB
-    PF[&quot;Preflight&lt;br&#x2F;&gt;validate 5 required secrets&lt;br&#x2F;&gt;wait for cloud-init&lt;br&#x2F;&gt;check docker compose&quot;]
-
-    subgraph S1[&quot;Step 1&#x2F;5&quot;]
-        T[&quot;docker compose up -d traefik&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
-    end
-    subgraph S2[&quot;Step 2&#x2F;5&quot;]
-        AP[&quot;docker compose up -d authentik-postgres&lt;br&#x2F;&gt;wait_healthy 120s&quot;]
-    end
-    subgraph S3[&quot;Step 3&#x2F;5&quot;]
-        AS[&quot;docker compose up -d authentik-server authentik-worker&lt;br&#x2F;&gt;wait_healthy 300s&quot;]
-    end
-
-    subgraph CFG[&quot;process_netbird_config()&quot;]
-        SED[&quot;sed: replace base64 placeholders&lt;br&#x2F;&gt;\${NB_RELAY_SECRET}&lt;br&#x2F;&gt;\${NB_DATA_STORE_KEY}&quot;]
-        PY1[&quot;python3: bcrypt.hashpw(NB_OWNER_PASSWORD)&lt;br&#x2F;&gt;→ owner_hash&quot;]
-        PY2[&quot;python3: replace \${NB_OWNER_HASH}&lt;br&#x2F;&gt;in netbird&#x2F;config.yaml&quot;]
-        SED --&gt; PY1 --&gt; PY2
-    end
-
-    subgraph S4[&quot;Step 4&#x2F;5&quot;]
-        NS[&quot;docker compose up -d netbird-server netbird-dashboard&lt;br&#x2F;&gt;wait_healthy 120s &#x2F; 60s&quot;]
-    end
-    subgraph S5[&quot;Step 5&#x2F;5&quot;]
-        NP{&quot;NB_PROXY_TOKEN set?&quot;}
-        NPY[&quot;docker compose up -d netbird-proxy&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
-        NPN[&quot;skip — show setup instructions&quot;]
-    end
-
-    PF --&gt; S1 --&gt; S2 --&gt; S3 --&gt; CFG --&gt; S4 --&gt; S5
-    NP --&gt;|Yes| NPY
-    NP --&gt;|No| NPN
-</pre>
-<h3 id="health-polling">Health polling</h3>
-<p>Each <code>wait_healthy &lt;container&gt;</code> call polls <code>docker inspect</code> every 5 seconds:</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>state=running + health=healthy  →  ready ✓
-</span><span>state=running + health=none     →  ready ✓ (no healthcheck configured)
-</span><span>timeout exceeded                →  prints last 30 log lines, exits 1
-</span></code></pre>
-<p>Authentik has an explicit <code>healthcheck: test: ["CMD-SHELL", "ak healthcheck"]</code> and a 60s start period. The script waits up to 300s for it.</p>
-<h3 id="netbird-config-yaml-template-substitution">netbird/config.yaml template substitution</h3>
-<p>NetBird v0.66 does not expand <code>${VAR}</code> in its config file — the YAML is read verbatim. <code>bootstrap.sh</code> substitutes three placeholders before starting <code>netbird-server</code>:</p>
-<table><thead><tr><th>Placeholder</th><th>Substituted with</th><th>Method</th></tr></thead><tbody>
-<tr><td><code>${NB_RELAY_SECRET}</code></td><td>relay auth secret from <code>.secrets.env</code></td><td><code>sed</code> (base64 — safe)</td></tr>
-<tr><td><code>${NB_DATA_STORE_KEY}</code></td><td>SQLite encryption key from <code>.secrets.env</code></td><td><code>sed</code> (base64 — safe)</td></tr>
-<tr><td><code>${NB_OWNER_HASH}</code></td><td>bcrypt hash of <code>NB_OWNER_PASSWORD</code></td><td>Python (bcrypt contains <code>$</code> and <code>/</code> — breaks sed)</td></tr>
-</tbody></table>
-<p>The bcrypt hash is generated at runtime inside <code>process_netbird_config()</code>:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span>owner_hash</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">$</span><span>(_OWNER_PASS</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">&quot;$</span><span>owner_pass</span><span style="color:#bae67e;">&quot; </span><span style="color:#ffd580;">python3</span><span style="color:#bae67e;"> - </span><span style="color:#f29e74;">&lt;&lt;</span><span style="color:#bae67e;">&#39;</span><span style="color:#ffa759;">PYEOF</span><span style="color:#bae67e;">&#39;
-</span><span style="color:#bae67e;">import bcrypt, os
-</span><span style="color:#bae67e;">p = os.environ[&#39;_OWNER_PASS&#39;].encode()
-</span><span style="color:#bae67e;">print(bcrypt.hashpw(p, bcrypt.gensalt(10)).decode())
-</span><span style="color:#ffa759;">PYEOF
-</span><span>)
-</span></code></pre>
-<p>The password is passed via an environment variable, never via command-line arguments, and never logged.</p>
-<p>This substitution is idempotent: on re-runs <code>CopyToRemote</code> restores the original template from the laptop, then the placeholders are substituted again.</p>
-<hr />
-<h2 id="generated-files">Generated Files</h2>
-<p>Pulumi writes these files on the <strong>laptop</strong> before uploading:</p>
-<h3 id="core-cloud-bifrost-secrets-env"><code>core/cloud/bifrost/.secrets.env</code></h3>
-<p>Generated by <code>generateBifrostSecretsEnv()</code> from SOPS env vars:</p>
-<table><thead><tr><th>Variable</th><th>SOPS key</th><th>Required</th></tr></thead><tbody>
-<tr><td><code>CF_DNS_API_TOKEN</code></td><td><code>CLOUDFLARE_API_TOKEN</code></td><td>Yes</td></tr>
-<tr><td><code>NB_DATA_STORE_KEY</code></td><td><code>NB_DATA_STORE_KEY</code></td><td>Yes</td></tr>
-<tr><td><code>NB_RELAY_SECRET</code></td><td><code>NB_RELAY_SECRET</code></td><td>Yes</td></tr>
-<tr><td><code>AUTHENTIK_BOOTSTRAP_TOKEN</code></td><td><code>AUTHENTIK_TOKEN</code></td><td>Yes</td></tr>
-<tr><td><code>NB_OWNER_PASSWORD</code></td><td><code>NB_OWNER_PASSWORD</code></td><td>Yes</td></tr>
-<tr><td><code>NB_PROXY_TOKEN</code></td><td><code>NB_PROXY_TOKEN</code></td><td>No (optional)</td></tr>
-<tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td><code>NB_BIFROST_SETUP_KEY</code></td><td>No (optional)</td></tr>
-</tbody></table>
-<h3 id="core-cloud-bifrost-env"><code>core/cloud/bifrost/.env</code></h3>
-<p>Generated by <code>generateBifrostDotEnv()</code>. Docker Compose reads this file for <code>${VAR}</code> interpolation in <code>docker-compose.yml</code> (required for <code>POSTGRES_PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}</code>):</p>
-<table><thead><tr><th>Variable</th><th>SOPS key</th></tr></thead><tbody>
-<tr><td><code>AUTHENTIK_SECRET_KEY</code></td><td><code>AUTHENTIK_SECRET_KEY</code></td></tr>
-<tr><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td></tr>
-</tbody></table>
-<p>Both files are gitignored and regenerated on every <code>just core hetzner up</code>.</p>
-<hr />
-<h2 id="re-running-updating">Re-running / Updating</h2>
-<p><code>bootstrap.sh</code> is triggered by a SHA-256 hash of all bifrost config files plus all secret values. Pulumi re-runs the script automatically when:</p>
-<ul>
-<li>Any file in <code>core/cloud/bifrost/</code> changes</li>
-<li>Any SOPS secret value changes (detected by hashing)</li>
-</ul>
-<p>The script is idempotent:</p>
-<ul>
-<li><code>docker compose up -d</code> is a no-op for already-running containers with the same image</li>
-<li><code>sed</code> and Python substitutions in <code>config.yaml</code> are a no-op if placeholders are already replaced (re-deploy always restores the template via <code>CopyToRemote</code> first)</li>
-</ul>
-<hr />
-<h2 id="firewall">Firewall</h2>
-<p>Hetzner Cloud firewall (<code>bifrost-fw</code>) applied to the VPS:</p>
-<table><thead><tr><th>Protocol</th><th>Port(s)</th><th>Purpose</th></tr></thead><tbody>
-<tr><td>TCP</td><td>22</td><td>SSH (management)</td></tr>
-<tr><td>TCP</td><td>80</td><td>HTTP → Traefik (redirects to HTTPS)</td></tr>
-<tr><td>TCP</td><td>443</td><td>HTTPS → Traefik</td></tr>
-<tr><td>TCP + UDP</td><td>3478</td><td>STUN (NetBird NAT traversal)</td></tr>
-<tr><td>TCP + UDP</td><td>5349</td><td>TURNS (TLS TURN relay)</td></tr>
-<tr><td>UDP</td><td>50000–50500</td><td>TURN ephemeral relay range</td></tr>
-</tbody></table>
-<hr />
-<h2 id="dns-records">DNS Records</h2>
-<p>Managed by <code>core/cloud/cloudflare.go</code>:</p>
-<table><thead><tr><th>Hostname</th><th>Points to</th><th>Traffic handled by</th></tr></thead><tbody>
-<tr><td><code>auth.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Authentik (on VPS)</td></tr>
-<tr><td><code>netbird.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird dashboard + server (on VPS)</td></tr>
-<tr><td><code>proxy.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird reverse proxy</td></tr>
-<tr><td><code>*.proxy.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird reverse proxy wildcard</td></tr>
-<tr><td><code>grafana.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Traefik → WireGuard → cluster</td></tr>
-<tr><td><code>harbor.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Traefik → WireGuard → cluster</td></tr>
-</tbody></table>
 <blockquote>
-<p><strong>Adding a new public service:</strong> add the service name to <code>publicServices</code> in <code>core/cloud/cloudflare.go</code>, then run <code>just core cloudflare up</code> and <code>just core hetzner up</code>. The DNS record and Traefik route (with ForwardAuth) are created automatically.</p>
+<p><strong>Note:</strong> Pin to <code>netbirdio/netbird:0.66</code> rather than <code>latest</code> to match the server version. The <code>expose</code> command shares the WireGuard tunnel from the primary container — it doesn't need to run <code>netbird up</code> again, just <code>expose</code> on top.</p>
+</blockquote>
+<p>Synthesize and push:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth
+</span><span style="color:#ffd580;">git</span><span> add workloads/networking/netbird_peer.go app/netbird/
+</span><span style="color:#ffd580;">git</span><span> commit</span><span style="color:#ffcc66;"> -m </span><span style="color:#bae67e;">&quot;feat: add netbird expose sidecar for headlamp&quot;
+</span><span style="color:#ffd580;">git</span><span> push origin v0.1.5-manifests
+</span></code></pre>
+<p>ArgoCD will roll the <code>netbird-peer</code> Deployment with the new sidecar within 3 minutes.</p>
+<hr />
+<h2 id="step-4-verify">Step 4 — Verify</h2>
+<h3 id="4a-check-the-expose-sidecar-is-running">4a. Check the expose sidecar is running</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> netbird
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> netbird</span><span style="color:#ffcc66;"> -l</span><span> app=netbird-peer</span><span style="color:#ffcc66;"> -c</span><span> netbird-expose-headlamp</span><span style="color:#ffcc66;"> --tail</span><span style="color:#f29e74;">=</span><span>30
+</span><span style="font-style:italic;color:#5c6773;"># Look for: &quot;service exposed at: headlamp.proxy.madhan.app&quot;
+</span></code></pre>
+<h3 id="4b-check-the-netbird-dashboard">4b. Check the NetBird dashboard</h3>
+<p><strong>NetBird UI → Network → Exposed Services</strong> — you should see:</p>
+<table><thead><tr><th>Service</th><th>Domain</th><th>Auth</th></tr></thead><tbody>
+<tr><td>headlamp</td><td>headlamp.proxy.madhan.app</td><td>SSO (homelab-admins)</td></tr>
+</tbody></table>
+<h3 id="4c-browser-test">4c. Browser test</h3>
+<p>Open <strong><code>https://headlamp.proxy.madhan.app</code></strong> in a private window:</p>
+<ol>
+<li>Browser hits Cloudflare → Hetzner VPS Traefik → NetBird Proxy service</li>
+<li>NetBird proxy detects unauthenticated request → redirects to <code>https://netbird.madhan.app/api/v1/sso/...</code></li>
+<li>NetBird SSO flow redirects to Authentik (via embedded Dex)</li>
+<li>You log in with GitHub → Authentik verifies you're in <code>homelab-admins</code></li>
+<li>Redirected back → Headlamp UI loads</li>
+</ol>
+<h3 id="4d-test-unauthorized-access">4d. Test unauthorized access</h3>
+<p>Log in with an account that is <strong>not</strong> in <code>homelab-admins</code> — you should get a <code>403 Forbidden</code> from the NetBird proxy layer.</p>
+<hr />
+<h2 id="dns-note-no-cloudflare-change-needed">DNS Note — No Cloudflare Change Needed</h2>
+<p>The <code>*.proxy.madhan.app</code> wildcard A record already exists in <code>cloudflare.go</code>:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// Already in core/cloud/cloudflare.go
+</span><span style="color:#ffa759;">if </span><span>err </span><span style="color:#f29e74;">:= </span><span style="color:#ffd580;">newRecord</span><span>(</span><span style="color:#bae67e;">&quot;*.proxy.madhan.app&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;wildcard-proxy-madhan-app&quot;</span><span style="color:#ccc9c2cc;">, </span><span>hetznerIP</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;NetBird expose wildcard&quot;</span><span>)</span><span style="color:#ccc9c2cc;">; </span><span>err </span><span style="color:#f29e74;">!= </span><span style="color:#ffcc66;">nil </span><span>{
+</span><span>    </span><span style="color:#ffa759;">return </span><span>err
+</span><span>}
+</span></code></pre>
+<p><code>headlamp.proxy.madhan.app</code> is automatically covered — no additional DNS record needed.</p>
+<hr />
+<h2 id="adding-more-services-later">Adding More Services Later</h2>
+<p>The same pattern applies to any other internal service. For each new service, add another sidecar container:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span>{
+</span><span>    Name</span><span style="color:#ccc9c2cc;">:  </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;netbird-expose-grafana&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    Image</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;netbirdio/netbird:0.66&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    Command</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>[]</span><span style="color:#f29e74;">*</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;netbird&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;expose&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;grafana.grafana.svc.cluster.local:80&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;--domain=grafana.proxy.madhan.app&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;--with-user-groups=homelab-admins&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>        jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;--hostname=k8s-routing-peer&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    }</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="font-style:italic;color:#5c6773;">// ... same Env + SecurityContext as above
+</span><span>}</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<blockquote>
+<p>If you use <code>grafana.proxy.madhan.app</code> for the NetBird expose subdomain, you can keep the <strong>existing</strong> <code>grafana.madhan.app</code> DNS record pointing at the Hetzner VPS via Traefik ForwardAuth (Authentik) — they are separate, independent exposure paths.</p>
 </blockquote>
 <hr />
-<h2 id="after-the-first-deploy">After the First Deploy</h2>
-<p>After <code>just core hetzner up</code> succeeds, complete the one-time setup in this order:</p>
-<ol>
-<li>
-<p><strong>Log in to NetBird with the local admin account</strong></p>
-<ul>
-<li>Open <code>https://netbird.madhan.app</code></li>
-<li>Sign in with email: <code>admin@madhan.app</code>, password: the value of <code>NB_OWNER_PASSWORD</code> in SOPS</li>
-<li>This uses the embedded Dex owner account, which only works before an external IdP is configured</li>
-</ul>
-</li>
-<li>
-<p><strong>Connect Authentik as the Identity Provider</strong></p>
-<ul>
-<li>Settings → Identity Providers → Add → <strong>Authentik</strong></li>
-<li>Client ID: <code>aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT</code></li>
-<li>Client Secret: value of <code>NETBIRD_CLIENT_SECRET</code> from SOPS</li>
-<li>Issuer: <code>https://auth.madhan.app/application/o/netbird/</code></li>
-<li>This configures Authentik as a connector inside embedded Dex — users will then log in via GitHub (Authentik) through Dex</li>
-</ul>
-</li>
-<li>
-<p><strong>Create a Personal Access Token</strong></p>
-<ul>
-<li>Settings → Access Tokens → Create — copy the token</li>
-</ul>
-</li>
-<li>
-<p><strong>Create Setup Keys</strong></p>
-<ul>
-<li>Setup Keys → Add key <code>bifrost-agent</code> (Reusable) for the VPS WireGuard agent</li>
-<li>Setup Keys → Add key <code>k8s-routing-peer</code> (Reusable) for the K8s pod</li>
-</ul>
-</li>
-<li>
-<p><strong>Add tokens to SOPS and re-deploy</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">sops</span><span> edit secrets/bootstrap.sops.yaml
-</span><span style="font-style:italic;color:#5c6773;"># Add:
-</span><span style="font-style:italic;color:#5c6773;">#   NB_PROXY_TOKEN: &lt;personal access token&gt;
-</span><span style="font-style:italic;color:#5c6773;">#   NB_BIFROST_SETUP_KEY: &lt;bifrost-agent setup key&gt;
-</span><span style="color:#ffd580;">just</span><span> core hetzner up
-</span></code></pre>
-<p>Bootstrap.sh picks up the new tokens and starts <code>netbird-proxy</code> and <code>netbird-agent</code>.</p>
-</li>
-<li>
-<p><strong>Add K8s routing peer setup key to Infisical</strong></p>
-<ul>
-<li>Project <code>homelab-prod</code> → Env <code>prod</code> → Path <code>/netbird</code></li>
-<li>Add <code>NETBIRD_SETUP_KEY: &lt;k8s-routing-peer key&gt;</code></li>
-</ul>
-</li>
-<li>
-<p><strong>Create the cluster route in NetBird</strong></p>
-<ul>
-<li>Network Routes → Add Route: network <code>192.168.1.0/24</code>, peer <code>k8s-routing-peer</code></li>
-</ul>
-</li>
-</ol>
-<p>See <a href="/infrastructure/netbird">NetBird VPN</a> and the <a href="/getting-started/deployment">Deployment Guide</a> for the complete setup sequence.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead><tbody>
+<tr><td><code>headlamp.proxy.madhan.app</code> returns <code>502</code></td><td>Sidecar not running or expose registration failed</td><td>Check sidecar logs</td></tr>
+<tr><td>SSO redirect loop</td><td>Authentik redirect URI not registered</td><td>Apply <code>just core authentik up</code> and check <code>netbird.madhan.app/api/v1/sso/callback</code> is in the allowed redirects</td></tr>
+<tr><td><code>403</code> after successful login</td><td>User not in <code>homelab-admins</code> group</td><td>Add user to group in Authentik UI</td></tr>
+<tr><td>Sidecar CrashLoopBackOff</td><td>Version mismatch between <code>netbird</code> client and server</td><td>Use the same version tag: <code>netbirdio/netbird:0.66</code></td></tr>
+<tr><td><code>expose</code> command not found</td><td>Client image too old</td><td>Pin image to <code>netbirdio/netbird:0.66</code> or later</td></tr>
+</tbody></table>
 
 
     <!--  Errata section  -->
@@ -744,7 +693,7 @@
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/infrastructure&#x2F;hetzner-bifrost&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/apps&#x2F;management&#x2F;headlamp&#x2F;netbird-expose.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -776,7 +725,7 @@
                                     
     
         
-        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/infrastructure/">
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/apps/management/headlamp/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -784,7 +733,7 @@
                     </svg>
                     <span class="nav-button-label">Back to</span>
                 </div>
-                <div class="nav-button-title">Infrastructure</div>
+                <div class="nav-button-title">Headlamp</div>
             </div>
         </a>
     
@@ -793,17 +742,75 @@
                                 <div class="next-nav-item">
                                     
     
-        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/infrastructure/netbird/">
-            <div class="nav-button-content">
-                <div class="nav-button-direction">
-                    <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                    <span class="nav-button-label">Next</span>
-                </div>
-                <div class="nav-button-title">NetBird VPN</div>
-            </div>
-        </a>
+        
+        
+        
+            
+            
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+        
+            
+            
+            
+        
+            
+            
+            
+        
     
 
                                 </div>
@@ -821,40 +828,22 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#overview" class="toc-link">Overview</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#services" class="toc-link">Services</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#pulumi-configuration" class="toc-link">Pulumi Configuration</a>
-                    
-                </li>
-            
-                <li>
-                    
                     <details class="toc-details" >
                         <summary>
-                            <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#bootstrap-automation" class="toc-link">Bootstrap Automation</a>
+                            <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#overview" class="toc-link">Overview</a>
                         </summary>
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#what-bootstrap-sh-does" class="toc-link">What bootstrap.sh does</a>
+                                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#architecture" class="toc-link">Architecture</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#health-polling" class="toc-link">Health polling</a>
+                                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#what-s-already-in-place" class="toc-link">What&#x27;s already in place</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#netbird-config-yaml-template-substitution" class="toc-link">netbird&#x2F;config.yaml template substitution</a>
+                                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#what-you-need-to-do" class="toc-link">What you need to do</a>
                                 </li>
                             
                         </ul>
@@ -864,18 +853,44 @@
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#step-1-create-an-authentik-group-for-headlamp-access" class="toc-link">Step 1 — Create an Authentik Group for Headlamp Access</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#step-2-register-the-expose-redirect-uri-in-authentik-code-change" class="toc-link">Step 2 — Register the Expose Redirect URI in Authentik (Code Change)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#step-3-modify-the-netbird-peer-deployment-to-run-expose-code-change" class="toc-link">Step 3 — Modify the netbird-peer Deployment to Run expose (Code Change)</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <details class="toc-details" >
                         <summary>
-                            <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#generated-files" class="toc-link">Generated Files</a>
+                            <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#step-4-verify" class="toc-link">Step 4 — Verify</a>
                         </summary>
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#core-cloud-bifrost-secrets-env" class="toc-link">core&#x2F;cloud&#x2F;bifrost&#x2F;.secrets.env</a>
+                                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#4a-check-the-expose-sidecar-is-running" class="toc-link">4a. Check the expose sidecar is running</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#core-cloud-bifrost-env" class="toc-link">core&#x2F;cloud&#x2F;bifrost&#x2F;.env</a>
+                                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#4b-check-the-netbird-dashboard" class="toc-link">4b. Check the NetBird dashboard</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#4c-browser-test" class="toc-link">4c. Browser test</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#4d-test-unauthorized-access" class="toc-link">4d. Test unauthorized access</a>
                                 </li>
                             
                         </ul>
@@ -885,25 +900,19 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#re-running-updating" class="toc-link">Re-running &#x2F; Updating</a>
+                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#dns-note-no-cloudflare-change-needed" class="toc-link">DNS Note — No Cloudflare Change Needed</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#firewall" class="toc-link">Firewall</a>
+                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#adding-more-services-later" class="toc-link">Adding More Services Later</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#dns-records" class="toc-link">DNS Records</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#after-the-first-deploy" class="toc-link">After the First Deploy</a>
+                    <a href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose/#troubleshooting" class="toc-link">Troubleshooting</a>
                     
                 </li>
             
@@ -1101,7 +1110,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
-                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
                             
@@ -1364,12 +1373,12 @@
                                                     
                                                     <li>
                                                         
-                                                            <details >
+                                                            <details open>
                                                                 <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp">Headlamp</a></summary>
                                                                 <ul>
                                                                     
                                                                     
-                                                                        <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose">Exposing Headlamp via NetBird Reverse Proxy</a></li>
+                                                                        <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose">Exposing Headlamp via NetBird Reverse Proxy</a></li>
                                                                     
                                                                     
                                                                 </ul>
