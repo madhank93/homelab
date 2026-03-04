@@ -11,7 +11,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		Namespace: jsii.String(namespace),
 	})
 
-	// Create namespace first
+	// Namespace
 	cdk8s.NewApiObject(chart, jsii.String("infisical-namespace"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("v1"),
 		Kind:       jsii.String("Namespace"),
@@ -21,25 +21,20 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 	})
 
 	// infisical-secrets is created by: infra/scripts/create-bootstrap-secrets.sh
-	// It contains: DB_PASSWORD, AUTH_SECRET, ENCRYPTION_KEY, DB_CONNECTION_URI, REDIS_PASSWORD
+	// Keys: DB_PASSWORD, AUTH_SECRET, ENCRYPTION_KEY, DB_CONNECTION_URI, REDIS_PASSWORD
 
-	// Infisical standalone chart values
+	// Infisical Standalone Helm Values
 	values := map[string]any{
 		"infisical": map[string]any{
 			"kubeSecretRef": "infisical-secrets",
 			"replicaCount":  1,
 			"resources": map[string]any{
-				"requests": map[string]any{
-					"cpu":    "200m",
-					"memory": "512Mi",
-				},
-				"limits": map[string]any{
-					"memory": "1024Mi",
-				},
+				"requests": map[string]any{"cpu": "200m", "memory": "512Mi"},
+				"limits":   map[string]any{"memory": "1024Mi"},
 			},
 		},
 		"postgresql": map[string]any{
-			"enabled": false, // Disable embedded Postgres to handle it separately
+			"enabled": false, // external StatefulSet below
 			"useExistingPostgresSecret": map[string]any{
 				"enabled": true,
 				"existingConnectionStringSecret": map[string]any{
@@ -50,22 +45,16 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 		"redis": map[string]any{
 			"enabled": true,
-			// The infisical-standalone chart template constructs REDIS_URL using
-			// redis.auth.password directly — there is no Kubernetes secret-ref support.
-			// Do not override auth here; the chart's built-in default password ("mysecretpassword")
-			// is what gets baked into the generated REDIS_URL env var in the infisical Deployment.
-			// Both Redis and infisical will use the same default, so they match.
+			// Chart builds REDIS_URL from redis.auth.password directly — no secret-ref support.
+			// Both Redis and infisical use the chart default password so they match.
 		},
 		"ingress": map[string]any{
 			"enabled":  false,
 			"hostname": "infisical.madhan.app",
 		},
-		// Disable the bundled nginx subchart entirely.
-		// Even with ingress.enabled=false the subchart still renders a Deployment
-		// and a ValidatingWebhookConfiguration that can block all pod creation.
-		"ingress-nginx": map[string]any{
-			"enabled": false,
-		},
+		// Disable bundled nginx subchart — even with ingress disabled it renders a
+		// ValidatingWebhookConfiguration that can block all pod creation cluster-wide.
+		"ingress-nginx": map[string]any{"enabled": false},
 	}
 
 	// Deploy Infisical Application
@@ -78,9 +67,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		Values:      &values,
 	})
 
-	// Deploy PostgreSQL using official image (docker.io/library/postgres:17).
-	// Bitnami images were removed from Docker Hub and are no longer publicly pullable.
-	// The official postgres image uses POSTGRES_USER/PASSWORD/DB env vars.
+	// PostgreSQL Service — official image (Bitnami removed from Docker Hub)
 	cdk8s.NewApiObject(chart, jsii.String("postgresql-service"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("v1"),
 		Kind:       jsii.String("Service"),
@@ -95,6 +82,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	}))
 
+	// PostgreSQL StatefulSet
 	cdk8s.NewApiObject(chart, jsii.String("postgresql-statefulset"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("apps/v1"),
 		Kind:       jsii.String("StatefulSet"),
@@ -163,7 +151,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	}))
 
-	// Gateway API HTTPRoute for Infisical
+	// HTTPRoute — infisical.madhan.app + infisical.local → infisical:8080
 	cdk8s.NewApiObject(chart, jsii.String("infisical-httproute"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
 		Kind:       jsii.String("HTTPRoute"),
@@ -173,10 +161,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"parentRefs": []map[string]any{
-			{
-				"name":      "homelab-gateway",
-				"namespace": "kube-system",
-			},
+			{"name": "homelab-gateway", "namespace": "kube-system"},
 		},
 		"hostnames": []string{"infisical.madhan.app", "infisical.local"},
 		"rules": []map[string]any{
@@ -185,41 +170,110 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{
-						"name": "infisical-infisical-standalone-infisical",
-						"port": 8080,
-					},
+					{"name": "infisical-infisical-standalone-infisical", "port": 8080},
 				},
 			},
 		},
 	}))
 
-	// Infisical Operator (syncs secrets from Infisical to K8s)
-	// v0.10.25 fixes the bug in v0.10.23 where the leader election RoleBinding
-	// had subjects[0].namespace hardcoded to "default" instead of the release namespace.
+	// Infisical Operator
+	// Bug in v0.10.25: leader-election RoleBinding has subjects[0].namespace="default" — operator
+	// cannot acquire the lease and never reconciles. Overridden explicitly below.
 	cdk8s.NewHelm(chart, jsii.String("infisical-operator-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("secrets-operator"),
 		Repo:        jsii.String("https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/"),
 		Version:     jsii.String("0.10.25"),
 		ReleaseName: jsii.String("infisical-operator"),
-
 		Values: &map[string]any{
 			"controllerManager": map[string]any{
 				"manager": map[string]any{
 					"resources": map[string]any{
-						"limits": map[string]any{
-							"cpu":    "500m",
-							"memory": "128Mi",
-						},
-						"requests": map[string]any{
-							"cpu":    "10m",
-							"memory": "64Mi",
-						},
+						"limits":   map[string]any{"cpu": "500m", "memory": "128Mi"},
+						"requests": map[string]any{"cpu": "10m", "memory": "64Mi"},
 					},
 				},
 			},
 		},
 	})
+
+	// Fix leader-election RoleBinding — correct subject namespace (chart bug workaround)
+	leaderElectionBinding := cdk8s.NewApiObject(chart, jsii.String("infisical-opera-leader-election-rolebinding-fix"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
+		Kind:       jsii.String("RoleBinding"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("infisical-opera-leader-election-rolebinding"), // must match chart name
+			Namespace: jsii.String(namespace),
+			Labels: &map[string]*string{
+				"app.kubernetes.io/instance": jsii.String("infisical-operator"),
+				"app.kubernetes.io/name":     jsii.String("secrets-operator"),
+			},
+		},
+	})
+	leaderElectionBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/roleRef"), map[string]any{
+		"apiGroup": "rbac.authorization.k8s.io",
+		"kind":     "Role",
+		"name":     "infisical-opera-leader-election-role",
+	}))
+	leaderElectionBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/subjects"), []map[string]any{
+		{"kind": "ServiceAccount", "name": "infisical-opera-controller-manager", "namespace": namespace},
+	}))
+
+	// Kubernetes Auth — ClusterRole: grants tokenreviews create for JWT verification
+	cdk8s.NewApiObject(chart, jsii.String("infisical-token-reviewer-role"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
+		Kind:       jsii.String("ClusterRole"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String("infisical-token-reviewer"),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/rules"), []map[string]any{
+		{"apiGroups": []string{"authentication.k8s.io"}, "resources": []string{"tokenreviews"}, "verbs": []string{"create"}},
+	}))
+
+	// ClusterRoleBinding — binds infisical-token-reviewer to operator SA
+	tokenReviewerBinding := cdk8s.NewApiObject(chart, jsii.String("infisical-token-reviewer-binding"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
+		Kind:       jsii.String("ClusterRoleBinding"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String("infisical-token-reviewer"),
+		},
+	})
+	tokenReviewerBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/roleRef"), map[string]any{
+		"apiGroup": "rbac.authorization.k8s.io",
+		"kind":     "ClusterRole",
+		"name":     "infisical-token-reviewer",
+	}))
+	tokenReviewerBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/subjects"), []map[string]any{
+		{"kind": "ServiceAccount", "name": "infisical-operator-controller-manager", "namespace": namespace},
+	}))
+
+	// InfisicalSecret CR — kubernetesAuth (operator uses its own SA JWT, no stored credentials)
+	// TODO: replace identityId after creating Machine Identity in Infisical UI → Access Control →
+	// Machine Identities → k8s-homelab → Kubernetes Auth (host: https://192.168.1.210:6443)
+	cdk8s.NewApiObject(chart, jsii.String("infisical-bootstrap-secret-cr"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
+		Kind:       jsii.String("InfisicalSecret"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("infisical-bootstrap-secret"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"hostAPI":        "https://infisical.madhan.app/api",
+		"resyncInterval": 60,
+		"authentication": map[string]any{
+			"kubernetesAuth": map[string]any{
+				"identityId": "REPLACE_WITH_IDENTITY_ID", // TODO: set after Infisical UI setup
+				"serviceAccountRef": map[string]any{
+					"name":      "infisical-operator-controller-manager",
+					"namespace": namespace,
+				},
+			},
+		},
+		"managedSecretReference": map[string]any{
+			"secretName":      "infisical-synced-secrets",
+			"secretNamespace": namespace,
+			"creationPolicy":  "Orphan",
+		},
+	}))
 
 	return chart
 }
