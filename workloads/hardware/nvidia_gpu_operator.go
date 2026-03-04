@@ -99,15 +99,10 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	}
 
 	// Talos Validation Bridge DaemonSet
-	// GPU operator v25.x uses a validation chain (driver-ready, toolkit-ready) to coordinate
-	// startup between its components. On Talos, the Talos extensions (nvidia-open-gpu-kernel-
-	// modules-production, nvidia-container-toolkit-production) provide driver and toolkit without
-	// the GPU operator's own driver/toolkit containers. This DaemonSet creates the three marker
-	// files that GPU operator components watch to confirm readiness:
-	//   .driver-ctr-ready  — signals driver-validation init container to proceed
-	//   driver-ready       — signals driver is available
-	//   toolkit-ready      — signals device-plugin toolkit-validation init container to proceed
-	// Without these files, the device plugin stays in Init:0/1 forever.
+	// Creates marker files that GPU operator components poll for readiness:
+	//   /run/nvidia/driver/driver-ready    — driver-validation init container
+	//   /run/nvidia/validations/.driver-ctr-ready, toolkit-ready — other init containers
+	// Without these, nvidia-operator-validator stays in Init:0/4, nvidia.com/gpu stays 0.
 	trueBool := true
 	privileged := true
 	zero := float64(0)
@@ -140,10 +135,10 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 								jsii.String("/bin/sh"), jsii.String("-c"),
 							},
 							Args: &[]*string{jsii.String(
-								"mkdir -p /run/nvidia/validations && " +
+								"mkdir -p /run/nvidia/validations /run/nvidia/driver && " +
 									"touch /run/nvidia/validations/.driver-ctr-ready " +
-									"/run/nvidia/validations/driver-ready " +
-									"/run/nvidia/validations/toolkit-ready && " +
+									"/run/nvidia/validations/toolkit-ready " +
+									"/run/nvidia/driver/driver-ready && " +
 									"while true; do sleep 3600; done",
 							)},
 							SecurityContext: &k8s.SecurityContext{
@@ -154,6 +149,10 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 									Name:      jsii.String("run-nvidia-validations"),
 									MountPath: jsii.String("/run/nvidia/validations"),
 								},
+								{
+									Name:      jsii.String("run-nvidia-driver"),
+									MountPath: jsii.String("/run/nvidia/driver"),
+								},
 							},
 						},
 					},
@@ -162,6 +161,13 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 							Name: jsii.String("run-nvidia-validations"),
 							HostPath: &k8s.HostPathVolumeSource{
 								Path: jsii.String("/run/nvidia/validations"),
+								Type: jsii.String("DirectoryOrCreate"),
+							},
+						},
+						{
+							Name: jsii.String("run-nvidia-driver"),
+							HostPath: &k8s.HostPathVolumeSource{
+								Path: jsii.String("/run/nvidia/driver"),
 								Type: jsii.String("DirectoryOrCreate"),
 							},
 						},
