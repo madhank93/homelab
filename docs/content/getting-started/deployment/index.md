@@ -11,7 +11,7 @@ This guide walks through the complete deployment sequence. Each phase depends on
 ```
 Phase 0  →  Local prerequisites + SOPS secrets setup        (one-time)
 Phase 1  →  Bootstrap Kubernetes cluster                     (~15 min)
-Phase 2  →  Infisical first-time setup                       (~10 min)
+Phase 2  →  Infisical setup + Kubernetes Auth registration   (~10 min)
 Phase 3  →  Bifrost VPS deploy — fully automated             (~8 min)
 Phase 4  →  Authentik apps (Pulumi)                          (~2 min)
 Phase 5  →  NetBird first-login + Authentik connector        (~5 min)
@@ -116,23 +116,23 @@ ArgoCD starts syncing apps from the `v0.1.5-manifests` branch. Most apps will sh
 
 ---
 
-## Phase 2 — Infisical First-Time Setup
+## Phase 2 — Infisical Setup + Kubernetes Auth Registration
 
 Wait for Infisical to be running (~5 min after Phase 1):
 
 ```bash
-kubectl get pods -n infisical   # wait for Running
+kubectl get pods -n infisical   # wait for all pods Running
 ```
 
 Open **`http://infisical.madhan.app`** (LAN only — no SSO yet).
 
 ### 2a. Create organization and project
 
-1. Create an account
+1. Create an admin account on first load
 2. **Organization** → **New Project** → name: `homelab`, slug: `homelab-prod`
 3. **Environments** → Add → name: `prod`, slug: `prod`
 
-### 2b. Add secrets
+### 2b. Add app secrets
 
 Navigate to **Secrets** → `prod` environment and add each path:
 
@@ -149,7 +149,7 @@ HARBOR_ADMIN_PASSWORD = <strong password>
 **Path `/n8n`**
 ```
 DB_PASSWORD         = <strong password>
-N8N_ENCRYPTION_KEY  = <32-char random — record this, needed on every rebuild>
+N8N_ENCRYPTION_KEY  = <32-char random — record this, required on every rebuild>
 ```
 
 **Path `/rancher`**
@@ -159,30 +159,53 @@ BOOTSTRAP_PASSWORD = <strong password>
 
 *(Skip `/netbird` for now — add it after Phase 6.)*
 
-### 2c. Create service token
+### 2c. Register the cluster (Kubernetes Auth — one-time)
 
-**Settings → Service Tokens → Add Token**:
-- Name: `k8s-homelab`
-- Environment: `prod`
-- Path: `/`
-- No expiry
-- Read only
+The operator authenticates to Infisical using its own ServiceAccount JWT. This step registers the cluster so Infisical can verify those JWTs.
 
-Copy the token (shown once only).
-
-### 2d. Store token in K8s
+**Get the token reviewer JWT** (long-lived, used only by Infisical to call the k8s tokenreviews API):
 
 ```bash
-kubectl create secret generic infisical-service-token \
-  --from-literal=infisicalToken=<paste-token> \
-  -n infisical
+kubectl create token infisical-operator-controller-manager \
+  -n infisical --duration=8760h
+# Copy the output — you'll paste it into the Infisical UI below
 ```
 
-Within 60 seconds, `InfisicalSecret` CRs sync and apps start becoming healthy:
+**In Infisical UI → Access Control → Machine Identities → Create → "k8s-homelab":**
+
+| Field | Value |
+|-------|-------|
+| Auth method | Kubernetes Auth |
+| Kubernetes Host | `https://192.168.1.210:6443` |
+| Token Reviewer JWT | *(paste from above)* |
+| Allowed SA Names | `infisical-operator-controller-manager` |
+| Allowed Namespaces | `infisical` |
+
+Save — copy the `identityId` UUID shown on the next screen.
+
+**Update the code** with the `identityId`:
 
 ```bash
+# In workloads/secrets/infisical.go, replace the placeholder:
+# "identityId": "REPLACE_WITH_IDENTITY_ID"
+# with the UUID you just copied, then:
+just synth
+git add workloads/secrets/infisical.go app/infisical/
+git commit -m "feat: set Infisical kubernetesAuth identityId"
+git push origin v0.1.5-manifests
+```
+
+Within 60 seconds ArgoCD applies the updated CR and the operator starts syncing secrets:
+
+```bash
+# Verify operator authenticated successfully
+kubectl logs -n infisical -l app.kubernetes.io/name=secrets-operator --tail=20
+
+# Check CR status
+kubectl describe infisicalsecret infisical-bootstrap-secret -n infisical
+
+# Apps should start becoming Healthy as secrets sync
 kubectl get applications -n argocd
-# grafana, harbor, n8n, rancher → Healthy
 ```
 
 ---
@@ -407,8 +430,8 @@ kubectl get applications -n argocd
 |--------|-----------|-----------|-------|
 | `HCLOUD_TOKEN` | SOPS | Phase 0 | Hetzner API access |
 | `PROXMOX_PASSWORD` | SOPS | Phase 0 | Proxmox API access |
-| `CLOUDFLARE_API_TOKEN` | SOPS → `.secrets.env` + k8s Secret | Phase 0 | cert-manager + Traefik ACME |
-| `AUTHENTIK_TOKEN` | SOPS → `.secrets.env` as `AUTHENTIK_BOOTSTRAP_TOKEN` | Phase 0 | Authentik akadmin API token |
+| `CLOUDFLARE_API_TOKEN` | SOPS → k8s Secret | Phase 0 | cert-manager + Traefik ACME |
+| `AUTHENTIK_TOKEN` | SOPS → `.secrets.env` | Phase 0 | Authentik akadmin API token |
 | `AUTHENTIK_SECRET_KEY` | SOPS → `.env` | Phase 0 | Django secret key |
 | `AUTHENTIK_POSTGRESQL_PASSWORD` | SOPS → `.env` | Phase 0 | Authentik Postgres |
 | `AUTHENTIK_GITHUB_SECRET` | SOPS | Phase 0 | GitHub OAuth app secret |
@@ -418,9 +441,10 @@ kubectl get applications -n argocd
 | `NETBIRD_CLIENT_SECRET` | SOPS (used by Pulumi) | Phase 0 | Dex→Authentik OIDC connector |
 | `NB_PROXY_TOKEN` | SOPS → `.secrets.env` | Phase 6 | |
 | `NB_BIFROST_SETUP_KEY` | SOPS → `.secrets.env` | Phase 6 | |
-| `NETBIRD_SETUP_KEY` (k8s) | Infisical `/netbird` | Phase 6 | k8s-routing-peer setup key |
-| App passwords | Infisical paths | Phase 2 | |
-| Infisical service token | k8s Secret `infisical-service-token` | Phase 2 | |
+| Token Reviewer JWT | One-time kubectl command | Phase 2 | Used by Infisical to call k8s tokenreviews |
+| Infisical Machine Identity ID | `workloads/secrets/infisical.go` | Phase 2 | `kubernetesAuth.identityId` |
+| `NETBIRD_SETUP_KEY` | Infisical `/netbird` | Phase 6 | k8s-routing-peer setup key |
+| App passwords | Infisical paths | Phase 2 | Synced by operator — not stored in k8s |
 
 ---
 
