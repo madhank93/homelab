@@ -3,10 +3,7 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     app.kubernetes.io/instance: infisical-operator
-    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: secrets-operator
-    app.kubernetes.io/version: v0.10.25
-    helm.sh/chart: secrets-operator-v0.10.25
   name: infisical-opera-metrics-auth-rolebinding
   namespace: infisical
 roleRef:
@@ -16,4 +13,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: infisical-opera-controller-manager
-    namespace: default
+    namespace: infisical
