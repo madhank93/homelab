@@ -218,6 +218,49 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		{"kind": "ServiceAccount", "name": "infisical-opera-controller-manager", "namespace": namespace},
 	}))
 
+	// Fix manager ClusterRoleBinding — same chart bug: subjects[0].namespace="default"
+	// Without this, operator cannot list secrets/CRDs at cluster scope and crashes immediately after acquiring the lease.
+	managerBinding := cdk8s.NewApiObject(chart, jsii.String("infisical-opera-manager-rolebinding-fix"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
+		Kind:       jsii.String("ClusterRoleBinding"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String("infisical-opera-manager-rolebinding"), // must match chart name
+			Labels: &map[string]*string{
+				"app.kubernetes.io/instance": jsii.String("infisical-operator"),
+				"app.kubernetes.io/name":     jsii.String("secrets-operator"),
+			},
+		},
+	})
+	managerBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/roleRef"), map[string]any{
+		"apiGroup": "rbac.authorization.k8s.io",
+		"kind":     "ClusterRole",
+		"name":     "infisical-opera-manager-role",
+	}))
+	managerBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/subjects"), []map[string]any{
+		{"kind": "ServiceAccount", "name": "infisical-opera-controller-manager", "namespace": namespace},
+	}))
+
+	// Fix metrics-auth ClusterRoleBinding — same chart bug
+	metricsBinding := cdk8s.NewApiObject(chart, jsii.String("infisical-opera-metrics-auth-rolebinding-fix"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
+		Kind:       jsii.String("ClusterRoleBinding"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String("infisical-opera-metrics-auth-rolebinding"), // must match chart name
+			Labels: &map[string]*string{
+				"app.kubernetes.io/instance": jsii.String("infisical-operator"),
+				"app.kubernetes.io/name":     jsii.String("secrets-operator"),
+			},
+		},
+	})
+	metricsBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/roleRef"), map[string]any{
+		"apiGroup": "rbac.authorization.k8s.io",
+		"kind":     "ClusterRole",
+		"name":     "infisical-opera-metrics-auth-role",
+	}))
+	metricsBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/subjects"), []map[string]any{
+		{"kind": "ServiceAccount", "name": "infisical-opera-controller-manager", "namespace": namespace},
+	}))
+
 	// Kubernetes Auth — ClusterRole: grants tokenreviews create for JWT verification
 	cdk8s.NewApiObject(chart, jsii.String("infisical-token-reviewer-role"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
