@@ -125,7 +125,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"parentRefs": []map[string]any{
-			{"name": "homelab-gateway", "namespace": "kube-system"},
+			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
 		},
 		"hostnames": []string{"harbor.madhan.app"},
 		"rules": []map[string]any{
@@ -134,7 +134,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"name": "harbor-core", "port": 80},
+					{"group": "", "kind": "Service", "name": "harbor-core", "port": 80},
 				},
 			},
 		},

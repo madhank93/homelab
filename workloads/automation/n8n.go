@@ -175,7 +175,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"parentRefs": []map[string]any{
-			{"name": "homelab-gateway", "namespace": "kube-system"},
+			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
 		},
 		"hostnames": []string{"n8n.madhan.app"},
 		"rules": []map[string]any{
@@ -184,7 +184,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"name": "n8n-main", "port": 5678},
+					{"group": "", "kind": "Service", "name": "n8n-main", "port": 5678},
 				},
 			},
 		},

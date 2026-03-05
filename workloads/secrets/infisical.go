@@ -161,7 +161,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"parentRefs": []map[string]any{
-			{"name": "homelab-gateway", "namespace": "kube-system"},
+			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
 		},
 		"hostnames": []string{"infisical.madhan.app", "infisical.local"},
 		"rules": []map[string]any{
@@ -170,7 +170,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"name": "infisical-infisical-standalone-infisical", "port": 8080},
+					{"group": "", "kind": "Service", "name": "infisical-infisical-standalone-infisical", "port": 8080},
 				},
 			},
 		},

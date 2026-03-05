@@ -125,13 +125,13 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"parentRefs": []map[string]any{
-			{"name": "homelab-gateway", "namespace": "kube-system"},
+			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
 		},
 		"hostnames": []string{"comfyui.madhan.app"},
 		"rules": []map[string]any{
 			{
 				"matches":     []map[string]any{{"path": map[string]any{"type": "PathPrefix", "value": "/"}}},
-				"backendRefs": []map[string]any{{"name": "comfyui", "port": 8188}},
+				"backendRefs": []map[string]any{{"group": "", "kind": "Service", "name": "comfyui", "port": 8188}},
 			},
 		},
 	}))
