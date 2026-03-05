@@ -7,11 +7,15 @@ spec:
   hostnames:
     - comfyui.madhan.app
   parentRefs:
-    - name: homelab-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: comfyui
+        - group: ""
+          kind: Service
+          name: comfyui
           port: 8188
       matches:
         - path:

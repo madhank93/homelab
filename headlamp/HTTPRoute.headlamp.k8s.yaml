@@ -7,11 +7,15 @@ spec:
   hostnames:
     - headlamp.madhan.app
   parentRefs:
-    - name: homelab-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: headlamp
+        - group: ""
+          kind: Service
+          name: headlamp
           port: 80
       matches:
         - path:

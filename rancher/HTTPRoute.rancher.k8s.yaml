@@ -7,11 +7,15 @@ spec:
   hostnames:
     - rancher.madhan.app
   parentRefs:
-    - name: homelab-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: rancher
+        - group: ""
+          kind: Service
+          name: rancher
           port: 80
       matches:
         - path:

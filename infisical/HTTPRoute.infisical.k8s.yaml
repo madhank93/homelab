@@ -8,11 +8,15 @@ spec:
     - infisical.madhan.app
     - infisical.local
   parentRefs:
-    - name: homelab-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: infisical-infisical-standalone-infisical
+        - group: ""
+          kind: Service
+          name: infisical-infisical-standalone-infisical
           port: 8080
       matches:
         - path:

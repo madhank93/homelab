@@ -7,11 +7,15 @@ spec:
   hostnames:
     - ollama.madhan.app
   parentRefs:
-    - name: homelab-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: ollama
+        - group: ""
+          kind: Service
+          name: ollama
           port: 11434
       matches:
         - path:

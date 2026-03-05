@@ -7,11 +7,15 @@ spec:
   hostnames:
     - n8n.madhan.app
   parentRefs:
-    - name: homelab-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: n8n-main
+        - group: ""
+          kind: Service
+          name: n8n-main
           port: 5678
       matches:
         - path:

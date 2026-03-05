@@ -7,11 +7,15 @@ spec:
   hostnames:
     - grafana.madhan.app
   parentRefs:
-    - name: homelab-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: grafana
+        - group: ""
+          kind: Service
+          name: grafana
           port: 3000
       matches:
         - path:

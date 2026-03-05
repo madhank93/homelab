@@ -7,11 +7,15 @@ spec:
   hostnames:
     - harbor.madhan.app
   parentRefs:
-    - name: homelab-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
       namespace: kube-system
   rules:
     - backendRefs:
-        - name: harbor-core
+        - group: ""
+          kind: Service
+          name: harbor-core
           port: 80
       matches:
         - path:
