@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5ffda4fe5658197ec89ac0f74a9135727dfec83b6228b4f48264f1da7c67adc5
+        checksum/config: 8ff6bec6ce62cff6ba5625f16df2d200b948082a82358404915fc2a4fc67ff61
       labels:
         app.kubernetes.io/instance: nvidia-device-plugin
         app.kubernetes.io/name: nvidia-device-plugin
