@@ -131,7 +131,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 		"rules": []map[string]any{
 			{
 				"matches":     []map[string]any{{"path": map[string]any{"type": "PathPrefix", "value": "/"}}},
-				"backendRefs": []map[string]any{{"group": "", "kind": "Service", "name": "comfyui", "port": 8188}},
+				"backendRefs": []map[string]any{{"group": "", "kind": "Service", "name": "comfyui", "port": 8188, "weight": 1}},
 			},
 		},
 	}))

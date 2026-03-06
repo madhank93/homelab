@@ -83,7 +83,7 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "ollama", "port": 11434},
+					{"group": "", "kind": "Service", "name": "ollama", "port": 11434, "weight": 1},
 				},
 			},
 		},
