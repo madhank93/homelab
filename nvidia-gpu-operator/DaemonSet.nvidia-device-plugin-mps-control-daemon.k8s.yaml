@@ -156,6 +156,7 @@ spec:
       nodeSelector:
         nvidia.com/mps.capable: "true"
       priorityClassName: system-node-critical
+      runtimeClassName: nvidia
       securityContext: {}
       serviceAccountName: nvidia-device-plugin-service-account
       tolerations:

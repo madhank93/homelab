@@ -85,8 +85,6 @@ spec:
           env:
             - name: MPS_ROOT
               value: /run/nvidia/mps
-            - name: NVIDIA_DRIVER_ROOT
-              value: /usr/local/glibc
             - name: CONFIG_FILE
               value: /config/config.yaml
             - name: NVIDIA_MIG_MONITOR_DEVICES
@@ -105,9 +103,6 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/kubelet/device-plugins
               name: kubelet-device-plugins-dir
-            - mountPath: /driver-root
-              name: driver-root
-              readOnly: true
             - mountPath: /dev/shm
               name: mps-shm
             - mountPath: /mps
@@ -154,6 +149,7 @@ spec:
             - mountPath: /config
               name: config
       priorityClassName: system-node-critical
+      runtimeClassName: nvidia
       securityContext: {}
       serviceAccountName: nvidia-device-plugin-service-account
       shareProcessNamespace: true
@@ -175,10 +171,6 @@ spec:
         - hostPath:
             path: /run/nvidia/mps/shm
           name: mps-shm
-        - hostPath:
-            path: /usr/local/glibc
-            type: Directory
-          name: driver-root
         - hostPath:
             path: /var/run/cdi
             type: DirectoryOrCreate

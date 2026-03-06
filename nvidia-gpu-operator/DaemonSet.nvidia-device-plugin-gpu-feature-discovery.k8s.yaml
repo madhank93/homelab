@@ -145,6 +145,7 @@ spec:
             - mountPath: /config
               name: config
       priorityClassName: system-node-critical
+      runtimeClassName: nvidia
       securityContext: {}
       serviceAccountName: nvidia-device-plugin-service-account
       shareProcessNamespace: true
@@ -164,7 +165,7 @@ spec:
             type: Directory
           name: host-sys
         - hostPath:
-            path: /usr/local/glibc
+            path: /
             type: Directory
           name: driver-root
         - configMap:
