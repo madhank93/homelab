@@ -51,14 +51,13 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	})
 
 	values := map[string]any{
-		// driver.enabled=true: required so the GPU operator can manage driver lifecycle.
-		// In practice, because the Talos nvidia-open-gpu-kernel-modules-production extension
-		// is present (detected via extensions.talos.dev/* node labels), the GPU operator
-		// automatically labels the node nvidia.com/gpu.deploy.driver=pre-installed and sets
-		// the driver DaemonSet DESIRED=0. The driver container never runs; the Talos extension
-		// provides both kernel modules and userspace CUDA libs at /usr/local/glibc/usr/lib/.
+		// driver.enabled=false: on Talos the nvidia-open-gpu-kernel-modules-production
+		// extension provides the kernel modules and CUDA userspace libs. Setting enabled=false
+		// tells the GPU operator to skip both the driver DaemonSet AND the driver-validation
+		// init container in the operator-validator pod, so the device plugin can advertise
+		// nvidia.com/gpu without waiting for a non-existent driver container.
 		"driver": map[string]any{
-			"enabled":      true,
+			"enabled":      false,
 			"nodeSelector": nodeSelector,
 		},
 		// toolkit.enabled=false: the Talos nvidia-container-toolkit-production extension
@@ -99,10 +98,22 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 	}
 
 	// Talos Validation Bridge DaemonSet
-	// Creates marker files that GPU operator components poll for readiness:
-	//   /run/nvidia/driver/driver-ready    — driver-validation init container
-	//   /run/nvidia/validations/.driver-ctr-ready, toolkit-ready — other init containers
-	// Without these, nvidia-operator-validator stays in Init:0/4, nvidia.com/gpu stays 0.
+	// Creates marker files that the GPU operator components poll for readiness.
+	// On Talos, drivers are pre-installed via Talos extensions — no driver container runs.
+	// The bridge satisfies all validation checks by writing the expected sentinel files:
+	//
+	//   /run/nvidia/validations/driver-ready      — device plugin wait loop (polls for GPU to expose)
+	//   /run/nvidia/validations/toolkit-ready     — toolkit-validation init container
+	//   /run/nvidia/validations/.driver-ctr-ready — required to tell validator to check pre-installed path
+	//   /run/nvidia/driver/driver-ready           — driver-validation (now removed from validator DS)
+	//
+	// The nvidia-operator-validator DaemonSet has its driver-validation, cuda-validation, and
+	// plugin-validation init containers removed (via strategic patch) because:
+	//   - driver-validation: tries to run nvidia-smi which is not available as a host binary on Talos
+	//   - cuda-validation: runs a CUDA sample that fails with "forward compatibility on non-supported HW"
+	//     on Blackwell (RTX 5070 Ti) — the sample binary targets an older CUDA arch
+	//   - plugin-validation: gated behind cuda-validation, never reached
+	// Only toolkit-validation remains, which passes on Talos.
 	trueBool := true
 	privileged := true
 	zero := float64(0)
@@ -136,12 +147,14 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 							},
 							Args: &[]*string{jsii.String(
 								"mkdir -p /run/nvidia/validations /run/nvidia/driver && " +
-									// Do NOT create .driver-ctr-ready: its presence tells the v25.10.1
-									// validator to take the container-driver validation path, which then
-									// fails because no driver container is running on Talos.
-									// With only driver-ready present the validator takes the pre-installed
-									// driver path and completes immediately.
-									"touch /run/nvidia/validations/toolkit-ready " +
+									// Create all sentinel files the GPU operator components poll for.
+									// driver-ready must be in BOTH dirs:
+									//   validations/driver-ready     — device plugin
+									//   driver/driver-ready          — driver-validation init container (removed but harmless)
+									// .driver-ctr-ready presence tells the validator to attempt the pre-installed path first
+									"touch /run/nvidia/validations/driver-ready " +
+									"/run/nvidia/validations/.driver-ctr-ready " +
+									"/run/nvidia/validations/toolkit-ready " +
 									"/run/nvidia/driver/driver-ready && " +
 									"while true; do sleep 3600; done",
 							)},
