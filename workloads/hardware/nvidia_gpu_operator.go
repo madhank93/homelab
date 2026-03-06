@@ -41,7 +41,10 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 			// GFD adds nvidia.com/gpu.present=true and product/memory/count labels.
 			"gfd": map[string]any{"enabled": true},
 			// Inline config avoids a separate ConfigMap resource.
-			// - flags.plugin.deviceListStrategy: envvar — NVIDIA libs on Talos live under
+			// - deviceDiscoveryStrategy: nvml — "auto" fails on Talos because it probes
+			//   standard paths that don't exist; nvml talks directly to the kernel module
+			//   loaded by the nvidia-open-gpu-kernel-modules-production extension.
+			// - plugin.deviceListStrategy: envvar — NVIDIA libs on Talos live under
 			//   /usr/local/glibc/usr/lib/, not standard paths; CDI hostPath mounts fail.
 			//   envvar mode injects NVIDIA_VISIBLE_DEVICES into the container instead.
 			//   NOTE: plugin is nested under flags, not a top-level key (per v1 config schema).
@@ -53,6 +56,7 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 					"default": "version: v1\n" +
 						"flags:\n" +
 						"  migStrategy: none\n" +
+						"  deviceDiscoveryStrategy: nvml\n" +
 						"  plugin:\n" +
 						"    deviceListStrategy: envvar\n" +
 						"sharing:\n" +
