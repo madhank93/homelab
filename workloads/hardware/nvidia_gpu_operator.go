@@ -7,7 +7,14 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
-func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
+// NewNvidiaDevicePluginChart deploys the standalone NVIDIA k8s-device-plugin with
+// Node Feature Discovery (NFD) and GPU Feature Discovery (GFD) sub-charts.
+//
+// On Talos, the GPU driver and container toolkit are provided by Talos system extensions
+// (nvidia-open-gpu-kernel-modules-production + nvidia-container-toolkit-production), so
+// the full GPU operator is unnecessary and its validator is incompatible with Talos paths.
+// The standalone device plugin has no validation init containers and works out of the box.
+func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
 	})
@@ -21,194 +28,41 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 		},
 	})
 
-	// nvidia.com/gpu.present is set automatically by NFD on nodes with a detected GPU.
-	// This is more reliable than a manually applied node-role label.
-	nodeSelector := map[string]any{
-		"nvidia.com/gpu.present": jsii.String("true"),
-	}
-
-	// Time-slicing config: advertise 2 virtual GPUs per physical GPU so that
-	// Ollama and ComfyUI can run simultaneously on the single RTX 5070 Ti.
-	// VRAM is NOT isolated — both pods share the 16 GB pool. Works fine for
-	// smaller models (7B Ollama ~4 GB + SDXL ComfyUI ~6 GB = ~10 GB total).
-	k8s.NewKubeConfigMap(chart, jsii.String("time-slicing-config"), &k8s.KubeConfigMapProps{
-		Metadata: &k8s.ObjectMeta{
-			Name:      jsii.String("time-slicing-config"),
-			Namespace: jsii.String(namespace),
-		},
-		Data: &map[string]*string{
-			"any": jsii.String(
-				"version: v1\n" +
-					"flags:\n" +
-					"  migStrategy: none\n" +
-					"sharing:\n" +
-					"  timeSlicing:\n" +
-					"    resources:\n" +
-					"    - name: nvidia.com/gpu\n" +
-					"      replicas: 2\n",
-			),
-		},
-	})
-
-	values := map[string]any{
-		// driver.enabled=false: on Talos the nvidia-open-gpu-kernel-modules-production
-		// extension provides the kernel modules and CUDA userspace libs. Setting enabled=false
-		// tells the GPU operator to skip both the driver DaemonSet AND the driver-validation
-		// init container in the operator-validator pod, so the device plugin can advertise
-		// nvidia.com/gpu without waiting for a non-existent driver container.
-		"driver": map[string]any{
-			"enabled":      false,
-			"nodeSelector": nodeSelector,
-		},
-		// toolkit.enabled=false: the Talos nvidia-container-toolkit-production extension
-		// installs toolkit binaries at /usr/local/bin/ and writes
-		// /etc/cri/conf.d/10-nvidia-container-runtime.part automatically.
-		// The GPU operator toolkit DaemonSet is redundant on Talos.
-		"toolkit": map[string]any{
-			"enabled":      false,
-			"nodeSelector": nodeSelector,
-		},
-		"operator": map[string]any{
-			"defaultRuntime": "containerd",
-			"resources": map[string]any{
-				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
-				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
-			},
-		},
-		// DEVICE_LIST_STRATEGY=envvar: use env-var injection instead of CDI.
-		// CDI mode generates spec entries with hostPath=/usr/lib/libX.so which doesn't
-		// exist on Talos (libs live at /usr/local/glibc/usr/lib/). With envvar mode the
-		// device plugin injects NVIDIA_VISIBLE_DEVICES=<uuid> into the container, and the
-		// Talos nvidia-container-runtime (from nvidia-container-toolkit-production extension)
-		// handles GPU device injection using its own Talos-aware library paths.
-		"devicePlugin": map[string]any{
-			"nodeSelector": nodeSelector,
-			"env": []map[string]any{
-				{"name": "DEVICE_LIST_STRATEGY", "value": "envvar"},
-			},
-			// Reference the time-slicing ConfigMap so the device plugin
-			// exposes 2 virtual nvidia.com/gpu resources per physical GPU.
-			"config": map[string]any{
-				"name":    "time-slicing-config",
-				"default": "any",
-			},
-		},
-		"dcgmExporter": map[string]any{"nodeSelector": nodeSelector},
-		"gfd":          map[string]any{"nodeSelector": nodeSelector},
-	}
-
-	// Talos Validation Bridge DaemonSet
-	// Creates marker files that the GPU operator components poll for readiness.
-	// On Talos, drivers are pre-installed via Talos extensions — no driver container runs.
-	// The bridge satisfies all validation checks by writing the expected sentinel files:
-	//
-	//   /run/nvidia/validations/driver-ready      — device plugin wait loop (polls for GPU to expose)
-	//   /run/nvidia/validations/toolkit-ready     — toolkit-validation init container
-	//   /run/nvidia/validations/.driver-ctr-ready — required to tell validator to check pre-installed path
-	//   /run/nvidia/driver/driver-ready           — driver-validation (now removed from validator DS)
-	//
-	// The nvidia-operator-validator DaemonSet has its driver-validation, cuda-validation, and
-	// plugin-validation init containers removed (via strategic patch) because:
-	//   - driver-validation: tries to run nvidia-smi which is not available as a host binary on Talos
-	//   - cuda-validation: runs a CUDA sample that fails with "forward compatibility on non-supported HW"
-	//     on Blackwell (RTX 5070 Ti) — the sample binary targets an older CUDA arch
-	//   - plugin-validation: gated behind cuda-validation, never reached
-	// Only toolkit-validation remains, which passes on Talos.
-	trueBool := true
-	privileged := true
-	zero := float64(0)
-	k8s.NewKubeDaemonSet(chart, jsii.String("talos-validation-bridge"), &k8s.KubeDaemonSetProps{
-		Metadata: &k8s.ObjectMeta{
-			Name:      jsii.String("talos-nvidia-validation-bridge"),
-			Namespace: jsii.String(namespace),
-		},
-		Spec: &k8s.DaemonSetSpec{
-			Selector: &k8s.LabelSelector{
-				MatchLabels: &map[string]*string{
-					"app": jsii.String("talos-nvidia-validation-bridge"),
-				},
-			},
-			Template: &k8s.PodTemplateSpec{
-				Metadata: &k8s.ObjectMeta{
-					Labels: &map[string]*string{
-						"app": jsii.String("talos-nvidia-validation-bridge"),
-					},
-				},
-				Spec: &k8s.PodSpec{
-					NodeSelector:                  &map[string]*string{"nvidia.com/gpu.present": jsii.String("true")},
-					AutomountServiceAccountToken:  &trueBool,
-					TerminationGracePeriodSeconds: &zero,
-					Containers: &[]*k8s.Container{
-						{
-							Name:  jsii.String("bridge"),
-							Image: jsii.String("busybox:1.37"),
-							Command: &[]*string{
-								jsii.String("/bin/sh"), jsii.String("-c"),
-							},
-							Args: &[]*string{jsii.String(
-								"mkdir -p /run/nvidia/validations /run/nvidia/driver && " +
-									// Create all sentinel files the GPU operator components poll for.
-									// driver-ready must be in BOTH dirs:
-									//   validations/driver-ready     — device plugin
-									//   driver/driver-ready          — driver-validation init container (removed but harmless)
-									// .driver-ctr-ready presence tells the validator to attempt the pre-installed path first
-									"touch /run/nvidia/validations/driver-ready " +
-									"/run/nvidia/validations/.driver-ctr-ready " +
-									"/run/nvidia/validations/toolkit-ready " +
-									"/run/nvidia/driver/driver-ready && " +
-									"while true; do sleep 3600; done",
-							)},
-							SecurityContext: &k8s.SecurityContext{
-								Privileged: &privileged,
-							},
-							VolumeMounts: &[]*k8s.VolumeMount{
-								{
-									Name:      jsii.String("run-nvidia-validations"),
-									MountPath: jsii.String("/run/nvidia/validations"),
-								},
-								{
-									Name:      jsii.String("run-nvidia-driver"),
-									MountPath: jsii.String("/run/nvidia/driver"),
-								},
-							},
-						},
-					},
-					Volumes: &[]*k8s.Volume{
-						{
-							Name: jsii.String("run-nvidia-validations"),
-							HostPath: &k8s.HostPathVolumeSource{
-								Path: jsii.String("/run/nvidia/validations"),
-								Type: jsii.String("DirectoryOrCreate"),
-							},
-						},
-						{
-							Name: jsii.String("run-nvidia-driver"),
-							HostPath: &k8s.HostPathVolumeSource{
-								Path: jsii.String("/run/nvidia/driver"),
-								Type: jsii.String("DirectoryOrCreate"),
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-
-	// CRDs
-	cdk8s.NewInclude(chart, jsii.String("nvidia-cluster-policy-crd"), &cdk8s.IncludeProps{
-		Url: jsii.String("https://raw.githubusercontent.com/NVIDIA/gpu-operator/v25.10.1/deployments/gpu-operator/crds/nvidia.com_clusterpolicies.yaml"),
-	})
-	cdk8s.NewInclude(chart, jsii.String("nvidia-driver-crd"), &cdk8s.IncludeProps{
-		Url: jsii.String("https://raw.githubusercontent.com/NVIDIA/gpu-operator/v25.10.1/deployments/gpu-operator/crds/nvidia.com_nvidiadrivers.yaml"),
-	})
-
-	cdk8s.NewHelm(chart, jsii.String("gpu-operator-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("gpu-operator"),
-		Repo:        jsii.String("https://helm.ngc.nvidia.com/nvidia"),
-		Version:     jsii.String("v25.10.1"),
-		ReleaseName: jsii.String("gpu-operator"),
+	cdk8s.NewHelm(chart, jsii.String("nvidia-device-plugin-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("nvidia-device-plugin"),
+		Repo:        jsii.String("https://nvidia.github.io/k8s-device-plugin"),
+		Version:     jsii.String("0.18.2"),
+		ReleaseName: jsii.String("nvidia-device-plugin"),
 		Namespace:   jsii.String(namespace),
-		Values:      &values,
+		Values: &map[string]any{
+			// NFD labels GPU nodes with feature.node.kubernetes.io/pci-10de.present=true,
+			// which the device plugin DaemonSet uses as its default node affinity.
+			"nfd": map[string]any{"enabled": true},
+			// GFD adds nvidia.com/gpu.present=true and product/memory/count labels.
+			"gfd": map[string]any{"enabled": true},
+			// Inline config avoids a separate ConfigMap resource.
+			// - flags.plugin.deviceListStrategy: envvar — NVIDIA libs on Talos live under
+			//   /usr/local/glibc/usr/lib/, not standard paths; CDI hostPath mounts fail.
+			//   envvar mode injects NVIDIA_VISIBLE_DEVICES into the container instead.
+			//   NOTE: plugin is nested under flags, not a top-level key (per v1 config schema).
+			// - timeSlicing replicas: 2 — Ollama and ComfyUI share the RTX 5070 Ti
+			//   (VRAM is not isolated; ~4 GB + ~6 GB fits within the 16 GB pool).
+			"config": map[string]any{
+				"default": "default",
+				"map": map[string]any{
+					"default": "version: v1\n" +
+						"flags:\n" +
+						"  migStrategy: none\n" +
+						"  plugin:\n" +
+						"    deviceListStrategy: envvar\n" +
+						"sharing:\n" +
+						"  timeSlicing:\n" +
+						"    resources:\n" +
+						"    - name: nvidia.com/gpu\n" +
+						"      replicas: 2\n",
+				},
+			},
+		},
 	})
 
 	return chart

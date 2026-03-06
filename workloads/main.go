@@ -88,7 +88,7 @@ func main() {
 		Outdir:         jsii.String(fmt.Sprintf("%s/nvidia-gpu-operator", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
 	})
-	hardware.NewNvidiaGpuOperatorChart(nvidiaGpuOperatorApp, "nvidia-gpu-operator", "nvidia-gpu-operator")
+	hardware.NewNvidiaDevicePluginChart(nvidiaGpuOperatorApp, "nvidia-gpu-operator", "nvidia-gpu-operator")
 	nvidiaGpuOperatorApp.Synth()
 
 	ollamaApp := cdk8s.NewApp(&cdk8s.AppProps{

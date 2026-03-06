@@ -1,6 +1,6 @@
 +++
-title = "NVIDIA GPU Operator"
-description = "GPU Operator ClusterPolicy, Node Feature Discovery, and time-slicing configuration."
+title = "NVIDIA Device Plugin"
+description = "Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux."
 weight = 10
 +++
 
@@ -8,56 +8,43 @@ weight = 10
 
 | Property | Value |
 |----------|-------|
-| CDK8s file | `platform/cdk8s/cots/ai/nvidia_gpu_operator.go` |
+| CDK8s file | `workloads/hardware/nvidia_gpu_operator.go` |
 | Namespace | `nvidia-gpu-operator` |
-| Helm chart | `gpu-operator` v25.10.1 (helm.ngc.nvidia.com/nvidia) |
+| Helm chart | `nvidia-device-plugin` v0.18.2 (nvidia.github.io/k8s-device-plugin) |
 | HTTPRoute | None |
 | UI | No |
 
 ## Purpose
 
-Manages NVIDIA GPU access within Kubernetes. On Talos Linux, the GPU driver and container toolkit are provided by Talos system extensions — the operator's role is:
+Advertises `nvidia.com/gpu` as a schedulable Kubernetes resource on nodes with an NVIDIA GPU.
 
-- **Node Feature Discovery (NFD):** labels GPU nodes with `nvidia.com/gpu.present=true`
-- **Device plugin:** advertises `nvidia.com/gpu` as a schedulable Kubernetes resource
-- **DCGM exporter:** exports GPU metrics (temperature, utilization, memory) to VictoriaMetrics
+On Talos Linux, the GPU driver and container toolkit are provided by Talos system extensions — the full GPU operator is not needed and its validator is incompatible with Talos's non-standard library paths. The standalone device plugin is a drop-in replacement with no validation init containers.
+
+Sub-charts included:
+
+- **NFD (Node Feature Discovery):** labels GPU nodes with `feature.node.kubernetes.io/pci-10de.present=true`
+- **GFD (GPU Feature Discovery):** adds `nvidia.com/gpu.present=true`, product, memory, and count labels
 
 ## Talos-Specific Configuration
 
-```yaml
-driver:
-  enabled: true   # operator detects Talos extensions → sets DESIRED=0 (driver pre-installed)
-toolkit:
-  enabled: false  # Talos extension provides the container toolkit
-```
-
-`DEVICE_LIST_STRATEGY=envvar` is set to avoid CDI hostPath issues on Talos (see `docs/nvidia-gpu-talos.md`).
-
-A **Talos Validation Bridge DaemonSet** writes marker files that unblock GPU operator device plugin startup on Talos.
+`DEVICE_LIST_STRATEGY=envvar` is set via the inline plugin config. CDI mode generates spec entries with hostPath mounts that fail on Talos because NVIDIA libs live at `/usr/local/glibc/usr/lib/` rather than standard paths. With `envvar` mode the device plugin injects `NVIDIA_VISIBLE_DEVICES=<uuid>` into the container environment, and the Talos `nvidia-container-runtime` extension handles GPU device injection using its own Talos-aware library paths.
 
 ## GPU Time-Slicing
 
-A `time-slicing-config` ConfigMap configures 2 virtual GPU replicas per physical GPU:
+Time-slicing is configured inline in the Helm values `config.map.default`:
 
 ```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: time-slicing-config
-  namespace: nvidia-gpu-operator
-data:
-  any: |-
-    version: v1
-    flags:
-      migStrategy: none
-    sharing:
-      timeSlicing:
-        resources:
-          - name: nvidia.com/gpu
-            replicas: 2
+version: v1
+flags:
+  migStrategy: none
+plugin:
+  deviceListStrategy: envvar
+sharing:
+  timeSlicing:
+    resources:
+      - name: nvidia.com/gpu
+        replicas: 2
 ```
-
-This is referenced in the ClusterPolicy via `devicePlugin.config.name: time-slicing-config`.
 
 After applying, `kubectl describe node k8s-worker4` shows:
 ```
@@ -65,4 +52,4 @@ Allocatable:
   nvidia.com/gpu: 2
 ```
 
-Both Ollama and ComfyUI can now request `nvidia.com/gpu: 1` simultaneously. VRAM is shared (not partitioned).
+Both Ollama and ComfyUI can request `nvidia.com/gpu: 1` simultaneously. VRAM is shared (not partitioned) — ~4 GB (Ollama 7B) + ~6 GB (ComfyUI SDXL) fits within the 16 GB RTX 5070 Ti pool.
