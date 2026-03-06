@@ -136,8 +136,12 @@ func NewNvidiaGpuOperatorChart(scope constructs.Construct, id string, namespace 
 							},
 							Args: &[]*string{jsii.String(
 								"mkdir -p /run/nvidia/validations /run/nvidia/driver && " +
-									"touch /run/nvidia/validations/.driver-ctr-ready " +
-									"/run/nvidia/validations/toolkit-ready " +
+									// Do NOT create .driver-ctr-ready: its presence tells the v25.10.1
+									// validator to take the container-driver validation path, which then
+									// fails because no driver container is running on Talos.
+									// With only driver-ready present the validator takes the pre-installed
+									// driver path and completes immediately.
+									"touch /run/nvidia/validations/toolkit-ready " +
 									"/run/nvidia/driver/driver-ready && " +
 									"while true; do sleep 3600; done",
 							)},
