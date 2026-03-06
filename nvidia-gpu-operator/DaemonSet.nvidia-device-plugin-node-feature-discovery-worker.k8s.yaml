@@ -2,33 +2,34 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app.kubernetes.io/instance: gpu-operator
+    app.kubernetes.io/instance: nvidia-device-plugin
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/version: v0.18.2
-    helm.sh/chart: node-feature-discovery-0.18.2
+    app.kubernetes.io/version: v0.17.3
+    helm.sh/chart: nfd-0.17.3
     role: worker
-  name: gpu-operator-node-feature-discovery-worker
+  name: nvidia-device-plugin-node-feature-discovery-worker
   namespace: nvidia-gpu-operator
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/instance: gpu-operator
+      app.kubernetes.io/instance: nvidia-device-plugin
       app.kubernetes.io/name: node-feature-discovery
       role: worker
   template:
     metadata:
       annotations:
-        checksum/config: 7599e84687977511412bb20bebd8177227dacd5d81979dd8c87fd5ade62e2559
+        checksum/config: 7e2bbf6e0335aace16c4a3daaec36f3219fd91c66b9aa79b7e0768cc2ba31e92
       labels:
-        app.kubernetes.io/instance: gpu-operator
+        app.kubernetes.io/instance: nvidia-device-plugin
         app.kubernetes.io/name: node-feature-discovery
         role: worker
     spec:
       containers:
         - args:
             - -feature-gates=NodeFeatureGroupAPI=false
-            - -port=8080
+            - -metrics=8081
+            - -grpc-health=8082
           command:
             - nfd-worker
           env:
@@ -44,22 +45,22 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
-          image: registry.k8s.io/nfd/node-feature-discovery:v0.18.2
+          image: registry.k8s.io/nfd/node-feature-discovery:v0.17.3
           imagePullPolicy: IfNotPresent
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            grpc:
+              port: 8082
             initialDelaySeconds: 10
           name: worker
           ports:
-            - containerPort: 8080
-              name: http
+            - containerPort: 8081
+              name: metrics
+            - containerPort: 8082
+              name: health
           readinessProbe:
             failureThreshold: 10
-            httpGet:
-              path: /healthz
-              port: http
+            grpc:
+              port: 8082
             initialDelaySeconds: 5
           resources:
             limits:
@@ -101,21 +102,17 @@ spec:
               readOnly: true
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: false
-      priorityClassName: system-node-critical
       securityContext: {}
-      serviceAccountName: node-feature-discovery
+      serviceAccountName: nvidia-device-plugin-node-feature-discovery-worker
       tolerations:
         - effect: NoSchedule
           key: node-role.kubernetes.io/master
           operator: Equal
           value: ""
         - effect: NoSchedule
-          key: node-role.kubernetes.io/control-plane
-          operator: Equal
-          value: ""
-        - effect: NoSchedule
           key: nvidia.com/gpu
-          operator: Exists
+          operator: Equal
+          value: present
       volumes:
         - hostPath:
             path: /boot
@@ -142,5 +139,5 @@ spec:
             items:
               - key: nfd-worker.conf
                 path: nfd-worker.conf
-            name: gpu-operator-node-feature-discovery-worker-conf
+            name: nvidia-device-plugin-node-feature-discovery-worker-conf
           name: nfd-worker-conf
