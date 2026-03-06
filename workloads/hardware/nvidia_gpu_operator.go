@@ -28,6 +28,22 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 		},
 	})
 
+	// RuntimeClass: tells containerd to use nvidia-container-runtime for the
+	// device plugin and GFD pods. Without this, the default runc runtime ignores
+	// NVIDIA_VISIBLE_DEVICES=all (already set in the chart template) and never
+	// injects libnvidia-ml.so.1 into the container. On Talos, the NVIDIA libs live
+	// at /usr/local/glibc/usr/lib/ (squashfs, not bind-mountable via hostPath), so
+	// the only way to make NVML accessible is via the nvidia-container-runtime hook.
+	// The handler "nvidia" matches the containerd runtime configured by the
+	// nvidia-container-toolkit-production Talos extension.
+	cdk8s.NewApiObject(chart, jsii.String("nvidia-runtime-class"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("node.k8s.io/v1"),
+		Kind:       jsii.String("RuntimeClass"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String("nvidia"),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/handler"), jsii.String("nvidia")))
+
 	cdk8s.NewHelm(chart, jsii.String("nvidia-device-plugin-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("nvidia-device-plugin"),
 		Repo:        jsii.String("https://nvidia.github.io/k8s-device-plugin"),
@@ -40,11 +56,9 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 			"nfd": map[string]any{"enabled": true},
 			// GFD adds nvidia.com/gpu.present=true and product/memory/count labels.
 			"gfd": map[string]any{"enabled": true},
-			// Talos installs NVIDIA libs via the nvidia-open-gpu-kernel-modules-production
-			// extension at /usr/local/glibc/usr/lib/ instead of the standard /usr/lib/.
-			// Setting nvidiaDriverRoot causes the chart to mount this host path at
-			// /driver-root inside the container, making libnvidia-ml.so.1 accessible.
-			"nvidiaDriverRoot": "/usr/local/glibc",
+			// Use the nvidia RuntimeClass so containerd's nvidia-container-runtime hook
+			// fires and injects libnvidia-ml.so.1 into the container at startup.
+			"runtimeClassName": "nvidia",
 			// Inline config avoids a separate ConfigMap resource.
 			// - deviceDiscoveryStrategy: nvml — "auto" fails on Talos because it probes
 			//   standard paths that don't exist; nvml talks directly to the kernel module
