@@ -40,13 +40,17 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 			"nfd": map[string]any{"enabled": true},
 			// GFD adds nvidia.com/gpu.present=true and product/memory/count labels.
 			"gfd": map[string]any{"enabled": true},
+			// Talos installs NVIDIA libs via the nvidia-open-gpu-kernel-modules-production
+			// extension at /usr/local/glibc/usr/lib/ instead of the standard /usr/lib/.
+			// Setting nvidiaDriverRoot causes the chart to mount this host path at
+			// /driver-root inside the container, making libnvidia-ml.so.1 accessible.
+			"nvidiaDriverRoot": "/usr/local/glibc",
 			// Inline config avoids a separate ConfigMap resource.
 			// - deviceDiscoveryStrategy: nvml — "auto" fails on Talos because it probes
 			//   standard paths that don't exist; nvml talks directly to the kernel module
 			//   loaded by the nvidia-open-gpu-kernel-modules-production extension.
-			// - plugin.deviceListStrategy: envvar — NVIDIA libs on Talos live under
-			//   /usr/local/glibc/usr/lib/, not standard paths; CDI hostPath mounts fail.
-			//   envvar mode injects NVIDIA_VISIBLE_DEVICES into the container instead.
+			// - plugin.deviceListStrategy: envvar — CDI hostPath mounts fail on Talos
+			//   (libs at non-standard paths); envvar injects NVIDIA_VISIBLE_DEVICES instead.
 			//   NOTE: plugin is nested under flags, not a top-level key (per v1 config schema).
 			// - timeSlicing replicas: 2 — Ollama and ComfyUI share the RTX 5070 Ti
 			//   (VRAM is not isolated; ~4 GB + ~6 GB fits within the 16 GB pool).
