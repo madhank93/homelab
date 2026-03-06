@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="GPU Operator ClusterPolicy, Node Feature Discovery, and time-slicing configuration." />
+            <meta name="description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux." />
         
     
 
-    <title>NVIDIA GPU Operator | Homelab</title>
+    <title>NVIDIA Device Plugin | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="NVIDIA GPU Operator | Homelab" />
-      <meta property="og:description" content="GPU Operator ClusterPolicy, Node Feature Discovery, and time-slicing configuration." />
+      <meta property="og:title" content="NVIDIA Device Plugin | Homelab" />
+      <meta property="og:description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="NVIDIA GPU Operator" />
-      <meta name="twitter:description" content="GPU Operator ClusterPolicy, Node Feature Discovery, and time-slicing configuration." />
+      <meta name="twitter:title" content="NVIDIA Device Plugin" />
+      <meta name="twitter:description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux." />
       
       
       
@@ -503,58 +503,47 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            NVIDIA GPU Operator
+            NVIDIA Device Plugin
             
         </h1>
-        <p class="text-gray-500">GPU Operator ClusterPolicy, Node Feature Discovery, and time-slicing configuration.</p>
+        <p class="text-gray-500">Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux.</p>
     </div>
     <h2 id="overview">Overview</h2>
 <table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/ai/nvidia_gpu_operator.go</code></td></tr>
+<tr><td>CDK8s file</td><td><code>workloads/hardware/nvidia_gpu_operator.go</code></td></tr>
 <tr><td>Namespace</td><td><code>nvidia-gpu-operator</code></td></tr>
-<tr><td>Helm chart</td><td><code>gpu-operator</code> v25.10.1 (helm.ngc.nvidia.com/nvidia)</td></tr>
+<tr><td>Helm chart</td><td><code>nvidia-device-plugin</code> v0.18.2 (nvidia.github.io/k8s-device-plugin)</td></tr>
 <tr><td>HTTPRoute</td><td>None</td></tr>
 <tr><td>UI</td><td>No</td></tr>
 </tbody></table>
 <h2 id="purpose">Purpose</h2>
-<p>Manages NVIDIA GPU access within Kubernetes. On Talos Linux, the GPU driver and container toolkit are provided by Talos system extensions — the operator's role is:</p>
+<p>Advertises <code>nvidia.com/gpu</code> as a schedulable Kubernetes resource on nodes with an NVIDIA GPU.</p>
+<p>On Talos Linux, the GPU driver and container toolkit are provided by Talos system extensions — the full GPU operator is not needed and its validator is incompatible with Talos's non-standard library paths. The standalone device plugin is a drop-in replacement with no validation init containers.</p>
+<p>Sub-charts included:</p>
 <ul>
-<li><strong>Node Feature Discovery (NFD):</strong> labels GPU nodes with <code>nvidia.com/gpu.present=true</code></li>
-<li><strong>Device plugin:</strong> advertises <code>nvidia.com/gpu</code> as a schedulable Kubernetes resource</li>
-<li><strong>DCGM exporter:</strong> exports GPU metrics (temperature, utilization, memory) to VictoriaMetrics</li>
+<li><strong>NFD (Node Feature Discovery):</strong> labels GPU nodes with <code>feature.node.kubernetes.io/pci-10de.present=true</code></li>
+<li><strong>GFD (GPU Feature Discovery):</strong> adds <code>nvidia.com/gpu.present=true</code>, product, memory, and count labels</li>
 </ul>
 <h2 id="talos-specific-configuration">Talos-Specific Configuration</h2>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">driver</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">enabled</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true   </span><span style="font-style:italic;color:#5c6773;"># operator detects Talos extensions → sets DESIRED=0 (driver pre-installed)
-</span><span style="color:#73d0ff;">toolkit</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">enabled</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">false  </span><span style="font-style:italic;color:#5c6773;"># Talos extension provides the container toolkit
-</span></code></pre>
-<p><code>DEVICE_LIST_STRATEGY=envvar</code> is set to avoid CDI hostPath issues on Talos (see <code>docs/nvidia-gpu-talos.md</code>).</p>
-<p>A <strong>Talos Validation Bridge DaemonSet</strong> writes marker files that unblock GPU operator device plugin startup on Talos.</p>
+<p><code>DEVICE_LIST_STRATEGY=envvar</code> is set via the inline plugin config. CDI mode generates spec entries with hostPath mounts that fail on Talos because NVIDIA libs live at <code>/usr/local/glibc/usr/lib/</code> rather than standard paths. With <code>envvar</code> mode the device plugin injects <code>NVIDIA_VISIBLE_DEVICES=&lt;uuid&gt;</code> into the container environment, and the Talos <code>nvidia-container-runtime</code> extension handles GPU device injection using its own Talos-aware library paths.</p>
 <h2 id="gpu-time-slicing">GPU Time-Slicing</h2>
-<p>A <code>time-slicing-config</code> ConfigMap configures 2 virtual GPU replicas per physical GPU:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v1
-</span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ConfigMap
-</span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">time-slicing-config
-</span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia-gpu-operator
-</span><span style="color:#73d0ff;">data</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">any</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffa759;">|-
-</span><span style="color:#bae67e;">    version: v1
-</span><span style="color:#bae67e;">    flags:
-</span><span style="color:#bae67e;">      migStrategy: none
-</span><span style="color:#bae67e;">    sharing:
-</span><span style="color:#bae67e;">      timeSlicing:
-</span><span style="color:#bae67e;">        resources:
-</span><span style="color:#bae67e;">          - name: nvidia.com/gpu
-</span><span style="color:#bae67e;">            replicas: 2
+<p>Time-slicing is configured inline in the Helm values <code>config.map.default</code>:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">version</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v1
+</span><span style="color:#73d0ff;">flags</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">migStrategy</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">none
+</span><span style="color:#73d0ff;">plugin</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">deviceListStrategy</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">envvar
+</span><span style="color:#73d0ff;">sharing</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">timeSlicing</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">resources</span><span style="color:#ccc9c2cc;">:
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia.com/gpu
+</span><span>        </span><span style="color:#73d0ff;">replicas</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">2
 </span></code></pre>
-<p>This is referenced in the ClusterPolicy via <code>devicePlugin.config.name: time-slicing-config</code>.</p>
 <p>After applying, <code>kubectl describe node k8s-worker4</code> shows:</p>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>Allocatable:
 </span><span>  nvidia.com/gpu: 2
 </span></code></pre>
-<p>Both Ollama and ComfyUI can now request <code>nvidia.com/gpu: 1</code> simultaneously. VRAM is shared (not partitioned).</p>
+<p>Both Ollama and ComfyUI can request <code>nvidia.com/gpu: 1</code> simultaneously. VRAM is shared (not partitioned) — ~4 GB (Ollama 7B) + ~6 GB (ComfyUI SDXL) fits within the 16 GB RTX 5070 Ti pool.</p>
 
 
     <!--  Errata section  -->
@@ -1053,7 +1042,7 @@
                                             <ul>
                                                 
                                                 
-                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
+                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/ollama">Ollama</a></li>
                                                 
