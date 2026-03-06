@@ -15,7 +15,7 @@ spec:
       automountServiceAccountToken: true
       containers:
         - args:
-            - mkdir -p /run/nvidia/validations /run/nvidia/driver && touch /run/nvidia/validations/.driver-ctr-ready /run/nvidia/validations/toolkit-ready /run/nvidia/driver/driver-ready && while true; do sleep 3600; done
+            - mkdir -p /run/nvidia/validations /run/nvidia/driver && touch /run/nvidia/validations/toolkit-ready /run/nvidia/driver/driver-ready && while true; do sleep 3600; done
           command:
             - /bin/sh
             - -c
