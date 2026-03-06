@@ -30,7 +30,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 			StorageClassName: &storageClass,
 			Resources: &k8s.VolumeResourceRequirements{
 				Requests: &map[string]k8s.Quantity{
-					"storage": k8s.Quantity_FromString(jsii.String("100Gi")),
+					"storage": k8s.Quantity_FromString(jsii.String("50Gi")),
 				},
 			},
 		},
