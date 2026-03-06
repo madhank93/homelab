@@ -17,6 +17,7 @@ spec:
           kind: Service
           name: n8n-main
           port: 5678
+          weight: 1
       matches:
         - path:
             type: PathPrefix

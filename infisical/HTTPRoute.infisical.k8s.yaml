@@ -18,6 +18,7 @@ spec:
           kind: Service
           name: infisical-infisical-standalone-infisical
           port: 8080
+          weight: 1
       matches:
         - path:
             type: PathPrefix

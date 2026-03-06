@@ -17,6 +17,7 @@ spec:
           kind: Service
           name: rancher
           port: 80
+          weight: 1
       matches:
         - path:
             type: PathPrefix
