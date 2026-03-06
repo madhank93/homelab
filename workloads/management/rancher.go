@@ -121,7 +121,7 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "rancher", "port": 80},
+					{"group": "", "kind": "Service", "name": "rancher", "port": 80, "weight": 1},
 				},
 			},
 		},

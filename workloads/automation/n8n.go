@@ -184,7 +184,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "n8n-main", "port": 5678},
+					{"group": "", "kind": "Service", "name": "n8n-main", "port": 5678, "weight": 1},
 				},
 			},
 		},

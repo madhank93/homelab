@@ -170,7 +170,7 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "infisical-infisical-standalone-infisical", "port": 8080},
+					{"group": "", "kind": "Service", "name": "infisical-infisical-standalone-infisical", "port": 8080, "weight": 1},
 				},
 			},
 		},

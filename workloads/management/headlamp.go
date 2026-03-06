@@ -89,7 +89,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "headlamp", "port": 80},
+					{"group": "", "kind": "Service", "name": "headlamp", "port": 80, "weight": 1},
 				},
 			},
 		},

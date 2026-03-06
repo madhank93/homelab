@@ -141,7 +141,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "grafana", "port": 3000},
+					{"group": "", "kind": "Service", "name": "grafana", "port": 3000, "weight": 1},
 				},
 			},
 		},
