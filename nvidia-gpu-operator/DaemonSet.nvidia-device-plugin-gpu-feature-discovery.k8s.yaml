@@ -164,7 +164,7 @@ spec:
             type: Directory
           name: host-sys
         - hostPath:
-            path: /
+            path: /usr/local/glibc
             type: Directory
           name: driver-root
         - configMap:
