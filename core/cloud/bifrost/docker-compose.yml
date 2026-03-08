@@ -50,12 +50,12 @@ services:
       - no-new-privileges:true
 
   # --------------------------------------------------------------------------------
-  # NetBird v0.66 — Combined server (Management + Signal + Relay + STUN)
+  # NetBird v0.66.2 — Combined server (Management + Signal + Relay + STUN)
   # --------------------------------------------------------------------------------
 
   netbird-server:
     <<: *default
-    image: netbirdio/netbird-server:0.66.0
+    image: netbirdio/netbird-server:0.66.2
     container_name: netbird-server
     networks: [bifrost_net]
     ports:
