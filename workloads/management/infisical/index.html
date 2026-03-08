@@ -513,49 +513,54 @@
 <tr><td>CDK8s file</td><td><code>workloads/secrets/infisical.go</code></td></tr>
 <tr><td>Namespace</td><td><code>infisical</code></td></tr>
 <tr><td>HTTPRoute</td><td><code>infisical.madhan.app</code> → Infisical service</td></tr>
-<tr><td>UI</td><td>Yes</td></tr>
+<tr><td>UI</td><td>Yes (<code>http://infisical.madhan.app</code>)</td></tr>
 <tr><td>Bootstrap Secret</td><td><code>infisical/infisical-secrets</code> (created by <code>just create-secrets</code>)</td></tr>
 </tbody></table>
 <h2 id="purpose">Purpose</h2>
-<p>Infisical is the central secrets management platform. All application runtime secrets are stored in Infisical projects and injected into pods via <code>InfisicalSecret</code> CRDs + the Infisical operator.</p>
+<p>Infisical is the central secrets management platform. All application runtime secrets are stored in Infisical projects and injected into pods via <code>InfisicalSecret</code> CRDs managed by the Infisical operator.</p>
 <h2 id="architecture">Architecture</h2>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>infisical-secrets (k8s Secret, created by bootstrap)
 </span><span>    │
-</span><span>    └── Infisical Helm chart (backend + frontend + operator + PostgreSQL)
+</span><span>    └── Infisical Helm chart (backend + frontend + PostgreSQL)
 </span><span>            │
-</span><span>            └── InfisicalSecret CRs (one per app)
+</span><span>            └── Infisical Operator (secrets-operator chart)
 </span><span>                    │
-</span><span>                    └── Kubernetes Secrets (grafana-admin, harbor-admin, etc.)
+</span><span>                    └── InfisicalSecret CRs (one per app, kubernetesAuth)
 </span><span>                            │
-</span><span>                            └── App pods consume secrets via envFrom or volume
+</span><span>                            └── Kubernetes Secrets (grafana-admin, harbor-admin, etc.)
+</span><span>                                    │
+</span><span>                                    └── App pods consume secrets via envFrom or volume
 </span></code></pre>
-<h2 id="backend">Backend</h2>
-<p>Infisical backend requires:</p>
-<ul>
-<li><code>INFISICAL_DB_PASSWORD</code> — PostgreSQL password</li>
-<li><code>INFISICAL_ENCRYPTION_KEY</code> — at-rest encryption key</li>
-<li><code>INFISICAL_AUTH_SECRET</code> — JWT signing secret</li>
-</ul>
-<p>These are provided via the <code>infisical-secrets</code> k8s Secret.</p>
-<h2 id="postgresql">PostgreSQL</h2>
-<p>The PostgreSQL backend uses <code>docker.io/library/postgres:17</code>. The bitnami PostgreSQL image was removed from Docker Hub; only the official image is used.</p>
+<h2 id="authentication-kubernetes-auth">Authentication — Kubernetes Auth</h2>
+<p>All <code>InfisicalSecret</code> CRs use <strong>Kubernetes Auth</strong> — the operator authenticates with Infisical using its own ServiceAccount JWT. No credentials are stored in Kubernetes Secrets.</p>
+<p>Machine Identity ID: <code>47aef6c1-bdeb-40fa-be46-63bbcfe6a4df</code>
+ServiceAccount: <code>infisical-opera-controller-manager</code> (namespace: <code>infisical</code>)</p>
+<p>The operator SA is bound to the <code>infisical-token-reviewer</code> ClusterRole (grants <code>tokenreviews:create</code>) so Infisical can verify the JWT via the K8s token review API.</p>
 <h2 id="bootstrap-setup">Bootstrap Setup</h2>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Create bootstrap secrets (from SOPS-encrypted file)
 </span><span style="color:#ffd580;">just</span><span> create-secrets
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 2. After ArgoCD deploys Infisical:
-</span><span style="font-style:italic;color:#5c6773;"># - Create an org and project at http://infisical.madhan.app
-</span><span style="font-style:italic;color:#5c6773;"># - Add secrets for each app under their paths (/grafana, /harbor, etc.)
-</span><span style="font-style:italic;color:#5c6773;"># - Create a Service Token with read access
+</span><span style="font-style:italic;color:#5c6773;"># 2. After ArgoCD deploys Infisical, open http://infisical.madhan.app
+</span><span style="font-style:italic;color:#5c6773;">#    - Complete org/project setup
+</span><span style="font-style:italic;color:#5c6773;">#    - Access Control → Machine Identities → create identity
+</span><span style="font-style:italic;color:#5c6773;">#    - Enable Kubernetes Auth (host: https://192.168.1.210:6443)
+</span><span style="font-style:italic;color:#5c6773;">#    - Note the identity ID
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 3. Create the service token Secret
-</span><span style="color:#ffd580;">kubectl</span><span> create secret generic infisical-service-token </span><span style="color:#ccc9c2cc;">\
-</span><span style="color:#ffcc66;">  --from-literal</span><span style="color:#f29e74;">=</span><span>infisicalToken=</span><span style="color:#f29e74;">&lt;</span><span>token</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">\
-</span><span style="color:#ffcc66;">  -n</span><span> infisical
+</span><span style="font-style:italic;color:#5c6773;"># 3. Add secrets for each app under their paths:
+</span><span style="font-style:italic;color:#5c6773;">#    /grafana, /harbor, /n8n, /rancher, /netbird, /infisical
 </span></code></pre>
-<p>See <code>docs/infisical-secrets-setup.md</code> for the complete setup guide.</p>
+<h2 id="postgresql">PostgreSQL</h2>
+<p>Uses <code>docker.io/library/postgres:17</code> (official image). The Bitnami image was removed from Docker Hub.
+Password sourced from <code>infisical-secrets</code> k8s Secret via <code>secretKeyRef</code>.</p>
 <h2 id="infisicalsecret-pattern">InfisicalSecret Pattern</h2>
-<p>All apps that use Infisical carry <code>ServerSideApply=false</code> on their InfisicalSecret resources because the Infisical CRD schema omits <code>projectSlug</code>, which breaks ArgoCD's SSA validation.</p>
+<p>All <code>InfisicalSecret</code> resources carry <code>argocd.argoproj.io/sync-options: ServerSideApply=false</code> because the Infisical CRD schema omits <code>projectSlug</code> from <code>serviceToken.secretsScope</code>, which breaks ArgoCD's SSA schema validation.</p>
+<h2 id="operator-bug-workarounds-v0-10-25">Operator Bug Workarounds (v0.10.25)</h2>
+<p>The <code>secrets-operator</code> v0.10.25 chart hardcodes <code>subjects[0].namespace: default</code> in three bindings. Three override resources correct the namespace to <code>infisical</code>:</p>
+<ul>
+<li><code>infisical-opera-leader-election-rolebinding</code> (RoleBinding)</li>
+<li><code>infisical-opera-manager-rolebinding</code> (ClusterRoleBinding)</li>
+<li><code>infisical-opera-metrics-auth-rolebinding</code> (ClusterRoleBinding)</li>
+</ul>
 
 
     <!--  Errata section  -->
@@ -721,13 +726,7 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/management/infisical/#backend" class="toc-link">Backend</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/management/infisical/#postgresql" class="toc-link">PostgreSQL</a>
+                    <a href="https://homelab.madhan.app/workloads/management/infisical/#authentication-kubernetes-auth" class="toc-link">Authentication — Kubernetes Auth</a>
                     
                 </li>
             
@@ -739,7 +738,19 @@
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/workloads/management/infisical/#postgresql" class="toc-link">PostgreSQL</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <a href="https://homelab.madhan.app/workloads/management/infisical/#infisicalsecret-pattern" class="toc-link">InfisicalSecret Pattern</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/workloads/management/infisical/#operator-bug-workarounds-v0-10-25" class="toc-link">Operator Bug Workarounds (v0.10.25)</a>
                     
                 </li>
             
@@ -973,150 +984,6 @@
             <li>
                 
                     <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA GPU Operator</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
                         <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps">Apps</a></summary>
                         <ul>
                             
@@ -1259,6 +1126,150 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                        </ul>
+                    </details>
+                
+            </li>
+        
+            
+            <li>
+                
+                    <details open>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
+                        <ul>
+                            
+                            
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
+                                                
+                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
