@@ -34,5 +34,16 @@ spec:
               add:
                 - NET_ADMIN
                 - SYS_MODULE
+          volumeMounts:
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true
+      volumes:
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: netbird-secrets
+          name: openbao-secrets

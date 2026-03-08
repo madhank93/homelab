@@ -118,6 +118,9 @@ spec:
             - mountPath: /home/node/.n8n
               name: node-modules
               readOnly: false
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
@@ -126,3 +129,9 @@ spec:
         - name: node-modules
           persistentVolumeClaim:
             claimName: n8n-main-persistence
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: n8n-secrets
+          name: openbao-secrets

@@ -39,13 +39,8 @@ spec:
             - name: GF_SECURITY_ADMIN_USER
               valueFrom:
                 secretKeyRef:
-                  key: admin-user
-                  name: grafana-admin
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  key: ADMIN_PASSWORD
-                  name: grafana-admin
+                  key: admin
+                  name: grafana
             - name: GF_PATHS_DATA
               value: /var/lib/grafana/
             - name: GF_PATHS_LOGS
@@ -61,6 +56,8 @@ spec:
                 resourceFieldRef:
                   divisor: "1"
                   resource: limits.memory
+            - name: GF_SECURITY_ADMIN_PASSWORD__FILE
+              value: /mnt/secrets/ADMIN_PASSWORD
           image: docker.io/grafana/grafana:12.3.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -114,6 +111,9 @@ spec:
             - mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
               name: config
               subPath: datasources.yaml
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
       enableServiceLinks: true
       initContainers:
         - command:
@@ -154,3 +154,9 @@ spec:
             claimName: grafana
         - emptyDir: {}
           name: search
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: grafana-secrets
+          name: openbao-secrets
