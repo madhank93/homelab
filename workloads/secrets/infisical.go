@@ -286,12 +286,10 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		"name":     "infisical-token-reviewer",
 	}))
 	tokenReviewerBinding.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/subjects"), []map[string]any{
-		{"kind": "ServiceAccount", "name": "infisical-operator-controller-manager", "namespace": namespace},
+		{"kind": "ServiceAccount", "name": "infisical-opera-controller-manager", "namespace": namespace},
 	}))
 
 	// InfisicalSecret CR — kubernetesAuth (operator uses its own SA JWT, no stored credentials)
-	// TODO: replace identityId after creating Machine Identity in Infisical UI → Access Control →
-	// Machine Identities → k8s-homelab → Kubernetes Auth (host: https://192.168.1.210:6443)
 	cdk8s.NewApiObject(chart, jsii.String("infisical-bootstrap-secret-cr"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
 		Kind:       jsii.String("InfisicalSecret"),
@@ -300,13 +298,13 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 			Namespace: jsii.String(namespace),
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"hostAPI":        "https://infisical.madhan.app/api",
+		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
 		"resyncInterval": 60,
 		"authentication": map[string]any{
 			"kubernetesAuth": map[string]any{
-				"identityId": "REPLACE_WITH_IDENTITY_ID", // TODO: set after Infisical UI setup
+				"identityId": "47aef6c1-bdeb-40fa-be46-63bbcfe6a4df",
 				"serviceAccountRef": map[string]any{
-					"name":      "infisical-operator-controller-manager",
+					"name":      "infisical-opera-controller-manager",
 					"namespace": namespace,
 				},
 			},

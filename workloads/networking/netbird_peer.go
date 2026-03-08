@@ -28,10 +28,11 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
 		"resyncInterval": 60,
 		"authentication": map[string]any{
-			"universalAuth": map[string]any{
-				"credentialsRef": map[string]any{
-					"secretName":      "infisical-universal-auth",
-					"secretNamespace": "infisical",
+			"kubernetesAuth": map[string]any{
+				"identityId": "47aef6c1-bdeb-40fa-be46-63bbcfe6a4df",
+				"serviceAccountRef": map[string]any{
+					"name":      "infisical-opera-controller-manager",
+					"namespace": "infisical",
 				},
 				"secretsScope": map[string]any{
 					"projectSlug": "homelab-prod",

@@ -13,7 +13,7 @@ weight = 30
 | Image | `yanwk/comfyui-boot:cu128-megapak-20260223` |
 | HTTPRoute | `comfyui.madhan.app` → `comfyui:8188` |
 | UI | Yes |
-| Storage | 100 Gi Longhorn PVC (models, outputs, custom nodes) |
+| Storage | 50 Gi Longhorn PVC (models, outputs, custom nodes) |
 | Node | k8s-worker4 (GPU) |
 
 ## Purpose
@@ -41,7 +41,7 @@ Uses `strategy: Recreate` to avoid multi-attach conflicts on the Longhorn RWO PV
 
 ## Storage
 
-A 100 Gi Longhorn PVC is mounted at `/home/runner` (or the image's working directory). This stores:
+A 50 Gi Longhorn PVC is mounted at `/home/user/opt/ComfyUI`. This stores:
 - Model checkpoints (`.safetensors`, `.ckpt`)
 - LoRA files
 - Custom nodes

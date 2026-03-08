@@ -11,39 +11,37 @@ weight = 30
 | CDK8s file | `workloads/secrets/infisical.go` |
 | Namespace | `infisical` |
 | HTTPRoute | `infisical.madhan.app` → Infisical service |
-| UI | Yes |
+| UI | Yes (`http://infisical.madhan.app`) |
 | Bootstrap Secret | `infisical/infisical-secrets` (created by `just create-secrets`) |
 
 ## Purpose
 
-Infisical is the central secrets management platform. All application runtime secrets are stored in Infisical projects and injected into pods via `InfisicalSecret` CRDs + the Infisical operator.
+Infisical is the central secrets management platform. All application runtime secrets are stored in Infisical projects and injected into pods via `InfisicalSecret` CRDs managed by the Infisical operator.
 
 ## Architecture
 
 ```
 infisical-secrets (k8s Secret, created by bootstrap)
     │
-    └── Infisical Helm chart (backend + frontend + operator + PostgreSQL)
+    └── Infisical Helm chart (backend + frontend + PostgreSQL)
             │
-            └── InfisicalSecret CRs (one per app)
+            └── Infisical Operator (secrets-operator chart)
                     │
-                    └── Kubernetes Secrets (grafana-admin, harbor-admin, etc.)
+                    └── InfisicalSecret CRs (one per app, kubernetesAuth)
                             │
-                            └── App pods consume secrets via envFrom or volume
+                            └── Kubernetes Secrets (grafana-admin, harbor-admin, etc.)
+                                    │
+                                    └── App pods consume secrets via envFrom or volume
 ```
 
-## Backend
+## Authentication — Kubernetes Auth
 
-Infisical backend requires:
-- `INFISICAL_DB_PASSWORD` — PostgreSQL password
-- `INFISICAL_ENCRYPTION_KEY` — at-rest encryption key
-- `INFISICAL_AUTH_SECRET` — JWT signing secret
+All `InfisicalSecret` CRs use **Kubernetes Auth** — the operator authenticates with Infisical using its own ServiceAccount JWT. No credentials are stored in Kubernetes Secrets.
 
-These are provided via the `infisical-secrets` k8s Secret.
+Machine Identity ID: `47aef6c1-bdeb-40fa-be46-63bbcfe6a4df`
+ServiceAccount: `infisical-opera-controller-manager` (namespace: `infisical`)
 
-## PostgreSQL
-
-The PostgreSQL backend uses `docker.io/library/postgres:17`. The bitnami PostgreSQL image was removed from Docker Hub; only the official image is used.
+The operator SA is bound to the `infisical-token-reviewer` ClusterRole (grants `tokenreviews:create`) so Infisical can verify the JWT via the K8s token review API.
 
 ## Bootstrap Setup
 
@@ -51,19 +49,29 @@ The PostgreSQL backend uses `docker.io/library/postgres:17`. The bitnami Postgre
 # 1. Create bootstrap secrets (from SOPS-encrypted file)
 just create-secrets
 
-# 2. After ArgoCD deploys Infisical:
-# - Create an org and project at http://infisical.madhan.app
-# - Add secrets for each app under their paths (/grafana, /harbor, etc.)
-# - Create a Service Token with read access
+# 2. After ArgoCD deploys Infisical, open http://infisical.madhan.app
+#    - Complete org/project setup
+#    - Access Control → Machine Identities → create identity
+#    - Enable Kubernetes Auth (host: https://192.168.1.210:6443)
+#    - Note the identity ID
 
-# 3. Create the service token Secret
-kubectl create secret generic infisical-service-token \
-  --from-literal=infisicalToken=<token> \
-  -n infisical
+# 3. Add secrets for each app under their paths:
+#    /grafana, /harbor, /n8n, /rancher, /netbird, /infisical
 ```
 
-See `docs/infisical-secrets-setup.md` for the complete setup guide.
+## PostgreSQL
+
+Uses `docker.io/library/postgres:17` (official image). The Bitnami image was removed from Docker Hub.
+Password sourced from `infisical-secrets` k8s Secret via `secretKeyRef`.
 
 ## InfisicalSecret Pattern
 
-All apps that use Infisical carry `ServerSideApply=false` on their InfisicalSecret resources because the Infisical CRD schema omits `projectSlug`, which breaks ArgoCD's SSA validation.
+All `InfisicalSecret` resources carry `argocd.argoproj.io/sync-options: ServerSideApply=false` because the Infisical CRD schema omits `projectSlug` from `serviceToken.secretsScope`, which breaks ArgoCD's SSA schema validation.
+
+## Operator Bug Workarounds (v0.10.25)
+
+The `secrets-operator` v0.10.25 chart hardcodes `subjects[0].namespace: default` in three bindings. Three override resources correct the namespace to `infisical`:
+
+- `infisical-opera-leader-election-rolebinding` (RoleBinding)
+- `infisical-opera-manager-rolebinding` (ClusterRoleBinding)
+- `infisical-opera-metrics-auth-rolebinding` (ClusterRoleBinding)
