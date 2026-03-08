@@ -30,13 +30,21 @@ func main() {
 	storage.NewLonghornChart(longhornApp, "longhorn-app", "longhorn-system")
 	longhornApp.Synth()
 
-	// Infisical (includes namespace, backend, frontend, operator, service token)
-	infisicalApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/infisical", rootFolder)),
+	// OpenBao (secrets store) — replaces Infisical
+	openBaoApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/openbao", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
 	})
-	secrets.NewInfisicalChart(infisicalApp, "infisical-app", "infisical")
-	infisicalApp.Synth()
+	secrets.NewOpenBaoChart(openBaoApp, "openbao-app", "openbao")
+	openBaoApp.Synth()
+
+	// Secrets Store CSI Driver — mounts OpenBao secrets as files in pods
+	csiDriverApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/csi-driver", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	secrets.NewCsiDriverChart(csiDriverApp, "csi-driver-app")
+	csiDriverApp.Synth()
 
 	// Monitoring Stack
 	grafanaApp := cdk8s.NewApp(&cdk8s.AppProps{

@@ -6,15 +6,22 @@
 # they persist across ArgoCD syncs.
 #
 # Usage (always via SOPS to inject env vars):
-#   sops exec-env infra/secrets/bootstrap.sops.yaml -- bash infra/scripts/create-bootstrap-secrets.sh
+#   sops exec-env secrets/bootstrap.sops.yaml 'bash scripts/create-bootstrap-secrets.sh'
 #
 # Or via Justfile:
 #   just create-secrets
 #
 # Secrets created:
-#   - infisical/infisical-secrets     (DB_PASSWORD, AUTH_SECRET, ENCRYPTION_KEY,
-#                                      DB_CONNECTION_URI, REDIS_PASSWORD)
+#   - openbao/openbao-unseal-key      (unseal-key)
 #   - cert-manager/cloudflare-api-token  (CLOUDFLARE_API_TOKEN)
+#
+# First-time OpenBao setup:
+#   1. Run this script (creates namespace + placeholder-ready secret)
+#   2. Push manifests → ArgoCD deploys OpenBao (will be sealed)
+#   3. Run: just openbao-init   → initialises OpenBao, stores unseal key in SOPS
+#   4. Update OPENBAO_UNSEAL_KEY in secrets/bootstrap.sops.yaml
+#   5. Run this script again   → updates secret with real key
+#   6. kubectl rollout restart statefulset/openbao -n openbao → sidecar unseals
 #
 # Idempotent: safe to run multiple times (uses kubectl apply).
 
@@ -24,10 +31,7 @@ set -euo pipefail
 # Validate required environment variables
 # ---------------------------------------------------------------------------
 required_vars=(
-  INFISICAL_DB_PASSWORD
-  INFISICAL_ENCRYPTION_KEY
-  INFISICAL_AUTH_SECRET
-  REDIS_PASSWORD
+  OPENBAO_UNSEAL_KEY
   CLOUDFLARE_API_TOKEN
 )
 
@@ -35,42 +39,35 @@ for var in "${required_vars[@]}"; do
   if [[ -z "${!var:-}" ]]; then
     echo "❌  Required environment variable '$var' is not set."
     echo "    Run this script via SOPS:"
-    echo "    sops exec-env infra/secrets/bootstrap.sops.yaml -- bash infra/scripts/create-bootstrap-secrets.sh"
+    echo "    sops exec-env secrets/bootstrap.sops.yaml 'bash scripts/create-bootstrap-secrets.sh'"
     exit 1
   fi
 done
 
 # ---------------------------------------------------------------------------
-# Build derived values
-# ---------------------------------------------------------------------------
-DB_CONNECTION_URI="postgresql://infisical:${INFISICAL_DB_PASSWORD}@postgresql:5432/infisical"
-
-# ---------------------------------------------------------------------------
 # Create namespaces (idempotent)
 # ---------------------------------------------------------------------------
 echo "→ Creating namespaces..."
-kubectl create namespace infisical  --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace openbao      --dry-run=client -o yaml | kubectl apply -f -
 kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
 
 # ---------------------------------------------------------------------------
-# infisical-secrets  (namespace: infisical)
+# openbao-unseal-key  (namespace: openbao)
+# Used by the unseal sidecar container to automatically unseal OpenBao on
+# pod restart. Populated from SOPS after first `bao operator init` run.
 # ---------------------------------------------------------------------------
-echo "→ Creating infisical/infisical-secrets..."
+echo "→ Creating openbao/openbao-unseal-key..."
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
-  name: infisical-secrets
-  namespace: infisical
+  name: openbao-unseal-key
+  namespace: openbao
   annotations:
     # Prevent ArgoCD from pruning this Secret — it is managed outside GitOps
     argocd.argoproj.io/sync-options: Prune=false
 stringData:
-  DB_PASSWORD: "${INFISICAL_DB_PASSWORD}"
-  AUTH_SECRET: "${INFISICAL_AUTH_SECRET}"
-  ENCRYPTION_KEY: "${INFISICAL_ENCRYPTION_KEY}"
-  DB_CONNECTION_URI: "${DB_CONNECTION_URI}"
-  REDIS_PASSWORD: "${REDIS_PASSWORD}"
+  unseal-key: "${OPENBAO_UNSEAL_KEY}"
 EOF
 
 # ---------------------------------------------------------------------------
@@ -94,8 +91,11 @@ EOF
 echo ""
 echo "✅  Bootstrap secrets created successfully."
 echo ""
-echo "Next steps:"
-echo "  1. Run Pulumi to provision the cluster:  just pulumi talos up"
-echo "  2. Wait for ArgoCD to deploy Infisical (~5 min after cluster ready)"
-echo "  3. Log in to Infisical and store all secrets there for ongoing management"
-echo "  4. Configure Infisical's InfisicalSecret CRs to sync secrets to other apps"
+echo "Next steps (first-time setup):"
+echo "  1. Push manifests → ArgoCD deploys OpenBao (will be sealed)"
+echo "  2. Run: just openbao-init   → initialises OpenBao, outputs unseal key"
+echo "  3. Add OPENBAO_UNSEAL_KEY to secrets/bootstrap.sops.yaml"
+echo "  4. Run: just create-secrets → updates secret with real key"
+echo "  5. kubectl rollout restart statefulset/openbao -n openbao"
+echo "  6. Run: just openbao-setup  → configure K8s auth, policies, roles"
+echo "  7. Write secrets to OpenBao: bao kv put secret/grafana ADMIN_PASSWORD=..."

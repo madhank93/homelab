@@ -22,45 +22,39 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 		},
 	})
 
-	// InfisicalSecret: syncs NETBIRD_SETUP_KEY from /netbird path → secret netbird-setup-key.
-	// Prerequisite: add NETBIRD_SETUP_KEY at path /netbird in Infisical before ArgoCD sync.
-	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
-		"resyncInterval": 60,
-		"authentication": map[string]any{
-			"kubernetesAuth": map[string]any{
-				"identityId": "47aef6c1-bdeb-40fa-be46-63bbcfe6a4df",
-				"serviceAccountRef": map[string]any{
-					"name":      "infisical-opera-controller-manager",
-					"namespace": "infisical",
-				},
-				"secretsScope": map[string]any{
-					"projectSlug": "homelab-prod",
-					"envSlug":     "prod",
-					"secretsPath": "/netbird",
-				},
-			},
-		},
-		"managedSecretReference": map[string]any{
-			"secretName":      "netbird-setup-key",
-			"secretNamespace": namespace,
-			"creationPolicy":  "Owner",
-		},
-	}
-
-	cdk8s.NewApiObject(chart, jsii.String("netbird-infisical-secret"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
-		Kind:       jsii.String("InfisicalSecret"),
+	// SecretProviderClass — Pattern B (secretObjects sync).
+	// Fetches NETBIRD_SETUP_KEY from OpenBao and syncs it into k8s Secret "netbird-setup-key".
+	// The deployment's env var references this secret via secretKeyRef.
+	// Prerequisite: write NETBIRD_SETUP_KEY at path secret/data/netbird in OpenBao.
+	cdk8s.NewApiObject(chart, jsii.String("netbird-spc"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
+		Kind:       jsii.String("SecretProviderClass"),
 		Metadata: &cdk8s.ApiObjectMetadata{
 			Name:      jsii.String("netbird-secrets"),
 			Namespace: jsii.String(namespace),
-			// ServerSideApply=false: Infisical CRD schema omits projectSlug from
-			// serviceToken.secretsScope, causing SSA schema validation to fail.
-			Annotations: &map[string]*string{
-				"argocd.argoproj.io/sync-options": jsii.String("ServerSideApply=false"),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"provider": "openbao",
+		"parameters": map[string]any{
+			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
+			"roleName":     "netbird",
+			"objects": `- objectName: "NETBIRD_SETUP_KEY"
+  secretPath: "secret/data/netbird"
+  secretKey: "NETBIRD_SETUP_KEY"`,
+		},
+		"secretObjects": []map[string]any{
+			{
+				"secretName": "netbird-setup-key",
+				"type":       "Opaque",
+				"data": []map[string]any{
+					{
+						"objectName": "NETBIRD_SETUP_KEY",
+						"key":        "NETBIRD_SETUP_KEY",
+					},
+				},
 			},
 		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
+	}))
 
 	// Deployment: k8s-routing-peer — advertises 192.168.1.0/24 into the NetBird mesh.
 	// hostNetwork: true so WireGuard can manipulate host routing table.
@@ -83,6 +77,18 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 				Spec: &k8s.PodSpec{
 					HostNetwork: jsii.Bool(true),
 					DnsPolicy:   jsii.String("ClusterFirstWithHostNet"),
+					Volumes: &[]*k8s.Volume{
+						{
+							Name: jsii.String("openbao-secrets"),
+							Csi: &k8s.CsiVolumeSource{
+								Driver:   jsii.String("secrets-store.csi.k8s.io"),
+								ReadOnly: jsii.Bool(true),
+								VolumeAttributes: &map[string]*string{
+									"secretProviderClass": jsii.String("netbird-secrets"),
+								},
+							},
+						},
+					},
 					Containers: &[]*k8s.Container{
 						{
 							Name:  jsii.String("netbird"),
@@ -95,6 +101,8 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 							},
 							Env: &[]*k8s.EnvVar{
 								{
+									// NB_SETUP_KEY read from the k8s Secret synced by SecretProviderClass.
+									// The CSI volume mount below is required to trigger the sync.
 									Name: jsii.String("NB_SETUP_KEY"),
 									ValueFrom: &k8s.EnvVarSource{
 										SecretKeyRef: &k8s.SecretKeySelector{
@@ -114,6 +122,15 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 										jsii.String("NET_ADMIN"),
 										jsii.String("SYS_MODULE"),
 									},
+								},
+							},
+							// CSI volume mount triggers secretObjects sync → creates netbird-setup-key Secret.
+							// The mount itself is not used by the container — only the sync matters.
+							VolumeMounts: &[]*k8s.VolumeMount{
+								{
+									Name:      jsii.String("openbao-secrets"),
+									MountPath: jsii.String("/mnt/secrets"),
+									ReadOnly:  jsii.Bool(true),
 								},
 							},
 						},

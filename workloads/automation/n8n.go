@@ -20,45 +20,39 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 	})
 
-	// Create InfisicalSecret CRD
-	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
-		"resyncInterval": 60,
-		"authentication": map[string]any{
-			"kubernetesAuth": map[string]any{
-				"identityId": "47aef6c1-bdeb-40fa-be46-63bbcfe6a4df",
-				"serviceAccountRef": map[string]any{
-					"name":      "infisical-opera-controller-manager",
-					"namespace": "infisical",
-				},
-				"secretsScope": map[string]any{
-					"projectSlug": "homelab-prod",
-					"envSlug":     "prod",
-					"secretsPath": "/n8n",
-				},
-			},
-		},
-		"managedSecretReference": map[string]any{
-			"secretName":      "n8n-db",
-			"secretNamespace": namespace,
-			"creationPolicy":  "Owner",
-		},
-	}
-
-	cdk8s.NewApiObject(chart, jsii.String("n8n-infisical-secret"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
-		Kind:       jsii.String("InfisicalSecret"),
+	// SecretProviderClass — Pattern B (secretObjects sync).
+	// Fetches DB_PASSWORD from OpenBao and syncs it into k8s Secret "n8n-db".
+	// N8n's bundled PostgreSQL subchart references existingSecret: "n8n-db".
+	// The CSI volume on the n8n main pod triggers this sync.
+	cdk8s.NewApiObject(chart, jsii.String("n8n-spc"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
+		Kind:       jsii.String("SecretProviderClass"),
 		Metadata: &cdk8s.ApiObjectMetadata{
 			Name:      jsii.String("n8n-secrets"),
 			Namespace: jsii.String(namespace),
-			// ServerSideApply=false: Infisical CRD schema omits projectSlug from
-			// serviceToken.secretsScope, causing SSA schema validation to fail.
-			// Use client-side apply for this resource only.
-			Annotations: &map[string]*string{
-				"argocd.argoproj.io/sync-options": jsii.String("ServerSideApply=false"),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"provider": "openbao",
+		"parameters": map[string]any{
+			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
+			"roleName":     "n8n",
+			"objects": `- objectName: "DB_PASSWORD"
+  secretPath: "secret/data/n8n"
+  secretKey: "DB_PASSWORD"`,
+		},
+		"secretObjects": []map[string]any{
+			{
+				"secretName": "n8n-db",
+				"type":       "Opaque",
+				"data": []map[string]any{
+					{
+						"objectName": "DB_PASSWORD",
+						"key":        "DB_PASSWORD",
+					},
+				},
 			},
 		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
+	}))
 
 	values := map[string]any{
 		// Main node configuration (UI and API)
@@ -84,7 +78,28 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 			"extraEnvVars": map[string]any{
 				"N8N_HOST": "n8n.madhan.app",
 			},
-			// No affinity field at all - let Kubernetes handle scheduling
+			// CSI volume triggers secretObjects sync → creates n8n-db Secret.
+			// Required: secretObjects only sync when a pod mounts the CSI volume.
+			// n8n chart uses "volumes"/"volumeMounts" (not "extraVolumes"/"extraVolumeMounts")
+			"volumes": []map[string]any{
+				{
+					"name": "openbao-secrets",
+					"csi": map[string]any{
+						"driver":   "secrets-store.csi.k8s.io",
+						"readOnly": true,
+						"volumeAttributes": map[string]any{
+							"secretProviderClass": "n8n-secrets",
+						},
+					},
+				},
+			},
+			"volumeMounts": []map[string]any{
+				{
+					"name":      "openbao-secrets",
+					"mountPath": "/mnt/secrets",
+					"readOnly":  true,
+				},
+			},
 		},
 
 		// Service configuration
@@ -110,8 +125,8 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 			"auth": map[string]any{
 				"database":       "n8n",
 				"username":       "n8n",
-				"existingSecret": "n8n-db", // Secret created by InfisicalSecret
-				"secretKeys": map[string]any{ // Key mapping
+				"existingSecret": "n8n-db", // Secret synced by SecretProviderClass
+				"secretKeys": map[string]any{
 					"adminPasswordKey": "DB_PASSWORD",
 					"userPasswordKey":  "DB_PASSWORD",
 				},
@@ -153,8 +168,6 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 			"create": true,
 			"name":   "",
 		},
-
-		// Environment variables removed (moved to main.extraEnvVars)
 	}
 
 	cdk8s.NewHelm(chart, jsii.String("n8n-release"), &cdk8s.HelmProps{

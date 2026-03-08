@@ -4,6 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
 func NewRancherChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -20,45 +21,97 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	})
 
-	// Create InfisicalSecret CRD
-	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
-		"resyncInterval": 60,
-		"authentication": map[string]any{
-			"kubernetesAuth": map[string]any{
-				"identityId": "47aef6c1-bdeb-40fa-be46-63bbcfe6a4df",
-				"serviceAccountRef": map[string]any{
-					"name":      "infisical-opera-controller-manager",
-					"namespace": "infisical",
-				},
-				"secretsScope": map[string]any{
-					"projectSlug": "homelab-prod",
-					"envSlug":     "prod",
-					"secretsPath": "/rancher",
-				},
-			},
-		},
-		"managedSecretReference": map[string]any{
-			"secretName":      "rancher-bootstrap",
-			"secretNamespace": namespace,
-			"creationPolicy":  "Owner",
-		},
-	}
-
-	cdk8s.NewApiObject(chart, jsii.String("rancher-infisical-secret"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
-		Kind:       jsii.String("InfisicalSecret"),
+	// SecretProviderClass — Pattern B (secretObjects sync).
+	// Fetches BOOTSTRAP_PASSWORD from OpenBao and syncs it into k8s Secret "rancher-bootstrap".
+	// Rancher Helm chart references existingBootstrapPassword: "rancher-bootstrap".
+	cdk8s.NewApiObject(chart, jsii.String("rancher-spc"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
+		Kind:       jsii.String("SecretProviderClass"),
 		Metadata: &cdk8s.ApiObjectMetadata{
 			Name:      jsii.String("rancher-secrets"),
 			Namespace: jsii.String(namespace),
-			// ServerSideApply=false: Infisical CRD schema omits projectSlug from
-			// serviceToken.secretsScope, causing SSA schema validation to fail.
-			// Use client-side apply for this resource only.
-			Annotations: &map[string]*string{
-				"argocd.argoproj.io/sync-options": jsii.String("ServerSideApply=false"),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"provider": "openbao",
+		"parameters": map[string]any{
+			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
+			"roleName":     "rancher",
+			"objects": `- objectName: "BOOTSTRAP_PASSWORD"
+  secretPath: "secret/data/rancher"
+  secretKey: "BOOTSTRAP_PASSWORD"`,
+		},
+		"secretObjects": []map[string]any{
+			{
+				"secretName": "rancher-bootstrap",
+				"type":       "Opaque",
+				"data": []map[string]any{
+					{
+						"objectName": "BOOTSTRAP_PASSWORD",
+						"key":        "BOOTSTRAP_PASSWORD",
+					},
+				},
 			},
 		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
+	}))
+
+	// ServiceAccount for the secret-sync pod.
+	// The OpenBao K8s auth role "rancher" is bound to this SA (see scripts/openbao-setup.sh).
+	k8s.NewKubeServiceAccount(chart, jsii.String("rancher-secret-sync-sa"), &k8s.KubeServiceAccountProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("secret-sync"),
+			Namespace: jsii.String(namespace),
+		},
+	})
+
+	// Secret-sync Deployment — mounts the CSI volume to trigger secretObjects sync.
+	// Rancher's Helm chart does not support extraVolumes on its pods, so this dedicated
+	// pod triggers creation of the rancher-bootstrap Secret.
+	replicas := float64(1)
+	k8s.NewKubeDeployment(chart, jsii.String("rancher-secret-sync"), &k8s.KubeDeploymentProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("secret-sync"),
+			Namespace: jsii.String(namespace),
+		},
+		Spec: &k8s.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &k8s.LabelSelector{
+				MatchLabels: &map[string]*string{"app": jsii.String("secret-sync")},
+			},
+			Template: &k8s.PodTemplateSpec{
+				Metadata: &k8s.ObjectMeta{
+					Labels: &map[string]*string{"app": jsii.String("secret-sync")},
+				},
+				Spec: &k8s.PodSpec{
+					ServiceAccountName: jsii.String("secret-sync"),
+					Volumes: &[]*k8s.Volume{
+						{
+							Name: jsii.String("openbao-secrets"),
+							Csi: &k8s.CsiVolumeSource{
+								Driver:   jsii.String("secrets-store.csi.k8s.io"),
+								ReadOnly: jsii.Bool(true),
+								VolumeAttributes: &map[string]*string{
+									"secretProviderClass": jsii.String("rancher-secrets"),
+								},
+							},
+						},
+					},
+					Containers: &[]*k8s.Container{
+						{
+							Name:  jsii.String("pause"),
+							Image: jsii.String("registry.k8s.io/pause:3.10"),
+							VolumeMounts: &[]*k8s.VolumeMount{
+								{
+									Name:      jsii.String("openbao-secrets"),
+									MountPath: jsii.String("/mnt/secrets"),
+									ReadOnly:  jsii.Bool(true),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
 
 	values := map[string]any{
 		"agentTLSMode": "system-store",
@@ -77,7 +130,7 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 		},
 		"hostname":                   "rancher.madhan.app", // Updated to real domain
 		"bootstrapPassword":          "",                   // Not used when secret exists
-		"existingBootstrapPassword":  "rancher-bootstrap",  // Secret created by InfisicalSecret
+		"existingBootstrapPassword":  "rancher-bootstrap",  // Secret synced by SecretProviderClass + secret-sync pod
 		"bootstrapPasswordSecretKey": "BOOTSTRAP_PASSWORD",
 		"replicas":                   3,
 		"resources": map[string]any{

@@ -20,45 +20,26 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	})
 
-	// Create InfisicalSecret CRD to sync secrets from Infisical
-	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
-		"resyncInterval": 60,
-		"authentication": map[string]any{
-			"kubernetesAuth": map[string]any{
-				"identityId": "47aef6c1-bdeb-40fa-be46-63bbcfe6a4df",
-				"serviceAccountRef": map[string]any{
-					"name":      "infisical-opera-controller-manager",
-					"namespace": "infisical",
-				},
-				"secretsScope": map[string]any{
-					"projectSlug": "homelab-prod",
-					"envSlug":     "prod",
-					"secretsPath": "/grafana",
-				},
-			},
-		},
-		"managedSecretReference": map[string]any{
-			"secretName":      "grafana-admin",
-			"secretNamespace": namespace,
-			"creationPolicy":  "Owner",
-		},
-	}
-
-	cdk8s.NewApiObject(chart, jsii.String("grafana-infisical-secret"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
-		Kind:       jsii.String("InfisicalSecret"),
+	// SecretProviderClass — Pattern A (file-only, no secretObjects sync).
+	// Mounts ADMIN_PASSWORD from OpenBao at /mnt/secrets/ADMIN_PASSWORD.
+	// Grafana reads it via GF_SECURITY_ADMIN_PASSWORD__FILE env var.
+	cdk8s.NewApiObject(chart, jsii.String("grafana-spc"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
+		Kind:       jsii.String("SecretProviderClass"),
 		Metadata: &cdk8s.ApiObjectMetadata{
 			Name:      jsii.String("grafana-secrets"),
 			Namespace: jsii.String(namespace),
-			// ServerSideApply=false: Infisical CRD schema omits projectSlug from
-			// serviceToken.secretsScope, causing SSA schema validation to fail.
-			// Use client-side apply for this resource only.
-			Annotations: &map[string]*string{
-				"argocd.argoproj.io/sync-options": jsii.String("ServerSideApply=false"),
-			},
 		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"provider": "openbao",
+		"parameters": map[string]any{
+			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
+			"roleName":     "grafana",
+			"objects": `- objectName: "ADMIN_PASSWORD"
+  secretPath: "secret/data/grafana"
+  secretKey: "ADMIN_PASSWORD"`,
+		},
+	}))
 
 	// Grafana Helm chart configuration
 	values := map[string]any{
@@ -86,9 +67,14 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 				},
 			},
 		},
+		// Admin password read from file — avoids storing password in a k8s Secret.
+		// File is mounted from OpenBao via the CSI volume below.
 		"admin": map[string]any{
-			"existingSecret": "grafana-admin",  // Secret created by InfisicalSecret
-			"passwordKey":    "ADMIN_PASSWORD", // Key from Infisical
+			"userKey":     "admin",
+			"passwordKey": "admin",
+		},
+		"env": map[string]any{
+			"GF_SECURITY_ADMIN_PASSWORD__FILE": "/mnt/secrets/ADMIN_PASSWORD",
 		},
 		"resources": map[string]any{
 			"limits": map[string]any{
@@ -111,6 +97,27 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		// Ingress disabled — traffic routed via Gateway API HTTPRoute below
 		"ingress": map[string]any{
 			"enabled": false,
+		},
+		// CSI volume mounts OpenBao secrets as files at /mnt/secrets/
+		// Required to trigger SecretProviderClass to fetch secrets from OpenBao.
+		"extraVolumes": []map[string]any{
+			{
+				"name": "openbao-secrets",
+				"csi": map[string]any{
+					"driver":   "secrets-store.csi.k8s.io",
+					"readOnly": true,
+					"volumeAttributes": map[string]any{
+						"secretProviderClass": "grafana-secrets",
+					},
+				},
+			},
+		},
+		"extraVolumeMounts": []map[string]any{
+			{
+				"name":      "openbao-secrets",
+				"mountPath": "/mnt/secrets",
+				"readOnly":  true,
+			},
 		},
 	}
 

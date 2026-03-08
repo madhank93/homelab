@@ -4,6 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
 func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -20,45 +21,99 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		},
 	})
 
-	// Create InfisicalSecret CRD
-	infisicalSpec := map[string]any{
-		"hostAPI":        "http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080",
-		"resyncInterval": 60,
-		"authentication": map[string]any{
-			"kubernetesAuth": map[string]any{
-				"identityId": "47aef6c1-bdeb-40fa-be46-63bbcfe6a4df",
-				"serviceAccountRef": map[string]any{
-					"name":      "infisical-opera-controller-manager",
-					"namespace": "infisical",
-				},
-				"secretsScope": map[string]any{
-					"projectSlug": "homelab-prod",
-					"envSlug":     "prod",
-					"secretsPath": "/harbor",
-				},
-			},
-		},
-		"managedSecretReference": map[string]any{
-			"secretName":      "harbor-admin",
-			"secretNamespace": namespace,
-			"creationPolicy":  "Owner",
-		},
-	}
-
-	cdk8s.NewApiObject(chart, jsii.String("harbor-infisical-secret"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets.infisical.com/v1alpha1"),
-		Kind:       jsii.String("InfisicalSecret"),
+	// SecretProviderClass — Pattern B (secretObjects sync).
+	// Fetches HARBOR_ADMIN_PASSWORD from OpenBao and syncs it into k8s Secret "harbor-admin".
+	// Harbor Helm chart references existingSecret: "harbor-admin".
+	cdk8s.NewApiObject(chart, jsii.String("harbor-spc"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
+		Kind:       jsii.String("SecretProviderClass"),
 		Metadata: &cdk8s.ApiObjectMetadata{
 			Name:      jsii.String("harbor-secrets"),
 			Namespace: jsii.String(namespace),
-			// ServerSideApply=false: Infisical CRD schema omits projectSlug from
-			// serviceToken.secretsScope, causing SSA schema validation to fail.
-			// Use client-side apply for this resource only.
-			Annotations: &map[string]*string{
-				"argocd.argoproj.io/sync-options": jsii.String("ServerSideApply=false"),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"provider": "openbao",
+		"parameters": map[string]any{
+			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
+			"roleName":     "harbor",
+			"objects": `- objectName: "HARBOR_ADMIN_PASSWORD"
+  secretPath: "secret/data/harbor"
+  secretKey: "HARBOR_ADMIN_PASSWORD"`,
+		},
+		// secretObjects: CSI driver creates/maintains this k8s Secret when a pod mounts this SPC.
+		"secretObjects": []map[string]any{
+			{
+				"secretName": "harbor-admin",
+				"type":       "Opaque",
+				"data": []map[string]any{
+					{
+						"objectName": "HARBOR_ADMIN_PASSWORD",
+						"key":        "HARBOR_ADMIN_PASSWORD",
+					},
+				},
 			},
 		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), infisicalSpec))
+	}))
+
+	// ServiceAccount for the secret-sync pod.
+	// The OpenBao K8s auth role "harbor" is bound to this SA (see scripts/openbao-setup.sh).
+	k8s.NewKubeServiceAccount(chart, jsii.String("harbor-secret-sync-sa"), &k8s.KubeServiceAccountProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("secret-sync"),
+			Namespace: jsii.String(namespace),
+		},
+	})
+
+	// Secret-sync Deployment — mounts the CSI volume to trigger secretObjects sync.
+	// Harbor's Helm chart does not support extraVolumes on its component pods,
+	// so this dedicated pod is the trigger for creating the harbor-admin Secret.
+	// The pause container has minimal resource usage.
+	replicas := float64(1)
+	k8s.NewKubeDeployment(chart, jsii.String("harbor-secret-sync"), &k8s.KubeDeploymentProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("secret-sync"),
+			Namespace: jsii.String(namespace),
+		},
+		Spec: &k8s.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &k8s.LabelSelector{
+				MatchLabels: &map[string]*string{"app": jsii.String("secret-sync")},
+			},
+			Template: &k8s.PodTemplateSpec{
+				Metadata: &k8s.ObjectMeta{
+					Labels: &map[string]*string{"app": jsii.String("secret-sync")},
+				},
+				Spec: &k8s.PodSpec{
+					ServiceAccountName: jsii.String("secret-sync"),
+					Volumes: &[]*k8s.Volume{
+						{
+							Name: jsii.String("openbao-secrets"),
+							Csi: &k8s.CsiVolumeSource{
+								Driver:   jsii.String("secrets-store.csi.k8s.io"),
+								ReadOnly: jsii.Bool(true),
+								VolumeAttributes: &map[string]*string{
+									"secretProviderClass": jsii.String("harbor-secrets"),
+								},
+							},
+						},
+					},
+					Containers: &[]*k8s.Container{
+						{
+							Name:  jsii.String("pause"),
+							Image: jsii.String("registry.k8s.io/pause:3.10"),
+							VolumeMounts: &[]*k8s.VolumeMount{
+								{
+									Name:      jsii.String("openbao-secrets"),
+									MountPath: jsii.String("/mnt/secrets"),
+									ReadOnly:  jsii.Bool(true),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
 
 	values := map[string]any{
 		"expose": map[string]any{
@@ -80,8 +135,8 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 				},
 			},
 		},
-		"harborAdminPassword": "",             // Not used when existingSecret is set
-		"existingSecret":      "harbor-admin", // Secret created by InfisicalSecret
+		"harborAdminPassword": "",            // Not used when existingSecret is set
+		"existingSecret":      "harbor-admin", // Secret synced by SecretProviderClass + secret-sync pod
 		"core": map[string]any{
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
