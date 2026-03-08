@@ -9,5 +9,5 @@ roleRef:
   name: infisical-token-reviewer
 subjects:
   - kind: ServiceAccount
-    name: infisical-operator-controller-manager
+    name: infisical-opera-controller-manager
     namespace: infisical
