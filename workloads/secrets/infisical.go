@@ -261,6 +261,21 @@ func NewInfisicalChart(scope constructs.Construct, id string, namespace string) 
 		{"kind": "ServiceAccount", "name": "infisical-opera-controller-manager", "namespace": namespace},
 	}))
 
+	// Long-lived SA token Secret — required for Kubernetes Auth in k8s 1.24+ where
+	// tokens are no longer auto-created as Secrets. The operator looks for this secret
+	// to obtain the SA JWT for authenticating with Infisical.
+	cdk8s.NewApiObject(chart, jsii.String("infisical-opera-sa-token"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("v1"),
+		Kind:       jsii.String("Secret"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("infisical-opera-controller-manager-token"),
+			Namespace: jsii.String(namespace),
+			Annotations: &map[string]*string{
+				"kubernetes.io/service-account.name": jsii.String("infisical-opera-controller-manager"),
+			},
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/type"), jsii.String("kubernetes.io/service-account-token")))
+
 	// Kubernetes Auth — ClusterRole: grants tokenreviews create for JWT verification
 	cdk8s.NewApiObject(chart, jsii.String("infisical-token-reviewer-role"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
