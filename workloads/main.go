@@ -173,4 +173,12 @@ func main() {
 	})
 	support.NewReloaderChart(reloaderApp, "reloader-app", "reloader")
 	reloaderApp.Synth()
+
+	// Metrics Server — exposes pod/node CPU+memory metrics (required by Headlamp, HPA)
+	metricsServerApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/metrics-server", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	monitoring.NewMetricsServerChart(metricsServerApp, "metrics-server-app")
+	metricsServerApp.Synth()
 }
