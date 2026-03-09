@@ -4,6 +4,8 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/grafana"
+	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
 func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -11,11 +13,8 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		Namespace: jsii.String(namespace),
 	})
 
-	// Create namespace
-	cdk8s.NewApiObject(chart, jsii.String("monitoring-namespace"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("v1"),
-		Kind:       jsii.String("Namespace"),
-		Metadata: &cdk8s.ApiObjectMetadata{
+	k8s.NewKubeNamespace(chart, jsii.String("monitoring-namespace"), &k8s.KubeNamespaceProps{
+		Metadata: &k8s.ObjectMeta{
 			Name: jsii.String(namespace),
 		},
 	})
@@ -41,20 +40,18 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	}))
 
-	// Grafana Helm chart configuration
-	values := map[string]any{
-		// Datasources provisioned automatically — no manual UI setup required
-		"datasources": map[string]any{
-			"datasources.yaml": map[string]any{
+	values := map[string]interface{}{
+		"datasources": map[string]interface{}{
+			"datasources.yaml": map[string]interface{}{
 				"apiVersion": 1,
-				"datasources": []map[string]any{
+				"datasources": []map[string]interface{}{
 					{
 						"name":      "VictoriaMetrics",
 						"type":      "prometheus",
 						"url":       "http://victoria-metrics-victoria-metrics-cluster-vmselect.victoria-metrics.svc.cluster.local:8481/select/0/prometheus",
 						"access":    "proxy",
 						"isDefault": true,
-						"jsonData": map[string]any{
+						"jsonData": map[string]interface{}{
 							"timeInterval": "30s",
 						},
 					},
@@ -68,51 +65,39 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 			},
 		},
 		// Admin password read from file — avoids storing password in a k8s Secret.
-		// File is mounted from OpenBao via the CSI volume below.
-		"admin": map[string]any{
+		"admin": map[string]interface{}{
 			"userKey":     "admin",
 			"passwordKey": "admin",
 		},
-		"env": map[string]any{
+		"env": map[string]interface{}{
 			"GF_SECURITY_ADMIN_PASSWORD__FILE": "/mnt/secrets/ADMIN_PASSWORD",
 		},
-		"resources": map[string]any{
-			"limits": map[string]any{
-				"cpu":    "500m",
-				"memory": "512Mi",
-			},
-			"requests": map[string]any{
-				"cpu":    "100m",
-				"memory": "128Mi",
-			},
+		"resources": map[string]interface{}{
+			"limits":   map[string]interface{}{"cpu": "500m", "memory": "512Mi"},
+			"requests": map[string]interface{}{"cpu": "100m", "memory": "128Mi"},
 		},
-		"persistence": map[string]any{
+		"persistence": map[string]interface{}{
 			"enabled": true,
 			"size":    "10Gi",
 		},
-		"service": map[string]any{
+		"service": map[string]interface{}{
 			"type": "ClusterIP",
 			"port": 3000,
 		},
-		// Ingress disabled — traffic routed via Gateway API HTTPRoute below
-		"ingress": map[string]any{
-			"enabled": false,
-		},
-		// CSI volume mounts OpenBao secrets as files at /mnt/secrets/
-		// Required to trigger SecretProviderClass to fetch secrets from OpenBao.
-		"extraVolumes": []map[string]any{
+		"ingress": map[string]interface{}{"enabled": false},
+		"extraVolumes": []map[string]interface{}{
 			{
 				"name": "openbao-secrets",
-				"csi": map[string]any{
+				"csi": map[string]interface{}{
 					"driver":   "secrets-store.csi.k8s.io",
 					"readOnly": true,
-					"volumeAttributes": map[string]any{
+					"volumeAttributes": map[string]interface{}{
 						"secretProviderClass": "grafana-secrets",
 					},
 				},
 			},
 		},
-		"extraVolumeMounts": []map[string]any{
+		"extraVolumeMounts": []map[string]interface{}{
 			{
 				"name":      "openbao-secrets",
 				"mountPath": "/mnt/secrets",
@@ -121,10 +106,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	}
 
-	cdk8s.NewHelm(chart, jsii.String("grafana-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("grafana"),
-		Repo:        jsii.String("https://grafana-community.github.io/helm-charts"),
-		Version:     jsii.String("10.7.0"),
+	grafana.NewGrafana(chart, jsii.String("grafana-release"), &grafana.GrafanaProps{
 		ReleaseName: jsii.String("grafana"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

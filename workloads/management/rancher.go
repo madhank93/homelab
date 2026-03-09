@@ -5,6 +5,7 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
+	rancherimport "github.com/madhank93/homelab/workloads/imports/rancher"
 )
 
 func NewRancherChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -12,18 +13,14 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 		Namespace: jsii.String(namespace),
 	})
 
-	// Create namespace
-	cdk8s.NewApiObject(chart, jsii.String("rancher-namespace"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("v1"),
-		Kind:       jsii.String("Namespace"),
-		Metadata: &cdk8s.ApiObjectMetadata{
+	k8s.NewKubeNamespace(chart, jsii.String("rancher-namespace"), &k8s.KubeNamespaceProps{
+		Metadata: &k8s.ObjectMeta{
 			Name: jsii.String(namespace),
 		},
 	})
 
 	// SecretProviderClass — Pattern B (secretObjects sync).
 	// Fetches BOOTSTRAP_PASSWORD from OpenBao and syncs it into k8s Secret "rancher-bootstrap".
-	// Rancher Helm chart references existingBootstrapPassword: "rancher-bootstrap".
 	cdk8s.NewApiObject(chart, jsii.String("rancher-spc"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
 		Kind:       jsii.String("SecretProviderClass"),
@@ -45,17 +42,12 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 				"secretName": "rancher-bootstrap",
 				"type":       "Opaque",
 				"data": []map[string]any{
-					{
-						"objectName": "BOOTSTRAP_PASSWORD",
-						"key":        "BOOTSTRAP_PASSWORD",
-					},
+					{"objectName": "BOOTSTRAP_PASSWORD", "key": "BOOTSTRAP_PASSWORD"},
 				},
 			},
 		},
 	}))
 
-	// ServiceAccount for the secret-sync pod.
-	// The OpenBao K8s auth role "rancher" is bound to this SA (see scripts/openbao-setup.sh).
 	k8s.NewKubeServiceAccount(chart, jsii.String("rancher-secret-sync-sa"), &k8s.KubeServiceAccountProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("secret-sync"),
@@ -64,8 +56,7 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 	})
 
 	// Secret-sync Deployment — mounts the CSI volume to trigger secretObjects sync.
-	// Rancher's Helm chart does not support extraVolumes on its pods, so this dedicated
-	// pod triggers creation of the rancher-bootstrap Secret.
+	// Rancher's Helm chart does not support extraVolumes on its pods.
 	replicas := float64(1)
 	k8s.NewKubeDeployment(chart, jsii.String("rancher-secret-sync"), &k8s.KubeDeploymentProps{
 		Metadata: &k8s.ObjectMeta{
@@ -113,47 +104,31 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	})
 
-	values := map[string]any{
-		"agentTLSMode": "system-store",
-		"auditLog": map[string]any{
-			"level":       0,
-			"destination": "sidecar",
-		},
-		// Ingress disabled — traffic routed via Gateway API HTTPRoute below
-		// Rancher's built-in ingress required an Nginx controller; removed in favour of homelab-gateway
-		"ingress": map[string]any{
-			"enabled": false,
-		},
-		"service": map[string]any{
-			"type":        "ClusterIP",
-			"disableHttp": false,
-		},
-		"hostname":                   "rancher.madhan.app", // Updated to real domain
-		"bootstrapPassword":          "",                   // Not used when secret exists
-		"existingBootstrapPassword":  "rancher-bootstrap",  // Secret synced by SecretProviderClass + secret-sync pod
-		"bootstrapPasswordSecretKey": "BOOTSTRAP_PASSWORD",
-		"replicas":                   3,
-		"resources": map[string]any{
-			"limits": map[string]any{
-				"memory": "2Gi",
-				"cpu":    "1000m",
-			},
-			"requests": map[string]any{
-				"memory": "1Gi",
-				"cpu":    "500m",
-			},
-		},
-		"antiAffinity": "preferred",
-	}
-
-	cdk8s.NewHelm(chart, jsii.String("rancher-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("rancher"),
-		Repo:        jsii.String("https://releases.rancher.com/server-charts/stable"),
+	rancherimport.NewRancher(chart, jsii.String("rancher-release"), &rancherimport.RancherProps{
 		ReleaseName: jsii.String("rancher"),
 		Namespace:   jsii.String(namespace),
-		Version:     jsii.String("2.13.2"),
 		HelmFlags:   &[]*string{jsii.String("--kube-version"), jsii.String("1.30.0")},
-		Values:      &values,
+		Values: &rancherimport.RancherValues{
+			AdditionalValues: &map[string]interface{}{
+				"agentTLSMode": "system-store",
+				"auditLog": map[string]interface{}{
+					"level":       0,
+					"destination": "sidecar",
+				},
+				"ingress":                    map[string]interface{}{"enabled": false},
+				"service":                    map[string]interface{}{"type": "ClusterIP", "disableHttp": false},
+				"hostname":                   "rancher.madhan.app",
+				"bootstrapPassword":          "",
+				"existingBootstrapPassword":  "rancher-bootstrap", // Secret synced by SecretProviderClass + secret-sync pod
+				"bootstrapPasswordSecretKey": "BOOTSTRAP_PASSWORD",
+				"replicas":                   3,
+				"resources": map[string]interface{}{
+					"limits":   map[string]interface{}{"memory": "2Gi", "cpu": "1000m"},
+					"requests": map[string]interface{}{"memory": "1Gi", "cpu": "500m"},
+				},
+				"antiAffinity": "preferred",
+			},
+		},
 	})
 
 	// Gateway API HTTPRoute — routes rancher.madhan.app → rancher:80

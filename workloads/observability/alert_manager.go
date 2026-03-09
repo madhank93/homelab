@@ -5,6 +5,7 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/imports/kubeprometheusstack"
 )
 
 func NewAlertManagerChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -91,10 +92,7 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 		Url: jsii.String("https://raw.githubusercontent.com/prometheus-community/helm-charts/kube-prometheus-stack-82.0.1/charts/kube-prometheus-stack/charts/crds/crds/crd-prometheuses.yaml"),
 	})
 
-	cdk8s.NewHelm(chart, jsii.String("alertmanager-only"), &cdk8s.HelmProps{
-		Chart:       jsii.String("kube-prometheus-stack"),
-		Repo:        jsii.String("https://prometheus-community.github.io/helm-charts"),
-		Version:     jsii.String("82.0.1"),
+	kubeprometheusstack.NewKubeprometheusstack(chart, jsii.String("alertmanager-only"), &kubeprometheusstack.KubeprometheusstackProps{
 		ReleaseName: jsii.String("alertmanager"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

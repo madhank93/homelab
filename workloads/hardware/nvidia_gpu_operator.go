@@ -36,13 +36,10 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 	// the only way to make NVML accessible is via the nvidia-container-runtime hook.
 	// The handler "nvidia" matches the containerd runtime configured by the
 	// nvidia-container-toolkit-production Talos extension.
-	cdk8s.NewApiObject(chart, jsii.String("nvidia-runtime-class"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("node.k8s.io/v1"),
-		Kind:       jsii.String("RuntimeClass"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name: jsii.String("nvidia"),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/handler"), jsii.String("nvidia")))
+	k8s.NewKubeRuntimeClass(chart, jsii.String("nvidia-runtime-class"), &k8s.KubeRuntimeClassProps{
+		Metadata: &k8s.ObjectMeta{Name: jsii.String("nvidia")},
+		Handler:  jsii.String("nvidia"),
+	})
 
 	cdk8s.NewHelm(chart, jsii.String("nvidia-device-plugin-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("nvidia-device-plugin"),

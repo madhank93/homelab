@@ -100,20 +100,23 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	})
 
-	// Service
-	cdk8s.NewApiObject(chart, jsii.String("comfyui-service"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("v1"),
-		Kind:       jsii.String("Service"),
-		Metadata: &cdk8s.ApiObjectMetadata{
+	k8s.NewKubeService(chart, jsii.String("comfyui-service"), &k8s.KubeServiceProps{
+		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("comfyui"),
 			Namespace: jsii.String(namespace),
 		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"selector": map[string]any{"app": "comfyui"},
-		"ports": []map[string]any{
-			{"name": "http", "port": 8188, "targetPort": 8188, "protocol": "TCP"},
+		Spec: &k8s.ServiceSpec{
+			Selector: &map[string]*string{"app": jsii.String("comfyui")},
+			Ports: &[]*k8s.ServicePort{
+				{
+					Name:       jsii.String("http"),
+					Port:       jsii.Number(8188),
+					TargetPort: k8s.IntOrString_FromNumber(jsii.Number(8188)),
+					Protocol:   jsii.String("TCP"),
+				},
+			},
 		},
-	}))
+	})
 
 	// Gateway API HTTPRoute — routes comfyui.madhan.app → comfyui:8188
 	cdk8s.NewApiObject(chart, jsii.String("comfyui-httproute"), &cdk8s.ApiObjectProps{

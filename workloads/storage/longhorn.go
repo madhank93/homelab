@@ -4,6 +4,8 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/imports/longhorn"
 )
 
 func NewLonghornChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -11,11 +13,9 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		Namespace: jsii.String(namespace),
 	})
 
-	// Create namespace first with PSA labels for privileged workloads
-	cdk8s.NewApiObject(chart, jsii.String("longhorn-namespace"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("v1"),
-		Kind:       jsii.String("Namespace"),
-		Metadata: &cdk8s.ApiObjectMetadata{
+	// Privileged namespace — Longhorn CSI driver and manager require elevated privileges.
+	k8s.NewKubeNamespace(chart, jsii.String("longhorn-namespace"), &k8s.KubeNamespaceProps{
+		Metadata: &k8s.ObjectMeta{
 			Name: jsii.String(namespace),
 			Labels: &map[string]*string{
 				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
@@ -51,11 +51,7 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},
 			},
 			"tolerations": []map[string]any{
-				{
-					"key":      "node-role.kubernetes.io/control-plane",
-					"operator": "Exists",
-					"effect":   "NoSchedule",
-				},
+				{"key": "node-role.kubernetes.io/control-plane", "operator": "Exists", "effect": "NoSchedule"},
 			},
 		},
 		"longhornDriver": map[string]any{
@@ -64,11 +60,7 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
 			"tolerations": []map[string]any{
-				{
-					"key":      "node-role.kubernetes.io/control-plane",
-					"operator": "Exists",
-					"effect":   "NoSchedule",
-				},
+				{"key": "node-role.kubernetes.io/control-plane", "operator": "Exists", "effect": "NoSchedule"},
 			},
 		},
 		"longhornUI": map[string]any{
@@ -77,19 +69,12 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
 			"tolerations": []map[string]any{
-				{
-					"key":      "node-role.kubernetes.io/control-plane",
-					"operator": "Exists",
-					"effect":   "NoSchedule",
-				},
+				{"key": "node-role.kubernetes.io/control-plane", "operator": "Exists", "effect": "NoSchedule"},
 			},
 		},
 	}
 
-	cdk8s.NewHelm(chart, jsii.String("longhorn-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("longhorn"),
-		Repo:        jsii.String("https://charts.longhorn.io"),
-		Version:     jsii.String("1.10.2"),
+	longhorn.NewLonghorn(chart, jsii.String("longhorn-release"), &longhorn.LonghornProps{
 		ReleaseName: jsii.String("longhorn"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

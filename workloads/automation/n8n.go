@@ -4,6 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
 func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -11,11 +12,8 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		Namespace: jsii.String(namespace),
 	})
 
-	// Create namespace
-	cdk8s.NewApiObject(chart, jsii.String("n8n-namespace"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("v1"),
-		Kind:       jsii.String("Namespace"),
-		Metadata: &cdk8s.ApiObjectMetadata{
+	k8s.NewKubeNamespace(chart, jsii.String("n8n-namespace"), &k8s.KubeNamespaceProps{
+		Metadata: &k8s.ObjectMeta{
 			Name: jsii.String(namespace),
 		},
 	})
@@ -170,10 +168,13 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 	}
 
+	// NOTE: n8n typed import has many JSII-enforced required fields in N8nValues
+	// (e.g. Affinity, Api, BinaryData...) that must all be populated to use
+	// the typed construct. Using cdk8s.NewHelm to pass values as a plain map.
 	cdk8s.NewHelm(chart, jsii.String("n8n-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("n8n"),
 		Repo:        jsii.String("https://community-charts.github.io/helm-charts"),
-		Version:     jsii.String("1.16.29"), // Bumped from 1.16.28 (released 2026-02-20)
+		Version:     jsii.String("1.16.29"),
 		ReleaseName: jsii.String("n8n"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

@@ -4,6 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/headlamp"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
@@ -12,20 +13,17 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		Namespace: jsii.String(namespace),
 	})
 
-	cdk8s.NewHelm(chart, jsii.String("headlamp-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("headlamp"),
-		Repo:        jsii.String("https://kubernetes-sigs.github.io/headlamp/"),
-		Version:     jsii.String("0.40.0"), // Pinned (released 2026-02-05)
+	headlamp.NewHeadlamp(chart, jsii.String("headlamp-release"), &headlamp.HeadlampProps{
 		ReleaseName: jsii.String("headlamp"),
 		Namespace:   jsii.String(namespace),
-		Values: &map[string]any{
-			"resources": map[string]any{
-				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
-				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
-			},
-			// Ingress disabled — traffic routed via Gateway API HTTPRoute below
-			"ingress": map[string]any{
-				"enabled": false,
+		Values: &headlamp.HeadlampValues{
+			AdditionalValues: &map[string]interface{}{
+				"resources": map[string]interface{}{
+					"limits":   map[string]interface{}{"cpu": "500m", "memory": "512Mi"},
+					"requests": map[string]interface{}{"cpu": "100m", "memory": "128Mi"},
+				},
+				// Ingress disabled — traffic routed via Gateway API HTTPRoute below
+				"ingress": map[string]interface{}{"enabled": false},
 			},
 		},
 	})

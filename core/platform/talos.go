@@ -92,7 +92,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		// Worker 4 with GPU
 		{
 			Name: "k8s-worker4", IP: "192.168.1.224", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125,
-			HasGPU: true, PcieIDs: []string{"0000:28:00.0"},
+			HasGPU: true, PcieIDs: []string{"0000:09:00.0"},
 			CpuUnits: 100, Balloon: 2048,
 		},
 	}

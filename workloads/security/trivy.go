@@ -14,11 +14,11 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/imports/trivyoperator"
 )
 
 const (
 	trivyChartName = "trivy-operator"
-	trivyRepoURL   = "https://aquasecurity.github.io/helm-charts"
 	trivyVersion   = "0.32.0"
 
 	// Adjust if Aqua ever changes the release/tag naming.
@@ -71,10 +71,7 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 		includeTrivyCRDs(chart)
 	}
 
-	cdk8s.NewHelm(chart, jsii.String("trivy-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String(trivyChartName),
-		Repo:        jsii.String(trivyRepoURL),
-		Version:     jsii.String(trivyVersion),
+	trivyoperator.NewTrivyoperator(chart, jsii.String("trivy-release"), &trivyoperator.TrivyoperatorProps{
 		ReleaseName: jsii.String("trivy-operator"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

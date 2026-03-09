@@ -4,6 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	harborimport "github.com/madhank93/homelab/workloads/imports/harbor"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
@@ -12,18 +13,14 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		Namespace: jsii.String(namespace),
 	})
 
-	// Create namespace
-	cdk8s.NewApiObject(chart, jsii.String("harbor-namespace"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("v1"),
-		Kind:       jsii.String("Namespace"),
-		Metadata: &cdk8s.ApiObjectMetadata{
+	k8s.NewKubeNamespace(chart, jsii.String("harbor-namespace"), &k8s.KubeNamespaceProps{
+		Metadata: &k8s.ObjectMeta{
 			Name: jsii.String(namespace),
 		},
 	})
 
 	// SecretProviderClass — Pattern B (secretObjects sync).
 	// Fetches HARBOR_ADMIN_PASSWORD from OpenBao and syncs it into k8s Secret "harbor-admin".
-	// Harbor Helm chart references existingSecret: "harbor-admin".
 	cdk8s.NewApiObject(chart, jsii.String("harbor-spc"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
 		Kind:       jsii.String("SecretProviderClass"),
@@ -40,23 +37,17 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
   secretPath: "secret/data/harbor"
   secretKey: "HARBOR_ADMIN_PASSWORD"`,
 		},
-		// secretObjects: CSI driver creates/maintains this k8s Secret when a pod mounts this SPC.
 		"secretObjects": []map[string]any{
 			{
 				"secretName": "harbor-admin",
 				"type":       "Opaque",
 				"data": []map[string]any{
-					{
-						"objectName": "HARBOR_ADMIN_PASSWORD",
-						"key":        "HARBOR_ADMIN_PASSWORD",
-					},
+					{"objectName": "HARBOR_ADMIN_PASSWORD", "key": "HARBOR_ADMIN_PASSWORD"},
 				},
 			},
 		},
 	}))
 
-	// ServiceAccount for the secret-sync pod.
-	// The OpenBao K8s auth role "harbor" is bound to this SA (see scripts/openbao-setup.sh).
 	k8s.NewKubeServiceAccount(chart, jsii.String("harbor-secret-sync-sa"), &k8s.KubeServiceAccountProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("secret-sync"),
@@ -65,9 +56,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 	})
 
 	// Secret-sync Deployment — mounts the CSI volume to trigger secretObjects sync.
-	// Harbor's Helm chart does not support extraVolumes on its component pods,
-	// so this dedicated pod is the trigger for creating the harbor-admin Secret.
-	// The pause container has minimal resource usage.
+	// Harbor's Helm chart does not support extraVolumes on its component pods.
 	replicas := float64(1)
 	k8s.NewKubeDeployment(chart, jsii.String("harbor-secret-sync"), &k8s.KubeDeploymentProps{
 		Metadata: &k8s.ObjectMeta{
@@ -115,32 +104,25 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		},
 	})
 
-	values := map[string]any{
-		"expose": map[string]any{
-			// Use clusterIP; TLS terminated at homelab-gateway (wildcard-madhan-app-tls)
+	values := map[string]interface{}{
+		"expose": map[string]interface{}{
 			"type": "clusterIP",
-			"tls": map[string]any{
-				"enabled": false,
-			},
+			"tls":  map[string]interface{}{"enabled": false},
 		},
 		"externalURL": "https://harbor.madhan.app",
-		"persistence": map[string]any{
+		"persistence": map[string]interface{}{
 			"enabled": true,
-			"persistentVolumeClaim": map[string]any{
-				"registry": map[string]any{
-					"size": "50Gi",
-				},
-				"database": map[string]any{
-					"size": "10Gi",
-				},
+			"persistentVolumeClaim": map[string]interface{}{
+				"registry": map[string]interface{}{"size": "50Gi"},
+				"database": map[string]interface{}{"size": "10Gi"},
 			},
 		},
-		"harborAdminPassword": "",            // Not used when existingSecret is set
+		"harborAdminPassword": "",
 		"existingSecret":      "harbor-admin", // Secret synced by SecretProviderClass + secret-sync pod
-		"core": map[string]any{
-			"resources": map[string]any{
-				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
-				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
+		"core": map[string]interface{}{
+			"resources": map[string]interface{}{
+				"limits":   map[string]interface{}{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]interface{}{"cpu": "100m", "memory": "256Mi"},
 			},
 		},
 		// NOTE: harbor helm chart hardcodes RollingUpdate strategy. jobservice and registry
@@ -148,24 +130,21 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		// deadlock (new pod can't attach PVC held by old pod on a different node).
 		// Workaround: kubectl patch deployment harbor-{jobservice,registry} -n harbor \
 		//   --type=merge -p '{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null}}}'
-		"jobservice": map[string]any{
-			"resources": map[string]any{
-				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
-				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+		"jobservice": map[string]interface{}{
+			"resources": map[string]interface{}{
+				"limits":   map[string]interface{}{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]interface{}{"cpu": "100m", "memory": "128Mi"},
 			},
 		},
-		"registry": map[string]any{
-			"resources": map[string]any{
-				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
-				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
+		"registry": map[string]interface{}{
+			"resources": map[string]interface{}{
+				"limits":   map[string]interface{}{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]interface{}{"cpu": "100m", "memory": "256Mi"},
 			},
 		},
 	}
 
-	cdk8s.NewHelm(chart, jsii.String("harbor-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("harbor"),
-		Repo:        jsii.String("https://helm.goharbor.io"),
-		Version:     jsii.String("1.18.2"),
+	harborimport.NewHarbor(chart, jsii.String("harbor-release"), &harborimport.HarborProps{
 		ReleaseName: jsii.String("harbor"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
