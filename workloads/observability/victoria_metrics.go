@@ -59,5 +59,30 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		Values:      &values,
 	})
 
+	// Gateway API HTTPRoute — routes vmselect.madhan.app → vmselect:8481 (/vmui/ web UI)
+	cdk8s.NewApiObject(chart, jsii.String("victoria-metrics-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("victoria-metrics"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"vmselect.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "victoria-metrics-victoria-metrics-cluster-vmselect", "port": 8481, "weight": 1},
+				},
+			},
+		},
+	}))
+
 	return chart
 }
