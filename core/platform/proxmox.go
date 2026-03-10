@@ -136,12 +136,14 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 
 	if config.HasGPU {
 		var hostpcis vm.VirtualMachineHostpciArray
-		for i, pcieID := range config.PcieIDs {
+		for _, pcieID := range config.PcieIDs {
 			hostpcis = append(hostpcis, vm.VirtualMachineHostpciArgs{
 				Device: pulumi.String("hostpci0"),
 				Pcie:   pulumi.Bool(true),
 				Id:     pulumi.String(pcieID),
-				Xvga:   pulumi.Bool(i == 0),
+				// Xvga=false: this is a compute-only GPU (CUDA/Ollama/ComfyUI), not a display.
+				// xvga=true adds VGA BAR constraints that conflict with large memory allocations.
+				Xvga: pulumi.Bool(false),
 			})
 		}
 		args.Hostpcis = hostpcis

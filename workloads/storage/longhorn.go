@@ -74,6 +74,31 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		},
 	}
 
+	// Gateway API HTTPRoute — routes longhorn.madhan.app → longhorn-frontend:80
+	cdk8s.NewApiObject(chart, jsii.String("longhorn-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("longhorn"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"longhorn.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "longhorn-frontend", "port": 80, "weight": 1},
+				},
+			},
+		},
+	}))
+
 	longhorn.NewLonghorn(chart, jsii.String("longhorn-release"), &longhorn.LonghornProps{
 		ReleaseName: jsii.String("longhorn"),
 		Namespace:   jsii.String(namespace),

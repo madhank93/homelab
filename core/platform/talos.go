@@ -80,20 +80,24 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	})
 
 	// Define nodes
+	// Total host RAM: 92 GB. Reserved for Proxmox/host OS: 8 GB.
+	// VM budget: 84 GB — control planes 8 GB each, workers 14 GB each, GPU worker 18 GB.
 	nodes := []NodeConfig{
 		// Control Plane (3 Nodes) - High Priority
-		{Name: "k8s-controller1", IP: "192.168.1.211", Role: "control", Cores: 4, Memory: 6144, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller2", IP: "192.168.1.212", Role: "control", Cores: 4, Memory: 6144, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller3", IP: "192.168.1.213", Role: "control", Cores: 4, Memory: 6144, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
-		// Workers (4 Nodes) - Standard Priority
-		{Name: "k8s-worker1", IP: "192.168.1.221", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
-		{Name: "k8s-worker2", IP: "192.168.1.222", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
-		{Name: "k8s-worker3", IP: "192.168.1.223", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125, CpuUnits: 100, Balloon: 2048},
-		// Worker 4 with GPU
+		{Name: "k8s-controller1", IP: "192.168.1.211", Role: "control", Cores: 4, Memory: 8192, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller2", IP: "192.168.1.212", Role: "control", Cores: 4, Memory: 8192, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		{Name: "k8s-controller3", IP: "192.168.1.213", Role: "control", Cores: 4, Memory: 8192, DiskSize: 30, CpuUnits: 1024, Balloon: 4096},
+		// Workers (3 Nodes) - Standard Priority
+		{Name: "k8s-worker1", IP: "192.168.1.221", Role: "worker", Cores: 4, Memory: 14336, DiskSize: 125, CpuUnits: 100, Balloon: 8192},
+		{Name: "k8s-worker2", IP: "192.168.1.222", Role: "worker", Cores: 4, Memory: 14336, DiskSize: 125, CpuUnits: 100, Balloon: 8192},
+		{Name: "k8s-worker3", IP: "192.168.1.223", Role: "worker", Cores: 4, Memory: 14336, DiskSize: 125, CpuUnits: 100, Balloon: 8192},
+		// Worker 4 with GPU — xvga=false (proxmox.go): compute-only, no VGA BAR constraints.
+		// 16384 = 16 GB (2^14). Requires clean cold boot — GPU PCIe can't hot-resize.
+		// Balloon floor 8192: guarantees 8 GB to prevent CUDA-pinned memory being reclaimed.
 		{
-			Name: "k8s-worker4", IP: "192.168.1.224", Role: "worker", Cores: 4, Memory: 6144, DiskSize: 125,
+			Name: "k8s-worker4", IP: "192.168.1.224", Role: "worker", Cores: 4, Memory: 16384, DiskSize: 125,
 			HasGPU: true, PcieIDs: []string{"0000:09:00.0"},
-			CpuUnits: 100, Balloon: 2048,
+			CpuUnits: 100, Balloon: 8192,
 		},
 	}
 
@@ -230,7 +234,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 			return patchTalosConfig(c, node.Name, node.IP)
 		}).(pulumi.StringOutput)
 
-		// Dynamically discovered IP from QEMU agent for bootstrapping
+		// Dynamically discovered IP from QEMU agent for bootstrapping.
+		// Falls back to static node IP if the VM is stopped (no QEMU agent response)
+		// so that a stopped VM doesn't block the Pulumi preview for other nodes.
 		dynamicEndpoint := vmRes.Ipv4Addresses.ApplyT(func(ips [][]string) (string, error) {
 			for _, net := range ips {
 				for _, ip := range net {
@@ -240,7 +246,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 					}
 				}
 			}
-			return "", fmt.Errorf("no valid IPv4 address reported by QEMU agent yet")
+			// VM is stopped or QEMU agent not yet ready — fall back to static IP.
+			// ConfigurationApply will fail gracefully if the node is truly unreachable.
+			return node.IP, nil
 		}).(pulumi.StringOutput)
 
 		// Client Config construct
