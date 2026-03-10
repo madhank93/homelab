@@ -95,8 +95,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		// 16384 = 16 GB (2^14). Requires clean cold boot — GPU PCIe can't hot-resize.
 		// Balloon floor 8192: guarantees 8 GB to prevent CUDA-pinned memory being reclaimed.
 		// 250 GB disk: extra space for AI model volumes (Ollama, ComfyUI).
+		// 8 cores: dedicated AI node; Ollama + ComfyUI are CPU-hungry at inference time.
 		{
-			Name: "k8s-worker4", IP: "192.168.1.224", Role: "worker", Cores: 4, Memory: 16384, DiskSize: 250,
+			Name: "k8s-worker4", IP: "192.168.1.224", Role: "worker", Cores: 8, Memory: 16384, DiskSize: 250,
 			HasGPU: true, PcieIDs: []string{"0000:09:00.0"},
 			CpuUnits: 100, Balloon: 8192,
 		},
@@ -136,6 +137,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	gpuWorkerPatch := `machine:
   nodeLabels:
     "node.longhorn.io/create-default-disk": "config"
+  nodeTaints:
+    dedicated: "ai:NoSchedule"
   network:
     interfaces:
       - deviceSelector:

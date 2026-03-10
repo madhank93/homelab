@@ -13,21 +13,21 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 	})
 
 	// nvidia.com/gpu.present is set by NFD — matches the selector used by the GPU operator.
-	gpuNodeSelector := map[string]interface{}{
+	gpuNodeSelector := map[string]any{
 		"nvidia.com/gpu.present": "true",
 	}
 
 	ollama.NewOllama(chart, jsii.String("ollama-release"), &ollama.OllamaProps{
 		ReleaseName: jsii.String("ollama"),
 		Namespace:   jsii.String(namespace),
-		Values: &map[string]interface{}{
+		Values: &map[string]any{
 			"replicaCount": 1,
-			"image": map[string]interface{}{
+			"image": map[string]any{
 				"repository": "ollama/ollama",
 				"tag":        "0.17.0",
 			},
-			"resources": map[string]interface{}{
-				"limits": map[string]interface{}{
+			"resources": map[string]any{
+				"limits": map[string]any{
 					"nvidia.com/gpu": 1,
 					// memory here is host RAM (cgroup limit), NOT GPU VRAM.
 					// GPU VRAM (16GB) is fully available via nvidia.com/gpu: 1.
@@ -35,24 +35,27 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 					"memory": "4Gi",
 					"cpu":    "4000m",
 				},
-				"requests": map[string]interface{}{
+				"requests": map[string]any{
 					"memory": "2Gi",
 					"cpu":    "1000m",
 				},
 			},
-			"persistence": map[string]interface{}{
+			"persistence": map[string]any{
 				"enabled": true,
 				"size":    "100Gi",
 			},
-			"service": map[string]interface{}{
+			"service": map[string]any{
 				"type": "ClusterIP",
 				"port": 11434,
 			},
 			"nodeSelector": gpuNodeSelector,
+			"tolerations": []map[string]any{
+				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
+			},
 			// runtimeClassName=nvidia: routes the pod through nvidia-container-runtime
 			// (installed by Talos nvidia-container-toolkit-production extension).
 			"runtimeClassName": "nvidia",
-			"extraEnv": []map[string]interface{}{
+			"extraEnv": []map[string]any{
 				{"name": "NVIDIA_VISIBLE_DEVICES", "value": "all"},
 			},
 		},

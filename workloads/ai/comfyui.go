@@ -56,7 +56,10 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 				Spec: &k8s.PodSpec{
 					// nvidia-container-runtime handles GPU injection via Talos-aware paths
 					RuntimeClassName: jsii.String("nvidia"),
-					NodeSelector:     &map[string]*string{"nvidia.com/gpu.present": jsii.String("true")},
+					NodeSelector: &map[string]*string{"nvidia.com/gpu.present": jsii.String("true")},
+					Tolerations: &[]*k8s.Toleration{
+						{Key: jsii.String("dedicated"), Operator: jsii.String("Equal"), Value: jsii.String("ai"), Effect: jsii.String("NoSchedule")},
+					},
 					Containers: &[]*k8s.Container{
 						{
 							Name: jsii.String("comfyui"),

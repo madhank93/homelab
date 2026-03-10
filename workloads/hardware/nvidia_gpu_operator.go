@@ -51,6 +51,10 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 			// NFD labels GPU nodes with feature.node.kubernetes.io/pci-10de.present=true,
 			// which the device plugin DaemonSet uses as its default node affinity.
 			"nfd": map[string]any{"enabled": true},
+			// Tolerate the dedicated=ai taint so the device plugin DaemonSet can run on worker4.
+			"tolerations": []map[string]any{
+				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
+			},
 			// GFD adds nvidia.com/gpu.present=true and product/memory/count labels.
 			"gfd": map[string]any{"enabled": true},
 			// Use the nvidia RuntimeClass so containerd's nvidia-container-runtime hook

@@ -24,6 +24,8 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
 				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},
 			},
+			// Force re-pull to recover from exec format error (corrupted cached image layer).
+			"image": map[string]any{"pullPolicy": "Always"},
 		},
 		"fluent-bit": map[string]any{
 			"enabled": true,
