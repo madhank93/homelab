@@ -75,6 +75,11 @@ spec:
       securityContext: {}
       serviceAccountName: ollama
       terminationGracePeriodSeconds: 120
+      tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai
       volumes:
         - emptyDir: {}
           name: ollama-data

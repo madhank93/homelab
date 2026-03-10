@@ -150,11 +150,10 @@ spec:
       serviceAccountName: nvidia-device-plugin-service-account
       shareProcessNamespace: true
       tolerations:
-        - key: CriticalAddonsOnly
-          operator: Exists
         - effect: NoSchedule
-          key: nvidia.com/gpu
-          operator: Exists
+          key: dedicated
+          operator: Equal
+          value: ai
       volumes:
         - hostPath:
             path: /etc/kubernetes/node-feature-discovery/features.d

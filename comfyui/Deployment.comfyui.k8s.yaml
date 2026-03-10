@@ -42,6 +42,11 @@ spec:
       nodeSelector:
         nvidia.com/gpu.present: "true"
       runtimeClassName: nvidia
+      tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai
       volumes:
         - name: data
           persistentVolumeClaim:

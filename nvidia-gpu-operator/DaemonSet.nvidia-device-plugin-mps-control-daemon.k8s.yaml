@@ -160,11 +160,10 @@ spec:
       securityContext: {}
       serviceAccountName: nvidia-device-plugin-service-account
       tolerations:
-        - key: CriticalAddonsOnly
-          operator: Exists
         - effect: NoSchedule
-          key: nvidia.com/gpu
-          operator: Exists
+          key: dedicated
+          operator: Equal
+          value: ai
       volumes:
         - hostPath:
             path: /run/nvidia/mps
