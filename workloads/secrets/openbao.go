@@ -57,7 +57,7 @@ listener "tcp" {
   cluster_address = "[::]:8201"
 }
 storage "file" {
-  path = "/vault/data"
+  path = "/openbao/data"
 }`,
 				},
 				// Expose unseal key to the main container and unseal sidecar

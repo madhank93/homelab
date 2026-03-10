@@ -74,6 +74,24 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		"hostnames": []string{"vmselect.madhan.app"},
 		"rules": []map[string]any{
 			{
+				// Redirect bare root to the vmui path
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "Exact", "value": "/"}},
+				},
+				"filters": []map[string]any{
+					{
+						"type": "RequestRedirect",
+						"requestRedirect": map[string]any{
+							"path": map[string]any{
+								"type":            "ReplaceFullPath",
+								"replaceFullPath": "/select/0/vmui/",
+							},
+							"statusCode": 302,
+						},
+					},
+				},
+			},
+			{
 				"matches": []map[string]any{
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
