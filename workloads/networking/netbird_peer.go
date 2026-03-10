@@ -72,7 +72,8 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 			},
 			Template: &k8s.PodTemplateSpec{
 				Metadata: &k8s.ObjectMeta{
-					Labels: &map[string]*string{"app": jsii.String("netbird-peer")},
+					Labels:      &map[string]*string{"app": jsii.String("netbird-peer")},
+					Annotations: &map[string]*string{"reloader.stakater.com/auto": jsii.String("true")},
 				},
 				Spec: &k8s.PodSpec{
 					HostNetwork: jsii.Bool(true),

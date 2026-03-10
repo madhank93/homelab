@@ -41,6 +41,9 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 	}))
 
 	values := map[string]interface{}{
+		"podAnnotations": map[string]interface{}{
+			"reloader.stakater.com/auto": "true",
+		},
 		"datasources": map[string]interface{}{
 			"datasources.yaml": map[string]interface{}{
 				"apiVersion": 1,

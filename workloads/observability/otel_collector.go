@@ -65,6 +65,9 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 	// receiver, k8sattributes processor, and the necessary RBAC + volume mounts.
 	agentValues := map[string]any{
 		"mode": "daemonset",
+		"podAnnotations": map[string]any{
+			"reloader.stakater.com/auto": "true",
+		},
 		// contrib image includes all Kubernetes receivers (kubeletstats, k8s_cluster, filelog, etc.)
 		"image": map[string]any{"repository": "otel/opentelemetry-collector-contrib"},
 		"presets": map[string]any{
@@ -125,6 +128,9 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 	// k8sobjects receiver (Kubernetes events as logs), and necessary RBAC.
 	gatewayValues := map[string]any{
 		"mode":  "deployment",
+		"podAnnotations": map[string]any{
+			"reloader.stakater.com/auto": "true",
+		},
 		"image": map[string]any{"repository": "otel/opentelemetry-collector-contrib"},
 		"presets": map[string]any{
 			// Cluster-level resource metrics: nodes, pods, deployments, etc.

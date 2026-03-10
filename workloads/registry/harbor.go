@@ -70,7 +70,8 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 			},
 			Template: &k8s.PodTemplateSpec{
 				Metadata: &k8s.ObjectMeta{
-					Labels: &map[string]*string{"app": jsii.String("secret-sync")},
+					Labels:      &map[string]*string{"app": jsii.String("secret-sync")},
+					Annotations: &map[string]*string{"reloader.stakater.com/auto": jsii.String("true")},
 				},
 				Spec: &k8s.PodSpec{
 					ServiceAccountName: jsii.String("secret-sync"),

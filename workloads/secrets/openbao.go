@@ -43,6 +43,9 @@ func NewOpenBaoChart(scope constructs.Construct, id string, namespace string) cd
 				"enabled": true,
 			},
 			"server": map[string]any{
+				"podAnnotations": map[string]any{
+					"reloader.stakater.com/auto": "true",
+				},
 				"dataStorage": map[string]any{
 					"enabled":      true,
 					"size":         "10Gi",

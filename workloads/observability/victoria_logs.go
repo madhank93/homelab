@@ -13,6 +13,9 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 	})
 
 	values := map[string]any{
+		"podAnnotations": map[string]any{
+			"reloader.stakater.com/auto": "true",
+		},
 		"server": map[string]any{
 			"enabled": true,
 			"persistentVolume": map[string]any{

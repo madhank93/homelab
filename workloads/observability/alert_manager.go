@@ -20,6 +20,9 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 	})
 
 	values := map[string]any{
+		"podAnnotations": map[string]any{
+			"reloader.stakater.com/auto": "true",
+		},
 		"prometheus": map[string]any{
 			"enabled": false,
 		},

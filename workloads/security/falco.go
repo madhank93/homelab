@@ -23,6 +23,9 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 	})
 
 	values := map[string]any{
+		"podAnnotations": map[string]any{
+			"reloader.stakater.com/auto": "true",
+		},
 		"driver": map[string]any{
 			// modern_ebpf: required on Talos Linux — Talos locks down kernel module loading
 			// so the kmod and legacy ebpf drivers cannot be used. modern_ebpf uses
