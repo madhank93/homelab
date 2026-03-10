@@ -12,6 +12,17 @@ spec:
       name: homelab-gateway
       namespace: kube-system
   rules:
+    - filters:
+        - requestRedirect:
+            path:
+              replaceFullPath: /select/0/vmui/
+              type: ReplaceFullPath
+            statusCode: 302
+          type: RequestRedirect
+      matches:
+        - path:
+            type: Exact
+            value: /
     - backendRefs:
         - group: ""
           kind: Service
