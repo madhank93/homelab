@@ -1,6 +1,6 @@
 +++
 title = "Secrets"
-description = "SOPS/age for bootstrap secrets. Infisical + Kubernetes Auth for runtime secrets — zero credentials stored on-cluster."
+description = "SOPS/age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git."
 weight = 50
 +++
 
@@ -9,52 +9,54 @@ weight = 50
 Secrets management uses a two-tier approach:
 
 1. **Bootstrap secrets** — encrypted with SOPS/age, committed safely to git, applied once with `just create-secrets`
-2. **Runtime secrets** — stored in Infisical, synced to pods via `InfisicalSecret` CRs using **Kubernetes Auth** (operator JWT, no stored tokens)
+2. **Runtime secrets** — stored in OpenBao (Vault fork, MPL-2.0), mounted into pods as files via the Secrets Store CSI Driver
 
-{% mermaid() %}
-flowchart TD
-    SOPS["secrets/bootstrap.sops.yaml<br/>Encrypted with age — safe in git"]
-    LAPTOP["just create-secrets<br/>Decrypts via sops exec-env"]
-    PULUMI["just pulumi talos up<br/>Decrypts via sops exec-env"]
+```
+secrets/bootstrap.sops.yaml  (age-encrypted, safe in git)
+  └── just create-secrets
+        ├── openbao/openbao-unseal-key    (Prune=false)
+        └── cert-manager/cloudflare-api-token  (Prune=false)
 
-    subgraph Bootstrap ["Bootstrap Secrets (created once)"]
-        IS["infisical/infisical-secrets<br/>DB_PASSWORD, AUTH_SECRET, ENCRYPTION_KEY<br/>Prune=false"]
-        CF["cert-manager/cloudflare-api-token<br/>CLOUDFLARE_API_TOKEN<br/>Prune=false"]
-    end
+OpenBao (ns: openbao, port 8200)
+  ├── KV v2 at secret/
+  │     ├── secret/data/grafana   ADMIN_PASSWORD
+  │     ├── secret/data/harbor    HARBOR_ADMIN_PASSWORD
+  │     ├── secret/data/n8n       ENCRYPTION_KEY
+  │     ├── secret/data/rancher   BOOTSTRAP_PASSWORD
+  │     └── secret/data/netbird   NETBIRD_SETUP_KEY
+  └── Kubernetes Auth method
+        └── per-app roles → bound to app ServiceAccount + namespace
 
-    subgraph K8sAuth ["Kubernetes Auth (Option C)"]
-        SA["infisical-operator-controller-manager<br/>ServiceAccount JWT"]
-        CR["ClusterRole: infisical-token-reviewer<br/>tokenreviews create"]
-        CRB["ClusterRoleBinding"]
-    end
+Secrets Store CSI Driver (ns: kube-system)
+  └── SecretProviderClass (per app ns)
+        └── CSI volume in pod → mounts secrets as files
+              └── secretObjects → syncs to k8s Secret (Pattern B only)
+```
 
-    subgraph Runtime ["Runtime Secrets (Infisical — kubernetesAuth)"]
-        INFISICAL["Infisical Platform<br/>infisical.madhan.app"]
-        ISR["InfisicalSecret CR<br/>infisical-bootstrap-secret"]
-        APPSEC["Synced k8s Secrets<br/>grafana-admin, harbor-admin<br/>n8n-db, rancher-bootstrap"]
-    end
+## Pattern A — File-only (no k8s Secret)
 
-    SOPS --> LAPTOP
-    SOPS --> PULUMI
-    LAPTOP --> Bootstrap
-    Bootstrap --> INFISICAL
-    SA --> CR
-    CR --> CRB
-    CRB --> SA
-    SA -- "JWT login" --> INFISICAL
-    INFISICAL -- "tokenreviews verify" --> SA
-    INFISICAL --> ISR
-    ISR --> APPSEC
-{% end %}
+Used by: **Grafana**
+
+Secret is mounted as a file at `/mnt/secrets/<KEY>`. The app reads it via an env var pointing to the file path (e.g. `GF_SECURITY_ADMIN_PASSWORD__FILE`).
+
+No k8s Secret is created. The secret value never appears in `kubectl get secret` output.
+
+## Pattern B — secretObjects sync (k8s Secret created)
+
+Used by: **Harbor**, **n8n**, **Rancher**, **NetBird**
+
+The CSI volume mount triggers the SecretProviderClass `secretObjects` block, which creates a k8s Secret in the app's namespace. This is required for Helm charts that only accept `existingSecret` references.
+
+> The CSI volume mount is **required** to trigger the sync — if no pod mounts the volume, the k8s Secret is never created.
 
 ## Bootstrap Secrets
 
 Only two Secrets are created by the bootstrap script and never managed by ArgoCD:
 
-| Secret | Namespace | Keys | Created by |
-|--------|-----------|------|------------|
-| `infisical-secrets` | `infisical` | DB_PASSWORD, AUTH_SECRET, ENCRYPTION_KEY, DB_CONNECTION_URI, REDIS_PASSWORD | `just create-secrets` |
-| `cloudflare-api-token` | `cert-manager` | CLOUDFLARE_API_TOKEN | `just create-secrets` |
+| Secret | Namespace | Keys | Purpose |
+|--------|-----------|------|---------|
+| `openbao-unseal-key` | `openbao` | `unseal-key` | Unseals OpenBao on pod startup via sidecar |
+| `cloudflare-api-token` | `cert-manager` | `CLOUDFLARE_API_TOKEN` | DNS-01 ACME challenge for wildcard cert |
 
 Both carry `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never deletes them.
 
@@ -90,87 +92,45 @@ sops secrets/bootstrap.sops.yaml   # opens $EDITOR, re-encrypts on save
 # Edit encrypted file in-place
 sops secrets/bootstrap.sops.yaml
 
-# Run Pulumi (secrets injected as env vars, never written to disk)
-just pulumi talos up
-
 # Create/update bootstrap k8s Secrets
 just create-secrets
 ```
 
-### SOPS exec-env Syntax
+## OpenBao Setup (one-time)
 
 ```bash
-# Correct — command as a single quoted string
-sops exec-env file.sops.yaml 'bash script.sh'
+# 1. Deploy OpenBao + unseal it
+just openbao-init        # initialises, saves root token to /tmp/openbao-init.json
 
-# Wrong — double-dash not supported by sops
-sops exec-env file.sops.yaml -- bash script.sh
+# 2. Configure K8s auth, policies, roles, placeholder secrets
+just openbao-setup       # runs scripts/openbao-setup.sh
+
+# 3. Replace placeholder secrets with real values
+ROOT_TOKEN=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['root_token'])")
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv put -mount=secret grafana  ADMIN_PASSWORD=<real>
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD=<real>
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv put -mount=secret n8n      ENCRYPTION_KEY=<real>
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv put -mount=secret rancher  BOOTSTRAP_PASSWORD=<real>
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=<real>
 ```
 
-## Runtime Secrets — Kubernetes Auth (Option C)
+## Apps and Their Secret Paths
 
-All application runtime secrets are stored in Infisical and synced to Kubernetes via `InfisicalSecret` CRs. The operator authenticates to Infisical using its own **ServiceAccount JWT** — no service tokens or passwords are stored anywhere on-cluster.
+| App | OpenBao Path | Secret keys fetched | k8s Secret created | Pattern |
+|-----|-------------|--------------------|--------------------|---------|
+| Grafana | `secret/data/grafana` | `ADMIN_PASSWORD` | none | A (file) |
+| Harbor | `secret/data/harbor` | `HARBOR_ADMIN_PASSWORD` | `harbor-admin` | B |
+| n8n | `secret/data/n8n` | `ENCRYPTION_KEY` | `n8n-secrets` | B |
+| Rancher | `secret/data/rancher` | `BOOTSTRAP_PASSWORD` | `rancher-bootstrap` | B |
+| NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` | `netbird-setup-key` | B |
 
-### Auth Flow
-
-```
-Operator reconcile loop
-  → mounts its own SA token (/var/run/secrets/...)
-  → POST /api/v1/auth/kubernetes-auth/login { jwt: <SA token> }
-  → Infisical verifies JWT via k8s tokenreviews API
-  → Infisical returns a short-lived access token
-  → Operator fetches/syncs secrets using that token (resyncInterval: 60s)
-```
-
-### RBAC Resources (CDK8s-managed)
-
-| Resource | Name | What it does |
-|----------|------|-------------|
-| `ClusterRole` | `infisical-token-reviewer` | Grants `create` on `authentication.k8s.io/tokenreviews` |
-| `ClusterRoleBinding` | `infisical-token-reviewer` | Binds that role to the operator's ServiceAccount |
-| `InfisicalSecret` | `infisical-bootstrap-secret` | Drives sync with `kubernetesAuth` spec |
-
-### InfisicalSecret CR Pattern
-
-```yaml
-apiVersion: secrets.infisical.com/v1alpha1
-kind: InfisicalSecret
-metadata:
-  name: infisical-bootstrap-secret
-  namespace: infisical
-  annotations:
-    argocd.argoproj.io/sync-options: ServerSideApply=false
-spec:
-  hostAPI: https://infisical.madhan.app/api
-  resyncInterval: 60
-  authentication:
-    kubernetesAuth:
-      identityId: "<machine-identity-id>"   # from Infisical UI
-      serviceAccountRef:
-        name: infisical-operator-controller-manager
-        namespace: infisical
-  managedSecretReference:
-    secretName: infisical-synced-secrets
-    secretNamespace: infisical
-    creationPolicy: "Orphan"
-```
-
-> `ServerSideApply=false` is required on all `InfisicalSecret` resources because the Infisical CRD schema omits `projectSlug`, which breaks ArgoCD's SSA diff engine.
-
-### One-Time Infisical UI Setup
-
-See the [Infisical app page](/apps/management/infisical) for the full step-by-step setup to register the cluster and obtain the `identityId`.
-
-### Apps That Use Infisical
-
-| App | Path | k8s Secret | Keys |
-|-----|------|------------|------|
-| Grafana | `/grafana` | `grafana-admin` | `ADMIN_PASSWORD` |
-| Harbor | `/harbor` | `harbor-admin` | `HARBOR_ADMIN_PASSWORD` |
-| n8n | `/n8n` | `n8n-db` | `DB_PASSWORD`, `N8N_ENCRYPTION_KEY` |
-| Rancher | `/rancher` | `rancher-bootstrap` | `BOOTSTRAP_PASSWORD` |
-| NetBird | `/netbird` | `netbird-setup-key` | `NETBIRD_SETUP_KEY` |
+> n8n DB password is **not** in OpenBao — it is auto-managed by the CloudNativePG operator (`n8n-pg-app` Secret).
 
 ## CDK8s Generates Zero Secrets
 
-The CI pipeline synthesizes CDK8s manifests to the `v0.1.5-manifests` branch. It requires **zero GitHub Actions secrets** — CDK8s never generates any `Secret` resources. All runtime secrets are pulled by the in-cluster operator at reconcile time.
+The CI pipeline synthesizes CDK8s manifests to the `v0.1.5-manifests` branch. It requires **zero GitHub Actions secrets** — CDK8s never generates any `Secret` resources. All runtime secrets are pulled by the in-cluster CSI driver at mount time.
