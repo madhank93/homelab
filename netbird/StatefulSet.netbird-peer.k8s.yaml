@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: netbird-peer
   namespace: netbird
@@ -8,6 +8,7 @@ spec:
   selector:
     matchLabels:
       app: netbird-peer
+  serviceName: netbird-peer
   template:
     metadata:
       annotations:
@@ -35,6 +36,8 @@ spec:
                 - SYS_MODULE
             privileged: true
           volumeMounts:
+            - mountPath: /etc/netbird
+              name: netbird-config
             - mountPath: /mnt/secrets
               name: openbao-secrets
               readOnly: true
@@ -47,3 +50,12 @@ spec:
             volumeAttributes:
               secretProviderClass: netbird-secrets
           name: openbao-secrets
+  volumeClaimTemplates:
+    - metadata:
+        name: netbird-config
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Mi
