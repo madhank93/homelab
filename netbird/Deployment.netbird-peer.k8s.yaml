@@ -10,6 +10,8 @@ spec:
       app: netbird-peer
   template:
     metadata:
+      annotations:
+        reloader.stakater.com/auto: "true"
       labels:
         app: netbird-peer
     spec:
@@ -34,6 +36,7 @@ spec:
               add:
                 - NET_ADMIN
                 - SYS_MODULE
+            privileged: true
           volumeMounts:
             - mountPath: /mnt/secrets
               name: openbao-secrets

@@ -23,6 +23,7 @@ spec:
     metadata:
       annotations:
         checksum/config: 84a96dc139b2755328ef6b23619e0245912dfda8b51fd542189758acdeb187f7
+        reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/instance: otel-gateway
         app.kubernetes.io/name: opentelemetry-collector
