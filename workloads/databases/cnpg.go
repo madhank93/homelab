@@ -25,16 +25,6 @@ func NewCnpgOperatorChart(scope constructs.Construct, id string) cdk8s.Chart {
 		Version:     jsii.String("0.27.1"),
 		ReleaseName: jsii.String("cnpg"),
 		Namespace:   jsii.String(namespace),
-		Values: &map[string]any{
-			"monitoring": map[string]any{
-				// Creates PodMonitors for each CNPG cluster (discovered by VMAgent's podMonitorSelector)
-				"podMonitorEnabled": true,
-				// Creates a Grafana dashboard ConfigMap with label grafana_dashboard=1
-				"grafanaDashboard": map[string]any{
-					"create": true,
-				},
-			},
-		},
 	})
 
 	return chart
