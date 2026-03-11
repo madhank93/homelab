@@ -159,7 +159,7 @@ spec:
           name: empty-dir
         - name: postgresql-password
           secret:
-            secretName: n8n-db
+            secretName: n8n-secrets
         - emptyDir:
             medium: Memory
           name: dshm

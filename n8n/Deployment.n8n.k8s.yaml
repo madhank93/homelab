@@ -81,7 +81,7 @@ spec:
             - configMapRef:
                 name: n8n-binary-data-configmap
             - secretRef:
-                name: n8n-encryption-key-secret-v2
+                name: n8n-secrets
           image: n8nio/n8n:1.78.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
