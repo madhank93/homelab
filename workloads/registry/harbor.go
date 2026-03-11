@@ -151,7 +151,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		Values:      &values,
 	})
 
-	// Gateway API HTTPRoute — routes harbor.madhan.app → harbor-core:80
+	// Gateway API HTTPRoute — routes harbor.madhan.app → harbor:80 (nginx proxy)
 	cdk8s.NewApiObject(chart, jsii.String("harbor-httproute"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
 		Kind:       jsii.String("HTTPRoute"),
@@ -170,7 +170,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "harbor-core", "port": 80, "weight": 1},
+					{"group": "", "kind": "Service", "name": "harbor", "port": 80, "weight": 1},
 				},
 			},
 		},
