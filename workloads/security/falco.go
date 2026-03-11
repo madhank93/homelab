@@ -47,9 +47,20 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 			"json_output":                    true,
 			"json_include_output_property":   true,
 		},
-		// falcosidekick: disabled for now — enable to route alerts to Slack/PagerDuty/webhook
 		"falcosidekick": map[string]any{
-			"enabled": false,
+			"enabled": true,
+			"webui": map[string]any{
+				"enabled":  true,
+				"replicas": 1,
+				"resources": map[string]any{
+					"limits":   map[string]any{"cpu": "200m", "memory": "128Mi"},
+					"requests": map[string]any{"cpu": "50m", "memory": "64Mi"},
+				},
+			},
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "200m", "memory": "256Mi"},
+				"requests": map[string]any{"cpu": "50m", "memory": "128Mi"},
+			},
 		},
 		"resources": map[string]any{
 			"limits":   map[string]any{"cpu": "1000m", "memory": "1024Mi"},
@@ -69,6 +80,31 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
+
+	// Gateway API HTTPRoute — falco.madhan.app → falcosidekick-ui (port 2802)
+	cdk8s.NewApiObject(chart, jsii.String("falco-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("falco"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"falco.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "falco-falcosidekick-ui", "port": 2802, "weight": 1},
+				},
+			},
+		},
+	}))
 
 	return chart
 }

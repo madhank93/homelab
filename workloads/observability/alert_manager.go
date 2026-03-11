@@ -101,5 +101,30 @@ func NewAlertManagerChart(scope constructs.Construct, id string, namespace strin
 		Values:      &values,
 	})
 
+	// Gateway API HTTPRoute — alertmanager.madhan.app → alertmanager UI (port 9093)
+	cdk8s.NewApiObject(chart, jsii.String("alertmanager-httproute"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
+		Kind:       jsii.String("HTTPRoute"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("alertmanager"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"parentRefs": []map[string]any{
+			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
+		},
+		"hostnames": []string{"alertmanager.madhan.app"},
+		"rules": []map[string]any{
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "alertmanager-kube-promethe-alertmanager", "port": 9093, "weight": 1},
+				},
+			},
+		},
+	}))
+
 	return chart
 }
