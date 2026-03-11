@@ -56,9 +56,11 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 		},
 	}))
 
-	// Deployment: k8s-routing-peer — advertises 192.168.1.0/24 into the NetBird mesh.
+	// Deployment: k8s-routing-peer — connects to NetBird mesh and advertises 192.168.1.0/24.
 	// hostNetwork: true so WireGuard can manipulate host routing table.
 	// dnsPolicy: ClusterFirstWithHostNet to retain in-cluster DNS resolution.
+	// Routes are assigned to this peer via the NetBird Management UI (Network → Routes)
+	// and pushed down automatically — no CLI flag needed.
 	replicas := float64(1)
 	k8s.NewKubeDeployment(chart, jsii.String("netbird-peer"), &k8s.KubeDeploymentProps{
 		Metadata: &k8s.ObjectMeta{
@@ -92,14 +94,11 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 					},
 					Containers: &[]*k8s.Container{
 						{
-							Name:  jsii.String("netbird"),
-							Image: jsii.String("netbirdio/netbird:latest"),
-							Command: &[]*string{
-								jsii.String("netbird"),
-								jsii.String("up"),
-								jsii.String("--advertise-routes=192.168.1.0/24"),
-								jsii.String("--hostname=k8s-routing-peer"),
-							},
+							Name: jsii.String("netbird"),
+							// Pinned to match Bifrost server version. The default entrypoint
+							// starts the service daemon then calls 'netbird up' — do not
+							// override Command or the daemon mode breaks.
+							Image: jsii.String("netbirdio/netbird:0.66.2"),
 							Env: &[]*k8s.EnvVar{
 								{
 									// NB_SETUP_KEY read from the k8s Secret synced by SecretProviderClass.
@@ -115,6 +114,10 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 								{
 									Name:  jsii.String("NB_MANAGEMENT_URL"),
 									Value: jsii.String("https://netbird.madhan.app"),
+								},
+								{
+									Name:  jsii.String("NB_HOSTNAME"),
+									Value: jsii.String("k8s-routing-peer"),
 								},
 							},
 							SecurityContext: &k8s.SecurityContext{

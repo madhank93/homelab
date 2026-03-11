@@ -75,10 +75,9 @@ http:
 
 tcp:
   routers:
-    # TCP passthrough for NetBird expose feature (proxy.madhan.app)
-    # Wildcard HostSNI is not supported in Traefik TCP routers — use base domain only
+    # TCP passthrough for NetBird expose feature (proxy.madhan.app + *.proxy.madhan.app)
     netbird-proxy:
-      rule: "HostSNI(`proxy.madhan.app`)"
+      rule: "HostSNI(`proxy.madhan.app`) || HostSNI(`*.proxy.madhan.app`)"
       service: netbird-proxy-svc
       tls:
         passthrough: true
