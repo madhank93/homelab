@@ -4,11 +4,12 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
-// NewArgoCDMonitorChart creates ServiceMonitors for ArgoCD components.
-// ArgoCD is deployed via the platform layer (Pulumi), so this chart only
-// adds the ServiceMonitors in the argocd namespace for VMAgent to discover.
+// NewArgoCDMonitorChart creates metrics Services + ServiceMonitors for ArgoCD components.
+// ArgoCD is deployed via the platform layer (Pulumi) with metrics services disabled by default.
+// We create headless metrics Services here so VMAgent can scrape them.
 func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 	namespace := "argocd"
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
@@ -16,18 +17,42 @@ func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 	})
 
 	components := []struct {
-		name string
-		port string
+		name        string
+		metricsPort float64
 	}{
-		// argocd-server exposes metrics on port 8083
-		{"argocd-server", "metrics"},
-		// argocd-repo-server exposes metrics on port 8084
-		{"argocd-repo-server", "metrics"},
-		// argocd-application-controller exposes metrics on port 8082
-		{"argocd-application-controller", "metrics"},
+		{"argocd-application-controller", 8082},
+		{"argocd-server", 8083},
+		{"argocd-repo-server", 8084},
+		{"argocd-applicationset-controller", 8085},
 	}
 
 	for _, c := range components {
+		// Metrics Service — selects ArgoCD pods by app.kubernetes.io/name, exposes metrics port.
+		// The ArgoCD Helm chart doesn't create metrics services by default, so we add them here.
+		k8s.NewKubeService(chart, jsii.String(c.name+"-metrics-svc"), &k8s.KubeServiceProps{
+			Metadata: &k8s.ObjectMeta{
+				Name:      jsii.String(c.name + "-metrics"),
+				Namespace: jsii.String(namespace),
+				Labels: &map[string]*string{
+					// ServiceMonitor selects this service by this label
+					"app.kubernetes.io/name": jsii.String(c.name + "-metrics"),
+				},
+			},
+			Spec: &k8s.ServiceSpec{
+				Selector: &map[string]*string{
+					// Selects the ArgoCD pods
+					"app.kubernetes.io/name": jsii.String(c.name),
+				},
+				Ports: &[]*k8s.ServicePort{
+					{
+						Name:       jsii.String("metrics"),
+						Port:       jsii.Number(c.metricsPort),
+						TargetPort: k8s.IntOrString_FromNumber(jsii.Number(c.metricsPort)),
+					},
+				},
+			},
+		})
+
 		cdk8s.NewApiObject(chart, jsii.String(c.name+"-sm"), &cdk8s.ApiObjectProps{
 			ApiVersion: jsii.String("monitoring.coreos.com/v1"),
 			Kind:       jsii.String("ServiceMonitor"),
@@ -37,13 +62,13 @@ func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 			},
 		}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 			"selector": map[string]any{
-				"matchLabels": map[string]any{"app.kubernetes.io/name": c.name},
+				"matchLabels": map[string]any{"app.kubernetes.io/name": c.name + "-metrics"},
 			},
 			"namespaceSelector": map[string]any{
 				"matchNames": []string{namespace},
 			},
 			"endpoints": []map[string]any{
-				{"port": c.port, "path": "/metrics", "interval": "30s"},
+				{"port": "metrics", "path": "/metrics", "interval": "30s"},
 			},
 		}))
 	}
