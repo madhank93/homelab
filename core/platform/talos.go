@@ -122,6 +122,10 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
       - deviceSelector:
           physical: true
         dhcp: true
+  kubelet:
+    nodeIP:
+      validSubnets:
+        - 192.168.1.0/24
   kernel:
     modules:
       - name: nbd
@@ -144,6 +148,10 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
       - deviceSelector:
           physical: true
         dhcp: true
+  kubelet:
+    nodeIP:
+      validSubnets:
+        - 192.168.1.0/24
   kernel:
     modules:
       - name: nbd
