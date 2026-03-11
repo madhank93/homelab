@@ -22,7 +22,7 @@ data:
     - access: proxy
       name: VictoriaLogs
       type: loki
-      url: http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select/loki
+      url: http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select
   grafana.ini: |
     [analytics]
     check_for_updates = true
