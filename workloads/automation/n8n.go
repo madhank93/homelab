@@ -34,19 +34,25 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		"parameters": map[string]any{
 			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
 			"roleName":     "n8n",
+			// Fetch both DB_PASSWORD and ENCRYPTION_KEY from the same OpenBao path.
+			// ENCRYPTION_KEY is stored once via `bao kv patch secret/n8n ENCRYPTION_KEY=<key>`
+			// and never changes — ensures n8n's stored config always matches the env var.
 			"objects": `- objectName: "DB_PASSWORD"
   secretPath: "secret/data/n8n"
-  secretKey: "DB_PASSWORD"`,
+  secretKey: "DB_PASSWORD"
+- objectName: "ENCRYPTION_KEY"
+  secretPath: "secret/data/n8n"
+  secretKey: "ENCRYPTION_KEY"`,
 		},
+		// Sync both secrets into a single k8s Secret "n8n-secrets".
+		// postgresql uses DB_PASSWORD; n8n main uses N8N_ENCRYPTION_KEY.
 		"secretObjects": []map[string]any{
 			{
-				"secretName": "n8n-db",
+				"secretName": "n8n-secrets",
 				"type":       "Opaque",
 				"data": []map[string]any{
-					{
-						"objectName": "DB_PASSWORD",
-						"key":        "DB_PASSWORD",
-					},
+					{"objectName": "DB_PASSWORD", "key": "DB_PASSWORD"},
+					{"objectName": "ENCRYPTION_KEY", "key": "N8N_ENCRYPTION_KEY"},
 				},
 			},
 		},
@@ -76,7 +82,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 			"extraEnvVars": map[string]any{
 				"N8N_HOST": "n8n.madhan.app",
 			},
-			// CSI volume triggers secretObjects sync → creates n8n-db Secret.
+			// CSI volume triggers secretObjects sync → creates n8n-secrets Secret.
 			// Required: secretObjects only sync when a pod mounts the CSI volume.
 			// n8n chart uses "volumes"/"volumeMounts" (not "extraVolumes"/"extraVolumeMounts")
 			"volumes": []map[string]any{
@@ -117,13 +123,17 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 			"type": "postgresdb",
 		},
 
+		// Encryption key from OpenBao (via CSI secretObjects → n8n-secrets).
+		// Avoids Helm-generated random key that changes on every CDK8s synth.
+		"existingEncryptionKeySecret": "n8n-secrets",
+
 		// Built-in PostgreSQL using Bitnami chart
 		"postgresql": map[string]any{
 			"enabled": true,
 			"auth": map[string]any{
 				"database":       "n8n",
 				"username":       "n8n",
-				"existingSecret": "n8n-db", // Secret synced by SecretProviderClass
+				"existingSecret": "n8n-secrets", // Secret synced by SecretProviderClass
 				"secretKeys": map[string]any{
 					"adminPasswordKey": "DB_PASSWORD",
 					"userPasswordKey":  "DB_PASSWORD",
