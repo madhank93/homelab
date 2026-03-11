@@ -61,7 +61,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 					{
 						"name":   "VictoriaLogs",
 						"type":   "loki",
-						"url":    "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select/loki",
+						"url":    "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select",
 						"access": "proxy",
 					},
 				},
