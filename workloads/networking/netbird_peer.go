@@ -92,11 +92,14 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 					},
 					Containers: &[]*k8s.Container{
 						{
-							Name: jsii.String("netbird"),
-							// Pin to server version — avoids breaking changes in :latest.
-							// Routes (192.168.1.0/24) configured via NetBird management dashboard.
-							// Use env vars only (official Kubernetes routing-peer pattern).
-							Image: jsii.String("netbirdio/netbird:0.66.2"),
+							Name:  jsii.String("netbird"),
+							Image: jsii.String("netbirdio/netbird:latest"),
+							Command: &[]*string{
+								jsii.String("netbird"),
+								jsii.String("up"),
+								jsii.String("--advertise-routes=192.168.1.0/24"),
+								jsii.String("--hostname=k8s-routing-peer"),
+							},
 							Env: &[]*k8s.EnvVar{
 								{
 									// NB_SETUP_KEY read from the k8s Secret synced by SecretProviderClass.
@@ -112,10 +115,6 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 								{
 									Name:  jsii.String("NB_MANAGEMENT_URL"),
 									Value: jsii.String("https://netbird.madhan.app"),
-								},
-								{
-									Name:  jsii.String("NB_HOSTNAME"),
-									Value: jsii.String("k8s-routing-peer"),
 								},
 							},
 							SecurityContext: &k8s.SecurityContext{
