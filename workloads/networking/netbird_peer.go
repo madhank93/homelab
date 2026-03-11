@@ -24,8 +24,8 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 
 	// SecretProviderClass — Pattern B (secretObjects sync).
 	// Fetches NETBIRD_SETUP_KEY from OpenBao and syncs it into k8s Secret "netbird-setup-key".
-	// The deployment's env var references this secret via secretKeyRef.
-	// Prerequisite: write NETBIRD_SETUP_KEY at path secret/data/netbird in OpenBao.
+	// The setup key is only used on first registration; subsequent restarts use the persisted
+	// private key from the netbird-config PVC and ignore the setup key.
 	cdk8s.NewApiObject(chart, jsii.String("netbird-spc"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
 		Kind:       jsii.String("SecretProviderClass"),
@@ -56,19 +56,35 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 		},
 	}))
 
-	// Deployment: k8s-routing-peer — connects to NetBird mesh and advertises 192.168.1.0/24.
-	// hostNetwork: true so WireGuard can manipulate host routing table.
-	// dnsPolicy: ClusterFirstWithHostNet to retain in-cluster DNS resolution.
-	// Routes are assigned to this peer via the NetBird Management UI (Network → Routes)
-	// and pushed down automatically — no CLI flag needed.
-	replicas := float64(1)
-	k8s.NewKubeDeployment(chart, jsii.String("netbird-peer"), &k8s.KubeDeploymentProps{
+	// Headless Service — required by StatefulSet spec.serviceName.
+	k8s.NewKubeService(chart, jsii.String("netbird-peer-svc"), &k8s.KubeServiceProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("netbird-peer"),
 			Namespace: jsii.String(namespace),
 		},
-		Spec: &k8s.DeploymentSpec{
-			Replicas: &replicas,
+		Spec: &k8s.ServiceSpec{
+			ClusterIp: jsii.String("None"),
+			Selector: &map[string]*string{
+				"app": jsii.String("netbird-peer"),
+			},
+		},
+	})
+
+	// StatefulSet: k8s-routing-peer — replaces the old Deployment.
+	// Using StatefulSet + PVC so /etc/netbird/ (private key + config) persists across
+	// pod restarts. This prevents new peer registrations on every restart, eliminating
+	// duplicate peers accumulating in the NetBird Management UI.
+	// hostNetwork: true so WireGuard can manipulate the host routing table.
+	// Routes are assigned to this peer via the NetBird Management UI (Network → Routes).
+	replicas := float64(1)
+	k8s.NewKubeStatefulSet(chart, jsii.String("netbird-peer"), &k8s.KubeStatefulSetProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("netbird-peer"),
+			Namespace: jsii.String(namespace),
+		},
+		Spec: &k8s.StatefulSetSpec{
+			Replicas:    &replicas,
+			ServiceName: jsii.String("netbird-peer"),
 			Selector: &k8s.LabelSelector{
 				MatchLabels: &map[string]*string{"app": jsii.String("netbird-peer")},
 			},
@@ -95,14 +111,13 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 					Containers: &[]*k8s.Container{
 						{
 							Name: jsii.String("netbird"),
-							// Pinned to match Bifrost server version. The default entrypoint
-							// starts the service daemon then calls 'netbird up' — do not
-							// override Command or the daemon mode breaks.
+							// Pinned to match Bifrost server version. Default entrypoint starts
+							// the service daemon then calls 'netbird up' — do not override Command.
 							Image: jsii.String("netbirdio/netbird:0.66.2"),
 							Env: &[]*k8s.EnvVar{
 								{
-									// NB_SETUP_KEY read from the k8s Secret synced by SecretProviderClass.
-									// The CSI volume mount below is required to trigger the sync.
+									// Setup key only used on first registration.
+									// Read from k8s Secret synced by SecretProviderClass above.
 									Name: jsii.String("NB_SETUP_KEY"),
 									ValueFrom: &k8s.EnvVarSource{
 										SecretKeyRef: &k8s.SecretKeySelector{
@@ -121,8 +136,6 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 								},
 							},
 							SecurityContext: &k8s.SecurityContext{
-								// privileged: required on Talos — capability grants (NET_ADMIN, SYS_MODULE)
-								// are blocked by the node security profile without explicit privileged mode.
 								Privileged: jsii.Bool(true),
 								Capabilities: &k8s.Capabilities{
 									Add: &[]*string{
@@ -131,14 +144,36 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 									},
 								},
 							},
-							// CSI volume mount triggers secretObjects sync → creates netbird-setup-key Secret.
-							// The mount itself is not used by the container — only the sync matters.
 							VolumeMounts: &[]*k8s.VolumeMount{
 								{
+									// Persists NetBird private key + config across restarts.
+									// Without this, every restart = new key = new peer registration.
+									Name:      jsii.String("netbird-config"),
+									MountPath: jsii.String("/etc/netbird"),
+								},
+								{
+									// CSI mount triggers secretObjects sync → creates netbird-setup-key Secret.
 									Name:      jsii.String("openbao-secrets"),
 									MountPath: jsii.String("/mnt/secrets"),
 									ReadOnly:  jsii.Bool(true),
 								},
+							},
+						},
+					},
+				},
+			},
+			// PVC template: 100Mi for /etc/netbird/ config persistence.
+			// Longhorn default StorageClass is used automatically.
+			VolumeClaimTemplates: &[]*k8s.KubePersistentVolumeClaimProps{
+				{
+					Metadata: &k8s.ObjectMeta{
+						Name: jsii.String("netbird-config"),
+					},
+					Spec: &k8s.PersistentVolumeClaimSpec{
+						AccessModes: &[]*string{jsii.String("ReadWriteOnce")},
+						Resources: &k8s.VolumeResourceRequirements{
+							Requests: &map[string]k8s.Quantity{
+								"storage": k8s.Quantity_FromString(jsii.String("100Mi")),
 							},
 						},
 					},
