@@ -8,4 +8,13 @@ metadata:
     helm.sh/chart: grafana-10.7.0
   name: grafana-clusterrole
   namespace: grafana
-rules: []
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+    verbs:
+      - get
+      - watch
+      - list
