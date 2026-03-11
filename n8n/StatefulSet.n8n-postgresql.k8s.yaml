@@ -56,9 +56,9 @@ spec:
             - name: POSTGRES_USER
               value: n8n
             - name: POSTGRES_PASSWORD_FILE
-              value: /opt/bitnami/postgresql/secrets/DB_PASSWORD
+              value: /opt/bitnami/postgresql/secrets/password
             - name: POSTGRES_POSTGRES_PASSWORD_FILE
-              value: /opt/bitnami/postgresql/secrets/DB_PASSWORD
+              value: /opt/bitnami/postgresql/secrets/postgres-password
             - name: POSTGRES_DATABASE
               value: n8n
             - name: POSTGRESQL_ENABLE_LDAP
@@ -159,7 +159,7 @@ spec:
           name: empty-dir
         - name: postgresql-password
           secret:
-            secretName: n8n-secrets
+            secretName: n8n-postgresql
         - emptyDir:
             medium: Memory
           name: dshm
