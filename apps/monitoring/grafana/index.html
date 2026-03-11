@@ -510,38 +510,86 @@
     </div>
     <h2 id="overview">Overview</h2>
 <table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/monitoring/grafana.go</code></td></tr>
+<tr><td>CDK8s file</td><td><code>workloads/monitoring/grafana.go</code></td></tr>
 <tr><td>Namespace</td><td><code>grafana</code></td></tr>
-<tr><td>HTTPRoute</td><td><code>grafana.madhan.app</code> → <code>grafana:80</code></td></tr>
-<tr><td>UI</td><td>Yes</td></tr>
-<tr><td>Requires Infisical</td><td>Yes — <code>grafana-admin</code> Secret</td></tr>
+<tr><td>HTTPRoute</td><td><code>grafana.madhan.app</code></td></tr>
+<tr><td>Access</td><td>Public — GitHub SSO via Authentik (Viewer for all, Admin for <code>grafana-admins</code> group)</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>Grafana provides dashboards for metrics (VictoriaMetrics) and logs (VictoriaLogs). Datasources are auto-provisioned via Helm values.</p>
 <h2 id="datasources">Datasources</h2>
-<table><thead><tr><th>Name</th><th>Type</th><th>URL</th></tr></thead><tbody>
-<tr><td>VictoriaMetrics</td><td>Prometheus</td><td><code>http://victoria-metrics-victoria-metrics-single-server.victoria-metrics:8428</code></td></tr>
-<tr><td>VictoriaLogs</td><td>Loki</td><td><code>http://victoria-logs-single-server.victoria-logs:9428</code></td></tr>
+<table><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody>
+<tr><td>VictoriaMetrics</td><td>Prometheus (default)</td></tr>
+<tr><td>VictoriaLogs</td><td>Loki</td></tr>
 </tbody></table>
-<h2 id="secret">Secret</h2>
-<p>Grafana's admin password is managed by Infisical:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">secrets.infisical.com/v1alpha1
-</span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">InfisicalSecret
-</span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana-admin
-</span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
-</span><span>  </span><span style="color:#73d0ff;">annotations</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">argocd.argoproj.io/sync-options</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ServerSideApply=false
-</span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">authentication</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">serviceToken</span><span style="color:#ccc9c2cc;">:
-</span><span>      </span><span style="color:#73d0ff;">secretsScope</span><span style="color:#ccc9c2cc;">:
-</span><span>        </span><span style="color:#73d0ff;">secretsPath</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">/grafana
-</span><span>  </span><span style="color:#73d0ff;">managedSecretReference</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">secretName</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana-admin
-</span><span>    </span><span style="color:#73d0ff;">secretNamespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
+<h2 id="secrets-openbao">Secrets (OpenBao)</h2>
+<p>Secrets live at <code>secret/data/grafana</code> in OpenBao:</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>ADMIN_PASSWORD</code></td><td>Grafana admin password — mounted as file via CSI</td></tr>
+<tr><td><code>OAUTH_CLIENT_SECRET</code></td><td>Authentik OAuth2 client secret — synced to k8s Secret <code>grafana-oauth-secret</code></td></tr>
+</tbody></table>
+<p>Write/update secrets:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Set admin password (first time)
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/grafana </span><span style="color:#ccc9c2cc;">\
+</span><span>  ADMIN_PASSWORD=</span><span style="color:#f29e74;">&lt;</span><span>password</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">\
+</span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#f29e74;">&lt;</span><span>secret</span><span style="color:#f29e74;">&gt;
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Update a single key
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv patch secret/grafana </span><span style="color:#ccc9c2cc;">\
+</span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#f29e74;">&lt;</span><span>new-secret</span><span style="color:#f29e74;">&gt;
 </span></code></pre>
-<p>The <code>grafana-admin</code> Secret must exist before Grafana starts.</p>
+<h2 id="github-sso-via-authentik-setup-steps">GitHub SSO via Authentik — Setup Steps</h2>
+<p>This is a one-time setup. Grafana uses Authentik as an OIDC provider; GitHub is a social source in Authentik.</p>
+<h3 id="1-add-github-social-source-in-authentik">1. Add GitHub social source in Authentik</h3>
+<p>Authentik UI → <strong>Directory → Federation &amp; Social login → Create → GitHub</strong></p>
+<ul>
+<li>Consumer key / secret: from your GitHub OAuth App</li>
+<li>Slug: <code>github</code></li>
+</ul>
+<h3 id="2-create-oauth2-oidc-provider-in-authentik">2. Create OAuth2/OIDC provider in Authentik</h3>
+<p>Authentik UI → <strong>Applications → Providers → Create → OAuth2/OpenID Provider</strong></p>
+<ul>
+<li>Name: <code>Grafana</code></li>
+<li>Authentication flow: <code>default-authentication-flow</code></li>
+<li>Client type: <code>Confidential</code></li>
+<li>Redirect URI: <code>https://grafana.madhan.app/login/generic_oauth</code></li>
+<li>Scopes: <code>openid</code>, <code>email</code>, <code>profile</code></li>
+<li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+</ul>
+<h3 id="3-create-application-in-authentik">3. Create Application in Authentik</h3>
+<p>Authentik UI → <strong>Applications → Applications → Create</strong></p>
+<ul>
+<li>Name: <code>Grafana</code></li>
+<li>Slug: <code>grafana</code></li>
+<li>Provider: bind to the provider created above</li>
+</ul>
+<h3 id="4-create-grafana-admins-group-for-admin-role">4. Create grafana-admins group (for Admin role)</h3>
+<p>Authentik UI → <strong>Directory → Groups → Create</strong></p>
+<ul>
+<li>Name: <code>grafana-admins</code></li>
+<li>Add your user to this group</li>
+</ul>
+<h3 id="5-update-grafana-go-with-the-client-id">5. Update grafana.go with the Client ID</h3>
+<p>In <code>workloads/monitoring/grafana.go</code>, replace:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>&quot;client_id&quot;: &quot;REPLACE_WITH_AUTHENTIK_CLIENT_ID&quot;,
+</span></code></pre>
+<p>with the actual Client ID from step 2. Commit and let ArgoCD sync.</p>
+<h3 id="6-store-the-client-secret-in-openbao">6. Store the Client Secret in OpenBao</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv patch secret/grafana </span><span style="color:#ccc9c2cc;">\
+</span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#f29e74;">&lt;</span><span>client-secret-from-step-2</span><span style="color:#f29e74;">&gt;
+</span></code></pre>
+<h3 id="7-verify">7. Verify</h3>
+<ul>
+<li>Visit <code>https://grafana.madhan.app</code> — should redirect to Authentik login</li>
+<li>Log in with GitHub — you get Viewer role</li>
+<li>Members of <code>grafana-admins</code> get Admin role automatically</li>
+</ul>
+<h2 id="admin-login-bypass-sso">Admin Login (bypass SSO)</h2>
+<p>The local <code>admin</code> account is always available at <code>/login</code>:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Get admin password
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv get -field=ADMIN_PASSWORD secret/grafana
+</span></code></pre>
+<p>Username: <code>admin</code>, Password: value from OpenBao.</p>
+<h2 id="dashboards">Dashboards</h2>
+<p>Grafana auto-discovers dashboards from ConfigMaps with label <code>grafana_dashboard: "1"</code> across all namespaces. To add a dashboard, create a ConfigMap in any namespace with that label and the JSON content.</p>
 
 
     <!--  Errata section  -->
@@ -637,19 +685,66 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#purpose" class="toc-link">Purpose</a>
-                    
-                </li>
-            
-                <li>
-                    
                     <a href="https://homelab.madhan.app/apps/monitoring/grafana/#datasources" class="toc-link">Datasources</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#secret" class="toc-link">Secret</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#secrets-openbao" class="toc-link">Secrets (OpenBao)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/monitoring/grafana/#github-sso-via-authentik-setup-steps" class="toc-link">GitHub SSO via Authentik — Setup Steps</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#1-add-github-social-source-in-authentik" class="toc-link">1. Add GitHub social source in Authentik</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#2-create-oauth2-oidc-provider-in-authentik" class="toc-link">2. Create OAuth2&#x2F;OIDC provider in Authentik</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#3-create-application-in-authentik" class="toc-link">3. Create Application in Authentik</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#4-create-grafana-admins-group-for-admin-role" class="toc-link">4. Create grafana-admins group (for Admin role)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#5-update-grafana-go-with-the-client-id" class="toc-link">5. Update grafana.go with the Client ID</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#6-store-the-client-secret-in-openbao" class="toc-link">6. Store the Client Secret in OpenBao</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#7-verify" class="toc-link">7. Verify</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#admin-login-bypass-sso" class="toc-link">Admin Login (bypass SSO)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#dashboards" class="toc-link">Dashboards</a>
                     
                 </li>
             
