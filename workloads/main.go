@@ -7,6 +7,7 @@ import (
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/workloads/ai"
 	"github.com/madhank93/homelab/workloads/automation"
+	"github.com/madhank93/homelab/workloads/databases"
 	"github.com/madhank93/homelab/workloads/hardware"
 	"github.com/madhank93/homelab/workloads/management"
 	"github.com/madhank93/homelab/workloads/monitoring"
@@ -82,6 +83,14 @@ func main() {
 	})
 	registry.NewHarborChart(harborApp, "harbor-app", "harbor")
 	harborApp.Synth()
+
+	// CloudNativePG Operator — cluster-scoped PostgreSQL operator (dependency for n8n)
+	cnpgApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/cnpg-operator", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	databases.NewCnpgOperatorChart(cnpgApp, "cnpg-operator-app")
+	cnpgApp.Synth()
 
 	// Automation
 	n8nApp := cdk8s.NewApp(&cdk8s.AppProps{

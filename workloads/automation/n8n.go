@@ -18,10 +18,10 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 	})
 
-	// SecretProviderClass — Pattern B (secretObjects sync).
-	// Fetches DB_PASSWORD from OpenBao and syncs it into k8s Secret "n8n-db".
-	// N8n's bundled PostgreSQL subchart references existingSecret: "n8n-db".
-	// The CSI volume on the n8n main pod triggers this sync.
+	// SecretProviderClass — fetches ENCRYPTION_KEY from OpenBao and syncs it into
+	// k8s Secret "n8n-secrets" as N8N_ENCRYPTION_KEY.
+	// DB password is managed by CloudNativePG (auto-generated in "n8n-pg-app" secret).
+	// The CSI volume on the n8n pod triggers this sync.
 	cdk8s.NewApiObject(chart, jsii.String("n8n-spc"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
 		Kind:       jsii.String("SecretProviderClass"),
@@ -34,19 +34,10 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		"parameters": map[string]any{
 			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
 			"roleName":     "n8n",
-			// Fetch both DB_PASSWORD and ENCRYPTION_KEY from the same OpenBao path.
-			// ENCRYPTION_KEY is stored once via `bao kv patch secret/n8n ENCRYPTION_KEY=<key>`
-			// and never changes — ensures n8n's stored config always matches the env var.
-			"objects": `- objectName: "DB_PASSWORD"
-  secretPath: "secret/data/n8n"
-  secretKey: "DB_PASSWORD"
-- objectName: "ENCRYPTION_KEY"
+			"objects": `- objectName: "ENCRYPTION_KEY"
   secretPath: "secret/data/n8n"
   secretKey: "ENCRYPTION_KEY"`,
 		},
-		// Sync only ENCRYPTION_KEY into k8s Secret "n8n-secrets".
-		// PostgreSQL password is managed by Bitnami chart's own auto-generated secret
-		// (n8n-postgresql) which uses Helm lookup to preserve the value across synths.
 		"secretObjects": []map[string]any{
 			{
 				"secretName": "n8n-secrets",
@@ -58,34 +49,99 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 	}))
 
+	// CloudNativePG Cluster — single-instance PostgreSQL for n8n.
+	// CNPG auto-creates:
+	//   - Secret  "n8n-pg-app"  → username/password for the "n8n" app user
+	//   - Service "n8n-pg-rw"   → read-write endpoint (primary)
+	// No manual password management required; CNPG owns the credential lifecycle.
+	cdk8s.NewApiObject(chart, jsii.String("n8n-pg-cluster"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("postgresql.cnpg.io/v1"),
+		Kind:       jsii.String("Cluster"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("n8n-pg"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"instances": 1,
+		"storage": map[string]any{
+			"size":         "10Gi",
+			"storageClass": "longhorn",
+		},
+		"bootstrap": map[string]any{
+			"initdb": map[string]any{
+				"database": "n8n",
+				"owner":    "n8n",
+			},
+		},
+		"resources": map[string]any{
+			"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
+			"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+		},
+	}))
+
+	// n8n via 8gears Helm chart (OCI registry).
+	//
+	// Secrets strategy:
+	//   N8N_ENCRYPTION_KEY   ← extraEnv.valueFrom → n8n-secrets    (CSI-synced from OpenBao)
+	//   DB_POSTGRESDB_PASSWORD ← extraEnv.valueFrom → n8n-pg-app   (CNPG-generated)
+	//
+	// main.config → rendered as a ConfigMap; keys map to n8n env vars (non-sensitive).
+	// main.extraEnv → individual env vars referencing existing k8s Secrets.
+	// CSI volume mount required to trigger secretObjects sync for n8n-secrets.
 	values := map[string]any{
-		// Main node configuration (UI and API)
+		"image": map[string]any{
+			"tag": "1.78.0", // Pinned — never use 'latest' (violates versioning policy)
+		},
 		"main": map[string]any{
-			"count": 1,
-			"resources": map[string]any{
-				"requests": map[string]any{
-					"cpu":    "100m",
-					"memory": "256Mi",
+			"config": map[string]any{
+				"db": map[string]any{
+					"type": "postgresdb",
+					"postgresdb": map[string]any{
+						// n8n-pg-rw: CNPG read-write service (primary)
+						"host":     "n8n-pg-rw",
+						"port":     5432,
+						"user":     "n8n",
+						"database": "n8n",
+					},
 				},
-				"limits": map[string]any{
-					"cpu":    "500m",
-					"memory": "512Mi",
+				"n8n": map[string]any{
+					"host": "n8n.madhan.app",
 				},
 			},
-			// Persistence for main node
+			// Secrets injected from k8s Secrets via valueFrom — never stored in ConfigMap.
+			"extraEnv": map[string]any{
+				"N8N_ENCRYPTION_KEY": map[string]any{
+					"valueFrom": map[string]any{
+						"secretKeyRef": map[string]any{
+							"name": "n8n-secrets",
+							"key":  "N8N_ENCRYPTION_KEY",
+						},
+					},
+				},
+				"DB_POSTGRESDB_PASSWORD": map[string]any{
+					"valueFrom": map[string]any{
+						"secretKeyRef": map[string]any{
+							// CNPG auto-creates this secret when the Cluster CR is reconciled.
+							"name": "n8n-pg-app",
+							"key":  "password",
+						},
+					},
+				},
+			},
 			"persistence": map[string]any{
-				"enabled":    true,
-				"size":       "10Gi",
-				"mountPath":  "/home/node/.n8n",
-				"accessMode": "ReadWriteOnce",
+				"enabled":     true,
+				"type":        "dynamic",
+				"size":        "10Gi",
+				"accessModes": []string{"ReadWriteOnce"},
 			},
-			"extraEnvVars": map[string]any{
-				"N8N_HOST": "n8n.madhan.app",
+			"replicaCount": 1,
+			"resources": map[string]any{
+				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
 			},
 			// CSI volume triggers secretObjects sync → creates n8n-secrets Secret.
 			// Required: secretObjects only sync when a pod mounts the CSI volume.
-			// n8n chart uses "volumes"/"volumeMounts" (not "extraVolumes"/"extraVolumeMounts")
-			"volumes": []map[string]any{
+			"extraVolumes": []map[string]any{
 				{
 					"name": "openbao-secrets",
 					"csi": map[string]any{
@@ -97,7 +153,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 					},
 				},
 			},
-			"volumeMounts": []map[string]any{
+			"extraVolumeMounts": []map[string]any{
 				{
 					"name":      "openbao-secrets",
 					"mountPath": "/mnt/secrets",
@@ -105,89 +161,26 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 				},
 			},
 		},
-
-		// Service configuration
-		"service": map[string]any{
-			"enabled": true,
-			"type":    "ClusterIP",
-			"port":    5678,
-		},
-
-		// Ingress disabled — traffic routed via Gateway API HTTPRoute below
 		"ingress": map[string]any{
 			"enabled": false,
 		},
-
-		// Database configuration - PostgreSQL for production
-		"db": map[string]any{
-			"type": "postgresdb",
-		},
-
-		// Encryption key from OpenBao (via CSI secretObjects → n8n-secrets).
-		// Avoids Helm-generated random key that changes on every CDK8s synth.
-		"existingEncryptionKeySecret": "n8n-secrets",
-
-		// Built-in PostgreSQL using Bitnami chart
+		// Disable embedded Bitnami PostgreSQL subchart — using CloudNativePG instead.
 		"postgresql": map[string]any{
-			"enabled": true,
-			"auth": map[string]any{
-				"database":       "n8n",
-				"username":       "n8n",
-				// No existingSecret — Bitnami chart auto-generates n8n-postgresql secret
-				// and uses Helm lookup to preserve the password across resynths.
-			},
-			"primary": map[string]any{
-				"persistence": map[string]any{
-					"enabled": true,
-					"size":    "10Gi",
-				},
-			},
-		},
-
-		// Image configuration
-		"image": map[string]any{
-			"repository": "n8nio/n8n",
-			"tag":        "1.78.0", // Pinned — never use 'latest' (violates versioning policy)
-			"pullPolicy": "IfNotPresent",
-		},
-
-		// Security context
-		"securityContext": map[string]any{
-			"allowPrivilegeEscalation": false,
-			"capabilities": map[string]any{
-				"drop": []string{"ALL"},
-			},
-			"readOnlyRootFilesystem": false,
-			"runAsNonRoot":           true,
-			"runAsUser":              1000,
-			"runAsGroup":             1000,
-		},
-
-		"podSecurityContext": map[string]any{
-			"fsGroup":             1000,
-			"fsGroupChangePolicy": "OnRootMismatch",
-		},
-
-		// Service account
-		"serviceAccount": map[string]any{
-			"create": true,
-			"name":   "",
+			"enabled": false,
 		},
 	}
 
-	// NOTE: n8n typed import has many JSII-enforced required fields in N8nValues
-	// (e.g. Affinity, Api, BinaryData...) that must all be populated to use
-	// the typed construct. Using cdk8s.NewHelm to pass values as a plain map.
 	cdk8s.NewHelm(chart, jsii.String("n8n-release"), &cdk8s.HelmProps{
-		Chart:       jsii.String("n8n"),
-		Repo:        jsii.String("https://community-charts.github.io/helm-charts"),
-		Version:     jsii.String("1.16.29"),
+		// OCI registry — no Repo field for OCI charts
+		Chart:       jsii.String("oci://8gears.container-registry.com/library/n8n"),
+		Version:     jsii.String("2.0.1"),
 		ReleaseName: jsii.String("n8n"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
 
-	// Gateway API HTTPRoute — routes n8n.madhan.app → n8n-main:5678
+	// Gateway API HTTPRoute — routes n8n.madhan.app → n8n:80
+	// 8gears chart service: fullname = releaseName ("n8n"), port 80 → targetPort 5678
 	cdk8s.NewApiObject(chart, jsii.String("n8n-httproute"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
 		Kind:       jsii.String("HTTPRoute"),
@@ -206,7 +199,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "n8n-main", "port": 5678, "weight": 1},
+					{"group": "", "kind": "Service", "name": "n8n", "port": 80, "weight": 1},
 				},
 			},
 		},
