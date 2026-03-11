@@ -40,6 +40,12 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 			"defaultClass":             true,
 			"defaultClassReplicaCount": 3,
 		},
+		// Expose Longhorn metrics to VMAgent via a ServiceMonitor.
+		"metrics": map[string]any{
+			"serviceMonitor": map[string]any{
+				"enabled": true,
+			},
+		},
 		// Disable pre-upgrade hook for initial installation (ArgoCD/GitOps best practice)
 		"preUpgradeChecker": map[string]any{
 			"jobEnabled": false,

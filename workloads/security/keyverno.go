@@ -111,9 +111,10 @@ func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cd
 			"enabled": false, // Set to true if you want image verification
 		},
 
-		// Grafana dashboard integration
+		// Grafana dashboard integration — creates a ConfigMap with the Kyverno
+		// dashboard JSON; Grafana's sidecar picks it up automatically.
 		"grafana": map[string]any{
-			"enabled": false, // Set to true if you have Grafana
+			"enabled": true,
 		},
 
 		// Global settings
@@ -129,6 +130,30 @@ func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cd
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
 	})
+
+	// ServiceMonitor — tells VMAgent to scrape Kyverno's metrics on port 8000.
+	cdk8s.NewApiObject(chart, jsii.String("kyverno-servicemonitor"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("monitoring.coreos.com/v1"),
+		Kind:       jsii.String("ServiceMonitor"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("kyverno"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"selector": map[string]any{
+			"matchLabels": map[string]any{"app.kubernetes.io/name": "kyverno"},
+		},
+		"namespaceSelector": map[string]any{
+			"matchNames": []string{namespace},
+		},
+		"endpoints": []map[string]any{
+			{
+				"port":     "metrics-port",
+				"path":     "/metrics",
+				"interval": "30s",
+			},
+		},
+	}))
 
 	return chart
 }

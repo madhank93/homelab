@@ -81,6 +81,27 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 		Values:      &values,
 	})
 
+	// ServiceMonitor — VMAgent scrapes falcosidekick metrics on port 2801.
+	// Falcosidekick exposes Prometheus metrics at :2801/metrics about forwarded events.
+	cdk8s.NewApiObject(chart, jsii.String("falco-servicemonitor"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("monitoring.coreos.com/v1"),
+		Kind:       jsii.String("ServiceMonitor"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("falco-falcosidekick"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"selector": map[string]any{
+			"matchLabels": map[string]any{"app.kubernetes.io/name": "falcosidekick"},
+		},
+		"namespaceSelector": map[string]any{
+			"matchNames": []string{namespace},
+		},
+		"endpoints": []map[string]any{
+			{"port": "http", "path": "/metrics", "interval": "30s"},
+		},
+	}))
+
 	// Gateway API HTTPRoute — falco.madhan.app → falcosidekick-ui (port 2802)
 	cdk8s.NewApiObject(chart, jsii.String("falco-httproute"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),

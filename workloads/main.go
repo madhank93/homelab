@@ -152,6 +152,15 @@ func main() {
 	observability.NewOtelCollectorChart(otelApp, "otel-app", "opentelemetry")
 	otelApp.Synth()
 
+	// ArgoCD ServiceMonitors — ArgoCD is deployed via Pulumi; this chart only adds
+	// ServiceMonitors in the argocd namespace for VMAgent to discover.
+	argoCDMonitorApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/argocd-monitor", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	observability.NewArgoCDMonitorChart(argoCDMonitorApp, "argocd-monitor-app")
+	argoCDMonitorApp.Synth()
+
 	// NetBird routing peer — advertises 192.168.1.0/24 into WireGuard mesh
 	netbirdApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/netbird", rootFolder)),

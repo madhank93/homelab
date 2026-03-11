@@ -40,21 +40,21 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	}))
 
-	values := map[string]interface{}{
-		"podAnnotations": map[string]interface{}{
+	values := map[string]any{
+		"podAnnotations": map[string]any{
 			"reloader.stakater.com/auto": "true",
 		},
-		"datasources": map[string]interface{}{
-			"datasources.yaml": map[string]interface{}{
+		"datasources": map[string]any{
+			"datasources.yaml": map[string]any{
 				"apiVersion": 1,
-				"datasources": []map[string]interface{}{
+				"datasources": []map[string]any{
 					{
 						"name":      "VictoriaMetrics",
 						"type":      "prometheus",
 						"url":       "http://victoria-metrics-victoria-metrics-cluster-vmselect.victoria-metrics.svc.cluster.local:8481/select/0/prometheus",
 						"access":    "proxy",
 						"isDefault": true,
-						"jsonData": map[string]interface{}{
+						"jsonData": map[string]any{
 							"timeInterval": "30s",
 						},
 					},
@@ -70,36 +70,50 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		// Admin credentials: user set directly in env; password read from CSI-mounted file.
 		// The Grafana chart's auto-generated admin Secret is NOT used to avoid synth-time
 		// random value churn. GF_SECURITY_ADMIN_PASSWORD__FILE takes precedence over the Secret.
-		"env": map[string]interface{}{
+		"env": map[string]any{
 			"GF_SECURITY_ADMIN_USER":           "admin",
 			"GF_SECURITY_ADMIN_PASSWORD__FILE": "/mnt/secrets/ADMIN_PASSWORD",
 		},
-		"resources": map[string]interface{}{
-			"limits":   map[string]interface{}{"cpu": "500m", "memory": "512Mi"},
-			"requests": map[string]interface{}{"cpu": "100m", "memory": "128Mi"},
+		"resources": map[string]any{
+			"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+			"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 		},
-		"persistence": map[string]interface{}{
+		"persistence": map[string]any{
 			"enabled": true,
 			"size":    "10Gi",
 		},
-		"service": map[string]interface{}{
+		"service": map[string]any{
 			"type": "ClusterIP",
 			"port": 3000,
 		},
-		"ingress": map[string]interface{}{"enabled": false},
-		"extraVolumes": []map[string]interface{}{
+		"ingress": map[string]any{"enabled": false},
+		// Sidecar watches for ConfigMaps with label grafana_dashboard="1" across
+		// all namespaces and auto-provisions them as dashboards.
+		"sidecar": map[string]any{
+			"dashboards": map[string]any{
+				"enabled":          true,
+				"searchNamespace":  "ALL",
+				"label":            "grafana_dashboard",
+				"labelValue":       "1",
+				"folderAnnotation": "grafana_folder",
+				"provider": map[string]any{
+					"foldersFromFilesStructure": true,
+				},
+			},
+		},
+		"extraVolumes": []map[string]any{
 			{
 				"name": "openbao-secrets",
-				"csi": map[string]interface{}{
+				"csi": map[string]any{
 					"driver":   "secrets-store.csi.k8s.io",
 					"readOnly": true,
-					"volumeAttributes": map[string]interface{}{
+					"volumeAttributes": map[string]any{
 						"secretProviderClass": "grafana-secrets",
 					},
 				},
 			},
 		},
-		"extraVolumeMounts": []map[string]interface{}{
+		"extraVolumeMounts": []map[string]any{
 			{
 				"name":      "openbao-secrets",
 				"mountPath": "/mnt/secrets",

@@ -58,9 +58,16 @@ listener "tcp" {
   tls_disable     = 1
   address         = "[::]:8200"
   cluster_address = "[::]:8201"
+  telemetry {
+    unauthenticated_metrics_access = true
+  }
 }
 storage "file" {
   path = "/openbao/data"
+}
+telemetry {
+  prometheus_retention_time = "30s"
+  disable_hostname          = true
 }`,
 				},
 				// Expose unseal key to the main container and unseal sidecar
@@ -134,6 +141,32 @@ done`,
 				"backendRefs": []map[string]any{
 					{"group": "", "kind": "Service", "name": "openbao", "port": 8200, "weight": 1},
 				},
+			},
+		},
+	}))
+
+	// ServiceMonitor — VMAgent scrapes OpenBao Prometheus metrics at /v1/sys/metrics.
+	// Requires unauthenticated_metrics_access=true in the listener telemetry block (set above).
+	cdk8s.NewApiObject(chart, jsii.String("openbao-servicemonitor"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("monitoring.coreos.com/v1"),
+		Kind:       jsii.String("ServiceMonitor"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("openbao"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"selector": map[string]any{
+			"matchLabels": map[string]any{"app.kubernetes.io/name": "openbao"},
+		},
+		"namespaceSelector": map[string]any{
+			"matchNames": []string{namespace},
+		},
+		"endpoints": []map[string]any{
+			{
+				"port":     "http",
+				"path":     "/v1/sys/metrics",
+				"params":   map[string]any{"format": []string{"prometheus"}},
+				"interval": "30s",
 			},
 		},
 	}))

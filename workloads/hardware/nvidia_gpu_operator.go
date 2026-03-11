@@ -88,5 +88,42 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 		},
 	})
 
+	// DCGM Exporter — exports GPU metrics (utilisation, VRAM, temp, power) to Prometheus/VMAgent.
+	// Runs as a DaemonSet only on the GPU node (nodeAffinity + toleration for dedicated=ai).
+	// Requires runtimeClassName=nvidia so containerd injects libnvidia-ml.so.1 via the hook.
+	cdk8s.NewHelm(chart, jsii.String("dcgm-exporter-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("dcgm-exporter"),
+		Repo:        jsii.String("https://nvidia.github.io/dcgm-exporter/helm-charts"),
+		Version:     jsii.String("3.4.2"),
+		ReleaseName: jsii.String("dcgm-exporter"),
+		Namespace:   jsii.String(namespace),
+		Values: &map[string]any{
+			// Target only GPU nodes (GFD sets this label)
+			"affinity": map[string]any{
+				"nodeAffinity": map[string]any{
+					"requiredDuringSchedulingIgnoredDuringExecution": map[string]any{
+						"nodeSelectorTerms": []map[string]any{
+							{
+								"matchExpressions": []map[string]any{
+									{"key": "nvidia.com/gpu.present", "operator": "In", "values": []string{"true"}},
+								},
+							},
+						},
+					},
+				},
+			},
+			// Tolerate the dedicated=ai taint on worker4 (GPU node)
+			"tolerations": []map[string]any{
+				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
+			},
+			// nvidia runtime injects libnvidia-ml.so.1 needed by DCGM's NVML binding
+			"runtimeClassName": "nvidia",
+			// Let VMAgent scrape GPU metrics; also creates a Grafana dashboard ConfigMap
+			"serviceMonitor": map[string]any{
+				"enabled": true,
+			},
+		},
+	})
+
 	return chart
 }

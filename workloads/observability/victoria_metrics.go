@@ -62,6 +62,34 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		Values:      &values,
 	})
 
+	// VMAgent — scrapes ServiceMonitors cluster-wide and remote_writes to vminsert.
+	// Without this, no metrics flow into Victoria Metrics storage.
+	cdk8s.NewHelm(chart, jsii.String("vmagent-release"), &cdk8s.HelmProps{
+		Chart:       jsii.String("victoria-metrics-agent"),
+		Repo:        jsii.String("https://victoriametrics.github.io/helm-charts"),
+		Version:     jsii.String("0.15.3"),
+		ReleaseName: jsii.String("vmagent"),
+		Namespace:   jsii.String(namespace),
+		Values: &map[string]any{
+			"remoteWrite": []map[string]any{
+				{"url": "http://victoria-metrics-victoria-metrics-cluster-vminsert." + namespace + ".svc.cluster.local:8480/insert/0/prometheus/api/v1/write"},
+			},
+			// Discover all ServiceMonitors across all namespaces
+			"serviceMonitorSelector":          map[string]any{},
+			"serviceMonitorNamespaceSelector": map[string]any{},
+			// Discover PodMonitors cluster-wide (required for CNPG which uses PodMonitors)
+			"podMonitorSelector":          map[string]any{},
+			"podMonitorNamespaceSelector": map[string]any{},
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+			},
+			"tolerations": []map[string]any{
+				{"operator": "Exists"},
+			},
+		},
+	})
+
 	// Gateway API HTTPRoute — routes vmselect.madhan.app → vmselect:8481 (/vmui/ web UI)
 	cdk8s.NewApiObject(chart, jsii.String("victoria-metrics-httproute"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
