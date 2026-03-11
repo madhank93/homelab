@@ -83,13 +83,14 @@ type AuthentikContext struct {
 }
 
 type OIDCApp struct {
-	Name         string
-	Slug         string
-	ClientID     string
-	ClientSecret string // Optional: Required if ClientType is confidential
-	ClientType   string // "public" (default) or "confidential"
-	Redirects    []string
-	LaunchURL    string
+	Name                 string
+	Slug                 string
+	ClientID             string
+	ClientSecret         string // Optional: Required if ClientType is confidential
+	ClientType           string // "public" (default) or "confidential"
+	Redirects            []string
+	LaunchURL            string
+	ExtraPropertyMappings pulumi.StringArray // Additional scope/property mappings beyond the defaults
 }
 
 func DeployAuthentik(ctx *pulumi.Context) error {
@@ -251,6 +252,50 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 
 	// --- Applications ---
 
+	// Groups property mapping — returns the list of group names the user belongs to.
+	// Required by Grafana's role_attribute_path to map grafana-admins → Admin role.
+	groupsMapping, err := authentik.NewPropertyMappingProviderScope(ctx, "scope-groups", &authentik.PropertyMappingProviderScopeArgs{
+		Name:      pulumi.String("Groups"),
+		ScopeName: pulumi.String("groups"),
+		Expression: pulumi.String(
+			`return [group.name for group in request.user.ak_groups.all()]`,
+		),
+	}, pulumi.Provider(provider))
+	if err != nil {
+		return err
+	}
+
+	// grafana-admins group — members get Admin role in Grafana via role_attribute_path.
+	_, err = authentik.NewGroup(ctx, "group-grafana-admins", &authentik.GroupArgs{
+		Name: pulumi.String("grafana-admins"),
+	}, pulumi.Provider(provider))
+	if err != nil {
+		return err
+	}
+
+	// Grafana — confidential OIDC app. GitHub login flows through Authentik.
+	// Client secret stored in SOPS as GRAFANA_OAUTH_CLIENT_SECRET and in
+	// OpenBao at secret/grafana.OAUTH_CLIENT_SECRET (run: just openbao-grafana-secret).
+	grafanaSecret := cfg.K.String("GRAFANA_OAUTH_CLIENT_SECRET")
+	if grafanaSecret == "" {
+		return fmt.Errorf("missing GRAFANA_OAUTH_CLIENT_SECRET in config")
+	}
+	if err := createOIDCApp(ac, OIDCApp{
+		Name:         "Grafana",
+		Slug:         "grafana",
+		ClientID:     "grafana-homelab",
+		ClientSecret: grafanaSecret,
+		ClientType:   "confidential",
+		LaunchURL:    "https://grafana.madhan.app/",
+		Redirects:    []string{"https://grafana.madhan.app/login/generic_oauth"},
+		ExtraPropertyMappings: pulumi.StringArray{
+			groupsMapping.ID().ToStringOutput(),
+		},
+	}); err != nil {
+		return err
+	}
+	ctx.Export("GrafanaOIDCClientID", pulumi.String("grafana-homelab"))
+
 	// Netbird — confidential OIDC app used by embedded Dex as an upstream connector.
 	// The combined server always runs embedded Dex; users authenticate against Dex,
 	// which federates to Authentik. Dex's callback URI is always issuer + "/callback".
@@ -359,13 +404,20 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 		clientType = "public"
 	}
 
+	// Merge default scopes with any app-specific extra property mappings.
+	scopes := ac.Scopes
+	if len(app.ExtraPropertyMappings) > 0 {
+		scopes = append(pulumi.ToStringArray([]string{}), scopes.(pulumi.StringArray)...)
+		scopes = append(scopes.(pulumi.StringArray), app.ExtraPropertyMappings...)
+	}
+
 	providerArgs := &authentik.ProviderOauth2Args{
 		Name:                  pulumi.String(app.Name),
 		ClientId:              pulumi.String(app.ClientID),
 		ClientType:            pulumi.String(clientType),
 		AuthorizationFlow:     ac.FlowExplicit,
 		InvalidationFlow:      ac.FlowInvalid,
-		PropertyMappings:      ac.Scopes,
+		PropertyMappings:      scopes,
 		AllowedRedirectUris:   redirectMap,
 		SubMode:               pulumi.String("user_id"),
 		IncludeClaimsInIdToken: pulumi.Bool(true),

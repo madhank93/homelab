@@ -97,8 +97,8 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 			"auth.generic_oauth": map[string]any{
 				"enabled": true,
 				"name":    "GitHub via Authentik",
-				// Replace with the Client ID from the Authentik OAuth2 provider (step 4 above)
-				"client_id":            "REPLACE_WITH_AUTHENTIK_CLIENT_ID",
+				// Client ID set in core/cloud/authentik.go — matches GrafanaOIDCClientID export.
+				"client_id":            "grafana-homelab",
 				"scopes":               "openid email profile",
 				"auth_url":             "https://auth.madhan.app/application/o/grafana/authorize/",
 				"token_url":            "https://auth.madhan.app/application/o/grafana/token/",
