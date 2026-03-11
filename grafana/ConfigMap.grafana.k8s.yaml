@@ -32,7 +32,7 @@ data:
     allow_sign_up = true
     api_url = https://auth.madhan.app/application/o/userinfo/
     auth_url = https://auth.madhan.app/application/o/grafana/authorize/
-    client_id = REPLACE_WITH_AUTHENTIK_CLIENT_ID
+    client_id = grafana-homelab
     enabled = true
     name = GitHub via Authentik
     role_attribute_path = contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'
