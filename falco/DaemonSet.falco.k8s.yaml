@@ -18,7 +18,7 @@ spec:
     metadata:
       annotations:
         checksum/certs: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-        checksum/config: fa90021ea12b81f3b7f88160d5dcf890d3b1d3fa96d8e479168b804e983248f0
+        checksum/config: f9c62a298b05f0b8653303f6dd2815622d7ea83534a3834324f86dfc4f404014
         checksum/rules: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         reloader.stakater.com/auto: "true"
       labels:

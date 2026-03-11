@@ -55,12 +55,12 @@ data:
       client_key: /etc/falco/certs/client/client.key
       compress_uploads: false
       echo: false
-      enabled: false
+      enabled: true
       insecure: false
       keep_alive: false
       max_consecutive_timeouts: 5
       mtls: false
-      url: ""
+      url: http://falco-falcosidekick:2801
       user_agent: falcosecurity/falco
     json_include_message_property: false
     json_include_output_fields_property: true
