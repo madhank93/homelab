@@ -19,9 +19,10 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	})
 
-	// SecretProviderClass — Pattern A (file-only, no secretObjects sync).
-	// Mounts ADMIN_PASSWORD from OpenBao at /mnt/secrets/ADMIN_PASSWORD.
-	// Grafana reads it via GF_SECURITY_ADMIN_PASSWORD__FILE env var.
+	// SecretProviderClass — Pattern B (secretObjects sync).
+	// Mounts secrets from OpenBao and syncs selected keys to a k8s Secret.
+	//   ADMIN_PASSWORD      → file at /mnt/secrets/ADMIN_PASSWORD (read via __FILE env var)
+	//   OAUTH_CLIENT_SECRET → synced to k8s Secret grafana-oauth-secret (read as GF_ env var)
 	cdk8s.NewApiObject(chart, jsii.String("grafana-spc"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
 		Kind:       jsii.String("SecretProviderClass"),
@@ -36,7 +37,21 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 			"roleName":     "grafana",
 			"objects": `- objectName: "ADMIN_PASSWORD"
   secretPath: "secret/data/grafana"
-  secretKey: "ADMIN_PASSWORD"`,
+  secretKey: "ADMIN_PASSWORD"
+- objectName: "OAUTH_CLIENT_SECRET"
+  secretPath: "secret/data/grafana"
+  secretKey: "OAUTH_CLIENT_SECRET"`,
+		},
+		// Sync OAUTH_CLIENT_SECRET to a k8s Secret so Grafana can read it as a GF_ env var.
+		// The CSI volume mount (below) must be present to trigger the sync.
+		"secretObjects": []map[string]any{
+			{
+				"secretName": "grafana-oauth-secret",
+				"type":       "Opaque",
+				"data": []map[string]any{
+					{"objectName": "OAUTH_CLIENT_SECRET", "key": "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"},
+				},
+			},
 		},
 	}))
 
@@ -67,6 +82,41 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 				},
 			},
 		},
+		// Authentik OIDC — GitHub login flows through Authentik.
+		// Steps to activate:
+		//   1. Authentik UI → Directory → Social Logins → Add GitHub source (slug: github)
+		//   2. Authentik UI → Applications → Providers → Create OAuth2/OIDC provider
+		//        Name: Grafana | Slug: grafana | Scopes: openid, email, profile
+		//        Redirect URI: https://grafana.madhan.app/login/generic_oauth
+		//   3. Authentik UI → Applications → Create Application → bind to Grafana provider
+		//   4. Copy the Client ID from the provider and replace the placeholder below.
+		//   5. Copy the Client Secret and store it in OpenBao:
+		//        bao kv patch secret/grafana OAUTH_CLIENT_SECRET=<secret>
+		//   6. In Authentik, create a group "grafana-admins" and add yourself to it for Admin role.
+		"grafana.ini": map[string]any{
+			"auth.generic_oauth": map[string]any{
+				"enabled": true,
+				"name":    "GitHub via Authentik",
+				// Replace with the Client ID from the Authentik OAuth2 provider (step 4 above)
+				"client_id":            "REPLACE_WITH_AUTHENTIK_CLIENT_ID",
+				"scopes":               "openid email profile",
+				"auth_url":             "https://auth.madhan.app/application/o/grafana/authorize/",
+				"token_url":            "https://auth.madhan.app/application/o/grafana/token/",
+				"api_url":              "https://auth.madhan.app/application/o/userinfo/",
+				"use_pkce":             true,
+				"allow_sign_up":        true,
+				// Members of the grafana-admins Authentik group get Admin role; everyone else Viewer.
+				"role_attribute_path": "contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'",
+			},
+			// Disable Grafana's built-in login form for non-admin users.
+			// Admin can still reach /login for username+password access.
+			"auth": map[string]any{
+				"disable_login_form": false,
+			},
+		},
+		// Client secret injected from grafana-oauth-secret k8s Secret (synced by CSI driver above).
+		// GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET overrides auth.generic_oauth.client_secret in ini.
+		"envFromSecret": "grafana-oauth-secret",
 		// Admin credentials: user set directly in env; password read from CSI-mounted file.
 		// The Grafana chart's auto-generated admin Secret is NOT used to avoid synth-time
 		// random value churn. GF_SECURITY_ADMIN_PASSWORD__FILE takes precedence over the Secret.

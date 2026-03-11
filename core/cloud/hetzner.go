@@ -383,7 +383,7 @@ func computeBifrostHash() (string, error) {
 // generateTraefikPublicServices writes ./cloud/bifrost/traefik/dynamic/public-services.yml.
 // The file is gitignored and regenerated on every pulumi up. Traefik's file provider
 // hot-reloads the new routes without a container restart.
-func generateTraefikPublicServices(services []string) error {
+func generateTraefikPublicServices(services []PublicService) error {
 	dir := "./cloud/bifrost/traefik/dynamic"
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create traefik dynamic dir: %w", err)
@@ -395,9 +395,11 @@ func generateTraefikPublicServices(services []string) error {
 	sb.WriteString("http:\n")
 	sb.WriteString("  routers:\n")
 	for _, svc := range services {
-		sb.WriteString(fmt.Sprintf("    %s:\n", svc))
-		sb.WriteString(fmt.Sprintf("      rule: \"Host(`%s.madhan.app`)\"\n", svc))
-		sb.WriteString("      middlewares: [authentik-forwardauth]\n")
+		sb.WriteString(fmt.Sprintf("    %s:\n", svc.Name))
+		sb.WriteString(fmt.Sprintf("      rule: \"Host(`%s.madhan.app`)\"\n", svc.Name))
+		if !svc.SkipAuth {
+			sb.WriteString("      middlewares: [authentik-forwardauth]\n")
+		}
 		sb.WriteString("      service: k8s-gateway\n")
 		sb.WriteString("      tls:\n")
 		sb.WriteString("        certResolver: cloudflare-dns\n")
