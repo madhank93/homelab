@@ -2,13 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/component: main
     app.kubernetes.io/instance: n8n
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: n8n
-    app.kubernetes.io/part-of: n8n
-    app.kubernetes.io/version: 2.8.3
-    helm.sh/chart: n8n-1.16.29
+    app.kubernetes.io/version: 1.122.4
+    helm.sh/chart: n8n-2.0.1
   name: n8n
   namespace: n8n
 spec:
@@ -17,85 +15,48 @@ spec:
     matchLabels:
       app.kubernetes.io/instance: n8n
       app.kubernetes.io/name: n8n
+      app.kubernetes.io/type: master
   strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
+    type: Recreate
   template:
     metadata:
       annotations:
-        checksum/config: f8fe25f9da115168272e128fb5757e00773a13b4d7dda0e2903d007301904dae
+        checksum/config: a825c262e90f9d8d89d3d4c3f9ac8cba973052e5bc3cb9c33bf44b55876b4d6b
       labels:
-        app.kubernetes.io/component: main
         app.kubernetes.io/instance: n8n
-        app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: n8n
-        app.kubernetes.io/part-of: n8n
-        app.kubernetes.io/version: 2.8.3
-        helm.sh/chart: n8n-1.16.29
+        app.kubernetes.io/type: master
     spec:
       containers:
         - env:
-            - name: N8N_HIRING_BANNER_ENABLED
-              value: "false"
-            - name: NODE_ENV
-              value: production
-            - name: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
-              value: "true"
-            - name: N8N_PORT
-              value: "5678"
-            - name: N8N_DEFAULT_LOCALE
-              value: en
-            - name: GENERIC_TIMEZONE
-              value: Europe/Berlin
-            - name: N8N_GRACEFUL_SHUTDOWN_TIMEOUT
-              value: "30"
-            - name: DB_POSTGRESDB_USER
-              value: n8n
             - name: DB_POSTGRESDB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   key: password
-                  name: n8n-postgresql
-                  optional: true
-            - name: N8N_HOST
-              value: n8n.madhan.app
+                  name: n8n-pg-app
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: N8N_ENCRYPTION_KEY
+                  name: n8n-secrets
           envFrom:
             - configMapRef:
-                name: n8n-database-configmap
-            - configMapRef:
-                name: n8n-logging-configmap
-            - configMapRef:
-                name: n8n-diagnostics-configmap
-            - configMapRef:
-                name: n8n-version-notifications-configmap
-            - configMapRef:
-                name: n8n-public-api-configmap
-            - configMapRef:
-                name: n8n-workflow-history-configmap
-            - configMapRef:
-                name: n8n-task-broker-configmap
-            - configMapRef:
-                name: n8n-metrics-configmap
-            - configMapRef:
-                name: n8n-binary-data-configmap
-            - secretRef:
-                name: n8n-secrets
+                name: n8n-app-config
           image: n8nio/n8n:1.78.0
           imagePullPolicy: IfNotPresent
+          lifecycle: {}
           livenessProbe:
             httpGet:
               path: /healthz
               port: http
-          name: n8n-main
+          name: n8n
           ports:
             - containerPort: 5678
               name: http
               protocol: TCP
           readinessProbe:
             httpGet:
-              path: /healthz/readiness
+              path: /healthz
               port: http
           resources:
             limits:
@@ -104,31 +65,24 @@ spec:
             requests:
               cpu: 100m
               memory: 256Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            privileged: false
-            readOnlyRootFilesystem: false
-            runAsGroup: 1000
-            runAsNonRoot: true
-            runAsUser: 1000
+          securityContext: {}
           volumeMounts:
             - mountPath: /home/node/.n8n
-              name: node-modules
-              readOnly: false
+              name: data
             - mountPath: /mnt/secrets
               name: openbao-secrets
               readOnly: true
       securityContext:
         fsGroup: 1000
-        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
       serviceAccountName: n8n
+      terminationGracePeriodSeconds: 30
       volumes:
-        - name: node-modules
+        - name: data
           persistentVolumeClaim:
-            claimName: n8n-main-persistence
+            claimName: n8n
         - csi:
             driver: secrets-store.csi.k8s.io
             readOnly: true
