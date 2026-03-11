@@ -16,12 +16,7 @@ spec:
         app: netbird-peer
     spec:
       containers:
-        - command:
-            - netbird
-            - up
-            - --advertise-routes=192.168.1.0/24
-            - --hostname=k8s-routing-peer
-          env:
+        - env:
             - name: NB_SETUP_KEY
               valueFrom:
                 secretKeyRef:
@@ -29,7 +24,9 @@ spec:
                   name: netbird-setup-key
             - name: NB_MANAGEMENT_URL
               value: https://netbird.madhan.app
-          image: netbirdio/netbird:latest
+            - name: NB_HOSTNAME
+              value: k8s-routing-peer
+          image: netbirdio/netbird:0.66.2
           name: netbird
           securityContext:
             capabilities:
