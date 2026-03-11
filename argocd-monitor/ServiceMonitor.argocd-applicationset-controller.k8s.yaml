@@ -1,7 +1,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: argocd-application-controller
+  name: argocd-applicationset-controller
   namespace: argocd
 spec:
   endpoints:
@@ -13,4 +13,4 @@ spec:
       - argocd
   selector:
     matchLabels:
-      app.kubernetes.io/name: argocd-application-controller-metrics
+      app.kubernetes.io/name: argocd-applicationset-controller-metrics
