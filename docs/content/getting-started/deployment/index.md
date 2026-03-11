@@ -11,13 +11,14 @@ This guide walks through the complete deployment sequence. Each phase depends on
 ```
 Phase 0  →  Local prerequisites + SOPS secrets setup        (one-time)
 Phase 1  →  Bootstrap Kubernetes cluster                     (~15 min)
-Phase 2  →  Infisical setup + Kubernetes Auth registration   (~10 min)
+Phase 2  →  OpenBao init + K8s auth + write app secrets      (~10 min)
 Phase 3  →  Bifrost VPS deploy — fully automated             (~8 min)
 Phase 4  →  Authentik apps (Pulumi)                          (~2 min)
 Phase 5  →  NetBird first-login + Authentik connector        (~5 min)
 Phase 6  →  NetBird setup keys + proxy token                 (~5 min)
-Phase 7  →  Publish CDK8s manifests                          (~2 min)
-Phase 8  →  End-to-end verification
+Phase 7  →  Grafana Authentik SSO setup                      (~5 min)
+Phase 8  →  Publish CDK8s manifests                          (~2 min)
+Phase 9  →  End-to-end verification
 ```
 
 ---
@@ -76,25 +77,22 @@ NB_RELAY_SECRET: <openssl rand -base64 32>      # relay auth secret
 NB_OWNER_PASSWORD: <strong password>            # initial NetBird local admin — used for first login only
 NETBIRD_CLIENT_SECRET: <openssl rand -hex 32>   # Dex→Authentik OIDC connector secret
 
-# NB_PROXY_TOKEN and NB_BIFROST_SETUP_KEY are added later (Phase 6)
+# ── OpenBao (K8s secrets platform) ───────────────────────────────────────────
+OPENBAO_UNSEAL_KEY: placeholder                 # replaced in Phase 2 after first init
 
-# ── Infisical (K8s secrets platform) ─────────────────────────────────────────
-INFISICAL_DB_PASSWORD: <strong random password>
-INFISICAL_ENCRYPTION_KEY: <openssl rand -hex 16>
-INFISICAL_AUTH_SECRET: <openssl rand -hex 24>
-REDIS_PASSWORD: <strong random password>
+# NB_PROXY_TOKEN and NB_BIFROST_SETUP_KEY are added later (Phase 6)
 ```
 
 > **`NB_DATA_STORE_KEY` is permanent.** The NetBird SQLite database is encrypted with this value. Changing it means losing all peer registrations.
 
-> **`NB_OWNER_PASSWORD`** is the password for the initial local admin account (`admin@madhan.app`) inside NetBird's embedded Dex OIDC. Used only for the first login before an external identity provider is configured. Can be changed after Authentik SSO is working.
+> **`OPENBAO_UNSEAL_KEY`** starts as a placeholder. You'll replace it with the real value after `just openbao-init` in Phase 2.
 
 ---
 
 ## Phase 1 — Bootstrap Kubernetes Cluster
 
 ```bash
-# 1. Create bootstrap k8s Secrets (Infisical DB credentials + Cloudflare token)
+# 1. Create bootstrap k8s Secrets (OpenBao unseal key + Cloudflare token)
 just create-secrets
 
 # 2. Provision Proxmox VMs → bootstrap Talos → install Cilium + ArgoCD (~15 min)
@@ -112,101 +110,79 @@ kubectl get nodes
 kubectl get applications -n argocd
 ```
 
-ArgoCD starts syncing apps from the `v0.1.5-manifests` branch. Most apps will show `Degraded` — that's expected. They need Infisical secrets to become healthy.
+ArgoCD starts syncing apps from the manifests branch. Most apps will show `Degraded` — that's expected. OpenBao needs to be initialised and unsealed before apps can fetch their secrets.
 
 ---
 
-## Phase 2 — Infisical Setup + Kubernetes Auth Registration
+## Phase 2 — OpenBao Init + K8s Auth + Write App Secrets
 
-Wait for Infisical to be running (~5 min after Phase 1):
-
-```bash
-kubectl get pods -n infisical   # wait for all pods Running
-```
-
-Open **`http://infisical.madhan.app`** (LAN only — no SSO yet).
-
-### 2a. Create organization and project
-
-1. Create an admin account on first load
-2. **Organization** → **New Project** → name: `homelab`, slug: `homelab-prod`
-3. **Environments** → Add → name: `prod`, slug: `prod`
-
-### 2b. Add app secrets
-
-Navigate to **Secrets** → `prod` environment and add each path:
-
-**Path `/grafana`**
-```
-ADMIN_PASSWORD = <strong password>
-```
-
-**Path `/harbor`**
-```
-HARBOR_ADMIN_PASSWORD = <strong password>
-```
-
-**Path `/n8n`**
-```
-DB_PASSWORD         = <strong password>
-N8N_ENCRYPTION_KEY  = <32-char random — record this, required on every rebuild>
-```
-
-**Path `/rancher`**
-```
-BOOTSTRAP_PASSWORD = <strong password>
-```
-
-*(Skip `/netbird` for now — add it after Phase 6.)*
-
-### 2c. Register the cluster (Kubernetes Auth — one-time)
-
-The operator authenticates to Infisical using its own ServiceAccount JWT. This step registers the cluster so Infisical can verify those JWTs.
-
-**Get the token reviewer JWT** (long-lived, used only by Infisical to call the k8s tokenreviews API):
+Wait for OpenBao to be running (but sealed) after Phase 1:
 
 ```bash
-kubectl create token infisical-operator-controller-manager \
-  -n infisical --duration=8760h
-# Copy the output — you'll paste it into the Infisical UI below
+kubectl get pods -n openbao   # wait for Running
 ```
 
-**In Infisical UI → Access Control → Machine Identities → Create → "k8s-homelab":**
-
-| Field | Value |
-|-------|-------|
-| Auth method | Kubernetes Auth |
-| Kubernetes Host | `https://192.168.1.210:6443` |
-| Token Reviewer JWT | *(paste from above)* |
-| Allowed SA Names | `infisical-operator-controller-manager` |
-| Allowed Namespaces | `infisical` |
-
-Save — copy the `identityId` UUID shown on the next screen.
-
-**Update the code** with the `identityId`:
+### 2a. Initialise OpenBao (one-time)
 
 ```bash
-# In workloads/secrets/infisical.go, replace the placeholder:
-# "identityId": "REPLACE_WITH_IDENTITY_ID"
-# with the UUID you just copied, then:
-just synth
-git add workloads/secrets/infisical.go app/infisical/
-git commit -m "feat: set Infisical kubernetesAuth identityId"
-git push origin v0.1.5-manifests
+just openbao-init
 ```
 
-Within 60 seconds ArgoCD applies the updated CR and the operator starts syncing secrets:
+This generates the root token and unseal key, writes them to `/tmp/openbao-init.json`, then unseals OpenBao.
+
+### 2b. Store the unseal key in SOPS
 
 ```bash
-# Verify operator authenticated successfully
-kubectl logs -n infisical -l app.kubernetes.io/name=secrets-operator --tail=20
+UNSEAL_KEY=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['keys'][0])")
+echo "OPENBAO_UNSEAL_KEY: $UNSEAL_KEY"
 
-# Check CR status
-kubectl describe infisicalsecret infisical-bootstrap-secret -n infisical
-
-# Apps should start becoming Healthy as secrets sync
-kubectl get applications -n argocd
+# Add to SOPS (replaces the placeholder from Phase 0)
+sops secrets/bootstrap.sops.yaml
+# → update OPENBAO_UNSEAL_KEY with the value above
 ```
+
+### 2c. Update the bootstrap secret
+
+```bash
+just create-secrets
+kubectl rollout restart statefulset/openbao -n openbao
+# The unseal sidecar reads the updated secret and unseals on startup
+```
+
+### 2d. Configure K8s auth + policies + roles
+
+```bash
+just openbao-setup
+```
+
+This enables Kubernetes auth, creates per-app policies and roles, and writes placeholder secrets at each path.
+
+### 2e. Write real app secrets
+
+```bash
+# Grafana — admin password + Authentik OAuth client secret (set OAUTH_CLIENT_SECRET after Phase 7)
+kubectl exec -n openbao openbao-0 -- bao kv put secret/grafana \
+  ADMIN_PASSWORD="<strong password>" \
+  OAUTH_CLIENT_SECRET="placeholder"
+
+# Harbor
+kubectl exec -n openbao openbao-0 -- bao kv put secret/harbor \
+  HARBOR_ADMIN_PASSWORD="<strong password>"
+
+# N8n (DB password managed by CNPG — only encryption key needed)
+kubectl exec -n openbao openbao-0 -- bao kv put secret/n8n \
+  N8N_ENCRYPTION_KEY="<32-char random — record this, required on every rebuild>"
+
+# Rancher
+kubectl exec -n openbao openbao-0 -- bao kv put secret/rancher \
+  BOOTSTRAP_PASSWORD="<strong password>"
+
+# NetBird — add the setup key after Phase 6
+kubectl exec -n openbao openbao-0 -- bao kv put secret/netbird \
+  NETBIRD_SETUP_KEY="placeholder"
+```
+
+> After writing secrets, ArgoCD syncs and app pods start. Apps will become `Healthy` progressively as their CSI volumes mount.
 
 ---
 
@@ -254,13 +230,11 @@ traefik              Up X minutes
 Bootstrap complete.
 ```
 
-### Verify Bifrost is reachable
+**Verify Bifrost is reachable:**
 
 ```bash
-curl -I https://auth.madhan.app          # → 200 Authentik login page
-curl -I https://netbird.madhan.app       # → 200 NetBird dashboard
-curl -sI https://grafana.madhan.app | grep -i location
-# → location: https://auth.madhan.app/...  (ForwardAuth working)
+curl -I https://auth.madhan.app        # → 200 Authentik login page
+curl -I https://netbird.madhan.app     # → 200 NetBird dashboard
 ```
 
 ---
@@ -277,7 +251,7 @@ This creates in Authentik:
 
 - GitHub OAuth source (for user login)
 - GitHub source bound to the default identification stage → **"Login with GitHub" button appears**
-- NetBird OIDC application (`aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT`) + confidential client secret
+- NetBird OIDC application + confidential client secret
 - Homelab ForwardAuth proxy provider (covers `*.madhan.app`)
 - Embedded outpost for ForwardAuth
 
@@ -309,7 +283,7 @@ Save. The redirect URI shown should be `https://netbird.madhan.app/oauth2/callba
 
 ### 5c. Verify GitHub login works
 
-Open a private browser window → go to `https://netbird.madhan.app` → you should now see "Login with Authentik" → which shows the GitHub button via Authentik.
+Open a private browser window → `https://netbird.madhan.app` → "Login with Authentik" → GitHub button should appear.
 
 ---
 
@@ -317,16 +291,16 @@ Open a private browser window → go to `https://netbird.madhan.app` → you sho
 
 ### 6a. Create setup keys and personal access token
 
-Still in **`https://netbird.madhan.app`** (logged in via GitHub now):
+In **`https://netbird.madhan.app`** (logged in via GitHub):
 
 **Setup Keys → Add Key:**
 
 | Key name | Type | Stored as |
 |----------|------|-----------|
 | `bifrost-agent` | Reusable | `NB_BIFROST_SETUP_KEY` in SOPS |
-| `k8s-routing-peer` | Reusable | `NETBIRD_SETUP_KEY` in Infisical |
+| `k8s-routing-peer` | Reusable | written to OpenBao `secret/netbird` |
 
-**Settings → Access Tokens → Create Personal Access Token** → copy it → stored as `NB_PROXY_TOKEN` in SOPS.
+**Settings → Access Tokens → Create Personal Access Token** → copy it → `NB_PROXY_TOKEN` in SOPS.
 
 ### 6b. Add tokens to SOPS, re-run Pulumi
 
@@ -347,67 +321,114 @@ just core hetzner up
 ```
 
 bootstrap.sh re-runs. This time:
-- `NB_PROXY_TOKEN` is now set → `netbird-proxy` starts
-- `NB_BIFROST_SETUP_KEY` is now set → `netbird-agent` connects to the mesh
+- `NB_PROXY_TOKEN` is set → `netbird-proxy` starts
+- `NB_BIFROST_SETUP_KEY` is set → `netbird-agent` connects to the mesh
 
-### 6c. Add K8s routing peer key to Infisical
-
-Open **`http://infisical.madhan.app`** → Project `homelab-prod` → Env `prod` → Path `/netbird`:
-
-```
-NETBIRD_SETUP_KEY = <k8s-routing-peer key from step 6a>
-```
-
-Within 60 seconds the `InfisicalSecret` in the `netbird` namespace syncs. The `netbird-peer` pod starts and connects:
+### 6c. Write K8s routing peer setup key to OpenBao
 
 ```bash
-kubectl get pods -n netbird   # → Running
+kubectl exec -n openbao openbao-0 -- bao kv patch secret/netbird \
+  NETBIRD_SETUP_KEY="<k8s-routing-peer key from step 6a>"
+```
+
+The `netbird-peer` StatefulSet CSI volume mounts the secret and the pod starts.
+
+```bash
+kubectl get pods -n netbird   # → netbird-peer-0 Running
 ```
 
 ### 6d. Configure the LAN route
 
-In the NetBird dashboard, **Network Routes → Add Route**:
+In the NetBird dashboard, **Network → Routes → Add Route**:
 
 - **Network:** `192.168.1.0/24`
-- **Routing Peer:** `k8s-routing-peer` (appears once the pod connects)
+- **Routing Peer:** `k8s-routing-peer` (appears once pod connects)
 - **Enabled:** Yes
 
 Once active, the Bifrost `netbird-agent` can reach `192.168.1.220` through the mesh — enabling Traefik to proxy public services to the cluster gateway.
 
 ---
 
-## Phase 7 — Publish CDK8s Manifests
+## Phase 7 — Grafana Authentik SSO Setup
 
-The NetBird peer chart needs to be synthesized and pushed to the manifests branch:
+Grafana uses Authentik as an OIDC provider. GitHub login flows through Authentik → Grafana.
+
+### 7a. Create OAuth2/OIDC provider in Authentik
+
+Authentik UI → **Applications → Providers → Create → OAuth2/OpenID Provider**
+
+| Field | Value |
+|-------|-------|
+| Name | `Grafana` |
+| Client type | `Confidential` |
+| Redirect URI | `https://grafana.madhan.app/login/generic_oauth` |
+| Scopes | `openid`, `email`, `profile` |
+
+Copy the **Client ID** and **Client Secret**.
+
+### 7b. Create Application in Authentik
+
+Authentik UI → **Applications → Applications → Create**
+- Name: `Grafana`, Slug: `grafana`
+- Provider: bind to the provider from 7a
+
+### 7c. Create grafana-admins group
+
+Authentik UI → **Directory → Groups → Create** → name: `grafana-admins`
+
+Add yourself to this group for Admin role in Grafana.
+
+### 7d. Update client_id in code
+
+In `workloads/monitoring/grafana.go`, replace:
+```
+"client_id": "REPLACE_WITH_AUTHENTIK_CLIENT_ID",
+```
+with the Client ID from step 7a. Then:
+```bash
+just synth && git add -A && git commit -m "feat: set Grafana Authentik client_id" && git push
+```
+
+### 7e. Write client secret to OpenBao
 
 ```bash
-# From repo root — generates app/netbird/ and other workload dirs
-just synth
+kubectl exec -n openbao openbao-0 -- bao kv patch secret/grafana \
+  OAUTH_CLIENT_SECRET="<client-secret-from-7a>"
+```
 
-# Commit and push to the manifests branch
+Grafana pod will start and SSO will work.
+
+---
+
+## Phase 8 — Publish CDK8s Manifests
+
+If you haven't already, synthesize and push the manifests:
+
+```bash
+just synth
 git add app/
-git commit -m "feat: Add NetBird routing peer"
-git push origin v0.1.5-manifests
+git commit -m "chore: synth manifests"
+git push
 ```
 
 ArgoCD auto-syncs within 3 minutes:
 
 ```bash
-kubectl get application netbird -n argocd
+kubectl get applications -n argocd
 ```
 
 ---
 
-## Phase 8 — End-to-End Verification
+## Phase 9 — End-to-End Verification
 
 ```bash
 # DNS split working correctly
 dig grafana.madhan.app    # → 178.156.199.250  (public, via Hetzner)
 dig headlamp.madhan.app   # → 192.168.1.220    (LAN wildcard, private)
 
-# ForwardAuth redirecting unauthenticated requests
-curl -sI https://grafana.madhan.app | grep -i location
-# → location: https://auth.madhan.app/outpost.goauthentik.io/start?rd=...
+# OpenBao unsealed
+kubectl exec -n openbao openbao-0 -- bao status | grep Sealed
+# → Sealed  false
 
 # NetBird mesh
 # NetBird UI → Peers: bifrost-agent Connected, k8s-routing-peer Connected
@@ -415,8 +436,8 @@ curl -sI https://grafana.madhan.app | grep -i location
 
 # Full browser flow
 # 1. Open https://grafana.madhan.app
-# 2. Redirected to auth.madhan.app → log in with GitHub
-# 3. Land on Grafana dashboard
+# 2. Redirected to Authentik → log in with GitHub
+# 3. Land on Grafana as Viewer (or Admin if in grafana-admins group)
 
 # All apps healthy
 kubectl get applications -n argocd
@@ -430,7 +451,7 @@ kubectl get applications -n argocd
 |--------|-----------|-----------|-------|
 | `HCLOUD_TOKEN` | SOPS | Phase 0 | Hetzner API access |
 | `PROXMOX_PASSWORD` | SOPS | Phase 0 | Proxmox API access |
-| `CLOUDFLARE_API_TOKEN` | SOPS → k8s Secret | Phase 0 | cert-manager + Traefik ACME |
+| `CLOUDFLARE_API_TOKEN` | SOPS → k8s Secret `cert-manager/cloudflare-api-token` | Phase 0 | cert-manager + Traefik ACME |
 | `AUTHENTIK_TOKEN` | SOPS → `.secrets.env` | Phase 0 | Authentik akadmin API token |
 | `AUTHENTIK_SECRET_KEY` | SOPS → `.env` | Phase 0 | Django secret key |
 | `AUTHENTIK_POSTGRESQL_PASSWORD` | SOPS → `.env` | Phase 0 | Authentik Postgres |
@@ -439,22 +460,25 @@ kubectl get applications -n argocd
 | `NB_RELAY_SECRET` | SOPS → `.secrets.env` | Phase 0 | |
 | `NB_OWNER_PASSWORD` | SOPS → `.secrets.env` | Phase 0 | Local admin for first NetBird login |
 | `NETBIRD_CLIENT_SECRET` | SOPS (used by Pulumi) | Phase 0 | Dex→Authentik OIDC connector |
+| `OPENBAO_UNSEAL_KEY` | SOPS → k8s Secret `openbao/openbao-unseal-key` | Phase 2 | Generated by `just openbao-init` |
 | `NB_PROXY_TOKEN` | SOPS → `.secrets.env` | Phase 6 | |
 | `NB_BIFROST_SETUP_KEY` | SOPS → `.secrets.env` | Phase 6 | |
-| Token Reviewer JWT | One-time kubectl command | Phase 2 | Used by Infisical to call k8s tokenreviews |
-| Infisical Machine Identity ID | `workloads/secrets/infisical.go` | Phase 2 | `kubernetesAuth.identityId` |
-| `NETBIRD_SETUP_KEY` | Infisical `/netbird` | Phase 6 | k8s-routing-peer setup key |
-| App passwords | Infisical paths | Phase 2 | Synced by operator — not stored in k8s |
+| `ADMIN_PASSWORD` (Grafana) | OpenBao `secret/grafana` | Phase 2 | |
+| `OAUTH_CLIENT_SECRET` (Grafana) | OpenBao `secret/grafana` | Phase 7 | Authentik OIDC client secret |
+| `HARBOR_ADMIN_PASSWORD` | OpenBao `secret/harbor` | Phase 2 | |
+| `N8N_ENCRYPTION_KEY` | OpenBao `secret/n8n` | Phase 2 | **Never rotate** — re-entering workflows |
+| `BOOTSTRAP_PASSWORD` (Rancher) | OpenBao `secret/rancher` | Phase 2 | |
+| `NETBIRD_SETUP_KEY` | OpenBao `secret/netbird` | Phase 6 | k8s-routing-peer setup key |
 
 ---
 
 ## LAN Access Without the Hetzner Hop
 
-Public services (`grafana.madhan.app`, `harbor.madhan.app`) DNS-resolve to the Hetzner VPS for all clients — including LAN users. To bypass this on your machine:
+Public services (`grafana.madhan.app`) DNS-resolve to the Hetzner VPS for all clients — including LAN users. To bypass this on your machine:
 
 ```bash
 # /etc/hosts — direct LAN access, skips SSO
-192.168.1.220  grafana.madhan.app harbor.madhan.app
+192.168.1.220  grafana.madhan.app
 ```
 
 For LAN-wide bypass, add overrides in your router's DNS (Pi-hole, Unbound, etc.).

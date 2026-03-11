@@ -113,8 +113,19 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		"externalURL": "https://harbor.madhan.app",
 		"persistence": map[string]interface{}{
 			"enabled": true,
+			// ReadWriteMany via Longhorn NFS — eliminates RWO multi-attach deadlocks
+			// on rolling updates. Longhorn automatically provisions an NFS server pod
+			// for each RWX volume.
 			"persistentVolumeClaim": map[string]interface{}{
-				"registry": map[string]interface{}{"size": "50Gi"},
+				"registry": map[string]interface{}{
+					"size":       "50Gi",
+					"accessMode": "ReadWriteMany",
+				},
+				"jobservice": map[string]interface{}{
+					"jobLog": map[string]interface{}{
+						"accessMode": "ReadWriteMany",
+					},
+				},
 				"database": map[string]interface{}{"size": "10Gi"},
 			},
 		},
@@ -126,11 +137,6 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 				"requests": map[string]interface{}{"cpu": "100m", "memory": "256Mi"},
 			},
 		},
-		// NOTE: harbor helm chart hardcodes RollingUpdate strategy. jobservice and registry
-		// both use RWO PVCs — if ArgoCD syncs a pod-spec change, the rolling update will
-		// deadlock (new pod can't attach PVC held by old pod on a different node).
-		// Workaround: kubectl patch deployment harbor-{jobservice,registry} -n harbor \
-		//   --type=merge -p '{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null}}}'
 		"jobservice": map[string]interface{}{
 			"resources": map[string]interface{}{
 				"limits":   map[string]interface{}{"cpu": "500m", "memory": "512Mi"},

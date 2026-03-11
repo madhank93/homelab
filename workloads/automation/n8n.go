@@ -132,7 +132,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 				"enabled":     true,
 				"type":        "dynamic",
 				"size":        "10Gi",
-				"accessModes": []string{"ReadWriteOnce"},
+				"accessModes": []string{"ReadWriteMany"},
 			},
 			"replicaCount": 1,
 			"resources": map[string]any{

@@ -129,8 +129,9 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 			"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 		},
 		"persistence": map[string]any{
-			"enabled": true,
-			"size":    "10Gi",
+			"enabled":     true,
+			"size":        "10Gi",
+			"accessModes": []string{"ReadWriteMany"},
 		},
 		"service": map[string]any{
 			"type": "ClusterIP",

@@ -26,7 +26,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 			Namespace: jsii.String(namespace),
 		},
 		Spec: &k8s.PersistentVolumeClaimSpec{
-			AccessModes:      &[]*string{jsii.String("ReadWriteOnce")},
+			AccessModes:      &[]*string{jsii.String("ReadWriteMany")},
 			StorageClassName: &storageClass,
 			Resources: &k8s.VolumeResourceRequirements{
 				Requests: &map[string]k8s.Quantity{
