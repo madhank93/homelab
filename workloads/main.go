@@ -137,6 +137,13 @@ func main() {
 	security.NewFalcoChart(falcoApp, "falco-app", "falco")
 	falcoApp.Synth()
 
+	kyvernoApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/kyverno", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	security.NewKyvernoChart(kyvernoApp, "kyverno-app", "kyverno")
+	kyvernoApp.Synth()
+
 	// Observability
 	otelApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/opentelemetry", rootFolder)),
