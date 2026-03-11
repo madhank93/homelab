@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a825c262e90f9d8d89d3d4c3f9ac8cba973052e5bc3cb9c33bf44b55876b4d6b
+        checksum/config: cb9aca9a1980ad064e93397ed5728d6a62858083d083e80b7d5df0d33e740652
       labels:
         app.kubernetes.io/instance: n8n
         app.kubernetes.io/name: n8n
