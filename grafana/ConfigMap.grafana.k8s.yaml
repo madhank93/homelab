@@ -26,6 +26,19 @@ data:
   grafana.ini: |
     [analytics]
     check_for_updates = true
+    [auth]
+    disable_login_form = false
+    [auth.generic_oauth]
+    allow_sign_up = true
+    api_url = https://auth.madhan.app/application/o/userinfo/
+    auth_url = https://auth.madhan.app/application/o/grafana/authorize/
+    client_id = REPLACE_WITH_AUTHENTIK_CLIENT_ID
+    enabled = true
+    name = GitHub via Authentik
+    role_attribute_path = contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'
+    scopes = openid email profile
+    token_url = https://auth.madhan.app/application/o/grafana/token/
+    use_pkce = true
     [log]
     mode = console
     [paths]
