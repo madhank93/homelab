@@ -18,7 +18,14 @@
 
 set -euo pipefail
 
-BAO="kubectl exec -n openbao openbao-0 -- bao"
+# Root token is written to /tmp/openbao-init.json by `just openbao-init`
+if [[ ! -f /tmp/openbao-init.json ]]; then
+  echo "❌  /tmp/openbao-init.json not found. Run: just openbao-init first."
+  exit 1
+fi
+ROOT_TOKEN=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['root_token'])")
+
+BAO="kubectl exec -i -n openbao openbao-0 -- env BAO_TOKEN=${ROOT_TOKEN} bao"
 
 echo "→ Configuring OpenBao K8s auth method..."
 $BAO auth enable kubernetes 2>/dev/null || echo "  (kubernetes auth already enabled)"
@@ -111,20 +118,21 @@ $BAO write auth/kubernetes/role/netbird \
 # ---------------------------------------------------------------------------
 echo "→ Writing placeholder secrets (REPLACE THESE with real values)..."
 
-$BAO kv put secret/grafana  ADMIN_PASSWORD="CHANGEME"
-$BAO kv put secret/harbor   HARBOR_ADMIN_PASSWORD="CHANGEME"
-$BAO kv put secret/n8n      DB_PASSWORD="CHANGEME"
-$BAO kv put secret/rancher  BOOTSTRAP_PASSWORD="CHANGEME"
-$BAO kv put secret/netbird  NETBIRD_SETUP_KEY="CHANGEME"
+$BAO kv put -mount=secret grafana  ADMIN_PASSWORD="CHANGEME"
+$BAO kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD="CHANGEME"
+$BAO kv put -mount=secret n8n      DB_PASSWORD="CHANGEME"
+$BAO kv put -mount=secret rancher  BOOTSTRAP_PASSWORD="CHANGEME"
+$BAO kv put -mount=secret netbird  NETBIRD_SETUP_KEY="CHANGEME"
 
 echo ""
 echo "✅  OpenBao setup complete."
 echo ""
 echo "⚠️   Replace placeholder secrets with real values:"
-echo "    kubectl exec -n openbao openbao-0 -- bao kv put secret/grafana  ADMIN_PASSWORD=<real>"
-echo "    kubectl exec -n openbao openbao-0 -- bao kv put secret/harbor   HARBOR_ADMIN_PASSWORD=<real>"
-echo "    kubectl exec -n openbao openbao-0 -- bao kv put secret/n8n      DB_PASSWORD=<real>"
-echo "    kubectl exec -n openbao openbao-0 -- bao kv put secret/rancher  BOOTSTRAP_PASSWORD=<real>"
-echo "    kubectl exec -n openbao openbao-0 -- bao kv put secret/netbird  NETBIRD_SETUP_KEY=<real>"
+echo "    ROOT_TOKEN=\$(python3 -c \"import json; print(json.load(open('/tmp/openbao-init.json'))['root_token'])\")"
+echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret grafana  ADMIN_PASSWORD=<real>"
+echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD=<real>"
+echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret n8n      DB_PASSWORD=<real>"
+echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret rancher  BOOTSTRAP_PASSWORD=<real>"
+echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=<real>"
 echo ""
 echo "After writing secrets, trigger ArgoCD sync to start app pods."
