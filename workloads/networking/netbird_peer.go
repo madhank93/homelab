@@ -118,6 +118,9 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 								},
 							},
 							SecurityContext: &k8s.SecurityContext{
+								// privileged: required on Talos — capability grants (NET_ADMIN, SYS_MODULE)
+								// are blocked by the node security profile without explicit privileged mode.
+								Privileged: jsii.Bool(true),
 								Capabilities: &k8s.Capabilities{
 									Add: &[]*string{
 										jsii.String("NET_ADMIN"),

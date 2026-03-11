@@ -56,9 +56,6 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		// Main node configuration (UI and API)
 		"main": map[string]any{
 			"count": 1,
-			"podAnnotations": map[string]any{
-				"reloader.stakater.com/auto": "true",
-			},
 			"resources": map[string]any{
 				"requests": map[string]any{
 					"cpu":    "100m",
