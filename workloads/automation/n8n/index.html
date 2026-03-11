@@ -512,21 +512,56 @@
 <table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
 <tr><td>CDK8s file</td><td><code>workloads/automation/n8n.go</code></td></tr>
 <tr><td>Namespace</td><td><code>n8n</code></td></tr>
-<tr><td>HTTPRoute</td><td><code>n8n.madhan.app</code> → n8n service</td></tr>
+<tr><td>Helm chart</td><td><a href="https://github.com/8gears/n8n-helm-chart">8gears n8n</a> <code>oci://8gears.container-registry.com/library/n8n</code> v2.0.1</td></tr>
+<tr><td>HTTPRoute</td><td><code>n8n.madhan.app</code> → <code>n8n:80</code></td></tr>
 <tr><td>UI</td><td>Yes</td></tr>
-<tr><td>Requires Infisical</td><td>Yes — <code>n8n-db</code> Secret</td></tr>
+<tr><td>Database</td><td>PostgreSQL via CloudNativePG (<code>n8n-pg</code> Cluster)</td></tr>
 </tbody></table>
 <h2 id="purpose">Purpose</h2>
 <p>n8n is an open-source workflow automation platform. It integrates with 400+ services via nodes and supports scheduled, webhook, and event-driven workflows.</p>
+<h2 id="architecture">Architecture</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>OpenBao (secret/data/n8n)
+</span><span>  └── ENCRYPTION_KEY
+</span><span>        └── CSI Driver → SecretProviderClass → n8n-secrets Secret
+</span><span>              └── n8n pod: N8N_ENCRYPTION_KEY env var
+</span><span>
+</span><span>CloudNativePG Operator (cnpg-system)
+</span><span>  └── Cluster CR: n8n-pg (namespace: n8n)
+</span><span>        ├── Pod: n8n-pg-1 (PostgreSQL 17)
+</span><span>        ├── Service: n8n-pg-rw:5432 (read-write)
+</span><span>        └── Secret: n8n-pg-app (username/password — auto-managed by CNPG)
+</span><span>              └── n8n pod: DB_POSTGRESDB_PASSWORD env var
+</span></code></pre>
 <h2 id="database">Database</h2>
-<p>n8n uses PostgreSQL for workflow persistence. The database password is managed by Infisical at path <code>/n8n</code>, synced to the <code>n8n-db</code> Secret (<code>DB_PASSWORD</code> key).</p>
+<p>n8n uses a <strong>CloudNativePG</strong> single-instance PostgreSQL cluster (<code>n8n-pg</code>) deployed in the <code>n8n</code> namespace.</p>
+<p>CNPG auto-creates:</p>
+<ul>
+<li><code>n8n-pg-app</code> — k8s Secret with <code>username</code>, <code>password</code>, <code>uri</code>, etc.</li>
+<li><code>n8n-pg-rw</code> — read-write ClusterIP Service (primary)</li>
+<li><code>n8n-pg-ro</code> — read-only Service</li>
+<li><code>n8n-pg-r</code> — round-robin Service</li>
+</ul>
+<p>The DB password is <strong>fully managed by CNPG</strong> — it auto-generates a stable password that persists across operator restarts. No manual password management needed.</p>
 <h2 id="encryption-key">Encryption Key</h2>
-<p>n8n encrypts stored credentials with <code>N8N_ENCRYPTION_KEY</code>. This key must remain stable — changing it after workflows are created will break credential decryption.</p>
+<p>n8n encrypts stored credentials with <code>N8N_ENCRYPTION_KEY</code>. This key is stored in OpenBao at <code>secret/data/n8n</code> under the key <code>ENCRYPTION_KEY</code> and synced into the cluster via the Secrets Store CSI Driver.</p>
+<p>The key <strong>must remain stable</strong> — changing it will break decryption of any stored credentials.</p>
 <blockquote>
-<p><strong>Known issue:</strong> If you see <code>Error: Credentials could not be decrypted</code>, the encryption key in the running Secret does not match the key used when credentials were first stored. See <code>docs/infisical-secrets-setup.md</code> for the recovery procedure.</p>
+<p>If you see <code>Error: Credentials could not be decrypted</code>, check that the value at <code>secret/data/n8n</code> <code>ENCRYPTION_KEY</code> in OpenBao matches what was used when credentials were first stored.</p>
 </blockquote>
+<h2 id="secret-flow">Secret Flow</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>OpenBao path: secret/data/n8n
+</span><span>  ENCRYPTION_KEY → SecretProviderClass (n8n-secrets) → k8s Secret n8n-secrets
+</span><span>                    └── N8N_ENCRYPTION_KEY key
+</span><span>
+</span><span>n8n Deployment:
+</span><span>  extraEnv.N8N_ENCRYPTION_KEY  ← secretKeyRef: n8n-secrets / N8N_ENCRYPTION_KEY
+</span><span>  extraEnv.DB_POSTGRESDB_PASSWORD ← secretKeyRef: n8n-pg-app / password
+</span><span>  main.config.db.postgresdb.host = n8n-pg-rw
+</span></code></pre>
 <h2 id="accessing-the-ui">Accessing the UI</h2>
-<p>Navigate to <code>http://n8n.madhan.app</code>. On first access, create an admin account.</p>
+<p>Navigate to <code>http://n8n.madhan.app</code>. On first access (fresh database), create an owner account.</p>
+<h2 id="known-issue-rwo-deadlock-not-applicable">Known Issue: RWO Deadlock (not applicable)</h2>
+<p>Unlike Harbor, n8n's 8gears chart uses <code>Recreate</code> deployment strategy by default, so RWO PVC multi-attach issues do not occur.</p>
 
 
     <!--  Errata section  -->
@@ -686,6 +721,12 @@
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/workloads/automation/n8n/#architecture" class="toc-link">Architecture</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <a href="https://homelab.madhan.app/workloads/automation/n8n/#database" class="toc-link">Database</a>
                     
                 </li>
@@ -698,7 +739,19 @@
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/workloads/automation/n8n/#secret-flow" class="toc-link">Secret Flow</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <a href="https://homelab.madhan.app/workloads/automation/n8n/#accessing-the-ui" class="toc-link">Accessing the UI</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/workloads/automation/n8n/#known-issue-rwo-deadlock-not-applicable" class="toc-link">Known Issue: RWO Deadlock (not applicable)</a>
                     
                 </li>
             

@@ -512,9 +512,9 @@
 <table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
 <tr><td>CDK8s file</td><td><code>workloads/registry/harbor.go</code></td></tr>
 <tr><td>Namespace</td><td><code>harbor</code></td></tr>
-<tr><td>HTTPRoute</td><td><code>harbor.madhan.app</code> → <code>harbor-core:80</code></td></tr>
+<tr><td>HTTPRoute</td><td><code>harbor.madhan.app</code> → <code>harbor:80</code> (nginx proxy)</td></tr>
 <tr><td>UI</td><td>Yes</td></tr>
-<tr><td>Requires Infisical</td><td>Yes — <code>harbor-admin</code> Secret</td></tr>
+<tr><td>Secrets</td><td>OpenBao <code>secret/data/harbor</code> → CSI → <code>harbor-admin</code> Secret</td></tr>
 </tbody></table>
 <h2 id="purpose">Purpose</h2>
 <p>Harbor provides:</p>
@@ -525,13 +525,21 @@
 <li><strong>Pull-through proxy cache</strong> — caches images from Docker Hub, GHCR, etc.</li>
 </ul>
 <h2 id="admin-credentials">Admin Credentials</h2>
-<p>The admin password is managed by Infisical at path <code>/harbor</code>, synced to the <code>harbor-admin</code> Secret (<code>HARBOR_ADMIN_PASSWORD</code> key).</p>
+<p>The admin password is stored in OpenBao at <code>secret/data/harbor</code> (<code>HARBOR_ADMIN_PASSWORD</code> key) and synced to the <code>harbor-admin</code> k8s Secret via the Secrets Store CSI Driver and a <code>secret-sync</code> Deployment (Harbor's Helm chart does not support <code>extraVolumes</code>, so a dedicated sync pod triggers the secretObjects sync).</p>
+<h2 id="service-routing">Service Routing</h2>
+<p>Traffic enters via the <code>harbor</code> ClusterIP service (port 80) which is Harbor's built-in nginx proxy. The nginx service routes internally to portal, core, registry, and jobservice. The HTTPRoute backend must point to <code>harbor:80</code>, <strong>not</strong> <code>harbor-core:80</code>.</p>
 <h2 id="known-issue-rwo-pvc-multi-attach">Known Issue: RWO PVC Multi-Attach</h2>
-<p>Harbor uses multiple RWO PVCs from Longhorn. During ArgoCD sync rolling updates, pods from the old ReplicaSet may still hold the PVC, causing <code>Multi-Attach error</code> for the new pod.</p>
-<p><strong>Force-delete the stuck pod:</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> delete pod</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -l </span><span style="color:#bae67e;">&quot;app=harbor,component=jobservice&quot;</span><span style="color:#ffcc66;"> --grace-period</span><span style="color:#f29e74;">=</span><span>0</span><span style="color:#ffcc66;"> --force
+<p>Harbor's <code>jobservice</code> and <code>registry</code> components use RWO PVCs (Longhorn). During ArgoCD sync rolling updates, pods from the old ReplicaSet may still hold the PVC, blocking the new pod with <code>Multi-Attach error</code>.</p>
+<p><strong>Fix — force-delete stuck pods and scale down old ReplicaSet:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Force-delete all jobservice and registry pods
+</span><span style="color:#ffd580;">kubectl</span><span> delete pod</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -l </span><span style="color:#bae67e;">&quot;app=harbor,component=jobservice&quot;</span><span style="color:#ffcc66;"> --grace-period</span><span style="color:#f29e74;">=</span><span>0</span><span style="color:#ffcc66;"> --force
+</span><span style="color:#ffd580;">kubectl</span><span> delete pod</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -l </span><span style="color:#bae67e;">&quot;app=harbor,component=registry&quot;</span><span style="color:#ffcc66;"> --grace-period</span><span style="color:#f29e74;">=</span><span>0</span><span style="color:#ffcc66;"> --force
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># If two ReplicaSets both have DESIRED=1, scale down the old one
+</span><span style="color:#ffd580;">kubectl</span><span> get replicasets</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -l </span><span style="color:#bae67e;">&quot;app=harbor,component=jobservice&quot;
+</span><span style="color:#ffd580;">kubectl</span><span> scale replicaset </span><span style="color:#f29e74;">&lt;</span><span>old-rs-name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n harbor</span><span style="color:#ffcc66;"> --replicas</span><span style="color:#f29e74;">=</span><span>0
 </span></code></pre>
-<p>This happens on every ArgoCD sync that updates the Harbor Deployment. The <code>Recreate</code> strategy would fix it but Harbor's chart uses <code>RollingUpdate</code> by default.</p>
+<p>This happens on every ArgoCD sync that updates the Harbor Deployment. The <code>Recreate</code> strategy would fix it permanently but Harbor's chart uses <code>RollingUpdate</code> by default.</p>
 <h2 id="configuring-pull-through-proxy">Configuring Pull-Through Proxy</h2>
 <ol>
 <li>Log in to <code>http://harbor.madhan.app</code> as admin</li>
@@ -699,6 +707,12 @@
                 <li>
                     
                     <a href="https://homelab.madhan.app/workloads/registry/harbor/#admin-credentials" class="toc-link">Admin Credentials</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/workloads/registry/harbor/#service-routing" class="toc-link">Service Routing</a>
                     
                 </li>
             
