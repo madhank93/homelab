@@ -67,12 +67,11 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 				},
 			},
 		},
-		// Admin password read from file — avoids storing password in a k8s Secret.
-		"admin": map[string]interface{}{
-			"userKey":     "admin",
-			"passwordKey": "admin",
-		},
+		// Admin credentials: user set directly in env; password read from CSI-mounted file.
+		// The Grafana chart's auto-generated admin Secret is NOT used to avoid synth-time
+		// random value churn. GF_SECURITY_ADMIN_PASSWORD__FILE takes precedence over the Secret.
 		"env": map[string]interface{}{
+			"GF_SECURITY_ADMIN_USER":           "admin",
 			"GF_SECURITY_ADMIN_PASSWORD__FILE": "/mnt/secrets/ADMIN_PASSWORD",
 		},
 		"resources": map[string]interface{}{
