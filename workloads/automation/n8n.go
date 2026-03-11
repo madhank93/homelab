@@ -44,14 +44,14 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
   secretPath: "secret/data/n8n"
   secretKey: "ENCRYPTION_KEY"`,
 		},
-		// Sync both secrets into a single k8s Secret "n8n-secrets".
-		// postgresql uses DB_PASSWORD; n8n main uses N8N_ENCRYPTION_KEY.
+		// Sync only ENCRYPTION_KEY into k8s Secret "n8n-secrets".
+		// PostgreSQL password is managed by Bitnami chart's own auto-generated secret
+		// (n8n-postgresql) which uses Helm lookup to preserve the value across synths.
 		"secretObjects": []map[string]any{
 			{
 				"secretName": "n8n-secrets",
 				"type":       "Opaque",
 				"data": []map[string]any{
-					{"objectName": "DB_PASSWORD", "key": "DB_PASSWORD"},
 					{"objectName": "ENCRYPTION_KEY", "key": "N8N_ENCRYPTION_KEY"},
 				},
 			},
@@ -133,11 +133,8 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 			"auth": map[string]any{
 				"database":       "n8n",
 				"username":       "n8n",
-				"existingSecret": "n8n-secrets", // Secret synced by SecretProviderClass
-				"secretKeys": map[string]any{
-					"adminPasswordKey": "DB_PASSWORD",
-					"userPasswordKey":  "DB_PASSWORD",
-				},
+				// No existingSecret — Bitnami chart auto-generates n8n-postgresql secret
+				// and uses Helm lookup to preserve the password across resynths.
 			},
 			"primary": map[string]any{
 				"persistence": map[string]any{
