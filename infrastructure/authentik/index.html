@@ -99,24 +99,26 @@
     </style>
 
     
-        <meta name="description" content="Documentation for a Kubernetes homelab on Talos Linux, provisioned by Pulumi on Proxmox" />
+        
+            <meta name="description" content="OIDC identity provider running on the Bifrost VPS — GitHub SSO, ForwardAuth, and OIDC for Grafana and NetBird." />
+        
     
 
-    <title>Monitoring | Homelab</title>
+    <title>Authentik | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="Monitoring | Homelab" />
-      <meta property="og:description" content="Observability stack: VictoriaMetrics, VictoriaLogs, Grafana, AlertManager, OpenTelemetry." />
+      <meta property="og:title" content="Authentik | Homelab" />
+      <meta property="og:description" content="OIDC identity provider running on the Bifrost VPS — GitHub SSO, ForwardAuth, and OIDC for Grafana and NetBird." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Homelab" />
-      <meta name="twitter:description" content="Observability stack: VictoriaMetrics, VictoriaLogs, Grafana, AlertManager, OpenTelemetry." />
+      <meta name="twitter:title" content="Authentik" />
+      <meta name="twitter:description" content="OIDC identity provider running on the Bifrost VPS — GitHub SSO, ForwardAuth, and OIDC for Grafana and NetBird." />
       
       
       
@@ -500,69 +502,150 @@
                     <main class="prose w-full">
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
-        <h1 class="flex items-center gap-3 py-1">
-            Monitoring
+        <h1 class="flex items-center gap-3">
+            Authentik
             
-
-            
-            
-            
-            
-            
-            
-            
-            
-
-            
-            
-            
-
-            
-            
-
         </h1>
-        <p class="text-gray-500">Observability stack: VictoriaMetrics, VictoriaLogs, Grafana, AlertManager, OpenTelemetry.</p>
+        <p class="text-gray-500">OIDC identity provider running on the Bifrost VPS — GitHub SSO, ForwardAuth, and OIDC for Grafana and NetBird.</p>
     </div>
-    <p>The monitoring stack provides full observability for the cluster:</p>
-<ul>
-<li><strong>VictoriaMetrics</strong> — time-series metrics storage (Prometheus-compatible)</li>
-<li><strong>VictoriaLogs</strong> — log storage (Loki-compatible)</li>
-<li><strong>Grafana</strong> — dashboards and visualization</li>
-<li><strong>AlertManager</strong> — alert routing and deduplication</li>
-<li><strong>OpenTelemetry Collector</strong> — metrics and log collection pipeline</li>
-</ul>
-<h2 id="data-flow">Data Flow</h2>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Nodes/Pods
-</span><span>    │
-</span><span>    ├── Container logs ──→ OTel Agent DaemonSet ──→ VictoriaLogs
-</span><span>    ├── Host metrics ────→ OTel Agent DaemonSet ──→ VictoriaMetrics
-</span><span>    ├── kubelet metrics ──→ OTel Agent DaemonSet ──→ VictoriaMetrics
-</span><span>    └── k8s events ─────→ OTel Gateway ──────────→ VictoriaMetrics
-</span><span>                                                         │
-</span><span>                                               Grafana queries ◄──── User
+    <h2 id="overview">Overview</h2>
+<p><a href="https://goauthentik.io/">Authentik</a> is the identity provider for the homelab. It runs on the Bifrost Hetzner VPS (not inside the cluster) and is managed by Pulumi (<code>core/cloud/authentik.go</code>, stack: <code>authentik</code>).</p>
+<p>Authentik handles three things:</p>
+<ol>
+<li><strong>GitHub OAuth login</strong> — users authenticate with their GitHub account</li>
+<li><strong>OIDC for cluster apps</strong> — Grafana and NetBird use Authentik as their OIDC provider</li>
+<li><strong>ForwardAuth for public services</strong> — Traefik's <code>authentik-forwardauth</code> middleware gates public cluster services behind a session cookie</li>
+</ol>
+<hr />
+<h2 id="how-it-s-deployed">How It's Deployed</h2>
+<p>Authentik runs as two containers (<code>authentik-server</code> and <code>authentik-worker</code>) in <code>docker-compose.yml</code> on the Bifrost VPS, managed automatically by <code>just core hetzner up</code>.</p>
+<p>Managed separately by Pulumi's <code>authentik</code> stack — configures OIDC apps, GitHub source, scopes, and ForwardAuth outpost against the live Authentik API:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core authentik up
 </span></code></pre>
+<p>See <a href="/infrastructure/hetzner-bifrost">Hetzner Bifrost</a> for the VPS setup and container details.</p>
+<hr />
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
+<tr><td>URL</td><td><code>https://auth.madhan.app</code></td></tr>
+<tr><td>Stack</td><td><code>authentik</code></td></tr>
+<tr><td>Source file</td><td><code>core/cloud/authentik.go</code></td></tr>
+<tr><td>GitHub OAuth ClientID</td><td><code>Ov23liUPVh4nPuUJzGFp</code></td></tr>
+<tr><td>Grafana OIDC ClientID</td><td><code>grafana-homelab</code></td></tr>
+<tr><td>NetBird OIDC ClientID</td><td><code>aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT</code></td></tr>
+</tbody></table>
+<hr />
+<h2 id="github-oauth-source">GitHub OAuth Source</h2>
+<p>Authentik's <code>default-authentication-identification</code> stage is configured to show a <strong>Login with GitHub</strong> button. Users log in with their GitHub account, which Authentik links by email (<code>email_link</code> mode).</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>User → auth.madhan.app → &quot;Login with GitHub&quot; → GitHub OAuth → Authentik (identity confirmed)
+</span></code></pre>
+<p>The GitHub OAuth app uses PKCE (S256) for additional security.</p>
+<hr />
+<h2 id="oidc-applications">OIDC Applications</h2>
+<h3 id="grafana">Grafana</h3>
+<p>Grafana uses Authentik as a <strong>confidential</strong> OIDC provider:</p>
+<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
+<tr><td>ClientID</td><td><code>grafana-homelab</code></td></tr>
+<tr><td>ClientSecret</td><td><code>GRAFANA_OAUTH_CLIENT_SECRET</code> (SOPS)</td></tr>
+<tr><td>Redirect URI</td><td><code>https://grafana.madhan.app/login/generic_oauth</code></td></tr>
+<tr><td>Scopes</td><td><code>openid email profile groups offline_access</code></td></tr>
+<tr><td>Token validity</td><td>1 hour access, 10 min authorization code</td></tr>
+</tbody></table>
+<p>The <code>groups</code> scope is a custom property mapping that returns the list of Authentik group names the user belongs to. Grafana uses this via <code>role_attribute_path</code> to assign the <strong>Admin</strong> role to members of the <code>grafana-admins</code> group.</p>
+<pre data-lang="python" style="background-color:#212733;color:#ccc9c2;" class="language-python "><code class="language-python" data-lang="python"><span style="font-style:italic;color:#5c6773;"># groups scope expression (in Authentik)
+</span><span style="color:#ffa759;">return </span><span>[group</span><span style="color:#f29e74;">.</span><span>name </span><span style="color:#ffa759;">for </span><span>group </span><span style="color:#ffa759;">in </span><span>request</span><span style="color:#f29e74;">.</span><span>user</span><span style="color:#f29e74;">.</span><span>ak_groups</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">all</span><span>()]
+</span></code></pre>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Add a user to grafana-admins via Authentik UI → Directory → Groups → grafana-admins
+</span></code></pre>
+<h3 id="netbird">NetBird</h3>
+<p>NetBird uses Authentik through its <strong>embedded Dex OIDC connector</strong>. Authentik acts as the upstream provider; Dex federates to it.</p>
+<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
+<tr><td>ClientID</td><td><code>aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT</code></td></tr>
+<tr><td>ClientSecret</td><td><code>NETBIRD_CLIENT_SECRET</code> (SOPS)</td></tr>
+<tr><td>Redirect URIs</td><td><code>https://netbird.madhan.app/oauth2/callback</code>, <code>http://localhost:53000</code></td></tr>
+<tr><td>Scopes</td><td><code>openid email profile api offline_access</code></td></tr>
+</tbody></table>
+<p>The <code>api</code> scope is a custom empty mapping required by NetBird's documentation.</p>
+<p>Configure in NetBird: <strong>Settings → Identity Providers → Add → Authentik</strong>:</p>
+<ul>
+<li>Issuer: <code>https://auth.madhan.app/application/o/netbird/</code></li>
+<li>Client ID: <code>aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT</code></li>
+<li>Client Secret: value of <code>NETBIRD_CLIENT_SECRET</code> from SOPS</li>
+</ul>
+<hr />
+<h2 id="forwardauth-public-services">ForwardAuth (Public Services)</h2>
+<p>Traefik on the Bifrost VPS uses Authentik's <strong>embedded outpost</strong> to protect public cluster services behind a session cookie.</p>
+<p><strong>How it works:</strong></p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Browser → grafana.madhan.app
+</span><span>  → Traefik → authentik-forwardauth middleware
+</span><span>    → Authentik: is there a valid session cookie?
+</span><span>      No → redirect to auth.madhan.app → GitHub login
+</span><span>      Yes → forward to k8s-gateway (http://192.168.1.220)
+</span></code></pre>
+<p>The ForwardAuth provider uses <strong>forward_domain</strong> mode with cookie domain <code>.madhan.app</code>, so a single login covers all <code>*.madhan.app</code> subdomains. The embedded outpost is managed entirely in Pulumi — no manual outpost configuration needed.</p>
+<p>Services with <code>SkipAuth: true</code> in <code>cloudflare.go/publicServices</code> (e.g. Grafana, which handles its own auth) bypass the ForwardAuth middleware.</p>
+<hr />
+<h2 id="netbird-service-account">NetBird Service Account</h2>
+<p>Authentik creates a <code>sa-netbird</code> service account in the <code>authentik Admins</code> group with a non-expiring API token. NetBird uses this token to sync users from Authentik.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Get the service account token (Pulumi output):
+</span><span style="color:#f28779;">cd</span><span> core </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">pulumi</span><span> stack select authentik </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">pulumi</span><span> stack output NetbirdServiceToken</span><span style="color:#ffcc66;"> --show-secrets
+</span></code></pre>
+<hr />
+<h2 id="secrets">Secrets</h2>
+<p>All secrets are stored in <code>secrets/bootstrap.sops.yaml</code> and injected via <code>sops exec-env</code> during <code>just core authentik up</code>:</p>
+<table><thead><tr><th>Variable</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>AUTHENTIK_TOKEN</code></td><td>Bootstrap admin API token for Pulumi Authentik provider</td></tr>
+<tr><td><code>AUTHENTIK_GITHUB_SECRET</code></td><td>GitHub OAuth app client secret</td></tr>
+<tr><td><code>GRAFANA_OAUTH_CLIENT_SECRET</code></td><td>Grafana OIDC client secret</td></tr>
+<tr><td><code>NETBIRD_CLIENT_SECRET</code></td><td>NetBird Dex connector client secret</td></tr>
+</tbody></table>
+<hr />
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="grafana-shows-login-with-github-but-users-get-no-roles">Grafana shows "Login with GitHub" but users get no roles</h3>
+<p>The user is not in the <code>grafana-admins</code> group. In Authentik:
+<strong>Directory → Groups → grafana-admins → Add user</strong></p>
+<h3 id="forwardauth-loops-or-redirects-forever">ForwardAuth loops or redirects forever</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check the embedded outpost is healthy
+</span><span style="color:#ffd580;">docker</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> bifrost-net authentik-server ak healthcheck
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Verify outpost is registered in Authentik UI → Applications → Outposts
+</span></code></pre>
+<h3 id="re-running-the-authentik-stack">Re-running the Authentik stack</h3>
+<p>If Authentik resources drift or the stack errors, re-run:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core authentik up
+</span></code></pre>
+<p>The stack is idempotent — it imports existing resources where possible.</p>
 
+
+    <!--  Errata section  -->
+    
+    
 
     
-    <div class="mt-8 pt-6 border-t border-gray-500/15">
-        <div class="flex flex-wrap items-center gap-4">
-            <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/apps&#x2F;monitoring&#x2F;_index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                </svg>
-                <span>Edit this page</span>
-            </a>
-            
-            
-            
-                
-                
-            
-            
-            
+    
+
+    
+        <div class="my-8 pt-6 border-t border-gray-500/15">
+            <div class="flex flex-wrap items-center gap-4">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/infrastructure&#x2F;authentik&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    <span>Edit this page</span>
+                </a>
+            </div>
         </div>
-    </div>
     
+
+    
+    
+    
+        
+        
+    
+    
+        <div><div>
+    
+    </div>
 
 
                         
@@ -574,53 +657,25 @@
                                 <div class="prev-nav-item">
                                     
     
-    
-    
-    
-    
-    
         
-        
-            
-        
-    
-        
-        
-            
-        
-    
-        
-        
-            
-        
-    
-        
-        
-            
-        
-    
-        
-        
-            
-        
-    
-        
-        
-            
-        
-    
-        
-        
-            
-        
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/infrastructure/">
+            <div class="nav-button-content">
+                <div class="nav-button-direction">
+                    <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span class="nav-button-label">Back to</span>
+                </div>
+                <div class="nav-button-title">Infrastructure</div>
+            </div>
+        </a>
     
 
                                 </div>
                                 <div class="next-nav-item">
                                     
     
-        
-        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/apps/monitoring/grafana/">
+        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/infrastructure/netbird/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -628,7 +683,7 @@
                     </svg>
                     <span class="nav-button-label">Next</span>
                 </div>
-                <div class="nav-button-title">Grafana</div>
+                <div class="nav-button-title">NetBird VPN</div>
             </div>
         </a>
     
@@ -639,7 +694,6 @@
                     </main>
 
                     
-                    
                         
 
 <div class="hidden lg:block" >
@@ -649,7 +703,89 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/#data-flow" class="toc-link">Data Flow</a>
+                    <a href="https://homelab.madhan.app/infrastructure/authentik/#overview" class="toc-link">Overview</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/authentik/#how-it-s-deployed" class="toc-link">How It&#x27;s Deployed</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/authentik/#configuration" class="toc-link">Configuration</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/authentik/#github-oauth-source" class="toc-link">GitHub OAuth Source</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/authentik/#oidc-applications" class="toc-link">OIDC Applications</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/authentik/#grafana" class="toc-link">Grafana</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/authentik/#netbird" class="toc-link">NetBird</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/authentik/#forwardauth-public-services" class="toc-link">ForwardAuth (Public Services)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/authentik/#netbird-service-account" class="toc-link">NetBird Service Account</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/authentik/#secrets" class="toc-link">Secrets</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/authentik/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/authentik/#grafana-shows-login-with-github-but-users-get-no-roles" class="toc-link">Grafana shows &quot;Login with GitHub&quot; but users get no roles</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/authentik/#forwardauth-loops-or-redirects-forever" class="toc-link">ForwardAuth loops or redirects forever</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/authentik/#re-running-the-authentik-stack" class="toc-link">Re-running the Authentik stack</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -658,6 +794,7 @@
 </div>
 
 
+                    
                     
                 </div>
             </div>
@@ -850,7 +987,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/authentik">Authentik</a></li>
+                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/authentik">Authentik</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
                             
@@ -915,7 +1052,7 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring">Monitoring</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring">Monitoring</a></summary>
                                             <ul>
                                                 
                                                 

@@ -145,6 +145,9 @@
         <loc>https://homelab.madhan.app/infrastructure/access/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/infrastructure/authentik/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/infrastructure/control-plane-ha/</loc>
     </url>
     <url>

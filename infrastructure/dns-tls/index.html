@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Cloudflare DNS, cert-manager, and wildcard TLS certificate for *.madhan.app." />
+            <meta name="description" content="Cloudflare DNS records, the publicServices toggle, cert-manager wildcard TLS, and ClusterIssuers." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="DNS &amp; TLS | Homelab" />
-      <meta property="og:description" content="Cloudflare DNS, cert-manager, and wildcard TLS certificate for *.madhan.app." />
+      <meta property="og:description" content="Cloudflare DNS records, the publicServices toggle, cert-manager wildcard TLS, and ClusterIssuers." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="DNS &amp; TLS" />
-      <meta name="twitter:description" content="Cloudflare DNS, cert-manager, and wildcard TLS certificate for *.madhan.app." />
+      <meta name="twitter:description" content="Cloudflare DNS records, the publicServices toggle, cert-manager wildcard TLS, and ClusterIssuers." />
       
       
       
@@ -506,29 +506,85 @@
             DNS &amp; TLS
             
         </h1>
-        <p class="text-gray-500">Cloudflare DNS, cert-manager, and wildcard TLS certificate for *.madhan.app.</p>
+        <p class="text-gray-500">Cloudflare DNS records, the publicServices toggle, cert-manager wildcard TLS, and ClusterIssuers.</p>
     </div>
-    <h2 id="dns">DNS</h2>
-<p>All cluster services use the <code>madhan.app</code> domain managed by Cloudflare DNS. Each app has a DNS record pointing to the Cilium Gateway's LoadBalancer IP (<code>192.168.1.220</code>).</p>
-<h2 id="tls-certificate">TLS Certificate</h2>
-<p>A wildcard certificate <code>*.madhan.app</code> is provisioned by <strong>cert-manager</strong> using Let's Encrypt DNS-01 challenge via the Cloudflare API.</p>
-<p><strong>Target Secret:</strong> <code>wildcard-madhan-app-tls</code> in <code>kube-system</code>
-<strong>Used by:</strong> the <code>homelab-gateway</code> HTTPS listener</p>
-<h2 id="bootstrap-dependency">Bootstrap Dependency</h2>
-<p>The TLS setup has a circular dependency that must be broken manually on a fresh cluster:</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>cert-manager needs cloudflare-api-token Secret
-</span><span>  → cloudflare-api-token is created by: just create-secrets
-</span><span>    → just create-secrets reads from: secrets/bootstrap.sops.yaml (SOPS-encrypted)
+    <h2 id="cloudflare-dns">Cloudflare DNS</h2>
+<p>All cluster services use the <code>madhan.app</code> domain managed by Cloudflare. DNS records are provisioned by Pulumi (<code>core/cloud/cloudflare.go</code>, stack: <code>cloudflare</code>):</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core cloudflare up
 </span></code></pre>
-<p>Run <code>just create-secrets</code> before <code>just core platform up</code> on a fresh cluster.</p>
-<h2 id="cloudflare-api-token">Cloudflare API Token</h2>
-<p>The token requires two permissions scoped to <code>madhan.app</code> only:</p>
+<h3 id="record-layout">Record Layout</h3>
+<table><thead><tr><th>Record</th><th>Resolves To</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>*.madhan.app</code></td><td><code>192.168.1.220</code></td><td>Wildcard — all services default to LAN gateway</td></tr>
+<tr><td><code>auth.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Authentik on Bifrost — always public</td></tr>
+<tr><td><code>netbird.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird dashboard+server — always public</td></tr>
+<tr><td><code>proxy.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird expose base — always public</td></tr>
+<tr><td><code>*.proxy.madhan.app</code></td><td><code>178.156.199.250</code></td><td>NetBird expose wildcard</td></tr>
+<tr><td><code>grafana.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Public via Bifrost (self-managed auth)</td></tr>
+</tbody></table>
+<p>All records are <strong>DNS-only</strong> (Proxied: false — orange cloud off). Cloudflare resolves specific records before wildcards — a service with no explicit A record falls through to the <code>*.madhan.app</code> wildcard → private IP → unreachable from the internet.</p>
+<h3 id="making-a-service-public">Making a Service Public</h3>
+<p>Edit the <code>publicServices</code> slice in <code>core/cloud/cloudflare.go</code>:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#ffa759;">var </span><span>publicServices </span><span style="color:#f29e74;">= </span><span>[]</span><span style="color:#ffa759;">PublicService</span><span>{
+</span><span>    </span><span style="font-style:italic;color:#5c6773;">// SkipAuth: true  → no Authentik ForwardAuth (service handles its own auth)
+</span><span>    </span><span style="font-style:italic;color:#5c6773;">// SkipAuth: false → Authentik ForwardAuth required before reaching the service
+</span><span>    {Name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;grafana&quot;</span><span style="color:#ccc9c2cc;">, </span><span>SkipAuth</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true</span><span>}</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="font-style:italic;color:#5c6773;">// Add a new public service:
+</span><span>    {Name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;headlamp&quot;</span><span style="color:#ccc9c2cc;">, </span><span>SkipAuth</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">false</span><span>}</span><span style="color:#ccc9c2cc;">,
+</span><span>}
+</span></code></pre>
+<p>Then run both stacks — one creates the DNS A record, the other generates the Traefik router:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core cloudflare up </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">just</span><span> core hetzner up
+</span></code></pre>
+<p>Removing a service from <code>publicServices</code> deletes the A record. DNS falls back to the LAN wildcard automatically — the service becomes LAN-only with no further changes.</p>
+<p>See <a href="/infrastructure/access">Service Access</a> for the complete traffic flow diagram.</p>
+<hr />
+<h2 id="cert-manager">cert-manager</h2>
+<p>cert-manager issues a wildcard TLS certificate for <code>*.madhan.app</code> using Let's Encrypt DNS-01 challenge via the Cloudflare API. Managed by Pulumi (<code>core/platform/cert_manager.go</code>, stack: <code>platform</code>):</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core platform up
+</span></code></pre>
+<h3 id="chart">Chart</h3>
+<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
+<tr><td>Chart</td><td><code>cert-manager</code></td></tr>
+<tr><td>Repo</td><td><code>https://charts.jetstack.io</code></td></tr>
+<tr><td>Version</td><td><code>v1.19.3</code></td></tr>
+<tr><td>Namespace</td><td><code>cert-manager</code></td></tr>
+<tr><td>CRDs</td><td>Bundled (<code>installCRDs: true</code>)</td></tr>
+</tbody></table>
+<h3 id="clusterissuers">ClusterIssuers</h3>
+<table><thead><tr><th>Name</th><th>Type</th><th>Used For</th></tr></thead><tbody>
+<tr><td><code>letsencrypt-prod</code></td><td>ACME DNS-01 via Cloudflare</td><td>Wildcard <code>*.madhan.app</code> certificate</td></tr>
+<tr><td><code>homelab-ca</code></td><td>Self-signed</td><td>Internal / testing certificates</td></tr>
+</tbody></table>
+<h3 id="wildcard-certificate">Wildcard Certificate</h3>
+<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
+<tr><td>Name</td><td><code>wildcard-madhan-app</code></td></tr>
+<tr><td>Namespace</td><td><code>kube-system</code></td></tr>
+<tr><td>Secret</td><td><code>wildcard-madhan-app-tls</code></td></tr>
+<tr><td>DNS names</td><td><code>madhan.app</code>, <code>*.madhan.app</code></td></tr>
+<tr><td>Issuer</td><td><code>letsencrypt-prod</code></td></tr>
+</tbody></table>
+<p>The certificate is stored in <code>kube-system</code> so the <code>homelab-gateway</code> HTTPS listener can reference it across namespaces.</p>
+<h3 id="cloudflare-api-token">Cloudflare API Token</h3>
+<p>The DNS-01 solver requires a Cloudflare API token scoped to <code>madhan.app</code>:</p>
 <table><thead><tr><th>Permission</th><th>Purpose</th></tr></thead><tbody>
 <tr><td>Zone → Zone → Read</td><td>Resolve domain to Cloudflare Zone ID</td></tr>
 <tr><td>Zone → DNS → Edit</td><td>Create/delete <code>_acme-challenge</code> TXT records</td></tr>
 </tbody></table>
-<p>The token is stored in the <code>cert-manager/cloudflare-api-token</code> Secret (key: <code>CLOUDFLARE_API_TOKEN</code>). This Secret is created by the bootstrap script and carries <code>argocd.argoproj.io/sync-options: Prune=false</code> so ArgoCD never deletes it.</p>
-<h2 id="verifying-certificate-issuance">Verifying Certificate Issuance</h2>
+<p>The token is stored in <code>cert-manager/cloudflare-api-token</code> Secret (key: <code>CLOUDFLARE_API_TOKEN</code>). Created by <code>just create-secrets</code> from SOPS and carries <code>argocd.argoproj.io/sync-options: Prune=false</code> so ArgoCD never deletes it.</p>
+<h3 id="bootstrap-dependency">Bootstrap Dependency</h3>
+<p>On a fresh cluster, cert-manager needs the <code>cloudflare-api-token</code> Secret before it can issue certificates:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Create bootstrap secrets (reads from SOPS)
+</span><span style="color:#ffd580;">just</span><span> create-secrets
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># 2. Then deploy cert-manager + ClusterIssuer
+</span><span style="color:#ffd580;">just</span><span> core platform up
+</span></code></pre>
+<h3 id="current-status">Current Status</h3>
+<blockquote>
+<p>The HTTPS Gateway listener is currently <strong>disabled</strong> pending <code>wildcard-madhan-app-tls</code> creation. All app URLs use HTTP (<code>http://app.madhan.app</code>).</p>
+<p>Once the certificate exists in <code>kube-system</code>, re-enable the HTTPS listener in <code>core/platform/cilium.go</code> and run <code>just core platform up</code>.</p>
+</blockquote>
+<h3 id="verifying-certificate-issuance">Verifying Certificate Issuance</h3>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Watch Certificate status
 </span><span style="color:#ffd580;">kubectl</span><span> describe certificate wildcard-madhan-app</span><span style="color:#ffcc66;"> -n</span><span> kube-system
 </span><span>
@@ -542,11 +598,6 @@
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>Status: True  Type: Ready
 </span><span>Message: Certificate is up to date and has not expired
 </span></code></pre>
-<h2 id="current-status">Current Status</h2>
-<blockquote>
-<p>The HTTPS Gateway listener is currently <strong>disabled</strong> pending <code>wildcard-madhan-app-tls</code> creation. All app URLs use HTTP (<code>http://app.madhan.app</code>).</p>
-<p>Once the certificate exists in <code>kube-system</code>, re-enable the HTTPS listener in <code>core/platform/cilium.go</code> and run <code>just core platform up</code>.</p>
-</blockquote>
 
 
     <!--  Errata section  -->
@@ -636,37 +687,63 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#dns" class="toc-link">DNS</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/dns-tls/#cloudflare-dns" class="toc-link">Cloudflare DNS</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#record-layout" class="toc-link">Record Layout</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#making-a-service-public" class="toc-link">Making a Service Public</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#tls-certificate" class="toc-link">TLS Certificate</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#bootstrap-dependency" class="toc-link">Bootstrap Dependency</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#cloudflare-api-token" class="toc-link">Cloudflare API Token</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#verifying-certificate-issuance" class="toc-link">Verifying Certificate Issuance</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#current-status" class="toc-link">Current Status</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/dns-tls/#cert-manager" class="toc-link">cert-manager</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#chart" class="toc-link">Chart</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#clusterissuers" class="toc-link">ClusterIssuers</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#wildcard-certificate" class="toc-link">Wildcard Certificate</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#cloudflare-api-token" class="toc-link">Cloudflare API Token</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#bootstrap-dependency" class="toc-link">Bootstrap Dependency</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#current-status" class="toc-link">Current Status</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/dns-tls/#verifying-certificate-issuance" class="toc-link">Verifying Certificate Issuance</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -868,6 +945,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/authentik">Authentik</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
                             
                                 <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
@@ -975,24 +1054,6 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1027,11 +1088,13 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
                                                 
                                                 
                                             </ul>
@@ -1059,6 +1122,22 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation">Automation</a></summary>
                                             <ul>
                                                 
@@ -1075,11 +1154,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1091,11 +1170,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
