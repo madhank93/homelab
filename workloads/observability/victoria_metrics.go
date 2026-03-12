@@ -18,6 +18,14 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		},
 	})
 
+	// VMOperator CRDs — must be applied before the k8s-stack chart resources.
+	// cdk8s.NewHelm renders only Helm templates, not the chart's crds/ folder.
+	// This is the same pattern used for Prometheus CRDs in the old alert_manager.go.
+	cdk8s.NewInclude(chart, jsii.String("vm-operator-crds"), &cdk8s.IncludeProps{
+		// Pinned to the exact operator version bundled in victoria-metrics-k8s-stack@0.72.4 (Chart.lock: operator@0.59.2)
+		Url: jsii.String("https://raw.githubusercontent.com/VictoriaMetrics/helm-charts/victoria-metrics-operator-0.59.2/charts/victoria-metrics-operator/crd.yaml"),
+	})
+
 	// victoria-metrics-k8s-stack — all-in-one chart that includes:
 	//   VMOperator  — watches ServiceMonitor/PodMonitor CRDs cluster-wide (replaces standalone vmagent)
 	//   VMSingle    — single-node storage (replaces victoria-metrics-cluster with 1 replica each)
