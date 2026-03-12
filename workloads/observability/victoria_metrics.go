@@ -222,7 +222,7 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "vmsingle-victoria-metrics", "port": 8429, "weight": 1},
+					{"group": "", "kind": "Service", "name": "vmsingle-vm-stack", "port": 8429, "weight": 1},
 				},
 			},
 		},
@@ -248,7 +248,7 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "vmalertmanager-victoria-metrics", "port": 9093, "weight": 1},
+					{"group": "", "kind": "Service", "name": "vmalertmanager-vm-stack", "port": 9093, "weight": 1},
 				},
 			},
 		},

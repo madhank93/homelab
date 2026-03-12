@@ -66,7 +66,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 					{
 						"name":      "VictoriaMetrics",
 						"type":      "prometheus",
-						"url":       "http://vmsingle-victoria-metrics.victoria-metrics.svc.cluster.local:8429",
+						"url":       "http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8429",
 						"access":    "proxy",
 						"isDefault": true,
 						"jsonData": map[string]any{
