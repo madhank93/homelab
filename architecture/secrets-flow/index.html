@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="How bootstrap and runtime secrets are encrypted, distributed, and consumed — including automated Bifrost VPS secret provisioning." />
+            <meta name="description" content="How bootstrap and runtime secrets are encrypted, distributed, and consumed — SOPS for bootstrap, OpenBao + CSI Driver for runtime." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Secrets Flow | Homelab" />
-      <meta property="og:description" content="How bootstrap and runtime secrets are encrypted, distributed, and consumed — including automated Bifrost VPS secret provisioning." />
+      <meta property="og:description" content="How bootstrap and runtime secrets are encrypted, distributed, and consumed — SOPS for bootstrap, OpenBao + CSI Driver for runtime." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Secrets Flow" />
-      <meta name="twitter:description" content="How bootstrap and runtime secrets are encrypted, distributed, and consumed — including automated Bifrost VPS secret provisioning." />
+      <meta name="twitter:description" content="How bootstrap and runtime secrets are encrypted, distributed, and consumed — SOPS for bootstrap, OpenBao + CSI Driver for runtime." />
       
       
       
@@ -506,13 +506,13 @@
             Secrets Flow
             
         </h1>
-        <p class="text-gray-500">How bootstrap and runtime secrets are encrypted, distributed, and consumed — including automated Bifrost VPS secret provisioning.</p>
+        <p class="text-gray-500">How bootstrap and runtime secrets are encrypted, distributed, and consumed — SOPS for bootstrap, OpenBao + CSI Driver for runtime.</p>
     </div>
     <h2 id="two-tier-model">Two-Tier Model</h2>
 <p>All secrets are managed by exactly two systems. The split is intentional — bootstrap secrets are needed to bootstrap the cluster itself, and the cluster hosts the runtime secrets platform:</p>
 <table><thead><tr><th>Tier</th><th>Tool</th><th>When</th><th>What's stored</th></tr></thead><tbody>
-<tr><td><strong>Bootstrap</strong></td><td>SOPS + age</td><td>One-time setup</td><td>Infisical DB credentials, Cloudflare API token, Hetzner token, Authentik keys, NetBird keys</td></tr>
-<tr><td><strong>Runtime</strong></td><td>Infisical operator</td><td>Continuously synced</td><td>All app secrets (Grafana, Harbor, n8n, Rancher, …)</td></tr>
+<tr><td><strong>Bootstrap</strong></td><td>SOPS + age</td><td>One-time setup</td><td>OpenBao unseal key, Cloudflare API token, Hetzner token, Authentik keys, NetBird keys</td></tr>
+<tr><td><strong>Runtime</strong></td><td>OpenBao + CSI Driver</td><td>Continuously available</td><td>All app secrets (Grafana, Harbor, n8n, Rancher, …)</td></tr>
 </tbody></table>
 <p><strong>CDK8s generates zero <code>Secret</code> resources.</strong> The CI pipeline needs zero GitHub Actions secrets.</p>
 <hr />
@@ -523,13 +523,13 @@
         S1[&quot;CLOUDFLARE_API_TOKEN&lt;br&#x2F;&gt;HCLOUD_TOKEN · PROXMOX_PASSWORD&quot;]
         S2[&quot;AUTHENTIK_TOKEN · AUTHENTIK_SECRET_KEY&lt;br&#x2F;&gt;AUTHENTIK_POSTGRESQL_PASSWORD&quot;]
         S3[&quot;NB_DATA_STORE_KEY · NB_RELAY_SECRET&lt;br&#x2F;&gt;NB_PROXY_TOKEN · NB_BIFROST_SETUP_KEY&quot;]
-        S4[&quot;INFISICAL_DB_PASSWORD · INFISICAL_AUTH_SECRET&lt;br&#x2F;&gt;INFISICAL_ENCRYPTION_KEY · REDIS_PASSWORD&quot;]
+        S4[&quot;OPENBAO_UNSEAL_KEY&quot;]
     end
 
     subgraph BOOT[&quot;Bootstrap — one-time laptop operations&quot;]
         AGE[&quot;age private key&lt;br&#x2F;&gt;~&#x2F;.config&#x2F;sops&#x2F;age&#x2F;keys.txt&quot;]
         CS[&quot;just create-secrets&lt;br&#x2F;&gt;bash scripts&#x2F;create-bootstrap-secrets.sh&quot;]
-        KBS1[&quot;k8s Secret: infisical-secrets&lt;br&#x2F;&gt;namespace: infisical&quot;]
+        KBS1[&quot;k8s Secret: openbao-unseal-key&lt;br&#x2F;&gt;namespace: openbao&quot;]
         KBS2[&quot;k8s Secret: cloudflare-api-token&lt;br&#x2F;&gt;namespace: cert-manager&quot;]
     end
 
@@ -543,18 +543,18 @@
         NBI[&quot;NB_IDP_MGMT_TOKEN&lt;br&#x2F;&gt;appended to .secrets.env&quot;]
     end
 
-    subgraph RUNTIME[&quot;Runtime — Infisical continuous sync&quot;]
-        ISVC[&quot;Infisical Platform&lt;br&#x2F;&gt;infisical.madhan.app&quot;]
-        IOP[&quot;Infisical Operator&lt;br&#x2F;&gt;InfisicalSecret CRs&quot;]
-        APPSEC[&quot;App k8s Secrets&lt;br&#x2F;&gt;grafana-admin · harbor-admin&lt;br&#x2F;&gt;n8n-db · rancher-bootstrap&quot;]
-        POD[&quot;Workload Pods&lt;br&#x2F;&gt;envFrom &#x2F; volumeMount&quot;]
+    subgraph RUNTIME[&quot;Runtime — OpenBao + CSI Driver&quot;]
+        OB[&quot;OpenBao&lt;br&#x2F;&gt;openbao.madhan.app (KV v2)&quot;]
+        CSI[&quot;Secrets Store CSI Driver&lt;br&#x2F;&gt;DaemonSet on all nodes&quot;]
+        SPC[&quot;SecretProviderClass per app&lt;br&#x2F;&gt;defines: vault role, secret paths&quot;]
+        POD[&quot;Workload Pods&lt;br&#x2F;&gt;files at &#x2F;mnt&#x2F;secrets&lt;br&#x2F;&gt;or secretObjects → k8s Secret&quot;]
     end
 
     AGE --&gt;|decrypts| SOPSFILE
     SOPSFILE --&gt;|sops exec-env| CS
     CS --&gt;|kubectl create secret| KBS1
     CS --&gt;|kubectl create secret| KBS2
-    KBS1 --&gt;|mounts service token| ISVC
+    KBS1 --&gt;|unseal sidecar reads key| OB
 
     SOPSFILE --&gt;|sops exec-env| HG
     HG --&gt; SE &amp; DE
@@ -564,9 +564,9 @@
     BS --&gt; NC
     NBI &amp; NC --&gt;|env ready| BS
 
-    ISVC --&gt;|operator polls API| IOP
-    IOP --&gt;|creates&#x2F;updates| APPSEC
-    APPSEC --&gt;|envFrom| POD
+    OB --&gt;|K8s auth| CSI
+    CSI --&gt;|fetches secrets| SPC
+    SPC --&gt;|mounts files or syncs Secret| POD
 </pre>
 <hr />
 <h2 id="bootstrap-secrets-sops-age">Bootstrap Secrets (SOPS + age)</h2>
@@ -593,11 +593,8 @@
 </span><span style="color:#73d0ff;">NB_PROXY_TOKEN</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;netbird personal access token&gt; </span><span style="font-style:italic;color:#5c6773;"># added after first login to NetBird
 </span><span style="color:#73d0ff;">NB_BIFROST_SETUP_KEY</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;netbird setup key&gt;       </span><span style="font-style:italic;color:#5c6773;"># added after first login to NetBird
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Infisical — K8s secrets platform
-</span><span style="color:#73d0ff;">INFISICAL_DB_PASSWORD</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;strong random&gt;
-</span><span style="color:#73d0ff;">INFISICAL_ENCRYPTION_KEY</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -hex 16&gt;
-</span><span style="color:#73d0ff;">INFISICAL_AUTH_SECRET</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -hex 24&gt;
-</span><span style="color:#73d0ff;">REDIS_PASSWORD</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;strong random&gt;
+</span><span style="font-style:italic;color:#5c6773;"># OpenBao — K8s secrets platform
+</span><span style="color:#73d0ff;">OPENBAO_UNSEAL_KEY</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -base64 32&gt;   </span><span style="font-style:italic;color:#5c6773;"># generated once on first deploy
 </span></code></pre>
 <blockquote>
 <p><strong><code>NB_DATA_STORE_KEY</code> and <code>NB_RELAY_SECRET</code> must never change</strong> after the first deploy — the NetBird SQLite database is encrypted with these values. Rotating them means losing all peer registrations.</p>
@@ -606,7 +603,7 @@
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Creates two k8s Secrets from the SOPS file:
 </span><span style="color:#ffd580;">just</span><span> create-secrets
 </span><span style="font-style:italic;color:#5c6773;"># → sops exec-env secrets/bootstrap.sops.yaml &#39;bash scripts/create-bootstrap-secrets.sh&#39;
-</span><span style="font-style:italic;color:#5c6773;"># → kubectl create secret generic infisical-secrets -n infisical
+</span><span style="font-style:italic;color:#5c6773;"># → kubectl create secret generic openbao-unseal-key -n openbao
 </span><span style="font-style:italic;color:#5c6773;"># → kubectl create secret generic cloudflare-api-token -n cert-manager
 </span></code></pre>
 <p>Both secrets carry <code>argocd.argoproj.io/sync-options: Prune=false</code> — ArgoCD never deletes them.</p>
@@ -630,41 +627,29 @@
 </ol>
 <p>See <a href="/infrastructure/hetzner-bifrost">Hetzner Bifrost</a> for the full bootstrap sequence.</p>
 <hr />
-<h2 id="runtime-secrets-infisical">Runtime Secrets (Infisical)</h2>
-<p>After the cluster is up, all application secrets are managed by the <a href="/workloads/management/infisical">Infisical operator</a>. Each app defines an <code>InfisicalSecret</code> CR that points to a path in the Infisical project.</p>
-<h3 id="apps-using-infisical">Apps using Infisical</h3>
-<table><thead><tr><th>App</th><th>Infisical path</th><th>k8s Secret</th><th>Keys</th></tr></thead><tbody>
-<tr><td>Grafana</td><td><code>/grafana</code></td><td><code>grafana-admin</code></td><td><code>ADMIN_PASSWORD</code></td></tr>
-<tr><td>Harbor</td><td><code>/harbor</code></td><td><code>harbor-admin</code></td><td><code>HARBOR_ADMIN_PASSWORD</code></td></tr>
-<tr><td>n8n</td><td><code>/n8n</code></td><td><code>n8n-db</code></td><td><code>DB_PASSWORD</code>, <code>N8N_ENCRYPTION_KEY</code></td></tr>
-<tr><td>Rancher</td><td><code>/rancher</code></td><td><code>rancher-bootstrap</code></td><td><code>BOOTSTRAP_PASSWORD</code></td></tr>
-<tr><td>NetBird peer</td><td><code>/netbird</code></td><td><code>netbird-setup-key</code></td><td><code>NETBIRD_SETUP_KEY</code></td></tr>
-</tbody></table>
-<h3 id="infisicalsecret-pattern">InfisicalSecret pattern</h3>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">secrets.infisical.com/v1alpha1
-</span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">InfisicalSecret
-</span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana-admin
-</span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
-</span><span>  </span><span style="color:#73d0ff;">annotations</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="font-style:italic;color:#5c6773;"># Required — Infisical CRD missing projectSlug breaks SSA validation
-</span><span>    </span><span style="color:#73d0ff;">argocd.argoproj.io/sync-options</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ServerSideApply=false
-</span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">hostAPI</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://infisical.madhan.app/api
-</span><span>  </span><span style="color:#73d0ff;">resyncInterval</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">60
-</span><span>  </span><span style="color:#73d0ff;">authentication</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">serviceToken</span><span style="color:#ccc9c2cc;">:
-</span><span>      </span><span style="color:#73d0ff;">serviceTokenSecretReference</span><span style="color:#ccc9c2cc;">:
-</span><span>        </span><span style="color:#73d0ff;">secretName</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">infisical-service-token
-</span><span>        </span><span style="color:#73d0ff;">secretNamespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">infisical
-</span><span>      </span><span style="color:#73d0ff;">secretsScope</span><span style="color:#ccc9c2cc;">:
-</span><span>        </span><span style="color:#73d0ff;">envSlug</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">prod
-</span><span>        </span><span style="color:#73d0ff;">secretsPath</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">/grafana
-</span><span>  </span><span style="color:#73d0ff;">managedSecretReference</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">secretName</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana-admin
-</span><span>    </span><span style="color:#73d0ff;">secretNamespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
+<h2 id="runtime-secrets-openbao-csi-driver">Runtime Secrets (OpenBao + CSI Driver)</h2>
+<p>After the cluster is up, all application secrets are managed by <a href="/apps/secrets/openbao">OpenBao</a>. Apps consume secrets via the Secrets Store CSI Driver — secrets are mounted as files in pods, or synced to k8s Secrets via <code>secretObjects</code>.</p>
+<h3 id="patterns">Patterns</h3>
+<p><strong>Pattern A — file-only</strong> (no k8s Secret created):</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Pod → CSI volume mount → /mnt/secrets/ADMIN_PASSWORD
+</span><span>env: GF_SECURITY_ADMIN_PASSWORD__FILE=/mnt/secrets/ADMIN_PASSWORD
 </span></code></pre>
-<p>The operator polls Infisical every 60 seconds. Secrets are updated in-place without pod restarts (unless using <a href="/workloads/support/reloader">Reloader</a>).</p>
+<p>Used by: <strong>Grafana</strong></p>
+<p><strong>Pattern B — secretObjects sync</strong> (k8s Secret created and kept in sync):</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>SecretProviderClass.secretObjects → k8s Secret (e.g. harbor-admin)
+</span><span>Helm chart: existingSecret: harbor-admin
+</span></code></pre>
+<p>Used by: <strong>Harbor</strong>, <strong>n8n</strong>, <strong>Rancher</strong>, <strong>NetBird peer</strong></p>
+<h3 id="apps-and-their-openbao-paths">Apps and their OpenBao paths</h3>
+<table><thead><tr><th>App</th><th>OpenBao path</th><th>Pattern</th><th>k8s Secret</th></tr></thead><tbody>
+<tr><td>Grafana</td><td><code>secret/data/grafana</code></td><td>A (file)</td><td>—</td></tr>
+<tr><td>Harbor</td><td><code>secret/data/harbor</code></td><td>B (sync)</td><td><code>harbor-admin</code></td></tr>
+<tr><td>n8n</td><td><code>secret/data/n8n</code></td><td>B (sync)</td><td><code>n8n-db</code></td></tr>
+<tr><td>Rancher</td><td><code>secret/data/rancher</code></td><td>B (sync)</td><td><code>rancher-bootstrap</code></td></tr>
+<tr><td>NetBird peer</td><td><code>secret/data/netbird</code></td><td>B (sync)</td><td><code>netbird-setup-key</code></td></tr>
+</tbody></table>
+<h3 id="one-time-setup">One-time setup</h3>
+<p>After first deploy, run <code>just openbao-setup</code> to configure K8s auth, policies, roles, and write initial secrets. See <a href="/apps/secrets/openbao">OpenBao</a> for details.</p>
 <hr />
 <h2 id="what-lives-where-quick-reference">What Lives Where — Quick Reference</h2>
 <table><thead><tr><th>Secret</th><th>Lives in</th><th>Set during</th><th>Rotatable?</th></tr></thead><tbody>
@@ -674,9 +659,10 @@
 <tr><td><code>NB_IDP_MGMT_TOKEN</code></td><td>Auto-written to <code>.secrets.env</code> by <code>bootstrap.sh</code></td><td>Auto</td><td>Yes</td></tr>
 <tr><td><code>NB_PROXY_TOKEN</code></td><td>SOPS → <code>.secrets.env</code></td><td>After first NetBird login</td><td>Yes</td></tr>
 <tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td>SOPS → <code>.secrets.env</code></td><td>After first NetBird login</td><td>Yes</td></tr>
-<tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>SOPS → <code>.secrets.env</code> + k8s Secret</td><td>Phase 0</td><td>Yes</td></tr>
-<tr><td>App passwords</td><td>Infisical</td><td>Phase 2</td><td>Yes</td></tr>
-<tr><td><code>NETBIRD_SETUP_KEY</code> (k8s)</td><td>Infisical <code>/netbird</code></td><td>After first NetBird login</td><td>Yes</td></tr>
+<tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>SOPS → k8s Secret</td><td>Phase 0</td><td>Yes</td></tr>
+<tr><td><code>OPENBAO_UNSEAL_KEY</code></td><td>SOPS → k8s Secret</td><td>Phase 0</td><td>Yes (redeploy OpenBao)</td></tr>
+<tr><td>App passwords</td><td>OpenBao KV</td><td>Phase 2 (<code>just openbao-setup</code>)</td><td>Yes</td></tr>
+<tr><td><code>NETBIRD_SETUP_KEY</code> (k8s)</td><td>OpenBao <code>/netbird</code></td><td>After first NetBird login</td><td>Yes</td></tr>
 </tbody></table>
 
 
@@ -881,16 +867,20 @@
                     
                     <details class="toc-details" >
                         <summary>
-                            <a href="https://homelab.madhan.app/architecture/secrets-flow/#runtime-secrets-infisical" class="toc-link">Runtime Secrets (Infisical)</a>
+                            <a href="https://homelab.madhan.app/architecture/secrets-flow/#runtime-secrets-openbao-csi-driver" class="toc-link">Runtime Secrets (OpenBao + CSI Driver)</a>
                         </summary>
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/architecture/secrets-flow/#apps-using-infisical" class="toc-link">Apps using Infisical</a>
+                                    <a href="https://homelab.madhan.app/architecture/secrets-flow/#patterns" class="toc-link">Patterns</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/architecture/secrets-flow/#infisicalsecret-pattern" class="toc-link">InfisicalSecret pattern</a>
+                                    <a href="https://homelab.madhan.app/architecture/secrets-flow/#apps-and-their-openbao-paths" class="toc-link">Apps and their OpenBao paths</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/architecture/secrets-flow/#one-time-setup" class="toc-link">One-time setup</a>
                                 </li>
                             
                         </ul>
@@ -1211,13 +1201,29 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1235,24 +1241,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>
@@ -1311,11 +1299,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
@@ -1327,11 +1315,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

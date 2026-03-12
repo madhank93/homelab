@@ -578,8 +578,13 @@
 <tr><td>HTTPRoute</td><td><code>argocd.local</code></td><td>LAN HTTP access</td></tr>
 <tr><td>TLSRoute</td><td><code>argocd.madhan.app</code></td><td>TLS passthrough to argocd-server:443</td></tr>
 </tbody></table>
-<h2 id="ignoredifferences-note"><code>ignoreDifferences</code> Note</h2>
-<p>The ArgoCD ApplicationSet currently includes an <code>ignoreDifferences</code> block for Infisical <code>InfisicalSecret</code> resources (legacy from before the OpenBao migration). This can be removed when Infisical is fully decommissioned.</p>
+<h2 id="ignoredifferences"><code>ignoreDifferences</code></h2>
+<p>The ApplicationSet ignores fields that change dynamically and would otherwise cause permanent OutOfSync:</p>
+<table><thead><tr><th>Resource</th><th>Ignored fields</th><th>Why</th></tr></thead><tbody>
+<tr><td><code>Secret</code> (VM operator validation)</td><td><code>/data</code></td><td>Operator regenerates TLS cert on every restart</td></tr>
+<tr><td><code>ValidatingWebhookConfiguration</code> (VM operator)</td><td><code>.webhooks[].clientConfig.caBundle</code></td><td>CA bundle updated dynamically by operator</td></tr>
+<tr><td>All <code>StatefulSet</code> resources</td><td><code>.spec.volumeClaimTemplates[].apiVersion</code>, <code>.spec.volumeClaimTemplates[].kind</code></td><td>CDK8s generates these fields; Kubernetes strips them on admission</td></tr>
+</tbody></table>
 <h2 id="bootstrap-secrets-prune-false">Bootstrap Secrets (<code>Prune=false</code>)</h2>
 <p>Two Secrets are created by <code>just create-secrets</code> and must never be deleted by ArgoCD:</p>
 <table><thead><tr><th>Secret</th><th>Namespace</th><th>Purpose</th></tr></thead><tbody>
@@ -750,7 +755,7 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/argocd/#ignoredifferences-note" class="toc-link">ignoreDifferences Note</a>
+                    <a href="https://homelab.madhan.app/platform/argocd/#ignoredifferences" class="toc-link">ignoreDifferences</a>
                     
                 </li>
             
@@ -1098,13 +1103,29 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1122,24 +1143,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>
@@ -1198,11 +1201,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
@@ -1214,11 +1217,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

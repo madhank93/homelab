@@ -546,7 +546,7 @@
         CIL[&quot;Cilium L2 LB&lt;br&#x2F;&gt;192.168.1.220&quot;]
         ARGO[&quot;ArgoCD&lt;br&#x2F;&gt;ApplicationSet&quot;]
         LONG[&quot;Longhorn&lt;br&#x2F;&gt;distributed storage&quot;]
-        INF[&quot;Infisical&lt;br&#x2F;&gt;operator + secrets&quot;]
+        OB[&quot;OpenBao&lt;br&#x2F;&gt;CSI Driver + KV secrets&quot;]
         CERT[&quot;cert-manager&lt;br&#x2F;&gt;wildcard TLS&quot;]
     end
 
@@ -558,7 +558,7 @@
     CIL --&gt; W1 &amp; W2 &amp; W3 &amp; W4
     ARGO --&gt;|&quot;syncs workloads&lt;br&#x2F;&gt;from manifests branch&quot;| W1 &amp; W2 &amp; W3 &amp; W4
     LONG --&gt; W1 &amp; W2 &amp; W3 &amp; W4
-    INF --&gt;|&quot;InfisicalSecret CRs&quot;| W1 &amp; W2 &amp; W3 &amp; W4
+    OB --&gt;|&quot;CSI volume mounts&quot;| W1 &amp; W2 &amp; W3 &amp; W4
     CERT --&gt;|&quot;cert-manager ACME&quot;| CIL
     WG &lt;--&gt;|&quot;WireGuard&lt;br&#x2F;&gt;192.168.1.0&#x2F;24&quot;| CIL
 </pre>
@@ -591,7 +591,7 @@
 <h2 id="workload-placement">Workload Placement</h2>
 <table><thead><tr><th>Package</th><th>Components</th><th>Node affinity</th></tr></thead><tbody>
 <tr><td><code>storage/</code></td><td>Longhorn</td><td>DaemonSet — all workers</td></tr>
-<tr><td><code>secrets/</code></td><td>Infisical + PostgreSQL</td><td>Any worker</td></tr>
+<tr><td><code>secrets/</code></td><td>OpenBao + CSI Driver</td><td>Any worker</td></tr>
 <tr><td><code>observability/</code></td><td>VictoriaMetrics, VictoriaLogs, OTel</td><td>Deployment + DaemonSet</td></tr>
 <tr><td><code>monitoring/</code></td><td>Grafana</td><td>Any worker</td></tr>
 <tr><td><code>security/</code></td><td>Falco (eBPF), Kyverno, Trivy</td><td>DaemonSet + CronJob</td></tr>
@@ -1050,13 +1050,29 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1074,24 +1090,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>
@@ -1150,11 +1148,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
@@ -1166,11 +1164,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
