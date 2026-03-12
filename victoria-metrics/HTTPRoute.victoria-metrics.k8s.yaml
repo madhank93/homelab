@@ -15,7 +15,7 @@ spec:
     - filters:
         - requestRedirect:
             path:
-              replaceFullPath: /select/0/vmui/
+              replaceFullPath: /vmui/
               type: ReplaceFullPath
             statusCode: 302
           type: RequestRedirect
@@ -26,8 +26,8 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: victoria-metrics-victoria-metrics-cluster-vmselect
-          port: 8481
+          name: vmsingle-victoria-metrics
+          port: 8429
           weight: 1
       matches:
         - path:
