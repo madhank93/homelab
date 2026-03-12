@@ -55,8 +55,15 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		ReleaseName: jsii.String("victoria-metrics"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{
+			// Shorten generated resource names — the release name "victoria-metrics" combined
+			// with chart name "victoria-metrics-k8s-stack" produces 44-char fullnames.
+			// VMAlertmanager pod labels then exceed Kubernetes' 63-byte limit.
+			// fullnameOverride: "vm-stack" gives a 8-char base → all labels stay short.
+			// Service names become: vmsingle-vm-stack, vmalertmanager-vm-stack, etc.
+			"fullnameOverride": "vm-stack",
+
 			// VMSingle — single-node storage, simpler than VMCluster for homelab.
-			// Service: vmsingle-victoria-metrics.victoria-metrics.svc.cluster.local:8429
+			// Service: vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8429
 			"vmsingle": map[string]any{
 				"enabled": true,
 				"spec": map[string]any{
