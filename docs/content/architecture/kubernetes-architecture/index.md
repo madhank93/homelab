@@ -49,7 +49,7 @@ flowchart TB
         CIL["Cilium L2 LB<br/>192.168.1.220"]
         ARGO["ArgoCD<br/>ApplicationSet"]
         LONG["Longhorn<br/>distributed storage"]
-        INF["Infisical<br/>operator + secrets"]
+        OB["OpenBao<br/>CSI Driver + KV secrets"]
         CERT["cert-manager<br/>wildcard TLS"]
     end
 
@@ -61,7 +61,7 @@ flowchart TB
     CIL --> W1 & W2 & W3 & W4
     ARGO -->|"syncs workloads<br/>from manifests branch"| W1 & W2 & W3 & W4
     LONG --> W1 & W2 & W3 & W4
-    INF -->|"InfisicalSecret CRs"| W1 & W2 & W3 & W4
+    OB -->|"CSI volume mounts"| W1 & W2 & W3 & W4
     CERT -->|"cert-manager ACME"| CIL
     WG <-->|"WireGuard<br/>192.168.1.0/24"| CIL
 {% end %}
@@ -110,7 +110,7 @@ The Gateway API `GatewayClass` is provisioned by `core/platform/cilium.go`. App 
 | Package | Components | Node affinity |
 |---------|-----------|--------------|
 | `storage/` | Longhorn | DaemonSet — all workers |
-| `secrets/` | Infisical + PostgreSQL | Any worker |
+| `secrets/` | OpenBao + CSI Driver | Any worker |
 | `observability/` | VictoriaMetrics, VictoriaLogs, OTel | Deployment + DaemonSet |
 | `monitoring/` | Grafana | Any worker |
 | `security/` | Falco (eBPF), Kyverno, Trivy | DaemonSet + CronJob |

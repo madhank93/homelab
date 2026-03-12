@@ -150,7 +150,7 @@ workloads/
 ├── networking/          netbird_peer.go
 ├── observability/       victoria_metrics.go  victoria_logs.go  otel_collector.go  alert_manager.go
 ├── registry/            harbor.go
-├── secrets/             infisical.go
+├── secrets/             openbao.go  csi_driver.go
 ├── security/            falco.go  keyverno.go  trivy.go
 ├── storage/             longhorn.go
 └── support/             reloader.go
@@ -176,7 +176,7 @@ template:
         - ServerSideApply=true   # required for CRDs >262KB (kube-prometheus-stack)
 ```
 
-> **`Prune=false` on bootstrap Secrets**: `infisical-secrets` and `cloudflare-api-token` are created by `just create-secrets`, not by CDK8s. Both carry `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never tries to delete them.
+> **`Prune=false` on bootstrap Secrets**: `openbao-unseal-key` and `cloudflare-api-token` are created by `just create-secrets`, not by CDK8s. Both carry `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never tries to delete them.
 
 ---
 

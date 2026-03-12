@@ -91,9 +91,15 @@ ArgoCD is exposed via two routes:
 | HTTPRoute | `argocd.local` | LAN HTTP access |
 | TLSRoute | `argocd.madhan.app` | TLS passthrough to argocd-server:443 |
 
-## `ignoreDifferences` Note
+## `ignoreDifferences`
 
-The ArgoCD ApplicationSet currently includes an `ignoreDifferences` block for Infisical `InfisicalSecret` resources (legacy from before the OpenBao migration). This can be removed when Infisical is fully decommissioned.
+The ApplicationSet ignores fields that change dynamically and would otherwise cause permanent OutOfSync:
+
+| Resource | Ignored fields | Why |
+|----------|---------------|-----|
+| `Secret` (VM operator validation) | `/data` | Operator regenerates TLS cert on every restart |
+| `ValidatingWebhookConfiguration` (VM operator) | `.webhooks[].clientConfig.caBundle` | CA bundle updated dynamically by operator |
+| All `StatefulSet` resources | `.spec.volumeClaimTemplates[].apiVersion`, `.spec.volumeClaimTemplates[].kind` | CDK8s generates these fields; Kubernetes strips them on admission |
 
 ## Bootstrap Secrets (`Prune=false`)
 

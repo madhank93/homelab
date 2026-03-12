@@ -40,4 +40,4 @@ The homelab is designed around four principles: **everything as code**, **no man
 | [Network Flow](/architecture/network-flow) | How traffic reaches services — public internet, LAN, and VPN paths |
 | [Kubernetes Architecture](/architecture/kubernetes-architecture) | Node layout, CNI, platform services, workload placement |
 | [GitOps Flow](/architecture/gitops-flow) | Pulumi infra path vs CDK8s workload path; CI pipeline |
-| [Secrets Flow](/architecture/secrets-flow) | SOPS bootstrap secrets + Infisical runtime secrets + Bifrost auto-provisioning |
+| [Secrets Flow](/architecture/secrets-flow) | SOPS bootstrap secrets + OpenBao runtime secrets + Bifrost auto-provisioning |

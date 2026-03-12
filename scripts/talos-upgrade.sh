@@ -360,7 +360,7 @@ main() {
   log_info "Next steps:"
   log_info "1. Verify Longhorn deployment: kubectl get pods -n longhorn-system"
   log_info "2. Check StorageClass: kubectl get storageclass"
-  log_info "3. Verify Infisical PVCs: kubectl get pvc -n infisical"
+  log_info "3. Verify OpenBao is unsealed: kubectl exec -n openbao openbao-0 -- bao status"
   log_info "4. Monitor cluster for 24 hours"
 }
 

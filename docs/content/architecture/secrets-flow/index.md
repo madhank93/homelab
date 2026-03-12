@@ -1,6 +1,6 @@
 +++
 title = "Secrets Flow"
-description = "How bootstrap and runtime secrets are encrypted, distributed, and consumed — including automated Bifrost VPS secret provisioning."
+description = "How bootstrap and runtime secrets are encrypted, distributed, and consumed — SOPS for bootstrap, OpenBao + CSI Driver for runtime."
 weight = 40
 +++
 
@@ -10,8 +10,8 @@ All secrets are managed by exactly two systems. The split is intentional — boo
 
 | Tier | Tool | When | What's stored |
 |------|------|------|---------------|
-| **Bootstrap** | SOPS + age | One-time setup | Infisical DB credentials, Cloudflare API token, Hetzner token, Authentik keys, NetBird keys |
-| **Runtime** | Infisical operator | Continuously synced | All app secrets (Grafana, Harbor, n8n, Rancher, …) |
+| **Bootstrap** | SOPS + age | One-time setup | OpenBao unseal key, Cloudflare API token, Hetzner token, Authentik keys, NetBird keys |
+| **Runtime** | OpenBao + CSI Driver | Continuously available | All app secrets (Grafana, Harbor, n8n, Rancher, …) |
 
 **CDK8s generates zero `Secret` resources.** The CI pipeline needs zero GitHub Actions secrets.
 
@@ -25,13 +25,13 @@ flowchart TB
         S1["CLOUDFLARE_API_TOKEN<br/>HCLOUD_TOKEN · PROXMOX_PASSWORD"]
         S2["AUTHENTIK_TOKEN · AUTHENTIK_SECRET_KEY<br/>AUTHENTIK_POSTGRESQL_PASSWORD"]
         S3["NB_DATA_STORE_KEY · NB_RELAY_SECRET<br/>NB_PROXY_TOKEN · NB_BIFROST_SETUP_KEY"]
-        S4["INFISICAL_DB_PASSWORD · INFISICAL_AUTH_SECRET<br/>INFISICAL_ENCRYPTION_KEY · REDIS_PASSWORD"]
+        S4["OPENBAO_UNSEAL_KEY"]
     end
 
     subgraph BOOT["Bootstrap — one-time laptop operations"]
         AGE["age private key<br/>~/.config/sops/age/keys.txt"]
         CS["just create-secrets<br/>bash scripts/create-bootstrap-secrets.sh"]
-        KBS1["k8s Secret: infisical-secrets<br/>namespace: infisical"]
+        KBS1["k8s Secret: openbao-unseal-key<br/>namespace: openbao"]
         KBS2["k8s Secret: cloudflare-api-token<br/>namespace: cert-manager"]
     end
 
@@ -45,18 +45,18 @@ flowchart TB
         NBI["NB_IDP_MGMT_TOKEN<br/>appended to .secrets.env"]
     end
 
-    subgraph RUNTIME["Runtime — Infisical continuous sync"]
-        ISVC["Infisical Platform<br/>infisical.madhan.app"]
-        IOP["Infisical Operator<br/>InfisicalSecret CRs"]
-        APPSEC["App k8s Secrets<br/>grafana-admin · harbor-admin<br/>n8n-db · rancher-bootstrap"]
-        POD["Workload Pods<br/>envFrom / volumeMount"]
+    subgraph RUNTIME["Runtime — OpenBao + CSI Driver"]
+        OB["OpenBao<br/>openbao.madhan.app (KV v2)"]
+        CSI["Secrets Store CSI Driver<br/>DaemonSet on all nodes"]
+        SPC["SecretProviderClass per app<br/>defines: vault role, secret paths"]
+        POD["Workload Pods<br/>files at /mnt/secrets<br/>or secretObjects → k8s Secret"]
     end
 
     AGE -->|decrypts| SOPSFILE
     SOPSFILE -->|sops exec-env| CS
     CS -->|kubectl create secret| KBS1
     CS -->|kubectl create secret| KBS2
-    KBS1 -->|mounts service token| ISVC
+    KBS1 -->|unseal sidecar reads key| OB
 
     SOPSFILE -->|sops exec-env| HG
     HG --> SE & DE
@@ -66,9 +66,9 @@ flowchart TB
     BS --> NC
     NBI & NC -->|env ready| BS
 
-    ISVC -->|operator polls API| IOP
-    IOP -->|creates/updates| APPSEC
-    APPSEC -->|envFrom| POD
+    OB -->|K8s auth| CSI
+    CSI -->|fetches secrets| SPC
+    SPC -->|mounts files or syncs Secret| POD
 {% end %}
 
 ---
@@ -104,11 +104,8 @@ NB_RELAY_SECRET: <openssl rand -base64 32>      # relay auth shared secret
 NB_PROXY_TOKEN: <netbird personal access token> # added after first login to NetBird
 NB_BIFROST_SETUP_KEY: <netbird setup key>       # added after first login to NetBird
 
-# Infisical — K8s secrets platform
-INFISICAL_DB_PASSWORD: <strong random>
-INFISICAL_ENCRYPTION_KEY: <openssl rand -hex 16>
-INFISICAL_AUTH_SECRET: <openssl rand -hex 24>
-REDIS_PASSWORD: <strong random>
+# OpenBao — K8s secrets platform
+OPENBAO_UNSEAL_KEY: <openssl rand -base64 32>   # generated once on first deploy
 ```
 
 > **`NB_DATA_STORE_KEY` and `NB_RELAY_SECRET` must never change** after the first deploy — the NetBird SQLite database is encrypted with these values. Rotating them means losing all peer registrations.
@@ -119,7 +116,7 @@ REDIS_PASSWORD: <strong random>
 # Creates two k8s Secrets from the SOPS file:
 just create-secrets
 # → sops exec-env secrets/bootstrap.sops.yaml 'bash scripts/create-bootstrap-secrets.sh'
-# → kubectl create secret generic infisical-secrets -n infisical
+# → kubectl create secret generic openbao-unseal-key -n openbao
 # → kubectl create secret generic cloudflare-api-token -n cert-manager
 ```
 
@@ -147,48 +144,43 @@ See [Hetzner Bifrost](/infrastructure/hetzner-bifrost) for the full bootstrap se
 
 ---
 
-## Runtime Secrets (Infisical)
+## Runtime Secrets (OpenBao + CSI Driver)
 
-After the cluster is up, all application secrets are managed by the [Infisical operator](/workloads/management/infisical). Each app defines an `InfisicalSecret` CR that points to a path in the Infisical project.
+After the cluster is up, all application secrets are managed by [OpenBao](/apps/secrets/openbao). Apps consume secrets via the Secrets Store CSI Driver — secrets are mounted as files in pods, or synced to k8s Secrets via `secretObjects`.
 
-### Apps using Infisical
+### Patterns
 
-| App | Infisical path | k8s Secret | Keys |
-|-----|---------------|------------|------|
-| Grafana | `/grafana` | `grafana-admin` | `ADMIN_PASSWORD` |
-| Harbor | `/harbor` | `harbor-admin` | `HARBOR_ADMIN_PASSWORD` |
-| n8n | `/n8n` | `n8n-db` | `DB_PASSWORD`, `N8N_ENCRYPTION_KEY` |
-| Rancher | `/rancher` | `rancher-bootstrap` | `BOOTSTRAP_PASSWORD` |
-| NetBird peer | `/netbird` | `netbird-setup-key` | `NETBIRD_SETUP_KEY` |
+**Pattern A — file-only** (no k8s Secret created):
 
-### InfisicalSecret pattern
-
-```yaml
-apiVersion: secrets.infisical.com/v1alpha1
-kind: InfisicalSecret
-metadata:
-  name: grafana-admin
-  namespace: grafana
-  annotations:
-    # Required — Infisical CRD missing projectSlug breaks SSA validation
-    argocd.argoproj.io/sync-options: ServerSideApply=false
-spec:
-  hostAPI: https://infisical.madhan.app/api
-  resyncInterval: 60
-  authentication:
-    serviceToken:
-      serviceTokenSecretReference:
-        secretName: infisical-service-token
-        secretNamespace: infisical
-      secretsScope:
-        envSlug: prod
-        secretsPath: /grafana
-  managedSecretReference:
-    secretName: grafana-admin
-    secretNamespace: grafana
+```
+Pod → CSI volume mount → /mnt/secrets/ADMIN_PASSWORD
+env: GF_SECURITY_ADMIN_PASSWORD__FILE=/mnt/secrets/ADMIN_PASSWORD
 ```
 
-The operator polls Infisical every 60 seconds. Secrets are updated in-place without pod restarts (unless using [Reloader](/workloads/support/reloader)).
+Used by: **Grafana**
+
+**Pattern B — secretObjects sync** (k8s Secret created and kept in sync):
+
+```
+SecretProviderClass.secretObjects → k8s Secret (e.g. harbor-admin)
+Helm chart: existingSecret: harbor-admin
+```
+
+Used by: **Harbor**, **n8n**, **Rancher**, **NetBird peer**
+
+### Apps and their OpenBao paths
+
+| App | OpenBao path | Pattern | k8s Secret |
+|-----|-------------|---------|------------|
+| Grafana | `secret/data/grafana` | A (file) | — |
+| Harbor | `secret/data/harbor` | B (sync) | `harbor-admin` |
+| n8n | `secret/data/n8n` | B (sync) | `n8n-db` |
+| Rancher | `secret/data/rancher` | B (sync) | `rancher-bootstrap` |
+| NetBird peer | `secret/data/netbird` | B (sync) | `netbird-setup-key` |
+
+### One-time setup
+
+After first deploy, run `just openbao-setup` to configure K8s auth, policies, roles, and write initial secrets. See [OpenBao](/apps/secrets/openbao) for details.
 
 ---
 
@@ -202,6 +194,7 @@ The operator polls Infisical every 60 seconds. Secrets are updated in-place with
 | `NB_IDP_MGMT_TOKEN` | Auto-written to `.secrets.env` by `bootstrap.sh` | Auto | Yes |
 | `NB_PROXY_TOKEN` | SOPS → `.secrets.env` | After first NetBird login | Yes |
 | `NB_BIFROST_SETUP_KEY` | SOPS → `.secrets.env` | After first NetBird login | Yes |
-| `CLOUDFLARE_API_TOKEN` | SOPS → `.secrets.env` + k8s Secret | Phase 0 | Yes |
-| App passwords | Infisical | Phase 2 | Yes |
-| `NETBIRD_SETUP_KEY` (k8s) | Infisical `/netbird` | After first NetBird login | Yes |
+| `CLOUDFLARE_API_TOKEN` | SOPS → k8s Secret | Phase 0 | Yes |
+| `OPENBAO_UNSEAL_KEY` | SOPS → k8s Secret | Phase 0 | Yes (redeploy OpenBao) |
+| App passwords | OpenBao KV | Phase 2 (`just openbao-setup`) | Yes |
+| `NETBIRD_SETUP_KEY` (k8s) | OpenBao `/netbird` | After first NetBird login | Yes |

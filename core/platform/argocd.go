@@ -155,14 +155,25 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 							// exceed the 262KB kubectl.kubernetes.io/last-applied-configuration limit
 							"syncOptions": []string{"CreateNamespace=true", "ServerSideApply=true"},
 						},
-						// Infisical CRD schema omits projectSlug from secretsScope —
-						// skip structured merge diff for InfisicalSecret spec to avoid
-						// "field not declared in schema" comparison errors
 						"ignoreDifferences": []map[string]any{
+							// VM operator regenerates TLS cert on every restart — ignore dynamic fields.
 							{
-								"group":        "secrets.infisical.com",
-								"kind":         "InfisicalSecret",
-								"jsonPointers": []string{"/spec"},
+								"kind":         "Secret",
+								"name":         "victoria-metrics-victoria-metrics-operator-validation",
+								"namespace":    "victoria-metrics",
+								"jsonPointers": []string{"/data"},
+							},
+							{
+								"group":            "admissionregistration.k8s.io",
+								"kind":             "ValidatingWebhookConfiguration",
+								"name":             "victoria-metrics-victoria-metrics-operator-admission",
+								"jqPathExpressions": []string{".webhooks[].clientConfig.caBundle"},
+							},
+							// CDK8s generates apiVersion/kind in volumeClaimTemplates;
+							// Kubernetes strips them on admission. Ignore to prevent permanent OutOfSync.
+							{
+								"kind":             "StatefulSet",
+								"jqPathExpressions": []string{".spec.volumeClaimTemplates[].apiVersion", ".spec.volumeClaimTemplates[].kind"},
 							},
 						},
 					},

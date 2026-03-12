@@ -31,7 +31,7 @@ func main() {
 	storage.NewLonghornChart(longhornApp, "longhorn-app", "longhorn-system")
 	longhornApp.Synth()
 
-	// OpenBao (secrets store) — replaces Infisical
+	// OpenBao (secrets store)
 	openBaoApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/openbao", rootFolder)),
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
@@ -169,7 +169,6 @@ func main() {
 	})
 	management.NewHeadlampChart(headlampApp, "headlamp-app", "headlamp")
 	headlampApp.Synth()
-
 
 	rancherApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/rancher", rootFolder)),

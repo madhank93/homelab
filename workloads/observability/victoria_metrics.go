@@ -94,6 +94,15 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 			// VMCluster disabled — VMSingle is sufficient for single-node homelab.
 			"vmcluster": map[string]any{"enabled": false},
 
+			// Disable operator CRD cleanup hook — CDK8s preserves helm.sh/hook annotations,
+			// so ArgoCD 3.3 interprets them as ArgoCD pre-delete hooks and tries to run
+			// them on every sync, causing DeletionError (ClusterRole already exists).
+			"victoria-metrics-operator": map[string]any{
+				"crds": map[string]any{
+					"cleanup": map[string]any{"enabled": false},
+				},
+			},
+
 			// VMAgent — scrapes all ServiceMonitors/PodMonitors cluster-wide.
 			// selectAllByDefault:true picks up existing ServiceMonitors from ArgoCD, Falco,
 			// Longhorn, DCGM Exporter, Kyverno, CNPG without any manual configuration.

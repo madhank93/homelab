@@ -73,7 +73,7 @@ See [Secrets Architecture](/infrastructure/secrets) and the [Deployment Guide](/
 ## Bootstrap Quick Reference
 
 ```bash
-# 1. Create bootstrap k8s Secrets (Infisical + Cloudflare)
+# 1. Create bootstrap k8s Secrets (OpenBao unseal key + Cloudflare API token)
 just create-secrets
 
 # 2. Provision VMs, bootstrap Talos, install Cilium + ArgoCD  (~15 min)
