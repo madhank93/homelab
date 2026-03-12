@@ -177,7 +177,15 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 
 			// Default dashboards as ConfigMaps labelled grafana_dashboard:"1".
 			// Grafana sidecar auto-provisions: node-exporter, VM operator, VMAlert, k8s dashboards.
-			"defaultDashboards": map[string]any{"enabled": true},
+			// Replace=true: node-exporter-full dashboard is 236KB — exceeds the 262KB
+			// kubectl last-applied-configuration annotation limit. Replace strategy skips
+			// the annotation entirely (uses PUT instead of PATCH).
+			"defaultDashboards": map[string]any{
+				"enabled": true,
+				"annotations": map[string]any{
+					"argocd.argoproj.io/sync-options": "Replace=true",
+				},
+			},
 
 			// Default alerting rules for k8s + VictoriaMetrics components.
 			"defaultRules": map[string]any{"create": true},
