@@ -26,7 +26,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: vmsingle-victoria-metrics
+          name: vmsingle-vm-stack
           port: 8429
           weight: 1
       matches:

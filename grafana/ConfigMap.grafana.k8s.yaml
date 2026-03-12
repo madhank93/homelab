@@ -18,7 +18,7 @@ data:
         timeInterval: 30s
       name: VictoriaMetrics
       type: prometheus
-      url: http://vmsingle-victoria-metrics.victoria-metrics.svc.cluster.local:8429
+      url: http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8429
     - access: proxy
       name: VictoriaLogs
       type: loki
