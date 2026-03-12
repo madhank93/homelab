@@ -18,12 +18,25 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		},
 	})
 
-	// VMOperator CRDs — must be applied before the k8s-stack chart resources.
-	// cdk8s.NewHelm renders only Helm templates, not the chart's crds/ folder.
-	// This is the same pattern used for Prometheus CRDs in the old alert_manager.go.
+	// CRDs — cdk8s.NewHelm renders only Helm templates, never the chart's crds/ directory.
+	// All CRDs that other resources depend on must be included explicitly here.
+
+	// VMOperator CRDs (VMSingle, VMAgent, VMAlert, VMAlertmanager, VMRule, VMServiceScrape, etc.)
+	// Pinned to the exact operator version bundled in victoria-metrics-k8s-stack@0.72.4 (Chart.lock: operator@0.59.2)
 	cdk8s.NewInclude(chart, jsii.String("vm-operator-crds"), &cdk8s.IncludeProps{
-		// Pinned to the exact operator version bundled in victoria-metrics-k8s-stack@0.72.4 (Chart.lock: operator@0.59.2)
 		Url: jsii.String("https://raw.githubusercontent.com/VictoriaMetrics/helm-charts/victoria-metrics-operator-0.59.2/charts/victoria-metrics-operator/crd.yaml"),
+	})
+
+	// Prometheus-operator CRDs (ServiceMonitor, PrometheusRule) — kept for compatibility.
+	// VMOperator watches ServiceMonitor CRDs when they exist. Apps like ArgoCD monitor,
+	// Falco, Longhorn, and DCGM Exporter create ServiceMonitor resources.
+	// Previously installed by alert_manager.go (kube-prometheus-stack); moved here to
+	// prevent ArgoCD from pruning them when that app was removed.
+	cdk8s.NewInclude(chart, jsii.String("servicemonitor-crd"), &cdk8s.IncludeProps{
+		Url: jsii.String("https://raw.githubusercontent.com/prometheus-community/helm-charts/kube-prometheus-stack-82.0.1/charts/kube-prometheus-stack/charts/crds/crds/crd-servicemonitors.yaml"),
+	})
+	cdk8s.NewInclude(chart, jsii.String("prometheusrule-crd"), &cdk8s.IncludeProps{
+		Url: jsii.String("https://raw.githubusercontent.com/prometheus-community/helm-charts/kube-prometheus-stack-82.0.1/charts/kube-prometheus-stack/charts/crds/crds/crd-prometheusrules.yaml"),
 	})
 
 	// victoria-metrics-k8s-stack — all-in-one chart that includes:
