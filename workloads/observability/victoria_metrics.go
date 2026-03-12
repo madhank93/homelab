@@ -12,9 +12,17 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		Namespace: jsii.String(namespace),
 	})
 
+	// PodSecurity: privileged — node-exporter requires hostNetwork, hostPID,
+	// hostPath (/proc, /sys, /root) and hostPort 9100. The default baseline
+	// policy blocks all of these, so we label the namespace privileged.
 	k8s.NewKubeNamespace(chart, jsii.String("victoria-metrics-namespace"), &k8s.KubeNamespaceProps{
 		Metadata: &k8s.ObjectMeta{
 			Name: jsii.String(namespace),
+			Labels: &map[string]*string{
+				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
+				"pod-security.kubernetes.io/audit":   jsii.String("privileged"),
+				"pod-security.kubernetes.io/warn":    jsii.String("privileged"),
+			},
 		},
 	})
 
