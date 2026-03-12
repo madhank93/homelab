@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux." />
+            <meta name="description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, DCGM Exporter, and time-slicing for Talos Linux." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="NVIDIA Device Plugin | Homelab" />
-      <meta property="og:description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux." />
+      <meta property="og:description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, DCGM Exporter, and time-slicing for Talos Linux." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="NVIDIA Device Plugin" />
-      <meta name="twitter:description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux." />
+      <meta name="twitter:description" content="Standalone NVIDIA k8s-device-plugin with NFD, GFD, DCGM Exporter, and time-slicing for Talos Linux." />
       
       
       
@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -506,44 +506,102 @@
             NVIDIA Device Plugin
             
         </h1>
-        <p class="text-gray-500">Standalone NVIDIA k8s-device-plugin with NFD, GFD, and time-slicing for Talos Linux.</p>
+        <p class="text-gray-500">Standalone NVIDIA k8s-device-plugin with NFD, GFD, DCGM Exporter, and time-slicing for Talos Linux.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>workloads/hardware/nvidia_gpu_operator.go</code></td></tr>
-<tr><td>Namespace</td><td><code>nvidia-gpu-operator</code></td></tr>
-<tr><td>Helm chart</td><td><code>nvidia-device-plugin</code> v0.18.2 (nvidia.github.io/k8s-device-plugin)</td></tr>
-<tr><td>HTTPRoute</td><td>None</td></tr>
-<tr><td>UI</td><td>No</td></tr>
+    <h2 id="what-is-the-nvidia-device-plugin">What is the NVIDIA Device Plugin?</h2>
+<p>The <a href="https://github.com/NVIDIA/k8s-device-plugin">NVIDIA k8s-device-plugin</a> is a Kubernetes DaemonSet that advertises <code>nvidia.com/gpu</code> as a schedulable resource on GPU nodes. It enables pods to request GPUs in their resource limits, which triggers device assignment and NVIDIA library injection into the container.</p>
+<h2 id="why-the-standalone-device-plugin-not-full-gpu-operator">Why the Standalone Device Plugin (Not Full GPU Operator)?</h2>
+<p>The full NVIDIA GPU Operator includes a validator that runs init containers checking standard library paths. On Talos Linux, NVIDIA libraries live at <code>/usr/local/glibc/usr/lib/</code> (inside a squashfs filesystem, not bind-mountable via hostPath). The operator's validator fails on Talos.</p>
+<p>The standalone device plugin has no validation init containers and works out of the box on Talos, as long as the <code>nvidia-open-gpu-kernel-modules-production</code> and <code>nvidia-container-toolkit-production</code> Talos system extensions are installed.</p>
+<table><thead><tr><th>Approach</th><th>Talos compatible</th><th>Setup complexity</th></tr></thead><tbody>
+<tr><td><strong>Standalone device plugin</strong></td><td>Yes</td><td>Low</td></tr>
+<tr><td>Full GPU Operator</td><td>No (validator fails)</td><td>High</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>Advertises <code>nvidia.com/gpu</code> as a schedulable Kubernetes resource on nodes with an NVIDIA GPU.</p>
-<p>On Talos Linux, the GPU driver and container toolkit are provided by Talos system extensions — the full GPU operator is not needed and its validator is incompatible with Talos's non-standard library paths. The standalone device plugin is a drop-in replacement with no validation init containers.</p>
-<p>Sub-charts included:</p>
-<ul>
-<li><strong>NFD (Node Feature Discovery):</strong> labels GPU nodes with <code>feature.node.kubernetes.io/pci-10de.present=true</code></li>
-<li><strong>GFD (GPU Feature Discovery):</strong> adds <code>nvidia.com/gpu.present=true</code>, product, memory, and count labels</li>
-</ul>
-<h2 id="talos-specific-configuration">Talos-Specific Configuration</h2>
-<p><code>DEVICE_LIST_STRATEGY=envvar</code> is set via the inline plugin config. CDI mode generates spec entries with hostPath mounts that fail on Talos because NVIDIA libs live at <code>/usr/local/glibc/usr/lib/</code> rather than standard paths. With <code>envvar</code> mode the device plugin injects <code>NVIDIA_VISIBLE_DEVICES=&lt;uuid&gt;</code> into the container environment, and the Talos <code>nvidia-container-runtime</code> extension handles GPU device injection using its own Talos-aware library paths.</p>
-<h2 id="gpu-time-slicing">GPU Time-Slicing</h2>
-<p>Time-slicing is configured inline in the Helm values <code>config.map.default</code>:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">version</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v1
-</span><span style="color:#73d0ff;">flags</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">migStrategy</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">none
-</span><span style="color:#73d0ff;">plugin</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">deviceListStrategy</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">envvar
-</span><span style="color:#73d0ff;">sharing</span><span style="color:#ccc9c2cc;">:
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>Three Helm charts are deployed in the <code>nvidia-gpu-operator</code> namespace:</p>
+<table><thead><tr><th>Chart</th><th>Version</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>nvidia-device-plugin</code></td><td>v0.18.2</td><td>GPU device advertisement + time-slicing config</td></tr>
+<tr><td><code>dcgm-exporter</code></td><td>v3.4.2</td><td>GPU metrics (util, VRAM, temp, power)</td></tr>
+<tr><td>(NFD/GFD)</td><td>bundled with device plugin</td><td>Node/GPU feature labels</td></tr>
+</tbody></table>
+<p>A <code>RuntimeClass</code> named <code>nvidia</code> is also created (handler: <code>nvidia</code>), matching the containerd runtime configured by the <code>nvidia-container-toolkit-production</code> Talos extension.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/hardware/nvidia_gpu_operator.go"><code>workloads/hardware/nvidia_gpu_operator.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>nvidia-gpu-operator</code></td><td>Privileged PSA required</td></tr>
+<tr><td><code>runtimeClassName</code></td><td><code>nvidia</code></td><td>Routes containers through nvidia-container-runtime</td></tr>
+<tr><td><code>deviceDiscoveryStrategy</code></td><td><code>nvml</code></td><td>Direct kernel module NVML access (not standard paths)</td></tr>
+<tr><td><code>deviceListStrategy</code></td><td><code>envvar</code></td><td>Inject <code>NVIDIA_VISIBLE_DEVICES</code> (CDI hostPath fails on Talos)</td></tr>
+<tr><td>Time-slicing replicas</td><td><code>2</code></td><td>Ollama + ComfyUI share one physical GPU</td></tr>
+<tr><td>NFD</td><td>enabled</td><td>Labels GPU nodes with <code>feature.node.kubernetes.io/pci-10de.present=true</code></td></tr>
+<tr><td>GFD</td><td>enabled</td><td>Labels with <code>nvidia.com/gpu.present=true</code>, product, memory, count</td></tr>
+</tbody></table>
+<h2 id="time-slicing-config">Time-Slicing Config</h2>
+<p>The inline plugin configuration enables time-slicing:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">sharing</span><span style="color:#ccc9c2cc;">:
 </span><span>  </span><span style="color:#73d0ff;">timeSlicing</span><span style="color:#ccc9c2cc;">:
 </span><span>    </span><span style="color:#73d0ff;">resources</span><span style="color:#ccc9c2cc;">:
 </span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia.com/gpu
 </span><span>        </span><span style="color:#73d0ff;">replicas</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">2
 </span></code></pre>
-<p>After applying, <code>kubectl describe node k8s-worker4</code> shows:</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Allocatable:
-</span><span>  nvidia.com/gpu: 2
+<p>After applying, the GPU node advertises <code>nvidia.com/gpu: 2</code> (allocatable). Both Ollama and ComfyUI can request <code>nvidia.com/gpu: 1</code> simultaneously. VRAM is shared (not isolated) — roughly 4 GB (Ollama 7B model) + 6 GB (ComfyUI SDXL) fits within the 16 GB RTX 5070 Ti VRAM pool.</p>
+<h2 id="talos-specific-configuration">Talos-Specific Configuration</h2>
+<ul>
+<li><strong><code>deviceDiscoveryStrategy: nvml</code></strong> — <code>auto</code> probes standard paths that don't exist on Talos. <code>nvml</code> talks directly to the kernel module loaded by the <code>nvidia-open-gpu-kernel-modules-production</code> extension.</li>
+<li><strong><code>deviceListStrategy: envvar</code></strong> — CDI mode generates hostPath mounts pointing to standard library paths that don't exist on Talos. <code>envvar</code> injects <code>NVIDIA_VISIBLE_DEVICES=&lt;uuid&gt;</code> into the container environment and lets the Talos <code>nvidia-container-runtime</code> extension handle GPU injection using its own Talos-aware paths.</li>
+</ul>
+<h2 id="dcgm-exporter">DCGM Exporter</h2>
+<p>The DCGM Exporter runs as a DaemonSet only on the GPU node (via node affinity on <code>nvidia.com/gpu.present=true</code> and toleration for <code>dedicated=ai:NoSchedule</code>). It exports GPU metrics to VMAgent via a ServiceMonitor.</p>
+<p>Metrics available:</p>
+<ul>
+<li>GPU utilization (<code>DCGM_FI_DEV_GPU_UTIL</code>)</li>
+<li>VRAM usage (<code>DCGM_FI_DEV_FB_USED</code>)</li>
+<li>Temperature (<code>DCGM_FI_DEV_GPU_TEMP</code>)</li>
+<li>Power draw (<code>DCGM_FI_DEV_POWER_USAGE</code>)</li>
+<li>Clock speeds</li>
+</ul>
+<p>The DCGM Exporter also creates a Grafana dashboard ConfigMap with pre-built GPU panels.</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Talos system extensions (boot time):
+</span><span>  nvidia-open-gpu-kernel-modules → loads nvidia.ko, nvidia_uvm.ko, etc.
+</span><span>  nvidia-container-toolkit → configures containerd nvidia runtime
+</span><span>
+</span><span>NVIDIA Device Plugin DaemonSet:
+</span><span>  → NFD labels GPU nodes
+</span><span>  → GFD labels GPU capabilities
+</span><span>  → Advertises nvidia.com/gpu:2 on k8s-worker4
+</span><span>
+</span><span>Pod with nvidia.com/gpu: 1 + runtimeClassName: nvidia:
+</span><span>  → containerd routes to nvidia-container-runtime
+</span><span>  → nvidia-container-runtime injects libnvidia-ml.so.1 into container
+</span><span>  → GPU accessible to application
+</span><span>
+</span><span>DCGM Exporter → ServiceMonitor → VMAgent → VictoriaMetrics → Grafana
 </span></code></pre>
-<p>Both Ollama and ComfyUI can request <code>nvidia.com/gpu: 1</code> simultaneously. VRAM is shared (not partitioned) — ~4 GB (Ollama 7B) + ~6 GB (ComfyUI SDXL) fits within the 16 GB RTX 5070 Ti pool.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="gpu-not-advertised">GPU Not Advertised</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check device plugin is running on GPU node
+</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> nvidia-gpu-operator</span><span style="color:#ffcc66;"> -o</span><span> wide </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> worker4
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check node allocatable
+</span><span style="color:#ffd580;">kubectl</span><span> describe node k8s-worker4 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -A5</span><span> Allocatable
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Should show:
+</span><span style="font-style:italic;color:#5c6773;"># nvidia.com/gpu: 2
+</span></code></pre>
+<h3 id="nvml-initialization-failed">NVML Initialization Failed</h3>
+<p><strong>Symptoms:</strong> Device plugin logs show <code>Failed to initialize NVML</code>.</p>
+<p><strong>Fix:</strong> Check kernel modules are loaded:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">talosctl</span><span style="color:#ffcc66;"> --talosconfig </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.talos/config dmesg</span><span style="color:#ffcc66;"> --nodes</span><span> 192.168.1.224 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> nvidia
+</span></code></pre>
+<p>If modules are missing, the Talos GPU image may not have been used for this node. Re-provision with the GPU schematic image.</p>
+<h3 id="container-not-getting-gpu">Container Not Getting GPU</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check runtimeClassName is set
+</span><span style="color:#ffd580;">kubectl</span><span> get pod </span><span style="color:#f29e74;">&lt;</span><span>pod-name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n </span><span style="color:#f29e74;">&lt;</span><span>namespace</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>o yaml </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> runtimeClassName
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check tolerations include dedicated=ai
+</span><span style="color:#ffd580;">kubectl</span><span> get pod </span><span style="color:#f29e74;">&lt;</span><span>pod-name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n </span><span style="color:#f29e74;">&lt;</span><span>namespace</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>o yaml </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -A5</span><span> tolerations
+</span></code></pre>
 
 
     <!--  Errata section  -->
@@ -633,13 +691,31 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#what-is-the-nvidia-device-plugin" class="toc-link">What is the NVIDIA Device Plugin?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#why-the-standalone-device-plugin-not-full-gpu-operator" class="toc-link">Why the Standalone Device Plugin (Not Full GPU Operator)?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#configuration" class="toc-link">Configuration</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#time-slicing-config" class="toc-link">Time-Slicing Config</a>
                     
                 </li>
             
@@ -651,7 +727,38 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#gpu-time-slicing" class="toc-link">GPU Time-Slicing</a>
+                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#dcgm-exporter" class="toc-link">DCGM Exporter</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#gpu-not-advertised" class="toc-link">GPU Not Advertised</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#nvml-initialization-failed" class="toc-link">NVML Initialization Failed</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/#container-not-getting-gpu" class="toc-link">Container Not Getting GPU</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -845,6 +952,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -928,6 +1037,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -956,13 +1067,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -980,6 +1109,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1022,155 +1167,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

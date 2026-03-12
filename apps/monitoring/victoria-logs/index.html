@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -508,23 +508,86 @@
         </h1>
         <p class="text-gray-500">Log storage with Loki-compatible query API.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/monitoring/victoria_logs.go</code></td></tr>
-<tr><td>Namespace</td><td><code>victoria-logs</code></td></tr>
-<tr><td>HTTPRoute</td><td>None</td></tr>
-<tr><td>UI</td><td>No</td></tr>
+    <h2 id="what-is-victorialogs">What is VictoriaLogs?</h2>
+<p><a href="https://docs.victoriametrics.com/victorialogs/">VictoriaLogs</a> is a log management solution from VictoriaMetrics that is compatible with the Loki API and ingestion protocol. It stores structured log data with efficient compression and provides LogQL-compatible querying.</p>
+<h2 id="why-victorialogs">Why VictoriaLogs?</h2>
+<p>VictoriaLogs uses significantly less memory and storage than Loki while maintaining API compatibility. Since Grafana already uses VictoriaMetrics as its metrics backend, using VictoriaLogs for logs keeps the entire observability stack within a single vendor ecosystem.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>VictoriaLogs runs as a single-node server in the <code>victoria-logs</code> namespace. It receives logs from the OTel Collector via OTLP/HTTP and serves them to Grafana via the Loki-compatible API.</p>
+<p><strong>Log sources:</strong></p>
+<ul>
+<li>Container stdout/stderr from every pod (via OTel Agent <code>filelog</code> receiver)</li>
+<li>Kubernetes events (via OTel Gateway <code>k8sobjects</code> receiver)</li>
+<li>Falco runtime security alerts (JSON to stdout, collected by OTel Agent)</li>
+</ul>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/victoria_logs.go"><code>workloads/observability/victoria_logs.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>victoria-logs</code></td><td>Isolated namespace</td></tr>
+<tr><td>Service port</td><td><code>9428</code></td><td>VictoriaLogs default</td></tr>
+<tr><td>Retention</td><td><code>30d</code></td><td>30 days of logs</td></tr>
+<tr><td>PVC</td><td><code>100Gi</code> Longhorn</td><td>Log storage</td></tr>
+<tr><td>Resources (limits)</td><td><code>1000m</code> / <code>1Gi</code></td><td>Log ingestion is memory-intensive</td></tr>
+<tr><td>Image pull policy</td><td><code>Always</code></td><td>Recover from corrupted cached image layers</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>VictoriaLogs stores container and host logs from the OTel Agent DaemonSet. It exposes a Loki-compatible API, enabling Grafana to query logs using the Loki datasource plugin and LogQL.</p>
-<h2 id="ingestion">Ingestion</h2>
-<p>The OTel Agent on each node collects container logs via the <code>filelog</code> receiver and forwards them to VictoriaLogs via OTLP/HTTP.</p>
-<p>Falco runtime alerts are also collected by the OTel Agent (from stdout) and forwarded here.</p>
-<h2 id="querying">Querying</h2>
-<p>From Grafana, select the VictoriaLogs datasource and use LogQL:</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>{namespace=&quot;comfyui&quot;}
-</span><span>{namespace=&quot;ollama&quot;} |= &quot;error&quot;
+<h2 id="otlp-ingestion-endpoint">OTLP Ingestion Endpoint</h2>
+<p>OTel Collector sends logs to:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry
 </span></code></pre>
+<p>The collector appends <code>/v1/logs</code> automatically (per the OTLP spec). VictoriaLogs accepts OTLP JSON and proto at this path.</p>
+<h2 id="grafana-datasource-url-important">Grafana Datasource URL (Important)</h2>
+<p>The VictoriaLogs URL in Grafana is configured as:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select
+</span></code></pre>
+<blockquote>
+<p><strong>Do NOT append <code>/loki</code> or <code>/loki/api/v1</code> to this URL.</strong> Grafana's Loki datasource plugin appends the API path (<code>/loki/api/v1/query_range</code>, etc.) automatically. If you configure the URL as <code>/select/loki</code>, Grafana will construct double-path URLs like <code>/select/loki/loki/api/v1/query_range</code> and every query will return 404.</p>
+</blockquote>
+<h2 id="httproute">HTTPRoute</h2>
+<p>VictoriaLogs UI is accessible at <code>http://victorialogs.madhan.app</code>. The web UI provides a log explorer interface.</p>
+<h2 id="querying-in-grafana">Querying in Grafana</h2>
+<p>Select the VictoriaLogs datasource and use LogQL:</p>
+<pre data-lang="logql" style="background-color:#212733;color:#ccc9c2;" class="language-logql "><code class="language-logql" data-lang="logql"><span># All logs from a namespace
+</span><span>{namespace=&quot;comfyui&quot;}
+</span><span>
+</span><span># Filter by content
+</span><span>{namespace=&quot;ollama&quot;} |= &quot;error&quot;
+</span><span>
+</span><span># Falco security alerts
+</span><span>{namespace=&quot;falco&quot;} |= &quot;Terminal shell in container&quot;
+</span><span>
+</span><span># Kubernetes events
+</span><span>{k8s.resource.name=&quot;Event&quot;} | json
+</span></code></pre>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Every cluster node
+</span><span>  → OTel Agent DaemonSet (filelog receiver collects /var/log/pods/)
+</span><span>  → OTLP/HTTP POST to VictoriaLogs:9428/insert/opentelemetry
+</span><span>
+</span><span>OTel Gateway (Deployment)
+</span><span>  → k8sobjects receiver (Kubernetes events)
+</span><span>  → OTLP/HTTP POST to VictoriaLogs
+</span><span>
+</span><span>VictoriaLogs:9428/select
+</span><span>  → Grafana Loki datasource
+</span><span>  → LogQL queries
+</span></code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="logs-not-appearing-in-grafana">Logs Not Appearing in Grafana</h3>
+<p><strong>Symptoms:</strong> No results in Grafana VictoriaLogs datasource.</p>
+<p><strong>Diagnosis:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check VictoriaLogs is running
+</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> victoria-logs
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check OTel Agent is sending logs
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> opentelemetry</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=otel-agent</span><span style="color:#ffcc66;"> --tail</span><span style="color:#f29e74;">=</span><span>50
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check ingestion directly
+</span><span style="color:#ffd580;">curl </span><span style="color:#bae67e;">&quot;http://victorialogs.madhan.app/select/logsql/query?query=*&amp;limit=5&quot;
+</span></code></pre>
+<p><strong>Fix:</strong> If OTel Agent is failing, check if the VictoriaLogs OTLP endpoint is reachable from the agent pods. The agent runs in the <code>opentelemetry</code> namespace with <code>privileged</code> pod security.</p>
+<h3 id="double-path-404-errors">Double-Path 404 Errors</h3>
+<p><strong>Symptoms:</strong> Grafana shows <code>404 Not Found</code> for log queries.</p>
+<p><strong>Fix:</strong> Check the VictoriaLogs datasource URL in Grafana. It must end at <code>/select</code> — not <code>/select/loki</code>. See the note above about the Loki plugin appending paths automatically.</p>
 
 
     <!--  Errata section  -->
@@ -614,25 +677,76 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#what-is-victorialogs" class="toc-link">What is VictoriaLogs?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#why-victorialogs" class="toc-link">Why VictoriaLogs?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#ingestion" class="toc-link">Ingestion</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#querying" class="toc-link">Querying</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#configuration" class="toc-link">Configuration</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#otlp-ingestion-endpoint" class="toc-link">OTLP Ingestion Endpoint</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#grafana-datasource-url-important" class="toc-link">Grafana Datasource URL (Important)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#httproute" class="toc-link">HTTPRoute</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#querying-in-grafana" class="toc-link">Querying in Grafana</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#logs-not-appearing-in-grafana" class="toc-link">Logs Not Appearing in Grafana</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-logs/#double-path-404-errors" class="toc-link">Double-Path 404 Errors</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -826,6 +940,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -909,6 +1025,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -937,13 +1055,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -961,6 +1097,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1003,155 +1155,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

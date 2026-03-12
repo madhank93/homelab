@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -508,26 +508,70 @@
         </h1>
         <p class="text-gray-500">Dashboards and data visualization for metrics and logs.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>workloads/monitoring/grafana.go</code></td></tr>
-<tr><td>Namespace</td><td><code>grafana</code></td></tr>
-<tr><td>HTTPRoute</td><td><code>grafana.madhan.app</code></td></tr>
-<tr><td>Access</td><td>Public — GitHub SSO via Authentik (Viewer for all, Admin for <code>grafana-admins</code> group)</td></tr>
+    <h2 id="what-is-grafana">What is Grafana?</h2>
+<p><a href="https://grafana.com/">Grafana</a> is an open-source observability platform for visualizing metrics, logs, and traces. It connects to multiple datasources and provides a rich dashboard editor with alerting capabilities.</p>
+<h2 id="why-grafana">Why Grafana?</h2>
+<p>Grafana is the de-facto standard for Kubernetes dashboards. It has native support for VictoriaMetrics (Prometheus-compatible) and VictoriaLogs (Loki-compatible), and its sidecar model for dashboard provisioning fits perfectly with the GitOps workflow.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>Grafana is the primary observability UI for the cluster. It visualizes:</p>
+<ul>
+<li>Node and pod metrics from VictoriaMetrics</li>
+<li>Container logs from VictoriaLogs</li>
+<li>GPU metrics from DCGM Exporter</li>
+<li>ArgoCD application health</li>
+<li>Longhorn volume status</li>
+<li>Falco security events</li>
+</ul>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/monitoring/grafana.go"><code>workloads/monitoring/grafana.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>grafana</code></td><td>Isolated namespace</td></tr>
+<tr><td>HTTPRoute</td><td><code>grafana.madhan.app</code> → port 3000</td><td>Gateway API</td></tr>
+<tr><td>Access</td><td>Public (Cloudflare A record)</td><td>GitHub SSO via Authentik</td></tr>
+<tr><td>Persistence</td><td><code>10Gi</code> RWX Longhorn</td><td>Avoids rolling update deadlock</td></tr>
+<tr><td>Admin user</td><td><code>admin</code></td><td>Set via env var</td></tr>
+<tr><td>Admin password</td><td>File at <code>/mnt/secrets/ADMIN_PASSWORD</code></td><td>Pattern A (CSI file mount)</td></tr>
+<tr><td>OAuth secret</td><td><code>grafana-oauth-secret</code> k8s Secret</td><td>Pattern B (CSI secretObjects sync)</td></tr>
 </tbody></table>
 <h2 id="datasources">Datasources</h2>
-<table><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody>
-<tr><td>VictoriaMetrics</td><td>Prometheus (default)</td></tr>
-<tr><td>VictoriaLogs</td><td>Loki</td></tr>
+<p>Configured statically in Helm values:</p>
+<table><thead><tr><th>Name</th><th>Type</th><th>URL</th><th>Notes</th></tr></thead><tbody>
+<tr><td>VictoriaMetrics</td><td><code>prometheus</code> (default)</td><td><code>http://victoria-metrics-victoria-metrics-cluster-vmselect.victoria-metrics.svc.cluster.local:8481/select/0/prometheus</code></td><td><code>timeInterval: 30s</code></td></tr>
+<tr><td>VictoriaLogs</td><td><code>loki</code></td><td><code>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select</code></td><td>Grafana appends <code>/loki/api/v1/...</code> automatically</td></tr>
 </tbody></table>
+<blockquote>
+<p><strong>Important:</strong> The VictoriaLogs URL ends at <code>/select</code> — do <strong>not</strong> append <code>/loki</code> or <code>/loki/api/v1</code>. Grafana's Loki plugin appends the API path automatically, so the correct URL is just <code>/select</code>. Using <code>/select/loki</code> results in double-path errors.</p>
+</blockquote>
+<h2 id="dashboard-provisioning">Dashboard Provisioning</h2>
+<p>Grafana's sidecar watches ConfigMaps across all namespaces with the label <code>grafana_dashboard: "1"</code>:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">sidecar</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">dashboards</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">enabled</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
+</span><span>    </span><span style="color:#73d0ff;">searchNamespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ALL
+</span><span>    </span><span style="color:#73d0ff;">label</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana_dashboard
+</span><span>    </span><span style="color:#73d0ff;">labelValue</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;1&quot;
+</span><span>    </span><span style="color:#73d0ff;">folderAnnotation</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana_folder
+</span><span>    </span><span style="color:#73d0ff;">provider</span><span style="color:#ccc9c2cc;">:
+</span><span>      </span><span style="color:#73d0ff;">foldersFromFilesStructure</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
+</span></code></pre>
+<p>To add a dashboard, create a ConfigMap in any namespace with:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">labels</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">grafana_dashboard</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;1&quot;
+</span><span>  </span><span style="color:#73d0ff;">annotations</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">grafana_folder</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;My Folder&quot;
+</span><span style="color:#73d0ff;">data</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">my-dashboard.json</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffa759;">|
+</span><span style="color:#bae67e;">    { ... Grafana dashboard JSON ... }
+</span></code></pre>
 <h2 id="secrets-openbao">Secrets (OpenBao)</h2>
-<p>Secrets live at <code>secret/data/grafana</code> in OpenBao:</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>ADMIN_PASSWORD</code></td><td>Grafana admin password — mounted as file via CSI</td></tr>
-<tr><td><code>OAUTH_CLIENT_SECRET</code></td><td>Authentik OAuth2 client secret — synced to k8s Secret <code>grafana-oauth-secret</code></td></tr>
+<p>Secrets at <code>secret/data/grafana</code> in OpenBao:</p>
+<table><thead><tr><th>Key</th><th>Pattern</th><th>How read by Grafana</th></tr></thead><tbody>
+<tr><td><code>ADMIN_PASSWORD</code></td><td>A (file)</td><td><code>GF_SECURITY_ADMIN_PASSWORD__FILE=/mnt/secrets/ADMIN_PASSWORD</code></td></tr>
+<tr><td><code>OAUTH_CLIENT_SECRET</code></td><td>B (secretObjects)</td><td>Synced to <code>grafana-oauth-secret</code> Secret → <code>envFromSecret</code></td></tr>
 </tbody></table>
 <p>Write/update secrets:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Set admin password (first time)
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Set all secrets (first time)
 </span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/grafana </span><span style="color:#ccc9c2cc;">\
 </span><span>  ADMIN_PASSWORD=</span><span style="color:#f29e74;">&lt;</span><span>password</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">\
 </span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#f29e74;">&lt;</span><span>secret</span><span style="color:#f29e74;">&gt;
@@ -536,60 +580,61 @@
 </span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv patch secret/grafana </span><span style="color:#ccc9c2cc;">\
 </span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#f29e74;">&lt;</span><span>new-secret</span><span style="color:#f29e74;">&gt;
 </span></code></pre>
-<h2 id="github-sso-via-authentik-setup-steps">GitHub SSO via Authentik — Setup Steps</h2>
-<p>This is a one-time setup. Grafana uses Authentik as an OIDC provider; GitHub is a social source in Authentik.</p>
-<h3 id="1-add-github-social-source-in-authentik">1. Add GitHub social source in Authentik</h3>
-<p>Authentik UI → <strong>Directory → Federation &amp; Social login → Create → GitHub</strong></p>
-<ul>
-<li>Consumer key / secret: from your GitHub OAuth App</li>
-<li>Slug: <code>github</code></li>
-</ul>
-<h3 id="2-create-oauth2-oidc-provider-in-authentik">2. Create OAuth2/OIDC provider in Authentik</h3>
-<p>Authentik UI → <strong>Applications → Providers → Create → OAuth2/OpenID Provider</strong></p>
-<ul>
-<li>Name: <code>Grafana</code></li>
-<li>Authentication flow: <code>default-authentication-flow</code></li>
-<li>Client type: <code>Confidential</code></li>
-<li>Redirect URI: <code>https://grafana.madhan.app/login/generic_oauth</code></li>
-<li>Scopes: <code>openid</code>, <code>email</code>, <code>profile</code></li>
-<li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong></li>
-</ul>
-<h3 id="3-create-application-in-authentik">3. Create Application in Authentik</h3>
-<p>Authentik UI → <strong>Applications → Applications → Create</strong></p>
-<ul>
-<li>Name: <code>Grafana</code></li>
-<li>Slug: <code>grafana</code></li>
-<li>Provider: bind to the provider created above</li>
-</ul>
-<h3 id="4-create-grafana-admins-group-for-admin-role">4. Create grafana-admins group (for Admin role)</h3>
-<p>Authentik UI → <strong>Directory → Groups → Create</strong></p>
-<ul>
-<li>Name: <code>grafana-admins</code></li>
-<li>Add your user to this group</li>
-</ul>
-<h3 id="5-update-grafana-go-with-the-client-id">5. Update grafana.go with the Client ID</h3>
-<p>In <code>workloads/monitoring/grafana.go</code>, replace:</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>&quot;client_id&quot;: &quot;REPLACE_WITH_AUTHENTIK_CLIENT_ID&quot;,
+<h2 id="github-sso-via-authentik">GitHub SSO via Authentik</h2>
+<p>Grafana uses Authentik as an OIDC provider. GitHub is a social source in Authentik.</p>
+<p>OIDC configuration in <code>grafana.go</code>:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;auth.generic_oauth&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffa759;">map</span><span>[</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>]</span><span style="color:#ffa759;">any</span><span>{
+</span><span>    </span><span style="color:#bae67e;">&quot;enabled&quot;</span><span style="color:#ccc9c2cc;">:    </span><span style="color:#ffcc66;">true</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;client_id&quot;</span><span style="color:#ccc9c2cc;">:  </span><span style="color:#bae67e;">&quot;grafana-homelab&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;auth_url&quot;</span><span style="color:#ccc9c2cc;">:   </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/grafana/authorize/&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;token_url&quot;</span><span style="color:#ccc9c2cc;">:  </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/grafana/token/&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;api_url&quot;</span><span style="color:#ccc9c2cc;">:    </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/userinfo/&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;role_attribute_path&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;contains(groups[*], &#39;grafana-admins&#39;) &amp;&amp; &#39;Admin&#39; || &#39;Viewer&#39;&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>}</span><span style="color:#ccc9c2cc;">,
 </span></code></pre>
-<p>with the actual Client ID from step 2. Commit and let ArgoCD sync.</p>
-<h3 id="6-store-the-client-secret-in-openbao">6. Store the Client Secret in OpenBao</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv patch secret/grafana </span><span style="color:#ccc9c2cc;">\
-</span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#f29e74;">&lt;</span><span>client-secret-from-step-2</span><span style="color:#f29e74;">&gt;
-</span></code></pre>
-<h3 id="7-verify">7. Verify</h3>
-<ul>
-<li>Visit <code>https://grafana.madhan.app</code> — should redirect to Authentik login</li>
-<li>Log in with GitHub — you get Viewer role</li>
-<li>Members of <code>grafana-admins</code> get Admin role automatically</li>
-</ul>
-<h2 id="admin-login-bypass-sso">Admin Login (bypass SSO)</h2>
+<p>Members of the <code>grafana-admins</code> group in Authentik get Grafana Admin role. Everyone else gets Viewer.</p>
+<h3 id="one-time-sso-setup">One-Time SSO Setup</h3>
+<ol>
+<li><strong>Authentik UI → Directory → Federation → Create → GitHub source</strong> (slug: <code>github</code>)</li>
+<li><strong>Authentik UI → Applications → Providers → Create OAuth2/OIDC provider</strong> — Name: <code>Grafana</code>, Redirect URI: <code>https://grafana.madhan.app/login/generic_oauth</code>, Scopes: <code>openid email profile</code></li>
+<li><strong>Authentik UI → Applications → Create</strong> — bind to the Grafana provider</li>
+<li><strong>Authentik UI → Directory → Groups → Create</strong> — <code>grafana-admins</code>, add yourself</li>
+<li>Store the Client Secret in OpenBao: <code>bao kv patch secret/grafana OAUTH_CLIENT_SECRET=&lt;secret&gt;</code></li>
+</ol>
+<h3 id="admin-login-bypass-sso">Admin Login (Bypass SSO)</h3>
 <p>The local <code>admin</code> account is always available at <code>/login</code>:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Get admin password
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Get admin password from OpenBao
 </span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv get -field=ADMIN_PASSWORD secret/grafana
 </span></code></pre>
-<p>Username: <code>admin</code>, Password: value from OpenBao.</p>
-<h2 id="dashboards">Dashboards</h2>
-<p>Grafana auto-discovers dashboards from ConfigMaps with label <code>grafana_dashboard: "1"</code> across all namespaces. To add a dashboard, create a ConfigMap in any namespace with that label and the JSON content.</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Browser → grafana.madhan.app
+</span><span>  → Cloudflare → Traefik on Bifrost (public only)
+</span><span>  → homelab-gateway → HTTPRoute → Grafana pod
+</span><span>  → Grafana → Authentik OIDC (login)
+</span><span>  → Grafana → VictoriaMetrics (metrics queries)
+</span><span>  → Grafana → VictoriaLogs (log queries)
+</span><span>  → OpenBao CSI → /mnt/secrets/ADMIN_PASSWORD (admin password file)
+</span><span>  → grafana-oauth-secret k8s Secret (OAuth client secret)
+</span></code></pre>
+<h2 id="screenshots">Screenshots</h2>
+<p><img src="/assets/screenshots/grafana/main-dashboard.png" alt="Grafana main dashboard showing VictoriaMetrics datasource and node resource panels" /></p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="rwx-pvc-migration">RWX PVC Migration</h3>
+<p>If Grafana was previously using an RWO PVC and rolling updates cause Multi-Attach errors, delete the old PVC and recreate with <code>ReadWriteMany</code>. Grafana must be temporarily scaled down during migration.</p>
+<h3 id="oauth-client-secret-not-loading">OAuth Client Secret Not Loading</h3>
+<p><strong>Symptoms:</strong> Grafana shows "Invalid client_secret" at OAuth login.</p>
+<p><strong>Diagnosis:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check the k8s Secret is populated
+</span><span style="color:#ffd580;">kubectl</span><span> get secret grafana-oauth-secret</span><span style="color:#ffcc66;"> -n</span><span> grafana</span><span style="color:#ffcc66;"> -o</span><span> yaml
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check CSI volume is mounted
+</span><span style="color:#ffd580;">kubectl</span><span> describe pod</span><span style="color:#ffcc66;"> -n</span><span> grafana</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=grafana </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -A5 </span><span style="color:#bae67e;">&quot;openbao-secrets&quot;
+</span></code></pre>
+<p><strong>Fix:</strong> If the <code>grafana-oauth-secret</code> k8s Secret is missing, the CSI volume mount may have failed. Check OpenBao is unsealed and the <code>grafana</code> role exists.</p>
+<h3 id="pod-connection-timeout-kubelet-nodeip-issue-with-netbird">Pod Connection Timeout (kubelet nodeIP issue with NetBird)</h3>
+<p><strong>Symptoms:</strong> Grafana pod shows connection timeouts to VictoriaMetrics or VictoriaLogs.</p>
+<p><strong>Diagnosis:</strong> Check if the NetBird peer is running on the same node as Grafana. NetBird adds a WireGuard interface, which can confuse kubelet's nodeIP detection.</p>
+<p><strong>Fix:</strong> The <code>kubelet.nodeIP.validSubnets: 192.168.1.0/24</code> setting in the Talos worker patch ensures kubelet reports the correct node IP. If nodes were provisioned before this patch was added, re-apply the patch via Pulumi.</p>
 
 
     <!--  Errata section  -->
@@ -679,13 +724,37 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#what-is-grafana" class="toc-link">What is Grafana?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#why-grafana" class="toc-link">Why Grafana?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#configuration" class="toc-link">Configuration</a>
                     
                 </li>
             
                 <li>
                     
                     <a href="https://homelab.madhan.app/apps/monitoring/grafana/#datasources" class="toc-link">Datasources</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#dashboard-provisioning" class="toc-link">Dashboard Provisioning</a>
                     
                 </li>
             
@@ -699,36 +768,16 @@
                     
                     <details class="toc-details" >
                         <summary>
-                            <a href="https://homelab.madhan.app/apps/monitoring/grafana/#github-sso-via-authentik-setup-steps" class="toc-link">GitHub SSO via Authentik — Setup Steps</a>
+                            <a href="https://homelab.madhan.app/apps/monitoring/grafana/#github-sso-via-authentik" class="toc-link">GitHub SSO via Authentik</a>
                         </summary>
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#1-add-github-social-source-in-authentik" class="toc-link">1. Add GitHub social source in Authentik</a>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#one-time-sso-setup" class="toc-link">One-Time SSO Setup</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#2-create-oauth2-oidc-provider-in-authentik" class="toc-link">2. Create OAuth2&#x2F;OIDC provider in Authentik</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#3-create-application-in-authentik" class="toc-link">3. Create Application in Authentik</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#4-create-grafana-admins-group-for-admin-role" class="toc-link">4. Create grafana-admins group (for Admin role)</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#5-update-grafana-go-with-the-client-id" class="toc-link">5. Update grafana.go with the Client ID</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#6-store-the-client-secret-in-openbao" class="toc-link">6. Store the Client Secret in OpenBao</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#7-verify" class="toc-link">7. Verify</a>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#admin-login-bypass-sso" class="toc-link">Admin Login (Bypass SSO)</a>
                                 </li>
                             
                         </ul>
@@ -738,13 +787,38 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#admin-login-bypass-sso" class="toc-link">Admin Login (bypass SSO)</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#how-it-connects" class="toc-link">How It Connects</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#dashboards" class="toc-link">Dashboards</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#screenshots" class="toc-link">Screenshots</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/monitoring/grafana/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#rwx-pvc-migration" class="toc-link">RWX PVC Migration</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#oauth-client-secret-not-loading" class="toc-link">OAuth Client Secret Not Loading</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#pod-connection-timeout-kubelet-nodeip-issue-with-netbird" class="toc-link">Pod Connection Timeout (kubelet nodeIP issue with NetBird)</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -938,6 +1012,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -1021,6 +1097,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1049,13 +1127,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1073,6 +1169,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1115,155 +1227,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

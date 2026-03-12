@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Open-source workflow automation platform." />
+            <meta name="description" content="Open-source workflow automation platform with PostgreSQL backend and OpenBao secrets." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="n8n | Homelab" />
-      <meta property="og:description" content="Open-source workflow automation platform." />
+      <meta property="og:description" content="Open-source workflow automation platform with PostgreSQL backend and OpenBao secrets." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="n8n" />
-      <meta name="twitter:description" content="Open-source workflow automation platform." />
+      <meta name="twitter:description" content="Open-source workflow automation platform with PostgreSQL backend and OpenBao secrets." />
       
       
       
@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -506,27 +506,92 @@
             n8n
             
         </h1>
-        <p class="text-gray-500">Open-source workflow automation platform.</p>
+        <p class="text-gray-500">Open-source workflow automation platform with PostgreSQL backend and OpenBao secrets.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/automation/n8n.go</code></td></tr>
-<tr><td>Namespace</td><td><code>n8n</code></td></tr>
-<tr><td>HTTPRoute</td><td><code>n8n.madhan.app</code> → n8n service</td></tr>
-<tr><td>UI</td><td>Yes</td></tr>
-<tr><td>Requires Infisical</td><td>Yes — <code>n8n-db</code> Secret</td></tr>
+    <h2 id="what-is-n8n">What is n8n?</h2>
+<p><a href="https://n8n.io/">n8n</a> is an open-source workflow automation platform. It provides a visual node-based editor for building integrations between 400+ services and supports scheduled, webhook, and event-driven workflows. Unlike hosted solutions (Zapier, Make), n8n is fully self-hosted with no per-execution pricing.</p>
+<h2 id="why-n8n">Why n8n?</h2>
+<p>n8n is the leading self-hosted automation platform with native Kubernetes support (the 8gears Helm chart). Its open-source nature means there are no rate limits or execution caps, making it suitable for high-frequency workflows in a homelab.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>n8n is deployed using the <a href="https://github.com/8gears/n8n-helm-chart">8gears Helm chart</a> (OCI chart <code>oci://8gears.container-registry.com/library/n8n</code>, v2.0.1). It uses CloudNativePG for PostgreSQL instead of the embedded Bitnami PostgreSQL subchart.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/automation/n8n.go"><code>workloads/automation/n8n.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>n8n</code></td><td>Isolated namespace</td></tr>
+<tr><td>HTTPRoute</td><td><code>n8n.madhan.app</code> → <code>n8n:80</code></td><td>Gateway API</td></tr>
+<tr><td>n8n image tag</td><td><code>1.78.0</code></td><td>Pinned — never use <code>latest</code></td></tr>
+<tr><td>Chart</td><td>8gears OCI v2.0.1</td><td>Native Kubernetes features (<code>extraVolumes</code>, etc.)</td></tr>
+<tr><td>Persistence</td><td><code>10Gi</code> RWX Longhorn</td><td>Multi-attach safe</td></tr>
+<tr><td>Database</td><td>CloudNativePG PostgreSQL</td><td>CNPG manages credential lifecycle</td></tr>
+<tr><td>DB host</td><td><code>n8n-pg-rw</code></td><td>CNPG read-write service</td></tr>
+<tr><td><code>postgresql.enabled</code></td><td><code>false</code></td><td>Bitnami subchart disabled</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>n8n is an open-source workflow automation platform. It integrates with 400+ services via nodes and supports scheduled, webhook, and event-driven workflows.</p>
 <h2 id="database">Database</h2>
-<p>n8n uses PostgreSQL for workflow persistence. The database password is managed by Infisical at path <code>/n8n</code>, synced to the <code>n8n-db</code> Secret (<code>DB_PASSWORD</code> key).</p>
-<h2 id="encryption-key">Encryption Key</h2>
-<p>n8n encrypts stored credentials with <code>N8N_ENCRYPTION_KEY</code>. This key must remain stable — changing it after workflows are created will break credential decryption.</p>
+<p>n8n uses a <a href="https://cloudnative-pg.io/">CloudNativePG</a> <code>Cluster</code> CR for PostgreSQL:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">instances</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">1
+</span><span style="color:#73d0ff;">storage</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">size</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">10Gi
+</span><span>  </span><span style="color:#73d0ff;">storageClass</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">longhorn
+</span><span style="color:#73d0ff;">bootstrap</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">initdb</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">database</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">n8n
+</span><span>    </span><span style="color:#73d0ff;">owner</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">n8n
+</span></code></pre>
+<p>CNPG auto-creates:</p>
+<ul>
+<li>Secret <code>n8n-pg-app</code> with <code>username</code> and <code>password</code> for the <code>n8n</code> app user</li>
+<li>Service <code>n8n-pg-rw</code> for the read-write endpoint (primary)</li>
+</ul>
+<p>The DB password is <strong>not in OpenBao</strong> — CNPG owns the credential lifecycle and auto-rotates it. n8n reads it via:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;DB_POSTGRESDB_PASSWORD&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{
+</span><span>    </span><span style="color:#bae67e;">&quot;valueFrom&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{</span><span style="color:#bae67e;">&quot;secretKeyRef&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{</span><span style="color:#bae67e;">&quot;name&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;n8n-pg-app&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;key&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;password&quot;</span><span>}}</span><span style="color:#ccc9c2cc;">,
+</span><span>}
+</span></code></pre>
+<h2 id="secrets-openbao">Secrets (OpenBao)</h2>
+<p>Pattern B (secretObjects sync). <code>ENCRYPTION_KEY</code> is fetched from OpenBao (<code>secret/data/n8n</code>) and synced into the <code>n8n-secrets</code> k8s Secret.</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// workloads/automation/n8n.go
+</span><span style="color:#bae67e;">&quot;N8N_ENCRYPTION_KEY&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{
+</span><span>    </span><span style="color:#bae67e;">&quot;valueFrom&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{</span><span style="color:#bae67e;">&quot;secretKeyRef&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{</span><span style="color:#bae67e;">&quot;name&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;n8n-secrets&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;key&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;N8N_ENCRYPTION_KEY&quot;</span><span>}}</span><span style="color:#ccc9c2cc;">,
+</span><span>}
+</span></code></pre>
 <blockquote>
-<p><strong>Known issue:</strong> If you see <code>Error: Credentials could not be decrypted</code>, the encryption key in the running Secret does not match the key used when credentials were first stored. See <code>docs/infisical-secrets-setup.md</code> for the recovery procedure.</p>
+<p><strong>Warning: Never rotate <code>N8N_ENCRYPTION_KEY</code> after workflows are created.</strong> n8n uses this key to encrypt stored credentials (API tokens, passwords). If the key changes, existing credentials become unreadable and must be re-entered manually. Store the key permanently in OpenBao and treat it as immutable.</p>
 </blockquote>
-<h2 id="accessing-the-ui">Accessing the UI</h2>
-<p>Navigate to <code>http://n8n.madhan.app</code>. On first access, create an admin account.</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Browser → n8n.madhan.app
+</span><span>  → homelab-gateway → n8n:80 → n8n pod:5678
+</span><span>  → PostgreSQL via n8n-pg-rw:5432 (CNPG)
+</span><span>  → OpenBao CSI → n8n-secrets k8s Secret → ENCRYPTION_KEY env var
+</span><span>  → External APIs (via workflow nodes)
+</span></code></pre>
+<h2 id="screenshots">Screenshots</h2>
+<p><img src="/assets/screenshots/n8n/workflow-editor.png" alt="n8n workflow editor showing node connections and execution history" /></p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="credentials-cannot-be-decrypted">Credentials Cannot Be Decrypted</h3>
+<p><strong>Symptoms:</strong> n8n shows <code>Credentials could not be decrypted. Please update or delete them</code>.</p>
+<p><strong>Why:</strong> The <code>N8N_ENCRYPTION_KEY</code> in the running pod does not match the key used when credentials were first stored.</p>
+<p><strong>Fix:</strong> There is no automated fix. Options:</p>
+<ol>
+<li>Restore the original encryption key in OpenBao (<code>bao kv patch secret/n8n ENCRYPTION_KEY=&lt;original&gt;</code>)</li>
+<li>Delete all affected credentials in the n8n UI and re-enter them</li>
+</ol>
+<h3 id="database-connection-failed">Database Connection Failed</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check CNPG cluster status
+</span><span style="color:#ffd580;">kubectl</span><span> get cluster n8n-pg</span><span style="color:#ffcc66;"> -n</span><span> n8n
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check CNPG pod is running
+</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> n8n</span><span style="color:#ffcc66;"> -l</span><span> cnpg.io/cluster=n8n-pg
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check DB secret exists
+</span><span style="color:#ffd580;">kubectl</span><span> get secret n8n-pg-app</span><span style="color:#ffcc66;"> -n</span><span> n8n
+</span></code></pre>
+<h3 id="deployment-selector-immutable">Deployment Selector Immutable</h3>
+<p>If migrating from the community n8n chart to the 8gears chart, the Deployment's <code>spec.selector</code> changes. Kubernetes does not allow modifying selectors after creation.</p>
+<p><strong>Fix:</strong> Delete the old Deployment before ArgoCD syncs:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> delete deployment n8n</span><span style="color:#ffcc66;"> -n</span><span> n8n
+</span><span style="font-style:italic;color:#5c6773;"># Then trigger ArgoCD sync
+</span><span style="color:#ffd580;">argocd</span><span> app sync n8n
+</span></code></pre>
 
 
     <!--  Errata section  -->
@@ -640,6 +705,8 @@
             
                 
             
+                
+            
         
             
             
@@ -647,10 +714,6 @@
                 
             
                 
-            
-        
-            
-            
             
         
             
@@ -674,13 +737,25 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/automation/n8n/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/automation/n8n/#what-is-n8n" class="toc-link">What is n8n?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/automation/n8n/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/automation/n8n/#why-n8n" class="toc-link">Why n8n?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/automation/n8n/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/automation/n8n/#configuration" class="toc-link">Configuration</a>
                     
                 </li>
             
@@ -692,13 +767,44 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/automation/n8n/#encryption-key" class="toc-link">Encryption Key</a>
+                    <a href="https://homelab.madhan.app/apps/automation/n8n/#secrets-openbao" class="toc-link">Secrets (OpenBao)</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/automation/n8n/#accessing-the-ui" class="toc-link">Accessing the UI</a>
+                    <a href="https://homelab.madhan.app/apps/automation/n8n/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/automation/n8n/#screenshots" class="toc-link">Screenshots</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/automation/n8n/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/automation/n8n/#credentials-cannot-be-decrypted" class="toc-link">Credentials Cannot Be Decrypted</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/automation/n8n/#database-connection-failed" class="toc-link">Database Connection Failed</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/automation/n8n/#deployment-selector-immutable" class="toc-link">Deployment Selector Immutable</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -892,6 +998,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -975,6 +1083,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1003,13 +1113,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1027,6 +1155,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1069,155 +1213,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

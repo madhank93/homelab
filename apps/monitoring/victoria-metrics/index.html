@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Time-series metrics storage, Prometheus-compatible." />
+            <meta name="description" content="Time-series metrics storage, Prometheus-compatible, cluster mode." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="VictoriaMetrics | Homelab" />
-      <meta property="og:description" content="Time-series metrics storage, Prometheus-compatible." />
+      <meta property="og:description" content="Time-series metrics storage, Prometheus-compatible, cluster mode." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="VictoriaMetrics" />
-      <meta name="twitter:description" content="Time-series metrics storage, Prometheus-compatible." />
+      <meta name="twitter:description" content="Time-series metrics storage, Prometheus-compatible, cluster mode." />
       
       
       
@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -506,22 +506,80 @@
             VictoriaMetrics
             
         </h1>
-        <p class="text-gray-500">Time-series metrics storage, Prometheus-compatible.</p>
+        <p class="text-gray-500">Time-series metrics storage, Prometheus-compatible, cluster mode.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/monitoring/victoria_metrics.go</code></td></tr>
-<tr><td>Namespace</td><td><code>victoria-metrics</code></td></tr>
-<tr><td>HTTPRoute</td><td>None</td></tr>
-<tr><td>UI</td><td>No</td></tr>
+    <h2 id="what-is-victoriametrics">What is VictoriaMetrics?</h2>
+<p><a href="https://victoriametrics.com/">VictoriaMetrics</a> is a fast, resource-efficient time-series database and monitoring solution that is fully compatible with the Prometheus remote-write protocol and PromQL query language. It offers significantly lower memory and storage usage compared to Prometheus, with better compression and faster ingestion.</p>
+<h2 id="why-victoriametrics">Why VictoriaMetrics?</h2>
+<table><thead><tr><th>Feature</th><th>Prometheus</th><th>VictoriaMetrics</th></tr></thead><tbody>
+<tr><td>Memory usage</td><td>High</td><td>Low (3–7x less)</td></tr>
+<tr><td>Compression</td><td>Good</td><td>Excellent</td></tr>
+<tr><td>Ingestion speed</td><td>Good</td><td>Faster</td></tr>
+<tr><td>Query language</td><td>PromQL</td><td>MetricsQL (superset of PromQL)</td></tr>
+<tr><td>Long-term storage</td><td>Requires Thanos/Cortex</td><td>Built-in</td></tr>
+<tr><td>Cluster mode</td><td>Manual</td><td>Native</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>VictoriaMetrics is a high-performance, horizontally scalable time-series database. It serves as the cluster's metrics backend, compatible with the Prometheus remote-write protocol.</p>
-<p>The OTel Gateway collector sends metrics via Prometheus remote-write to VictoriaMetrics. Grafana queries it using the Prometheus datasource plugin.</p>
-<h2 id="deployment">Deployment</h2>
-<p>Deployed as a VictoriaMetrics Single Server (not cluster mode) — sufficient for a homelab-scale deployment.</p>
-<h2 id="retention">Retention</h2>
-<p>Default retention is configured via Helm values. Adjust <code>retentionPeriod</code> in the CDK8s code as needed.</p>
+<p>VictoriaMetrics is a drop-in Prometheus replacement that works with any PromQL-compatible client (Grafana, etc.) while using fewer resources — important for a homelab running many workloads on limited hardware.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>VictoriaMetrics runs in <strong>cluster mode</strong> with three components:</p>
+<table><thead><tr><th>Component</th><th>Replicas</th><th>Role</th></tr></thead><tbody>
+<tr><td><code>vminsert</code></td><td>1</td><td>Receives prometheus remote-write from VMAgent and OTel collectors</td></tr>
+<tr><td><code>vmselect</code></td><td>1</td><td>Serves PromQL queries from Grafana</td></tr>
+<tr><td><code>vmstorage</code></td><td>1</td><td>Stores time-series data to a 100 Gi Longhorn PVC</td></tr>
+</tbody></table>
+<p><strong>VMAgent</strong> (a separate lightweight agent) scrapes metrics across the cluster and remote-writes to vminsert:</p>
+<ul>
+<li>Discovers <code>ServiceMonitor</code> resources across all namespaces</li>
+<li>Discovers <code>PodMonitor</code> resources across all namespaces (required for CNPG)</li>
+<li>Remote-writes to <code>vminsert:8480</code></li>
+</ul>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/victoria_metrics.go"><code>workloads/observability/victoria_metrics.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>victoria-metrics</code></td><td>Isolated namespace</td></tr>
+<tr><td>Retention</td><td><code>30d</code></td><td>30 days of metrics</td></tr>
+<tr><td>vmstorage PVC</td><td><code>100Gi</code> Longhorn</td><td>Long-term metrics storage</td></tr>
+<tr><td>vminsert resources</td><td><code>500m</code> / <code>512Mi</code></td><td>Lightweight write path</td></tr>
+<tr><td>vmselect resources</td><td><code>500m</code> / <code>1Gi</code></td><td>Query path needs more memory</td></tr>
+<tr><td>vmstorage resources</td><td><code>1000m</code> / <code>1Gi</code></td><td>Storage is most resource-intensive</td></tr>
+<tr><td>VMAgent chart version</td><td><code>0.15.3</code></td><td>victoria-metrics-agent</td></tr>
+</tbody></table>
+<h2 id="how-vmagent-discovers-metrics">How VMAgent Discovers Metrics</h2>
+<p>VMAgent uses <code>serviceMonitorSelector: {}</code> and <code>podMonitorSelector: {}</code> (empty = match all), meaning it discovers every ServiceMonitor and PodMonitor across every namespace:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># Every app with a ServiceMonitor is automatically scraped
+</span><span style="font-style:italic;color:#5c6773;"># Examples:
+</span><span style="font-style:italic;color:#5c6773;"># - OpenBao: /v1/sys/metrics (Prometheus format)
+</span><span style="font-style:italic;color:#5c6773;"># - Falco sidekick: :2801/metrics
+</span><span style="font-style:italic;color:#5c6773;"># - DCGM Exporter: GPU metrics
+</span><span style="font-style:italic;color:#5c6773;"># - ArgoCD components: :8082-8085/metrics
+</span><span style="font-style:italic;color:#5c6773;"># - Longhorn: via ServiceMonitor
+</span></code></pre>
+<h2 id="httproute">HTTPRoute</h2>
+<p>VictoriaMetrics vmselect is accessible at <code>http://vmselect.madhan.app</code>. Browsing to the root redirects to <code>/select/0/vmui/</code> — the vmui web interface.</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>All cluster apps (ServiceMonitor/PodMonitor)
+</span><span>  → VMAgent (scrapes every 30s)
+</span><span>  → vminsert:8480 (prometheus remote-write)
+</span><span>  → vmstorage (100Gi Longhorn PVC)
+</span><span>  → vmselect:8481
+</span><span>  → Grafana (Prometheus datasource)
+</span><span>  → AlertManager (rules evaluation via Prometheus operator)
+</span></code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="vmagent-not-scraping">VMAgent Not Scraping</h3>
+<p><strong>Symptoms:</strong> Missing metrics in Grafana.</p>
+<p><strong>Diagnosis:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check VMAgent targets
+</span><span style="color:#ffd580;">kubectl</span><span> port-forward</span><span style="color:#ffcc66;"> -n</span><span> victoria-metrics svc/vmagent 8429:8429
+</span><span style="font-style:italic;color:#5c6773;"># Open http://localhost:8429/targets
+</span></code></pre>
+<p><strong>Fix:</strong> If a target is down, check the ServiceMonitor selector matches the service labels. If the ServiceMonitor itself is missing, the app chart may not deploy it.</p>
+<h3 id="storage-full">Storage Full</h3>
+<p><strong>Symptoms:</strong> vminsert returns errors, no new data ingested.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> victoria-metrics victoria-metrics-victoria-metrics-cluster-vmstorage-0 </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#f29e74;">  --</span><span> df -h /storage
+</span></code></pre>
+<p>Expand the PVC via Longhorn UI or increase <code>vmstorage.persistentVolume.size</code> and re-sync.</p>
 
 
     <!--  Errata section  -->
@@ -611,25 +669,64 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#what-is-victoriametrics" class="toc-link">What is VictoriaMetrics?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#why-victoriametrics" class="toc-link">Why VictoriaMetrics?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#deployment" class="toc-link">Deployment</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#retention" class="toc-link">Retention</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#configuration" class="toc-link">Configuration</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#how-vmagent-discovers-metrics" class="toc-link">How VMAgent Discovers Metrics</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#httproute" class="toc-link">HTTPRoute</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#vmagent-not-scraping" class="toc-link">VMAgent Not Scraping</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/victoria-metrics/#storage-full" class="toc-link">Storage Full</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -823,6 +920,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -906,6 +1005,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -934,13 +1035,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -958,6 +1077,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1000,155 +1135,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

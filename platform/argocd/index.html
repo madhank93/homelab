@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="ArgoCD Helm bootstrap, ApplicationSet, and sync configuration." />
+            <meta name="description" content="ArgoCD Helm bootstrap, ApplicationSet directory generator, and sync configuration." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="ArgoCD | Homelab" />
-      <meta property="og:description" content="ArgoCD Helm bootstrap, ApplicationSet, and sync configuration." />
+      <meta property="og:description" content="ArgoCD Helm bootstrap, ApplicationSet directory generator, and sync configuration." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="ArgoCD" />
-      <meta name="twitter:description" content="ArgoCD Helm bootstrap, ApplicationSet, and sync configuration." />
+      <meta name="twitter:description" content="ArgoCD Helm bootstrap, ApplicationSet directory generator, and sync configuration." />
       
       
       
@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -506,14 +506,15 @@
             ArgoCD
             
         </h1>
-        <p class="text-gray-500">ArgoCD Helm bootstrap, ApplicationSet, and sync configuration.</p>
+        <p class="text-gray-500">ArgoCD Helm bootstrap, ApplicationSet directory generator, and sync configuration.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<p>ArgoCD is installed once by Pulumi (<code>core/platform/argocd.go</code>) then manages itself and all workloads via GitOps from the <code>v*-manifests</code> branch.</p>
-<p><strong>Code:</strong> <code>core/platform/argocd.go</code> · <strong>Namespace:</strong> <code>argocd</code></p>
-<h2 id="helm-installation">Helm installation</h2>
-<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// core/platform/argocd.go
-</span><span>helm</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">NewRelease</span><span>(ctx</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;argo-cd&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#f29e74;">&amp;</span><span>helm</span><span style="color:#f29e74;">.</span><span>ReleaseArgs{
+    <h2 id="screenshots">Screenshots</h2>
+<p><img src="/assets/screenshots/argocd/app-list.png" alt="ArgoCD application list showing all workloads with sync status and health indicators" /></p>
+<h2 id="overview">Overview</h2>
+<p>ArgoCD is installed once by Pulumi (<code>core/platform/argocd.go</code>) and then manages all workloads via GitOps from the <code>v0.1.5-manifests</code> branch. It self-manages after the initial bootstrap.</p>
+<p><strong>Code:</strong> <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/argocd.go"><code>core/platform/argocd.go</code></a> · <strong>Namespace:</strong> <code>argocd</code> · <strong>Chart version:</strong> <code>9.4.2</code></p>
+<h2 id="helm-installation">Helm Installation</h2>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span>helm</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">NewRelease</span><span>(ctx</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;argo-cd&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#f29e74;">&amp;</span><span>helm</span><span style="color:#f29e74;">.</span><span>ReleaseArgs{
 </span><span>    Chart</span><span style="color:#ccc9c2cc;">:   </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;argo-cd&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
 </span><span>    Version</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;9.4.2&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
 </span><span>    RepositoryOpts</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>helm</span><span style="color:#f29e74;">.</span><span>RepositoryOptsArgs{
@@ -531,60 +532,99 @@
 </span><span>})
 </span></code></pre>
 <h2 id="applicationset">ApplicationSet</h2>
-<p>One <code>ApplicationSet</code> watches the <code>v*-manifests</code> branch. Every top-level directory under <code>app/</code> automatically becomes an ArgoCD Application.</p>
+<p>One <code>ApplicationSet</code> named <code>cots-applications</code> watches the <code>v0.1.5-manifests</code> branch. Every top-level directory automatically becomes an ArgoCD Application:</p>
 <pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">argoproj.io/v1alpha1
 </span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ApplicationSet
 </span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">homelab-apps
+</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">cots-applications
 </span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">argocd
 </span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">goTemplate</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
 </span><span>  </span><span style="color:#73d0ff;">generators</span><span style="color:#ccc9c2cc;">:
 </span><span>    - </span><span style="color:#73d0ff;">git</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">repoURL</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://github.com/madhank93/homelab.git
 </span><span>        </span><span style="color:#73d0ff;">revision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.5-manifests
 </span><span>        </span><span style="color:#73d0ff;">directories</span><span style="color:#ccc9c2cc;">:
-</span><span>          - </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;*&quot;
+</span><span>          - </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;*&quot;      </span><span style="font-style:italic;color:#5c6773;"># Every top-level directory = one Application
 </span><span>  </span><span style="color:#73d0ff;">template</span><span style="color:#ccc9c2cc;">:
 </span><span>    </span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
-</span><span>      </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{ .path.basename }}&quot;
+</span><span>      </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{path.basename}}&quot;
 </span><span>    </span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
 </span><span>      </span><span style="color:#73d0ff;">project</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">default
 </span><span>      </span><span style="color:#73d0ff;">source</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">repoURL</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://github.com/madhank93/homelab.git
 </span><span>        </span><span style="color:#73d0ff;">targetRevision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.5-manifests
-</span><span>        </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{ .path.path }}&quot;
+</span><span>        </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{path}}&quot;
 </span><span>      </span><span style="color:#73d0ff;">destination</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">server</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://kubernetes.default.svc
-</span><span>        </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{ .path.basename }}&quot;
+</span><span>        </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{path.basename}}&quot;
 </span><span>      </span><span style="color:#73d0ff;">syncPolicy</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">automated</span><span style="color:#ccc9c2cc;">:
 </span><span>          </span><span style="color:#73d0ff;">prune</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
 </span><span>          </span><span style="color:#73d0ff;">selfHeal</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
 </span><span>        </span><span style="color:#73d0ff;">syncOptions</span><span style="color:#ccc9c2cc;">:
+</span><span>          - </span><span style="color:#bae67e;">CreateNamespace=true
 </span><span>          - </span><span style="color:#bae67e;">ServerSideApply=true
 </span></code></pre>
-<h2 id="key-settings">Key settings</h2>
+<h2 id="key-settings">Key Settings</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Reason</th></tr></thead><tbody>
-<tr><td><code>ServerSideApply=true</code></td><td>ApplicationSet level</td><td>kube-prometheus-stack CRDs exceed the 262 KB annotation limit</td></tr>
-<tr><td><code>ignoreDifferences</code> on <code>InfisicalSecret</code></td><td>per-app</td><td>Infisical CRD schema missing <code>projectSlug</code> breaks SSA validation</td></tr>
-<tr><td><code>Prune=false</code> annotation on bootstrap Secrets</td><td>per-Secret</td><td>Prevents ArgoCD deleting hand-created <code>infisical-service-token</code> / <code>cloudflare-api-token</code></td></tr>
+<tr><td><code>ServerSideApply=true</code></td><td>ApplicationSet-level</td><td>kube-prometheus-stack CRDs exceed the 262 KB <code>kubectl.kubernetes.io/last-applied-configuration</code> annotation limit</td></tr>
+<tr><td><code>automated.prune=true</code></td><td>ApplicationSet-level</td><td>Resources removed from manifests are deleted from cluster</td></tr>
+<tr><td><code>automated.selfHeal=true</code></td><td>ApplicationSet-level</td><td>Manual kubectl changes are reverted</td></tr>
+<tr><td><code>Prune=false</code> on bootstrap Secrets</td><td>Per-Secret annotation</td><td>Prevents ArgoCD deleting <code>openbao-unseal-key</code> and <code>cloudflare-api-token</code></td></tr>
 </tbody></table>
-<h2 id="httproute-gateway-api">HTTPRoute (Gateway API)</h2>
-<p>ArgoCD is exposed via a Gateway API <code>HTTPRoute</code> to <code>argocd.local</code> inside the LAN.</p>
+<h2 id="httproutes">HTTPRoutes</h2>
+<p>ArgoCD is exposed via two routes:</p>
+<table><thead><tr><th>Route</th><th>URL</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>HTTPRoute</td><td><code>argocd.local</code></td><td>LAN HTTP access</td></tr>
+<tr><td>TLSRoute</td><td><code>argocd.madhan.app</code></td><td>TLS passthrough to argocd-server:443</td></tr>
+</tbody></table>
+<h2 id="ignoredifferences-note"><code>ignoreDifferences</code> Note</h2>
+<p>The ArgoCD ApplicationSet currently includes an <code>ignoreDifferences</code> block for Infisical <code>InfisicalSecret</code> resources (legacy from before the OpenBao migration). This can be removed when Infisical is fully decommissioned.</p>
+<h2 id="bootstrap-secrets-prune-false">Bootstrap Secrets (<code>Prune=false</code>)</h2>
+<p>Two Secrets are created by <code>just create-secrets</code> and must never be deleted by ArgoCD:</p>
+<table><thead><tr><th>Secret</th><th>Namespace</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>openbao-unseal-key</code></td><td><code>openbao</code></td><td>Auto-unseal sidecar reads this</td></tr>
+<tr><td><code>cloudflare-api-token</code></td><td><code>cert-manager</code></td><td>DNS-01 challenge for wildcard TLS cert</td></tr>
+</tbody></table>
+<p>Both carry <code>argocd.argoproj.io/sync-options: Prune=false</code>.</p>
 <h2 id="operations">Operations</h2>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Apply ArgoCD config changes
 </span><span style="color:#ffd580;">just</span><span> core platform up
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Manual sync
+</span><span style="font-style:italic;color:#5c6773;"># Manual sync of a specific app
 </span><span style="color:#ffd580;">argocd</span><span> app sync </span><span style="color:#f29e74;">&lt;</span><span>app-name</span><span style="color:#f29e74;">&gt;
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># List all apps and health
 </span><span style="color:#ffd580;">argocd</span><span> app list
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Re-run bootstrap (after cluster rebuild)
-</span><span style="color:#ffd580;">just</span><span> core platform up
+</span><span style="font-style:italic;color:#5c6773;"># Force a sync even if not out-of-sync
+</span><span style="color:#ffd580;">argocd</span><span> app sync </span><span style="color:#f29e74;">&lt;</span><span>app-name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>-force
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check sync waves (for ordered deploys)
+</span><span style="color:#ffd580;">argocd</span><span> app get </span><span style="color:#f29e74;">&lt;</span><span>app-name</span><span style="color:#f29e74;">&gt;
 </span></code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="app-stuck-syncing">App Stuck Syncing</h3>
+<p><strong>Symptoms:</strong> App shows <code>OutOfSync</code> but sync keeps failing.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Get detailed sync status
+</span><span style="color:#ffd580;">argocd</span><span> app get </span><span style="color:#f29e74;">&lt;</span><span>app-name</span><span style="color:#f29e74;">&gt;
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check events
+</span><span style="color:#ffd580;">kubectl</span><span> get events</span><span style="color:#ffcc66;"> -n</span><span> argocd </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep </span><span style="color:#f29e74;">&lt;</span><span>app-name</span><span style="color:#f29e74;">&gt;
+</span></code></pre>
+<p><strong>Common causes:</strong></p>
+<ul>
+<li>CRD not yet installed (wrong sync wave ordering)</li>
+<li>Hook job failed (check job logs in the app namespace)</li>
+<li><code>ServerSideApply=true</code> conflict with existing resource ownership</li>
+</ul>
+<h3 id="prune-false-secret-deleted">Prune=false Secret Deleted</h3>
+<p>If a bootstrap Secret is accidentally deleted:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> create-secrets
+</span></code></pre>
+<p>This recreates both <code>openbao-unseal-key</code> and <code>cloudflare-api-token</code> from <code>secrets/bootstrap.sops.yaml</code>.</p>
+<h3 id="out-of-sync-after-kubectl-change">Out of Sync After kubectl Change</h3>
+<p>ArgoCD's <code>selfHeal=true</code> will revert any manual <code>kubectl apply/patch/delete</code> within 3 minutes. This is intentional — all changes must go through Git.</p>
 
 
     <!--  Errata section  -->
@@ -674,13 +714,19 @@
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/platform/argocd/#screenshots" class="toc-link">Screenshots</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <a href="https://homelab.madhan.app/platform/argocd/#overview" class="toc-link">Overview</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/argocd/#helm-installation" class="toc-link">Helm installation</a>
+                    <a href="https://homelab.madhan.app/platform/argocd/#helm-installation" class="toc-link">Helm Installation</a>
                     
                 </li>
             
@@ -692,19 +738,56 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/argocd/#key-settings" class="toc-link">Key settings</a>
+                    <a href="https://homelab.madhan.app/platform/argocd/#key-settings" class="toc-link">Key Settings</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/argocd/#httproute-gateway-api" class="toc-link">HTTPRoute (Gateway API)</a>
+                    <a href="https://homelab.madhan.app/platform/argocd/#httproutes" class="toc-link">HTTPRoutes</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/argocd/#ignoredifferences-note" class="toc-link">ignoreDifferences Note</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/argocd/#bootstrap-secrets-prune-false" class="toc-link">Bootstrap Secrets (Prune=false)</a>
                     
                 </li>
             
                 <li>
                     
                     <a href="https://homelab.madhan.app/platform/argocd/#operations" class="toc-link">Operations</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/platform/argocd/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/platform/argocd/#app-stuck-syncing" class="toc-link">App Stuck Syncing</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/platform/argocd/#prune-false-secret-deleted" class="toc-link">Prune=false Secret Deleted</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/platform/argocd/#out-of-sync-after-kubectl-change" class="toc-link">Out of Sync After kubectl Change</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -898,6 +981,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -981,6 +1066,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1009,13 +1096,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1033,6 +1138,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1075,155 +1196,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

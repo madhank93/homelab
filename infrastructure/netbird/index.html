@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -647,12 +647,12 @@
 <table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
 <tr><td>Image</td><td><code>netbirdio/netbird:latest</code></td></tr>
 <tr><td>Namespace</td><td><code>netbird</code> (Pod Security Admission: <code>privileged</code>)</td></tr>
-<tr><td>Setup key</td><td>From Infisical <code>/netbird</code> → <code>NETBIRD_SETUP_KEY</code></td></tr>
+<tr><td>Setup key</td><td>From OpenBao <code>secret/data/netbird</code> → <code>NETBIRD_SETUP_KEY</code></td></tr>
 <tr><td>Management URL</td><td><code>https://netbird.madhan.app</code></td></tr>
 <tr><td>Capabilities</td><td><code>NET_ADMIN</code>, <code>SYS_MODULE</code></td></tr>
 <tr><td><code>hostNetwork</code></td><td><code>true</code> — required for kernel WireGuard interface</td></tr>
 </tbody></table>
-<p>The setup key is stored in Infisical (path <code>/netbird</code>, key <code>NETBIRD_SETUP_KEY</code>) and synced to the <code>netbird</code> namespace by an <code>InfisicalSecret</code> CR. See <a href="/architecture/secrets-flow">Secrets Flow</a> for the InfisicalSecret pattern.</p>
+<p>The setup key is stored in OpenBao (<code>secret/data/netbird</code>, key <code>NETBIRD_SETUP_KEY</code>) and synced to the <code>netbird</code> namespace as the <code>netbird-setup-key</code> k8s Secret by the Secrets Store CSI Driver (Pattern B). See <a href="/apps/secrets/openbao/">OpenBao</a> for the secrets pattern details.</p>
 <hr />
 <h2 id="netbird-reverse-proxy-proxy-madhan-app">NetBird Reverse Proxy (<code>*.proxy.madhan.app</code>)</h2>
 <p>The <code>netbird-proxy</code> container exposes NetBird peers as TCP endpoints via <code>*.proxy.madhan.app</code>. Traefik routes <code>*.proxy.madhan.app</code> TCP traffic to <code>netbird-proxy:8443</code> via a wildcard TCP router.</p>
@@ -700,7 +700,7 @@ Settings → Access Tokens → Create Personal Access Token — copy it → used
 <li><input disabled="" type="checkbox"/>
 Setup Keys → Add key <code>bifrost-agent</code> (Reusable) → copy key value → used as <code>NB_BIFROST_SETUP_KEY</code></li>
 <li><input disabled="" type="checkbox"/>
-Setup Keys → Add key <code>k8s-routing-peer</code> (Reusable) → copy key value → used as <code>NETBIRD_SETUP_KEY</code> in Infisical (Step 5)</li>
+Setup Keys → Add key <code>k8s-routing-peer</code> (Reusable) → copy key value → used as <code>NETBIRD_SETUP_KEY</code> in OpenBao (Step 5)</li>
 </ul>
 <h3 id="step-4-store-tokens-and-re-deploy">Step 4 — Store tokens and re-deploy</h3>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">sops</span><span> edit secrets/bootstrap.sops.yaml
@@ -714,9 +714,10 @@ Setup Keys → Add key <code>k8s-routing-peer</code> (Reusable) → copy key val
 <h3 id="step-5-configure-k8s-routing-peer">Step 5 — Configure K8s routing peer</h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
-Open Infisical → Project <code>homelab-prod</code> → Env <code>prod</code> → Path <code>/netbird</code>
+Add the setup key to OpenBao:<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
+</span><span>  bao kv patch secret/netbird NETBIRD_SETUP_KEY=</span><span style="color:#f29e74;">&lt;</span><span>value from Step </span><span style="color:#ffcc66;">3</span><span style="color:#f29e74;">&gt;
+</span></code></pre>
 <ul>
-<li>Add <code>NETBIRD_SETUP_KEY: &lt;value of the k8s-routing-peer setup key created in Step 3&gt;</code></li>
 <li>This is the key the <code>netbird-peer</code> pod uses to join the mesh at startup</li>
 </ul>
 </li>
@@ -1106,6 +1107,8 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -1189,6 +1192,8 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1217,13 +1222,31 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1241,6 +1264,22 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1283,155 +1322,27 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

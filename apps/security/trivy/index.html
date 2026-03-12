@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Continuous vulnerability scanning for running workloads." />
+            <meta name="description" content="Continuous vulnerability scanning for running workloads via Trivy Operator." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Trivy | Homelab" />
-      <meta property="og:description" content="Continuous vulnerability scanning for running workloads." />
+      <meta property="og:description" content="Continuous vulnerability scanning for running workloads via Trivy Operator." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Trivy" />
-      <meta name="twitter:description" content="Continuous vulnerability scanning for running workloads." />
+      <meta name="twitter:description" content="Continuous vulnerability scanning for running workloads via Trivy Operator." />
       
       
       
@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -506,34 +506,78 @@
             Trivy
             
         </h1>
-        <p class="text-gray-500">Continuous vulnerability scanning for running workloads.</p>
+        <p class="text-gray-500">Continuous vulnerability scanning for running workloads via Trivy Operator.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/compliance/trivy.go</code></td></tr>
-<tr><td>Namespace</td><td><code>trivy</code></td></tr>
-<tr><td>HTTPRoute</td><td>None</td></tr>
-<tr><td>UI</td><td>No</td></tr>
+    <h2 id="what-is-trivy-operator">What is Trivy Operator?</h2>
+<p><a href="https://aquasecurity.github.io/trivy-operator/">Trivy Operator</a> is a Kubernetes operator by Aqua Security that continuously scans all running workloads for container image vulnerabilities (CVEs), Kubernetes configuration issues, and compliance violations. Results are stored as Kubernetes Custom Resources queryable with <code>kubectl</code>.</p>
+<h2 id="why-trivy">Why Trivy?</h2>
+<p>Trivy is the most widely adopted open-source vulnerability scanner. The Operator pattern means scanning happens automatically whenever a workload changes — no manual scans required, no separate CI pipeline integration needed.</p>
+<table><thead><tr><th>Tool</th><th>Scan type</th><th>When</th></tr></thead><tbody>
+<tr><td><strong>Trivy Operator</strong></td><td>Running workloads in cluster</td><td>Continuous, on pod change</td></tr>
+<tr><td>Falco</td><td>Syscall behavior</td><td>Runtime (live)</td></tr>
+<tr><td>Harbor's Trivy</td><td>Images on push to registry</td><td>On registry push</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>Trivy Operator continuously scans all running workloads for:</p>
-<ul>
-<li>Container image vulnerabilities (CVEs)</li>
-<li>Kubernetes configuration issues</li>
-</ul>
-<p>Results are stored as custom resources queryable via <code>kubectl</code>.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>Trivy Operator runs as a single-replica Deployment in the <code>trivy</code> namespace. It watches for new or updated Pods and spawns scan Jobs that pull the image and check it against the Trivy vulnerability database.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/security/trivy.go"><code>workloads/security/trivy.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>trivy</code></td><td>Isolated namespace</td></tr>
+<tr><td>Chart version</td><td><code>trivy-operator</code> v0.32.0</td><td>Pinned version</td></tr>
+<tr><td>Replicas</td><td><code>1</code></td><td>Single operator instance</td></tr>
+<tr><td><code>scanJobsConcurrentLimit</code></td><td><code>3</code></td><td>Max parallel scan Jobs</td></tr>
+<tr><td><code>scanJobsRetryDelay</code></td><td><code>30s</code></td><td>Wait between retries on scan failure</td></tr>
+<tr><td><code>scanJobTimeout</code></td><td><code>5m</code></td><td>Timeout for each scan Job</td></tr>
+<tr><td><code>serviceMonitor.enabled</code></td><td><code>true</code></td><td>VMAgent scrapes Trivy metrics</td></tr>
+<tr><td>Resources (limit)</td><td><code>500m</code> / <code>512Mi</code></td><td>Operator itself is lightweight; scan Jobs are separate</td></tr>
+</tbody></table>
+<h2 id="what-it-scans">What It Scans</h2>
+<table><thead><tr><th>Scan type</th><th>CRD</th><th>Description</th></tr></thead><tbody>
+<tr><td>Container images</td><td><code>VulnerabilityReport</code></td><td>CVEs in container images of running pods</td></tr>
+<tr><td>Configuration</td><td><code>ConfigAuditReport</code></td><td>Kubernetes security misconfigs (e.g., no resource limits, privileged containers)</td></tr>
+<tr><td>Exposed secrets</td><td><code>ExposedSecretReport</code></td><td>Secrets found in image layers or environment variables</td></tr>
+<tr><td>SBOM</td><td><code>SbomReport</code></td><td>Software Bill of Materials for image layers</td></tr>
+</tbody></table>
 <h2 id="querying-reports">Querying Reports</h2>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># List vulnerability reports across all namespaces
 </span><span style="color:#ffd580;">kubectl</span><span> get vulnerabilityreports</span><span style="color:#ffcc66;"> -A
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Summary: just namespace + name + critical/high counts
+</span><span style="color:#ffd580;">kubectl</span><span> get vulnerabilityreports</span><span style="color:#ffcc66;"> -A </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffcc66;">  -o</span><span> custom-columns=</span><span style="color:#bae67e;">&quot;NS:.metadata.namespace,NAME:.metadata.name,CRITICAL:.report.summary.criticalCount,HIGH:.report.summary.highCount&quot;
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># Inspect a specific report
 </span><span style="color:#ffd580;">kubectl</span><span> describe vulnerabilityreport </span><span style="color:#f29e74;">&lt;</span><span>name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n </span><span style="color:#f29e74;">&lt;</span><span>namespace</span><span style="color:#f29e74;">&gt;
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># List config audit reports
 </span><span style="color:#ffd580;">kubectl</span><span> get configauditreports</span><span style="color:#ffcc66;"> -A
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># List exposed secret reports
+</span><span style="color:#ffd580;">kubectl</span><span> get exposedsecretreports</span><span style="color:#ffcc66;"> -A
 </span></code></pre>
-<h2 id="how-it-works">How It Works</h2>
-<p>Trivy Operator watches for new or updated Pods. When a workload changes, it spawns a scan Job that pulls the image and checks it against the Trivy vulnerability database. Results are stored as <code>VulnerabilityReport</code> CRDs in the same namespace as the workload.</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>New/updated Pod in any namespace
+</span><span>  → Trivy Operator detects change
+</span><span>  → Spawns scan Job (pulls image, checks against vulnerability DB)
+</span><span>  → Stores results as VulnerabilityReport CR in same namespace
+</span><span>  → VMAgent scrapes Trivy metrics via ServiceMonitor
+</span><span>  → Grafana dashboard (optional — CRD-based data, not metrics-based)
+</span></code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="scan-jobs-failing">Scan Jobs Failing</h3>
+<p><strong>Symptoms:</strong> VulnerabilityReport not created after deploying a new workload.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check scan jobs
+</span><span style="color:#ffd580;">kubectl</span><span> get jobs</span><span style="color:#ffcc66;"> -A </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> trivy
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check job logs
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n </span><span style="color:#f29e74;">&lt;</span><span>target-namespace</span><span style="color:#f29e74;">&gt;</span><span> job/</span><span style="color:#f29e74;">&lt;</span><span>trivy-scan-job</span><span style="color:#f29e74;">&gt;
+</span></code></pre>
+<p><strong>Common causes:</strong> Image pull failure (private registry without credentials), scan timeout (large image).</p>
+<h3 id="crds-not-present">CRDs Not Present</h3>
+<p>Trivy Operator's CRDs are downloaded at CDK8s synthesis time from the Helm chart tarballs. If <code>TRIVY_OPERATOR_SKIP_CRDS=true</code> is set in the environment, CRDs are skipped.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Verify CRDs are installed
+</span><span style="color:#ffd580;">kubectl</span><span> get crd </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> aquasecurity
+</span></code></pre>
 
 
     <!--  Errata section  -->
@@ -647,6 +691,8 @@
             
                 
             
+                
+            
         
             
             
@@ -654,10 +700,6 @@
                 
             
                 
-            
-        
-            
-            
             
         
             
@@ -681,13 +723,31 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/security/trivy/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/security/trivy/#what-is-trivy-operator" class="toc-link">What is Trivy Operator?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/security/trivy/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/security/trivy/#why-trivy" class="toc-link">Why Trivy?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/security/trivy/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/security/trivy/#configuration" class="toc-link">Configuration</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/security/trivy/#what-it-scans" class="toc-link">What It Scans</a>
                     
                 </li>
             
@@ -699,7 +759,28 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/security/trivy/#how-it-works" class="toc-link">How It Works</a>
+                    <a href="https://homelab.madhan.app/apps/security/trivy/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/security/trivy/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/security/trivy/#scan-jobs-failing" class="toc-link">Scan Jobs Failing</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/security/trivy/#crds-not-present" class="toc-link">CRDs Not Present</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -893,6 +974,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -976,6 +1059,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1004,13 +1089,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1028,6 +1131,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1070,155 +1189,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Cilium CNI, Gateway API, L2 load balancer pool, and Hubble UI." />
+            <meta name="description" content="Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Networking | Homelab" />
-      <meta property="og:description" content="Cilium CNI, Gateway API, L2 load balancer pool, and Hubble UI." />
+      <meta property="og:description" content="Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Networking" />
-      <meta name="twitter:description" content="Cilium CNI, Gateway API, L2 load balancer pool, and Hubble UI." />
+      <meta name="twitter:description" content="Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble." />
       
       
       
@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -506,10 +506,10 @@
             Networking
             
         </h1>
-        <p class="text-gray-500">Cilium CNI, Gateway API, L2 load balancer pool, and Hubble UI.</p>
+        <p class="text-gray-500">Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble.</p>
     </div>
     <h2 id="cilium-cni">Cilium CNI</h2>
-<p>Cilium v1.16.6 is installed via Helm in the <code>kube-system</code> namespace. Key configuration:</p>
+<p><a href="https://cilium.io/">Cilium</a> v1.16.6 is installed via Helm in the <code>kube-system</code> namespace by Pulumi (<code>core/platform/cilium.go</code>).</p>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Purpose</th></tr></thead><tbody>
 <tr><td><code>ipam.mode</code></td><td><code>kubernetes</code></td><td>IPAM managed by Kubernetes</td></tr>
 <tr><td><code>kubeProxyReplacement</code></td><td><code>true</code></td><td>Full eBPF kube-proxy replacement</td></tr>
@@ -519,13 +519,77 @@
 <tr><td><code>hubble.relay.enabled</code></td><td><code>true</code></td><td>Hubble relay for cross-node visibility</td></tr>
 <tr><td><code>hubble.ui.enabled</code></td><td><code>true</code></td><td>Hubble UI dashboard</td></tr>
 <tr><td><code>k8sServiceHost</code></td><td><code>192.168.1.210</code></td><td>VIP for API server connectivity</td></tr>
+<tr><td><code>k8sServicePort</code></td><td><code>6443</code></td><td>API server port</td></tr>
 </tbody></table>
-<h2 id="load-balancer-ip-pool">Load Balancer IP Pool</h2>
-<p>Cilium manages a <code>CiliumLoadBalancerIPPool</code> (<code>address-pool</code>) with the range <code>192.168.1.220–192.168.1.230</code>.</p>
-<p>Services with <code>type: LoadBalancer</code> receive an IP from this pool via L2 ARP announcements. The <code>CiliumL2AnnouncementPolicy</code> (<code>l2-policy</code>) applies to all worker nodes (not control plane).</p>
-<h2 id="gateway-api">Gateway API</h2>
-<p>Gateway API CRDs (experimental v1.2.1) are installed. A single shared <code>Gateway</code> resource (<code>homelab-gateway</code>) is created in <code>kube-system</code>:</p>
+<h2 id="cilium-as-kube-proxy-replacement">Cilium as kube-proxy Replacement</h2>
+<p>Standard Kubernetes uses <code>kube-proxy</code> as a DaemonSet to manage <code>iptables</code> rules for Service-to-Pod routing. This homelab replaces kube-proxy entirely with Cilium's eBPF data plane.</p>
+<p><strong>How it's disabled in Talos</strong> (from <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/talos.go"><code>core/platform/talos.go</code></a>):</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">cluster</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">proxy</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">disabled</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
+</span></code></pre>
+<p><strong>How Cilium takes over</strong> (from <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go"><code>core/platform/cilium.go</code></a>):</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;kubeProxyReplacement&quot;</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">Bool</span><span>(</span><span style="color:#ffcc66;">true</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span style="color:#bae67e;">&quot;k8sServiceHost&quot;</span><span style="color:#ccc9c2cc;">:       </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;192.168.1.210&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,  </span><span style="font-style:italic;color:#5c6773;">// VIP
+</span><span style="color:#bae67e;">&quot;k8sServicePort&quot;</span><span style="color:#ccc9c2cc;">:       </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">Int</span><span>(</span><span style="color:#ffcc66;">6443</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p>Cilium needs to know the API server address directly (not through kube-proxy) because it is replacing kube-proxy. This is why <code>k8sServiceHost</code> must be set to the VIP.</p>
+<p><strong>What this means in practice:</strong></p>
+<ul>
+<li>No <code>kube-proxy</code> DaemonSet exists on any node</li>
+<li>All Service→Pod routing is handled in the Linux kernel via eBPF programs loaded by Cilium</li>
+<li>This eliminates iptables overhead and provides faster, more observable routing</li>
+</ul>
+<p><strong>Verify:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># No kube-proxy DaemonSet
+</span><span style="color:#ffd580;">kubectl</span><span> get ds</span><span style="color:#ffcc66;"> -n</span><span> kube-system </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> kube-proxy  </span><span style="font-style:italic;color:#5c6773;"># should return nothing
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Cilium reports kube-proxy replacement active
+</span><span style="color:#ffd580;">cilium</span><span> status </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> KubeProxyReplacement
+</span><span style="font-style:italic;color:#5c6773;"># KubeProxyReplacement: True
+</span></code></pre>
+<h2 id="l2-announcements-and-loadbalancer-ips">L2 Announcements and LoadBalancer IPs</h2>
+<p>Bare-metal clusters have no cloud provider to assign LoadBalancer IPs. Cilium's L2 announcement feature fills this role using ARP.</p>
+<p><strong>IP Pool</strong> (from <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go"><code>core/platform/cilium.go</code></a>):</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// IPs: 192.168.1.220 through 192.168.1.230 (11 addresses, each as /32)
+</span><span style="color:#ffa759;">for </span><span>i </span><span style="color:#f29e74;">:= </span><span style="color:#ffcc66;">220</span><span style="color:#ccc9c2cc;">; </span><span>i </span><span style="color:#f29e74;">&lt;= </span><span style="color:#ffcc66;">230</span><span style="color:#ccc9c2cc;">; </span><span>i</span><span style="color:#f29e74;">++ </span><span>{
+</span><span>    cidr</span><span style="color:#ccc9c2cc;">: </span><span>fmt</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">Sprintf</span><span>(</span><span style="color:#bae67e;">&quot;192.168.1.</span><span style="color:#ffcc66;">%d</span><span style="color:#bae67e;">/32&quot;</span><span style="color:#ccc9c2cc;">, </span><span>i)
+</span><span>}
+</span></code></pre>
+<p>A <code>CiliumLoadBalancerIPPool</code> named <code>address-pool</code> reserves these 11 IPs. Services with <code>type: LoadBalancer</code> are assigned IPs from this pool.</p>
+<p><strong>L2 Announcement Policy:</strong></p>
+<p>A <code>CiliumL2AnnouncementPolicy</code> named <code>l2-policy</code> restricts announcements to <strong>worker nodes only</strong> (no <code>node-role.kubernetes.io/control-plane</code> label):</p>
 <pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">nodeSelector</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">matchExpressions</span><span style="color:#ccc9c2cc;">:
+</span><span>      - </span><span style="color:#73d0ff;">key</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">node-role.kubernetes.io/control-plane
+</span><span>        </span><span style="color:#73d0ff;">operator</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">DoesNotExist
+</span></code></pre>
+<p><strong>Traffic flow for a LoadBalancer Service:</strong></p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Client ARP: &quot;Who has 192.168.1.220?&quot;
+</span><span>  → Worker node responds (Cilium L2 announcement leader)
+</span><span>  → Client sends traffic to that worker&#39;s MAC
+</span><span>  → Cilium eBPF programs on the worker route to the correct pod
+</span><span>  → Pod responds directly back to client
+</span></code></pre>
+<p><strong>Lease-based leader election:</strong> Each LoadBalancer IP has a Lease resource (<code>coordination.k8s.io/leases</code>) for leader election among worker nodes. The <code>cilium-leases-access</code> ClusterRole grants Cilium permission to manage these Leases.</p>
+<p><strong>Primary gateway IP:</strong> <code>192.168.1.220</code> is always the first IP assigned (to the homelab-gateway Service). The wildcard DNS record <code>*.madhan.app</code> resolves to this IP, so all cluster services are reachable at their hostnames.</p>
+<h2 id="gateway-api">Gateway API</h2>
+<p>The <a href="https://gateway-api.sigs.k8s.io/">Gateway API</a> is the successor to the Kubernetes Ingress spec. It separates infrastructure concerns (the Gateway, managed by the platform team) from application routing (HTTPRoutes, managed by app teams).</p>
+<p><strong>Why Gateway API over Ingress:</strong></p>
+<table><thead><tr><th>Aspect</th><th>Ingress</th><th>Gateway API</th></tr></thead><tbody>
+<tr><td>Role separation</td><td>None</td><td>Gateway (infra) vs HTTPRoute (app)</td></tr>
+<tr><td>Multi-protocol</td><td>HTTP/HTTPS only</td><td>HTTP, HTTPS, TCP, TLS, gRPC</td></tr>
+<tr><td>Expressiveness</td><td>Limited header/path matching</td><td>Rich routing rules</td></tr>
+<tr><td>Future</td><td>Legacy</td><td>Active development</td></tr>
+</tbody></table>
+<p><strong>The shared Gateway</strong> (from <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go"><code>core/platform/cilium.go</code></a>):</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">gateway.networking.k8s.io/v1
+</span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">Gateway
+</span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">homelab-gateway
+</span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">kube-system
+</span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
 </span><span>  </span><span style="color:#73d0ff;">gatewayClassName</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">cilium
 </span><span>  </span><span style="color:#73d0ff;">listeners</span><span style="color:#ccc9c2cc;">:
 </span><span>    - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">http
@@ -533,57 +597,85 @@
 </span><span>      </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">80
 </span><span>      </span><span style="color:#73d0ff;">allowedRoutes</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">namespaces</span><span style="color:#ccc9c2cc;">:
-</span><span>          </span><span style="color:#73d0ff;">from</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">All
+</span><span>          </span><span style="color:#73d0ff;">from</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">All       </span><span style="font-style:italic;color:#5c6773;"># Any namespace can attach an HTTPRoute
 </span><span>    - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https
 </span><span>      </span><span style="color:#73d0ff;">protocol</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">HTTPS
 </span><span>      </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">443
 </span><span>      </span><span style="color:#73d0ff;">tls</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">mode</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">Terminate
 </span><span>        </span><span style="color:#73d0ff;">certificateRefs</span><span style="color:#ccc9c2cc;">:
-</span><span>          - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">wildcard-madhan-app-tls
+</span><span>          - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">wildcard-madhan-app-tls   </span><span style="font-style:italic;color:#5c6773;"># cert-manager wildcard cert
 </span><span>            </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">kube-system
+</span><span>      </span><span style="color:#73d0ff;">allowedRoutes</span><span style="color:#ccc9c2cc;">:
+</span><span>        </span><span style="color:#73d0ff;">namespaces</span><span style="color:#ccc9c2cc;">:
+</span><span>          </span><span style="color:#73d0ff;">from</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">All
 </span></code></pre>
-<blockquote>
-<p><strong>Note:</strong> The HTTPS listener requires the <code>wildcard-madhan-app-tls</code> Secret in <code>kube-system</code>. This Secret is provisioned by cert-manager once the <code>cloudflare-api-token</code> bootstrap secret exists. Until then, only HTTP routing is active.</p>
-</blockquote>
-<h2 id="traffic-flow">Traffic Flow</h2>
-<pre class="mermaid border border-gray-500/15">
- flowchart LR
-    CLIENT[External Client]
-    GW[homelab-gateway&lt;br&#x2F;&gt;CiliumLoadBalancerIP&lt;br&#x2F;&gt;192.168.1.220]
-    HR_APP[HTTPRoute&lt;br&#x2F;&gt;app.madhan.app]
-    SVC[ClusterIP Service]
-    POD[App Pod]
-
-    CLIENT --&gt;|HTTP port 80| GW
-    GW --&gt; HR_APP
-    HR_APP --&gt; SVC
-    SVC --&gt; POD
-</pre>
-<h2 id="httproutes">HTTPRoutes</h2>
-<p>Each app creates an <code>HTTPRoute</code> in its own namespace pointing to the shared gateway:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
+<p><code>allowedRoutes.namespaces.from: All</code> is a deliberate single-tenant homelab choice. In a multi-tenant cluster you would restrict this to specific namespaces.</p>
+<p><strong>Per-app HTTPRoutes:</strong></p>
+<p>Each app creates its own <code>HTTPRoute</code> in its own namespace pointing back to the shared gateway. Example from <code>workloads/monitoring/grafana.go</code>:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">gateway.networking.k8s.io/v1
+</span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">HTTPRoute
+</span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
+</span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
+</span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
 </span><span>  </span><span style="color:#73d0ff;">parentRefs</span><span style="color:#ccc9c2cc;">:
 </span><span>    - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">homelab-gateway
 </span><span>      </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">kube-system
 </span><span>  </span><span style="color:#73d0ff;">hostnames</span><span style="color:#ccc9c2cc;">:
-</span><span>    - </span><span style="color:#bae67e;">app.madhan.app
+</span><span>    - </span><span style="color:#bae67e;">grafana.madhan.app
 </span><span>  </span><span style="color:#73d0ff;">rules</span><span style="color:#ccc9c2cc;">:
 </span><span>    - </span><span style="color:#73d0ff;">matches</span><span style="color:#ccc9c2cc;">:
 </span><span>        - </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">:
 </span><span>            </span><span style="color:#73d0ff;">type</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">PathPrefix
 </span><span>            </span><span style="color:#73d0ff;">value</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">/
 </span><span>      </span><span style="color:#73d0ff;">backendRefs</span><span style="color:#ccc9c2cc;">:
-</span><span>        - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">app-service
-</span><span>          </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">80
+</span><span>        - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
+</span><span>          </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">3000
+</span></code></pre>
+<p>Cilium runs an Envoy proxy per Gateway to handle HTTP routing and TLS termination.</p>
+<h2 id="traffic-flow">Traffic Flow</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>LAN Client
+</span><span>  → DNS: *.madhan.app → 192.168.1.220
+</span><span>  → ARP: worker node responds (Cilium L2 leader)
+</span><span>  → TCP: port 80 or 443 to worker
+</span><span>  → Cilium eBPF: routes to homelab-gateway (Envoy)
+</span><span>  → Envoy: matches HTTPRoute by hostname
+</span><span>  → Cilium eBPF: routes to app ClusterIP Service
+</span><span>  → Pod: handles request
 </span></code></pre>
 <h2 id="hubble-ui">Hubble UI</h2>
-<p>Hubble UI is accessible at <code>http://hubble.madhan.app</code>. The HTTPRoute is created by Pulumi in <code>infra/pulumi/cilium.go</code>:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">hostnames</span><span style="color:#ccc9c2cc;">: </span><span>[</span><span style="color:#bae67e;">hubble.madhan.app</span><span>]
-</span><span style="color:#73d0ff;">backendRefs</span><span style="color:#ccc9c2cc;">: </span><span>[{</span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">hubble-ui</span><span style="color:#ccc9c2cc;">, </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">80</span><span>}]
+<p>Hubble UI is accessible at <code>http://hubble.madhan.app</code>. It provides network flow visibility across the cluster — which pods talk to which, which connections are dropped, and L7 protocol details.</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># HTTPRoute created by Pulumi in core/platform/cilium.go
+</span><span style="color:#73d0ff;">hostnames</span><span style="color:#ccc9c2cc;">: </span><span>[</span><span style="color:#bae67e;">hubble.madhan.app</span><span>]
+</span><span style="color:#73d0ff;">backendRefs</span><span style="color:#ccc9c2cc;">: </span><span>[{</span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">hubble-ui</span><span style="color:#ccc9c2cc;">, </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">80</span><span style="color:#ccc9c2cc;">, </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">kube-system</span><span>}]
 </span></code></pre>
 <h2 id="rbac-patch">RBAC Patch</h2>
 <p>A <code>ClusterRole</code> and <code>ClusterRoleBinding</code> (<code>cilium-leases-access</code>) are created to allow Cilium to manage <code>coordination.k8s.io/leases</code> for L2 announcements. This is required because the Cilium Helm chart does not include these permissions by default.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="cilium-crashloop-exit-137">Cilium CrashLoop (exit 137)</h3>
+<p><strong>Symptoms:</strong> Cilium pods restart repeatedly with OOMKilled or exit 137.</p>
+<p><strong>Diagnosis:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> kube-system</span><span style="color:#ffcc66;"> -l</span><span> k8s-app=cilium
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> kube-system</span><span style="color:#ffcc66;"> -l</span><span> k8s-app=cilium</span><span style="color:#ffcc66;"> --previous
+</span></code></pre>
+<p><strong>Fix:</strong> Pod deletion alone does not fix BPF state corruption. Reboot the affected node:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">talosctl</span><span style="color:#ffcc66;"> --talosconfig </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.talos/config reboot</span><span style="color:#ffcc66;"> --nodes </span><span style="color:#f29e74;">&lt;</span><span>node-IP</span><span style="color:#f29e74;">&gt;
+</span></code></pre>
+<p><strong>Why this happens:</strong> The eBPF maps in the kernel can get corrupted if Cilium crashes mid-update. A node reboot clears all BPF state and lets Cilium start cleanly.</p>
+<h3 id="l2-announcement-not-working">L2 Announcement Not Working</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check policy exists
+</span><span style="color:#ffd580;">kubectl</span><span> get ciliuml2announcementpolicies
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check IP pool
+</span><span style="color:#ffd580;">kubectl</span><span> get ciliumloadbalancerippool
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check leases
+</span><span style="color:#ffd580;">kubectl</span><span> get leases</span><span style="color:#ffcc66;"> -n</span><span> kube-system </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> cilium
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Test ARP from a LAN machine
+</span><span style="color:#ffd580;">arping</span><span style="color:#ffcc66;"> -I</span><span> eth0 192.168.1.220
+</span></code></pre>
 
 
     <!--  Errata section  -->
@@ -679,7 +771,13 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#load-balancer-ip-pool" class="toc-link">Load Balancer IP Pool</a>
+                    <a href="https://homelab.madhan.app/infrastructure/networking/#cilium-as-kube-proxy-replacement" class="toc-link">Cilium as kube-proxy Replacement</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/networking/#l2-announcements-and-loadbalancer-ips" class="toc-link">L2 Announcements and LoadBalancer IPs</a>
                     
                 </li>
             
@@ -697,12 +795,6 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#httproutes" class="toc-link">HTTPRoutes</a>
-                    
-                </li>
-            
-                <li>
-                    
                     <a href="https://homelab.madhan.app/infrastructure/networking/#hubble-ui" class="toc-link">Hubble UI</a>
                     
                 </li>
@@ -710,6 +802,27 @@
                 <li>
                     
                     <a href="https://homelab.madhan.app/infrastructure/networking/#rbac-patch" class="toc-link">RBAC Patch</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/networking/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/networking/#cilium-crashloop-exit-137" class="toc-link">Cilium CrashLoop (exit 137)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/networking/#l2-announcement-not-working" class="toc-link">L2 Announcement Not Working</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -903,6 +1016,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -986,6 +1101,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1014,13 +1131,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1038,6 +1173,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1080,155 +1231,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

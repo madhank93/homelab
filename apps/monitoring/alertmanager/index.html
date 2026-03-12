@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Alert routing, grouping, and deduplication." />
+            <meta name="description" content="Alert routing, grouping, and deduplication via kube-prometheus-stack (AlertManager-only mode)." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="AlertManager | Homelab" />
-      <meta property="og:description" content="Alert routing, grouping, and deduplication." />
+      <meta property="og:description" content="Alert routing, grouping, and deduplication via kube-prometheus-stack (AlertManager-only mode)." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="AlertManager" />
-      <meta name="twitter:description" content="Alert routing, grouping, and deduplication." />
+      <meta name="twitter:description" content="Alert routing, grouping, and deduplication via kube-prometheus-stack (AlertManager-only mode)." />
       
       
       
@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -506,20 +506,78 @@
             AlertManager
             
         </h1>
-        <p class="text-gray-500">Alert routing, grouping, and deduplication.</p>
+        <p class="text-gray-500">Alert routing, grouping, and deduplication via kube-prometheus-stack (AlertManager-only mode).</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/monitoring/alert_manager.go</code></td></tr>
-<tr><td>Namespace</td><td><code>alertmanager</code></td></tr>
-<tr><td>HTTPRoute</td><td>None</td></tr>
-<tr><td>UI</td><td>No</td></tr>
-</tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>AlertManager handles alerts fired by Prometheus-compatible rule engines. It deduplicates, groups, and routes alerts to notification channels (email, Slack, PagerDuty, etc.).</p>
-<p>Deployed via <code>kube-prometheus-stack</code>.</p>
+    <h2 id="what-is-alertmanager">What is AlertManager?</h2>
+<p><a href="https://prometheus.io/docs/alerting/latest/alertmanager/">AlertManager</a> is the Prometheus ecosystem's alert routing and notification system. It receives alerts from Prometheus-compatible rule engines, deduplicates them, groups related alerts, and routes them to notification channels (email, Slack, PagerDuty, webhooks, etc.).</p>
+<h2 id="why-alertmanager">Why AlertManager?</h2>
+<p>AlertManager is the standard in the Prometheus/VictoriaMetrics ecosystem. The Prometheus Operator CRDs (<code>PrometheusRule</code>, <code>ServiceMonitor</code>, <code>PodMonitor</code>, <code>AlertmanagerConfig</code>) are widely used by Helm charts to define both scraping targets and alert rules — using AlertManager means these CRDs work out of the box.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>AlertManager is deployed from <code>kube-prometheus-stack</code> (chart <code>82.0.1</code>) in <strong>AlertManager-only mode</strong> — all other kube-prometheus-stack components (Prometheus, Grafana, node-exporter, kube-state-metrics) are disabled. Only the Prometheus Operator (for CRDs) and AlertManager itself are enabled.</p>
+<p>This pattern avoids running a full Prometheus stack when VictoriaMetrics is already handling metrics storage and VMAgent is handling scraping.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/alert_manager.go"><code>workloads/observability/alert_manager.go</code></a></p>
 <h2 id="configuration">Configuration</h2>
-<p>Alert routing rules and notification channels are configured via Helm values in the CDK8s code.</p>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>alertmanager</code></td><td>Isolated namespace</td></tr>
+<tr><td>HTTPRoute</td><td><code>alertmanager.madhan.app</code> → port 9093</td><td>Gateway API</td></tr>
+<tr><td>Replicas</td><td><code>1</code></td><td>Single instance for homelab</td></tr>
+<tr><td>PVC</td><td><code>10Gi</code> Longhorn</td><td>Silence and notification state persistence</td></tr>
+<tr><td>Resources (limits)</td><td><code>200m</code> / <code>256Mi</code></td><td>AlertManager is lightweight</td></tr>
+<tr><td><code>prometheus.enabled</code></td><td><code>false</code></td><td>Using VictoriaMetrics instead</td></tr>
+<tr><td><code>grafana.enabled</code></td><td><code>false</code></td><td>Separate Grafana deployment</td></tr>
+<tr><td><code>kubeStateMetrics.enabled</code></td><td><code>false</code></td><td>OTel Gateway handles cluster metrics</td></tr>
+<tr><td><code>nodeExporter.enabled</code></td><td><code>false</code></td><td>OTel Agent handles host metrics</td></tr>
+<tr><td><code>prometheusOperator.enabled</code></td><td><code>true</code></td><td>Required for CRDs</td></tr>
+</tbody></table>
+<h2 id="alert-routing-configuration">Alert Routing Configuration</h2>
+<p>The current routing is a placeholder (webhook receiver with no target):</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">route</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">group_by</span><span style="color:#ccc9c2cc;">: </span><span>[</span><span style="color:#bae67e;">alertname</span><span>]
+</span><span>  </span><span style="color:#73d0ff;">group_wait</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">10s
+</span><span>  </span><span style="color:#73d0ff;">group_interval</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">10s
+</span><span>  </span><span style="color:#73d0ff;">repeat_interval</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">1h
+</span><span>  </span><span style="color:#73d0ff;">receiver</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">web.hook
+</span><span style="color:#73d0ff;">receivers</span><span style="color:#ccc9c2cc;">:
+</span><span>  - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">web.hook
+</span></code></pre>
+<p>To add real notifications, add receiver configurations:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">receivers</span><span style="color:#ccc9c2cc;">:
+</span><span>  - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">slack-notifications
+</span><span>    </span><span style="color:#73d0ff;">slack_configs</span><span style="color:#ccc9c2cc;">:
+</span><span>      - </span><span style="color:#73d0ff;">api_url</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&#39;https://hooks.slack.com/services/...&#39;
+</span><span>        </span><span style="color:#73d0ff;">channel</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&#39;#alerts&#39;
+</span></code></pre>
+<h2 id="crds">CRDs</h2>
+<p>The AlertManager chart installs these CRDs (pinned to kube-prometheus-stack <code>82.0.1</code>):</p>
+<ul>
+<li><code>PrometheusRule</code> — alert and recording rules</li>
+<li><code>ServiceMonitor</code> — scraping targets for services</li>
+<li><code>PodMonitor</code> — scraping targets for pods</li>
+<li><code>Alertmanager</code> — AlertManager configuration</li>
+</ul>
+<p>These CRDs are used by VMAgent for service discovery and by apps to declare their own alert rules.</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>VictoriaMetrics (VMAgent evaluates PrometheusRules)
+</span><span>  → Fires alerts to AlertManager:9093
+</span><span>  → AlertManager groups and routes alerts
+</span><span>  → Notification receivers (Slack, email, webhook)
+</span><span>
+</span><span>Grafana → AlertManager UI (via Unified Alerting datasource)
+</span></code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="accessing-the-ui">Accessing the UI</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Port-forward for direct access
+</span><span style="color:#ffd580;">kubectl</span><span> port-forward</span><span style="color:#ffcc66;"> -n</span><span> alertmanager svc/alertmanager-kube-promethe-alertmanager 9093:9093
+</span><span style="font-style:italic;color:#5c6773;"># Open http://localhost:9093
+</span></code></pre>
+<p>Or browse to <code>http://alertmanager.madhan.app</code>.</p>
+<h3 id="checking-active-alerts">Checking Active Alerts</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># List active alerts via API
+</span><span style="color:#ffd580;">curl</span><span> http://alertmanager.madhan.app/api/v2/alerts </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span> .
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check silences
+</span><span style="color:#ffd580;">curl</span><span> http://alertmanager.madhan.app/api/v2/silences </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span> .
+</span></code></pre>
 
 
     <!--  Errata section  -->
@@ -609,19 +667,64 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#what-is-alertmanager" class="toc-link">What is AlertManager?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#why-alertmanager" class="toc-link">Why AlertManager?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
                     
                 </li>
             
                 <li>
                     
                     <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#configuration" class="toc-link">Configuration</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#alert-routing-configuration" class="toc-link">Alert Routing Configuration</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#crds" class="toc-link">CRDs</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#accessing-the-ui" class="toc-link">Accessing the UI</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/alertmanager/#checking-active-alerts" class="toc-link">Checking Active Alerts</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -815,6 +918,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -898,6 +1003,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -926,13 +1033,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -950,6 +1075,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -992,155 +1133,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

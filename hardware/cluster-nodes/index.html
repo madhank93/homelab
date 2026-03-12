@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -512,19 +512,19 @@
 <p>All nodes are QEMU VMs on a Proxmox host, defined in <code>core/platform/talos.go</code>.</p>
 <h3 id="control-plane-nodes">Control Plane Nodes</h3>
 <table><thead><tr><th>Name</th><th>IP</th><th>vCPUs</th><th>RAM</th><th>Disk</th><th>CPU Priority</th></tr></thead><tbody>
-<tr><td>k8s-controller1</td><td>192.168.1.211</td><td>4</td><td>6 GiB</td><td>30 GiB</td><td>1024 (high)</td></tr>
-<tr><td>k8s-controller2</td><td>192.168.1.212</td><td>4</td><td>6 GiB</td><td>30 GiB</td><td>1024 (high)</td></tr>
-<tr><td>k8s-controller3</td><td>192.168.1.213</td><td>4</td><td>6 GiB</td><td>30 GiB</td><td>1024 (high)</td></tr>
+<tr><td>k8s-controller1</td><td>192.168.1.211</td><td>4</td><td>8 GiB (8192 MB)</td><td>50 GiB</td><td>1024 (high)</td></tr>
+<tr><td>k8s-controller2</td><td>192.168.1.212</td><td>4</td><td>8 GiB (8192 MB)</td><td>50 GiB</td><td>1024 (high)</td></tr>
+<tr><td>k8s-controller3</td><td>192.168.1.213</td><td>4</td><td>8 GiB (8192 MB)</td><td>50 GiB</td><td>1024 (high)</td></tr>
 </tbody></table>
 <p>Control plane nodes carry a floating VIP (<code>192.168.1.210</code>) on their primary interface. This VIP is configured as a Talos machine patch so the API server endpoint remains stable regardless of which node holds it.</p>
 <h3 id="worker-nodes">Worker Nodes</h3>
-<table><thead><tr><th>Name</th><th>IP</th><th>vCPUs</th><th>RAM</th><th>Disk</th><th>CPU Priority</th></tr></thead><tbody>
-<tr><td>k8s-worker1</td><td>192.168.1.221</td><td>4</td><td>6 GiB</td><td>125 GiB</td><td>100 (standard)</td></tr>
-<tr><td>k8s-worker2</td><td>192.168.1.222</td><td>4</td><td>6 GiB</td><td>125 GiB</td><td>100 (standard)</td></tr>
-<tr><td>k8s-worker3</td><td>192.168.1.223</td><td>4</td><td>6 GiB</td><td>125 GiB</td><td>100 (standard)</td></tr>
-<tr><td>k8s-worker4</td><td>192.168.1.224</td><td>4</td><td>6 GiB</td><td>125 GiB</td><td>100 (standard)</td></tr>
+<table><thead><tr><th>Name</th><th>IP</th><th>vCPUs</th><th>RAM</th><th>Disk</th><th>CPU Priority</th><th>Notes</th></tr></thead><tbody>
+<tr><td>k8s-worker1</td><td>192.168.1.221</td><td>4</td><td>14 GiB (14336 MB)</td><td>200 GiB</td><td>100 (standard)</td><td></td></tr>
+<tr><td>k8s-worker2</td><td>192.168.1.222</td><td>4</td><td>14 GiB (14336 MB)</td><td>200 GiB</td><td>100 (standard)</td><td></td></tr>
+<tr><td>k8s-worker3</td><td>192.168.1.223</td><td>4</td><td>14 GiB (14336 MB)</td><td>200 GiB</td><td>100 (standard)</td><td></td></tr>
+<tr><td>k8s-worker4</td><td>192.168.1.224</td><td>8</td><td>16 GiB (16384 MB)</td><td>250 GiB</td><td>100 (standard)</td><td>GPU node — RTX 5070 Ti</td></tr>
 </tbody></table>
-<p>Workers use 125 GiB disks to provide ~100 GiB of usable Longhorn storage per node.</p>
+<p>Workers use 200 GiB disks to provide ~90–95 GiB of usable Longhorn storage per node. The GPU worker (k8s-worker4) has a 250 GiB disk for extra AI model volume space.</p>
 <h2 id="talos-version">Talos Version</h2>
 <p><strong>Talos v1.12.4</strong> — cluster name <code>talos-cluster</code>.</p>
 <h3 id="talos-images">Talos Images</h3>
@@ -898,6 +898,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -981,6 +983,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1009,13 +1013,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1033,6 +1055,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1075,155 +1113,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

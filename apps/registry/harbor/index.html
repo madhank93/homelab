@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -508,31 +508,92 @@
         </h1>
         <p class="text-gray-500">Enterprise container image registry with vulnerability scanning and pull-through proxy.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/registry/harbor.go</code></td></tr>
-<tr><td>Namespace</td><td><code>harbor</code></td></tr>
-<tr><td>HTTPRoute</td><td><code>harbor.madhan.app</code> → <code>harbor-core:80</code></td></tr>
-<tr><td>UI</td><td>Yes</td></tr>
-<tr><td>Requires Infisical</td><td>Yes — <code>harbor-admin</code> Secret</td></tr>
+    <h2 id="what-is-harbor">What is Harbor?</h2>
+<p><a href="https://goharbor.io/">Harbor</a> is an open-source cloud-native container registry that provides role-based access control, vulnerability scanning (via Trivy), image signing, content trust, and pull-through proxy caching. It is CNCF Graduated status.</p>
+<h2 id="why-harbor">Why Harbor?</h2>
+<p>Harbor is the most feature-complete self-hosted registry available. Alternatives like plain Docker Registry lack RBAC, vulnerability scanning, and a web UI. Harbor integrates directly with Trivy for on-push image scanning, making it useful alongside the cluster-wide Trivy Operator.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>Harbor stores private container images built for this homelab and provides pull-through proxy caches for Docker Hub, GHCR, and other public registries. Images are pushed to <code>harbor.madhan.app</code> and pulled into cluster deployments.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/registry/harbor.go"><code>workloads/registry/harbor.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>harbor</code></td><td>Isolated namespace</td></tr>
+<tr><td>HTTPRoute</td><td><code>harbor.madhan.app</code> → <code>harbor:80</code></td><td>Gateway API — points to nginx proxy, NOT harbor-core</td></tr>
+<tr><td>Access</td><td>LAN / VPN only</td><td>Not in <code>publicServices</code> — DNS resolves to <code>192.168.1.220</code></td></tr>
+<tr><td><code>externalURL</code></td><td><code>https://harbor.madhan.app</code></td><td>Used in redirect URLs and push commands</td></tr>
+<tr><td><code>expose.type</code></td><td><code>clusterIP</code></td><td>No NodePort/LoadBalancer — all via Gateway API</td></tr>
+<tr><td><code>expose.tls.enabled</code></td><td><code>false</code></td><td>TLS terminated at Gateway</td></tr>
+<tr><td>Registry PVC</td><td><code>50Gi</code> RWX Longhorn</td><td>Multi-attach safe for rolling updates</td></tr>
+<tr><td>Jobservice PVC</td><td>RWX Longhorn</td><td>Multi-attach safe for rolling updates</td></tr>
+<tr><td>Database PVC</td><td><code>10Gi</code> RWO Longhorn</td><td>Internal PostgreSQL (single writer)</td></tr>
+<tr><td><code>existingSecret</code></td><td><code>harbor-admin</code></td><td>CSI-synced Secret from OpenBao</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>Harbor provides:</p>
-<ul>
-<li><strong>Private container registry</strong> — push/pull images from <code>harbor.madhan.app</code></li>
-<li><strong>Vulnerability scanning</strong> — integrates with Trivy for image scanning on push</li>
-<li><strong>RBAC</strong> — project-level access control</li>
-<li><strong>Pull-through proxy cache</strong> — caches images from Docker Hub, GHCR, etc.</li>
-</ul>
-<h2 id="admin-credentials">Admin Credentials</h2>
-<p>The admin password is managed by Infisical at path <code>/harbor</code>, synced to the <code>harbor-admin</code> Secret (<code>HARBOR_ADMIN_PASSWORD</code> key).</p>
-<h2 id="known-issue-rwo-pvc-multi-attach">Known Issue: RWO PVC Multi-Attach</h2>
-<p>Harbor uses multiple RWO PVCs from Longhorn. During ArgoCD sync rolling updates, pods from the old ReplicaSet may still hold the PVC, causing <code>Multi-Attach error</code> for the new pod.</p>
-<p><strong>Force-delete the stuck pod:</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> delete pod</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -l </span><span style="color:#bae67e;">&quot;app=harbor,component=jobservice&quot;</span><span style="color:#ffcc66;"> --grace-period</span><span style="color:#f29e74;">=</span><span>0</span><span style="color:#ffcc66;"> --force
+<h2 id="httproute-note">HTTPRoute Note</h2>
+<p>Harbor's HTTPRoute <strong>must point to <code>harbor:80</code></strong> (the nginx proxy service), not <code>harbor-core:80</code> (the core API service directly). The nginx proxy handles routing between Harbor's multiple backend components (core, portal, registry, etc.). Pointing directly to <code>harbor-core</code> will cause the UI to fail to load assets and the registry protocol to break.</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// Correct:
+</span><span style="color:#bae67e;">&quot;name&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;harbor&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;port&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">80
+</span><span style="font-style:italic;color:#5c6773;">// Wrong:
+</span><span style="color:#bae67e;">&quot;name&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;harbor-core&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;port&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">80
 </span></code></pre>
-<p>This happens on every ArgoCD sync that updates the Harbor Deployment. The <code>Recreate</code> strategy would fix it but Harbor's chart uses <code>RollingUpdate</code> by default.</p>
-<h2 id="configuring-pull-through-proxy">Configuring Pull-Through Proxy</h2>
+<h2 id="secrets-openbao">Secrets (OpenBao)</h2>
+<p>Pattern B (secretObjects sync). The <code>HARBOR_ADMIN_PASSWORD</code> is fetched from OpenBao (<code>secret/data/harbor</code>) and synced into the <code>harbor-admin</code> k8s Secret by a dedicated <code>secret-sync</code> Deployment.</p>
+<p><strong>Why a dedicated secret-sync Deployment?</strong> Harbor's Helm chart does not support <code>extraVolumes</code> on its component pods. A <code>pause</code> container in a separate Deployment mounts the CSI volume, triggering the secretObjects sync. The Harbor chart then references <code>harbor-admin</code> via <code>existingSecret</code>.</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">existingSecret</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">harbor-admin  </span><span style="font-style:italic;color:#5c6773;"># CSI-synced from OpenBao
+</span></code></pre>
+<h2 id="rwx-pvcs">RWX PVCs</h2>
+<p>Harbor's registry and jobservice PVCs use <code>ReadWriteMany</code> via Longhorn's NFS share-manager. This eliminates the <code>Multi-Attach error</code> that occurs during rolling updates when both old and new pods need to mount the same volume simultaneously.</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;registry&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{</span><span style="color:#bae67e;">&quot;accessMode&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;ReadWriteMany&quot;</span><span>}</span><span style="color:#ccc9c2cc;">,
+</span><span style="color:#bae67e;">&quot;jobservice&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{</span><span style="color:#bae67e;">&quot;jobLog&quot;</span><span style="color:#ccc9c2cc;">: </span><span>{</span><span style="color:#bae67e;">&quot;accessMode&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;ReadWriteMany&quot;</span><span>}}</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Docker push → harbor.madhan.app
+</span><span>  → Gateway API → harbor:80 (nginx)
+</span><span>  → harbor-core (API), harbor-portal (UI), harbor-registry (storage)
+</span><span>  → Registry PVC 50Gi RWX Longhorn
+</span><span>  → Trivy (vulnerability scan on push)
+</span><span>
+</span><span>Secret sync:
+</span><span>  secret-sync pod → CSI volume → OpenBao → harbor-admin k8s Secret
+</span><span>  harbor-core → existingSecret: harbor-admin
+</span></code></pre>
+<h2 id="screenshots">Screenshots</h2>
+<p><img src="/assets/screenshots/harbor/main-ui.png" alt="Harbor UI showing projects, image repositories, and vulnerability scan results" /></p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="rwo-multi-attach-deadlock-legacy">RWO Multi-Attach Deadlock (Legacy)</h3>
+<blockquote>
+<p>This was the original issue before switching to RWX PVCs. Documented for reference.</p>
+</blockquote>
+<p><strong>Symptoms:</strong> Pod stuck with <code>Multi-Attach error for volume</code>.</p>
+<p><strong>Fix:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Find the old ReplicaSet
+</span><span style="color:#ffd580;">kubectl</span><span> get replicasets</span><span style="color:#ffcc66;"> -n</span><span> harbor
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Scale it down to 0
+</span><span style="color:#ffd580;">kubectl</span><span> scale replicaset </span><span style="color:#f29e74;">&lt;</span><span>old-rs-name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n harbor</span><span style="color:#ffcc66;"> --replicas</span><span style="color:#f29e74;">=</span><span>0
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Force-delete any stuck pod
+</span><span style="color:#ffd580;">kubectl</span><span> delete pod</span><span style="color:#ffcc66;"> -n</span><span> harbor </span><span style="color:#f29e74;">&lt;</span><span>stuck-pod</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>-grace-period=0</span><span style="color:#ffcc66;"> --force
+</span></code></pre>
+<h3 id="httproute-points-to-wrong-service">HTTPRoute Points to Wrong Service</h3>
+<p><strong>Symptoms:</strong> Harbor UI loads a blank page, or registry push fails with 404.</p>
+<p><strong>Fix:</strong> Ensure the HTTPRoute backend is <code>harbor:80</code> (nginx proxy), not <code>harbor-core:80</code>.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get httproute harbor</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -o</span><span> yaml </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -A5</span><span> backendRefs
+</span><span style="font-style:italic;color:#5c6773;"># Should show: name: harbor, port: 80
+</span></code></pre>
+<h3 id="admin-password-not-working">Admin Password Not Working</h3>
+<p><strong>Symptoms:</strong> Can't log in as admin.</p>
+<p><strong>Diagnosis:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check the harbor-admin Secret is populated
+</span><span style="color:#ffd580;">kubectl</span><span> get secret harbor-admin</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -o</span><span> yaml
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check secret-sync pod is running and healthy
+</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -l</span><span> app=secret-sync
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> harbor</span><span style="color:#ffcc66;"> -l</span><span> app=secret-sync
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Verify OpenBao has the password
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv get secret/harbor
+</span></code></pre>
+<h3 id="configuring-pull-through-proxy">Configuring Pull-Through Proxy</h3>
 <ol>
 <li>Log in to <code>http://harbor.madhan.app</code> as admin</li>
 <li>Go to <strong>Administration → Registries → New Endpoint</strong></li>
@@ -652,6 +713,8 @@
             
                 
             
+                
+            
         
             
             
@@ -659,10 +722,6 @@
                 
             
                 
-            
-        
-            
-            
             
         
             
@@ -686,31 +745,84 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/registry/harbor/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#what-is-harbor" class="toc-link">What is Harbor?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/registry/harbor/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#why-harbor" class="toc-link">Why Harbor?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/registry/harbor/#admin-credentials" class="toc-link">Admin Credentials</a>
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/registry/harbor/#known-issue-rwo-pvc-multi-attach" class="toc-link">Known Issue: RWO PVC Multi-Attach</a>
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#configuration" class="toc-link">Configuration</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/registry/harbor/#configuring-pull-through-proxy" class="toc-link">Configuring Pull-Through Proxy</a>
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#httproute-note" class="toc-link">HTTPRoute Note</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#secrets-openbao" class="toc-link">Secrets (OpenBao)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#rwx-pvcs" class="toc-link">RWX PVCs</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/registry/harbor/#screenshots" class="toc-link">Screenshots</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/registry/harbor/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/registry/harbor/#rwo-multi-attach-deadlock-legacy" class="toc-link">RWO Multi-Attach Deadlock (Legacy)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/registry/harbor/#httproute-points-to-wrong-service" class="toc-link">HTTPRoute Points to Wrong Service</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/registry/harbor/#admin-password-not-working" class="toc-link">Admin Password Not Working</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/registry/harbor/#configuring-pull-through-proxy" class="toc-link">Configuring Pull-Through Proxy</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -904,6 +1016,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -987,6 +1101,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1015,13 +1131,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1039,6 +1173,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1081,155 +1231,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

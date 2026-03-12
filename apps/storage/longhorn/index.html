@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -508,42 +508,102 @@
         </h1>
         <p class="text-gray-500">Distributed block storage for Kubernetes on all 4 worker nodes.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/storage/longhorn.go</code></td></tr>
-<tr><td>Namespace</td><td><code>longhorn-system</code></td></tr>
-<tr><td>HTTPRoute</td><td>None</td></tr>
-<tr><td>UI</td><td>No (internal Longhorn UI exists but not exposed)</td></tr>
-<tr><td>Nodes</td><td>All 4 workers (k8s-worker1–4)</td></tr>
+    <h2 id="what-is-longhorn">What is Longhorn?</h2>
+<p><a href="https://longhorn.io/">Longhorn</a> is a lightweight, cloud-native distributed block storage system for Kubernetes. It provides persistent volumes that are automatically replicated across multiple nodes, with a built-in UI for volume management, snapshots, and backups.</p>
+<h2 id="why-longhorn">Why Longhorn?</h2>
+<table><thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead><tbody>
+<tr><td><strong>Longhorn</strong></td><td>Lightweight, no dedicated disks needed, RWX via NFS share-manager</td><td>Single vendor (Rancher/SUSE)</td></tr>
+<tr><td>Rook-Ceph</td><td>Production-grade, feature-rich</td><td>Requires dedicated disks, complex setup, heavy resource usage</td></tr>
+<tr><td>NFS</td><td>Simple</td><td>No HA, single point of failure</td></tr>
+<tr><td>Local-path</td><td>Zero overhead</td><td>No replication, node-local only</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>Longhorn provides distributed block storage (RWO PVCs) for the cluster. It replicates volumes across worker nodes for resilience and provides the <code>longhorn</code> StorageClass.</p>
+<p>For a 4-worker homelab without dedicated storage disks, Longhorn's ability to use a portion of each worker's OS disk makes it the right choice. Rook-Ceph would require separate disk devices on each node.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>Longhorn provides the <code>longhorn</code> StorageClass used by virtually every stateful workload:</p>
+<ul>
+<li>Harbor (registry + jobservice — RWX)</li>
+<li>Grafana (dashboards — RWX)</li>
+<li>VictoriaMetrics (metrics storage — RWO)</li>
+<li>VictoriaLogs (log storage — RWO)</li>
+<li>Ollama (model storage — RWO, 100 Gi)</li>
+<li>ComfyUI (models + outputs — RWX, 50 Gi)</li>
+<li>n8n (workflow data — RWX)</li>
+<li>OpenBao (secrets data — RWO)</li>
+<li>NetBird (config — RWO, 100 Mi)</li>
+</ul>
+<p><strong>RWX volumes</strong> use Longhorn's built-in NFS share-manager — Longhorn automatically provisions an NFS server pod for each RWX volume. This eliminates rolling update deadlocks that occur with RWO volumes when a new pod starts before the old pod releases the volume.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/storage/longhorn.go"><code>workloads/storage/longhorn.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td><code>defaultReplicaCount</code></td><td><code>3</code></td><td>Replicate every volume across 3 nodes for resilience</td></tr>
+<tr><td><code>storageOverProvisioningPercentage</code></td><td><code>300</code></td><td>Allow 3x scheduling vs physical capacity</td></tr>
+<tr><td><code>createDefaultDiskLabeledNodes</code></td><td><code>false</code></td><td>Create disk on ALL nodes, not just labelled ones</td></tr>
+<tr><td><code>preUpgradeChecker.jobEnabled</code></td><td><code>false</code></td><td>Disable pre-upgrade hook for GitOps compatibility</td></tr>
+<tr><td>Namespace PSA</td><td><code>privileged</code></td><td>Longhorn CSI driver requires host mounts</td></tr>
+</tbody></table>
+<p><strong>Why 300% overprovisioning?</strong> Workers have ~90–95 GiB actually free. At 200% (the previous setting), the 240 GiB scheduling cap was exhausted — there was no room for new 50 GiB AI model replicas. At 300%, each node schedules up to ~285 GiB, providing ~150 GiB of headroom for AI volumes and future growth. Longhorn does not actually allocate all scheduled space immediately; volumes grow on demand.</p>
 <h2 id="storage-capacity">Storage Capacity</h2>
-<table><thead><tr><th>Node</th><th>Disk</th><th>Usable</th></tr></thead><tbody>
-<tr><td>k8s-worker1–4</td><td>125 GiB</td><td>~100 GiB each</td></tr>
+<table><thead><tr><th>Node</th><th>Disk</th><th>Usable for Longhorn</th></tr></thead><tbody>
+<tr><td>k8s-worker1</td><td>200 GiB</td><td>~90–95 GiB</td></tr>
+<tr><td>k8s-worker2</td><td>200 GiB</td><td>~90–95 GiB</td></tr>
+<tr><td>k8s-worker3</td><td>200 GiB</td><td>~90–95 GiB</td></tr>
+<tr><td>k8s-worker4 (GPU)</td><td>250 GiB</td><td>~90–95 GiB</td></tr>
 </tbody></table>
-<p><strong>Total raw capacity:</strong> ~400 GiB across 4 nodes (with replication factor 3, effective capacity ~133 GiB).</p>
-<h2 id="overprovisioning">Overprovisioning</h2>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">storageOverProvisioningPercentage</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">200
+<p>With replication factor 3 and 4 nodes, each volume's data is replicated to 3 of the 4 workers.</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Pod (any namespace)
+</span><span>  → PVC with storageClassName: longhorn
+</span><span>  → Longhorn CSI Driver (DaemonSet on each node)
+</span><span>  → Longhorn Manager (coordinates replicas)
+</span><span>  → Volume replicated across 3 workers
+</span><span>  → (RWX) Longhorn NFS share-manager pod bridges multiple pod attachments
 </span></code></pre>
-<p>This allows 240 GiB scheduled per 120 GiB physical disk (200% = 2x overprovisioning). The default of 100% only allowed ~5 GiB headroom per node — insufficient for large AI PVCs (ComfyUI uses 100 Gi).</p>
-<h2 id="talos-configuration">Talos Configuration</h2>
-<table><thead><tr><th>Setting</th><th>Value</th><th>Reason</th></tr></thead><tbody>
-<tr><td><code>createDefaultDiskLabeledNodes: false</code></td><td>(n/a — creates on all nodes)</td><td>All workers provision Longhorn disk</td></tr>
-<tr><td><code>preUpgradeChecker.jobEnabled: false</code></td><td>Disabled</td><td>Avoids GitOps upgrade check conflicts</td></tr>
-</tbody></table>
-<p>The <code>longhorn-system</code> namespace has <code>pod-security.kubernetes.io/enforce: privileged</code> for the Longhorn DaemonSet (requires host mounts).</p>
-<h2 id="node-labels">Node Labels</h2>
-<p>All workers carry <code>node.longhorn.io/create-default-disk: config</code> applied via the Talos worker machine patch in Pulumi. This tells Longhorn to provision its disk on every worker node automatically.</p>
-<h2 id="checking-volume-health">Checking Volume Health</h2>
+<h2 id="screenshots">Screenshots</h2>
+<p><img src="/assets/screenshots/longhorn/volume-list.png" alt="Longhorn volume list showing attached volumes and replica health" /></p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="volume-stuck-attaching">Volume Stuck Attaching</h3>
+<p><strong>Symptoms:</strong> PVC stays in <code>Pending</code> or pod stuck in <code>ContainerCreating</code>.</p>
+<p><strong>Diagnosis:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get volumes.longhorn.io</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system
+</span><span style="color:#ffd580;">kubectl</span><span> describe pvc </span><span style="color:#f29e74;">&lt;</span><span>pvc-name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n </span><span style="color:#f29e74;">&lt;</span><span>namespace</span><span style="color:#f29e74;">&gt;
+</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> share-manager  </span><span style="font-style:italic;color:#5c6773;"># for RWX
+</span></code></pre>
+<p><strong>Fix:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Force detach the volume in Longhorn UI, then delete the stuck pod
+</span><span style="color:#ffd580;">kubectl</span><span> delete pod</span><span style="color:#ffcc66;"> -n </span><span style="color:#f29e74;">&lt;</span><span>namespace</span><span style="color:#f29e74;">&gt; &lt;</span><span>pod-name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>-grace-period=0</span><span style="color:#ffcc66;"> --force
+</span></code></pre>
+<h3 id="degraded-replicas">Degraded Replicas</h3>
+<p><strong>Symptoms:</strong> <code>kubectl get volumes.longhorn.io</code> shows <code>ROBUSTNESS=degraded</code>.</p>
+<p><strong>Diagnosis:</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get volumes.longhorn.io</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffcc66;">  -o</span><span> custom-columns=</span><span style="color:#bae67e;">&quot;NAME:.metadata.name,STATE:.status.state,ROBUSTNESS:.status.robustness&quot;
+</span></code></pre>
+<p><strong>Fix:</strong> Check if a worker node is offline. If a node is down, Longhorn will rebuild the degraded replica on another available node automatically once it can schedule. This may take several minutes.</p>
+<h3 id="rwo-multi-attach-deadlock">RWO Multi-Attach Deadlock</h3>
+<p><strong>Symptoms:</strong> Pod stuck with <code>Multi-Attach error for volume — volume is already used by pod</code>.</p>
+<p><strong>Why this happens:</strong> RWO (ReadWriteOnce) volumes can only be attached to one node at a time. During a rolling update, the new pod may start on a different node before the old pod fully terminates and releases the volume.</p>
+<p><strong>Fix for Harbor (and similar):</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Find the old ReplicaSet
+</span><span style="color:#ffd580;">kubectl</span><span> get replicasets</span><span style="color:#ffcc66;"> -n</span><span> harbor
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># 2. Scale down the old RS
+</span><span style="color:#ffd580;">kubectl</span><span> scale replicaset </span><span style="color:#f29e74;">&lt;</span><span>old-rs-name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n harbor</span><span style="color:#ffcc66;"> --replicas</span><span style="color:#f29e74;">=</span><span>0
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># 3. Force delete any stuck pod
+</span><span style="color:#ffd580;">kubectl</span><span> delete pod</span><span style="color:#ffcc66;"> -n</span><span> harbor </span><span style="color:#f29e74;">&lt;</span><span>stuck-pod</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>-grace-period=0</span><span style="color:#ffcc66;"> --force
+</span></code></pre>
+<p><strong>Long-term fix:</strong> Switch the PVC to <code>ReadWriteMany</code> — Harbor's registry and jobservice PVCs are already set to RWX in this homelab for exactly this reason.</p>
+<h3 id="checking-volume-health">Checking Volume Health</h3>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># List all Longhorn volumes
 </span><span style="color:#ffd580;">kubectl</span><span> get volumes.longhorn.io</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># Check volume state and robustness
 </span><span style="color:#ffd580;">kubectl</span><span> get volumes.longhorn.io</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system </span><span style="color:#ccc9c2cc;">\
 </span><span style="color:#ffcc66;">  -o</span><span> custom-columns=</span><span style="color:#bae67e;">&quot;NAME:.metadata.name,STATE:.status.state,ROBUSTNESS:.status.robustness&quot;
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Healthy volumes show:
+</span><span style="font-style:italic;color:#5c6773;"># STATE=attached   ROBUSTNESS=healthy
 </span></code></pre>
-<p>Healthy volumes show <code>STATE=attached</code> and <code>ROBUSTNESS=healthy</code>.</p>
 
 
     <!--  Errata section  -->
@@ -657,6 +717,8 @@
             
                 
             
+                
+            
         
             
             
@@ -664,10 +726,6 @@
                 
             
                 
-            
-        
-            
-            
             
         
             
@@ -691,13 +749,25 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#what-is-longhorn" class="toc-link">What is Longhorn?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#why-longhorn" class="toc-link">Why Longhorn?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#configuration" class="toc-link">Configuration</a>
                     
                 </li>
             
@@ -709,25 +779,42 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#overprovisioning" class="toc-link">Overprovisioning</a>
+                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#how-it-connects" class="toc-link">How It Connects</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#talos-configuration" class="toc-link">Talos Configuration</a>
+                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#screenshots" class="toc-link">Screenshots</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#node-labels" class="toc-link">Node Labels</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#checking-volume-health" class="toc-link">Checking Volume Health</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/storage/longhorn/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#volume-stuck-attaching" class="toc-link">Volume Stuck Attaching</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#degraded-replicas" class="toc-link">Degraded Replicas</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#rwo-multi-attach-deadlock" class="toc-link">RWO Multi-Attach Deadlock</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/storage/longhorn/#checking-volume-health" class="toc-link">Checking Volume Health</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -921,6 +1008,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -1004,6 +1093,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1032,13 +1123,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -1056,6 +1165,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1098,155 +1223,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

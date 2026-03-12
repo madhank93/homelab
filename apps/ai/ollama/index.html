@@ -416,7 +416,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
           
 
 
@@ -426,7 +426,7 @@
   </span>
 
 
-          Workloads
+          Apps
         </a>
     </li>
     
@@ -508,29 +508,31 @@
         </h1>
         <p class="text-gray-500">LLM inference server on RTX 5070 Ti GPU.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
-<tr><td>CDK8s file</td><td><code>platform/cdk8s/cots/ai/ollama.go</code></td></tr>
-<tr><td>Namespace</td><td><code>ollama</code></td></tr>
-<tr><td>Helm chart</td><td><code>ollama</code> v1.41.0 (otwld.github.io/ollama-helm)</td></tr>
-<tr><td>HTTPRoute</td><td><code>ollama.madhan.app</code> → <code>ollama:11434</code></td></tr>
-<tr><td>UI</td><td>No (REST API only)</td></tr>
-<tr><td>Node</td><td>k8s-worker4 (GPU)</td></tr>
+    <h2 id="what-is-ollama">What is Ollama?</h2>
+<p><a href="https://ollama.com/">Ollama</a> is an open-source LLM inference server that makes it easy to run large language models locally. It provides an OpenAI-compatible REST API and manages model downloads, GPU memory loading, and inference serving in a single binary.</p>
+<h2 id="why-ollama">Why Ollama?</h2>
+<p>Ollama is the simplest way to run local LLMs on a GPU. It handles model quantization, GPU memory management, and serves an OpenAI-compatible API that works with any client that supports the OpenAI SDK (Python, TypeScript, etc.). The Helm chart provides native Kubernetes integration.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>Ollama runs on k8s-worker4 (the GPU node, <code>192.168.1.224</code>) using the RTX 5070 Ti for inference. It stores downloaded model files on a 100 Gi Longhorn PVC.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/ollama.go"><code>workloads/ai/ollama.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td>Namespace</td><td><code>ollama</code></td><td>Isolated namespace</td></tr>
+<tr><td>Image</td><td><code>ollama/ollama:0.17.0</code></td><td>Pinned version</td></tr>
+<tr><td>HTTPRoute</td><td><code>ollama.madhan.app</code> → <code>ollama:11434</code></td><td>Gateway API</td></tr>
+<tr><td><code>runtimeClassName</code></td><td><code>nvidia</code></td><td>Routes through nvidia-container-runtime</td></tr>
+<tr><td><code>NVIDIA_VISIBLE_DEVICES</code></td><td><code>all</code></td><td>Make all GPU devices visible</td></tr>
+<tr><td><code>nvidia.com/gpu</code> limit</td><td><code>1</code></td><td>One time-sliced virtual GPU</td></tr>
+<tr><td>Node selector</td><td><code>nvidia.com/gpu.present: "true"</code></td><td>Schedule on GPU node</td></tr>
+<tr><td>Toleration</td><td><code>dedicated=ai:NoSchedule</code></td><td>Allow scheduling on tainted GPU node</td></tr>
+<tr><td>CPU limit</td><td><code>4000m</code></td><td>Ollama + ComfyUI both CPU-hungry at inference</td></tr>
+<tr><td>RAM request</td><td><code>2Gi</code></td><td>Host RAM for model metadata + process</td></tr>
+<tr><td>RAM limit</td><td><code>4Gi</code></td><td>Keep below worker4's 16 GiB total (shared with ComfyUI)</td></tr>
+<tr><td>Model PVC</td><td><code>100Gi</code> Longhorn</td><td>Stores downloaded model weights</td></tr>
 </tbody></table>
-<h2 id="purpose">Purpose</h2>
-<p>Runs open-source LLMs locally using the NVIDIA RTX 5070 Ti. Exposes an OpenAI-compatible REST API at <code>http://ollama.madhan.app</code>.</p>
-<p>Supported models include: llama3.2, mistral, deepseek-r1, and any model in the <a href="https://ollama.com/library">Ollama library</a>.</p>
-<h2 id="gpu-configuration">GPU Configuration</h2>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">runtimeClassName</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia
-</span><span style="color:#73d0ff;">resources</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">requests</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">memory</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;2Gi&quot;
-</span><span>  </span><span style="color:#73d0ff;">limits</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">nvidia.com/gpu</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;1&quot;
-</span><span style="color:#73d0ff;">env</span><span style="color:#ccc9c2cc;">:
-</span><span>  - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">NVIDIA_VISIBLE_DEVICES
-</span><span>    </span><span style="color:#73d0ff;">value</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">all
-</span></code></pre>
+<blockquote>
+<p><strong>Note:</strong> <code>memory: 4Gi</code> is the host RAM cgroup limit, NOT GPU VRAM. GPU VRAM (16 GB) is controlled by the <code>nvidia.com/gpu: 1</code> resource limit and is shared with ComfyUI via time-slicing.</p>
+</blockquote>
 <h2 id="api-usage">API Usage</h2>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># List available models
 </span><span style="color:#ffd580;">curl</span><span> http://ollama.madhan.app/api/tags
@@ -539,14 +541,44 @@
 </span><span style="color:#ffd580;">curl</span><span> http://ollama.madhan.app/api/generate </span><span style="color:#ccc9c2cc;">\
 </span><span style="color:#ffcc66;">  -d </span><span style="color:#bae67e;">&#39;{&quot;model&quot;: &quot;llama3.2&quot;, &quot;prompt&quot;: &quot;Hello!&quot;}&#39;
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Pull a new model
+</span><span style="font-style:italic;color:#5c6773;"># Pull a new model (stores to 100Gi PVC)
 </span><span style="color:#ffd580;">curl</span><span> http://ollama.madhan.app/api/pull </span><span style="color:#ccc9c2cc;">\
 </span><span style="color:#ffcc66;">  -d </span><span style="color:#bae67e;">&#39;{&quot;name&quot;: &quot;mistral&quot;}&#39;
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># OpenAI-compatible chat completions
+</span><span style="color:#ffd580;">curl</span><span> http://ollama.madhan.app/v1/chat/completions </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffcc66;">  -H </span><span style="color:#bae67e;">&quot;Content-Type: application/json&quot; </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffcc66;">  -d </span><span style="color:#bae67e;">&#39;{&quot;model&quot;: &quot;llama3.2&quot;, &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Hello&quot;}]}&#39;
 </span></code></pre>
-<h2 id="node-scheduling">Node Scheduling</h2>
-<p>The pod is scheduled to k8s-worker4 via a <code>nodeSelector</code> or <code>nodeName</code> constraint targeting the GPU node.</p>
 <h2 id="coexistence-with-comfyui">Coexistence with ComfyUI</h2>
-<p>Ollama (2 Gi RAM) and ComfyUI (1 Gi RAM request) run simultaneously on the same node via GPU time-slicing. Total RAM on node is ~5.4 Gi allocatable — the combined 3 Gi fits within limits.</p>
+<p>Ollama and ComfyUI share the RTX 5070 Ti via GPU time-slicing (2 virtual GPUs from 1 physical). VRAM is not isolated — approximately 4 GB (Ollama 7B model) + 6 GB (ComfyUI SDXL) fits within the 16 GB pool.</p>
+<p>If running a large model (70B quantized, ~40 GB VRAM) alongside ComfyUI, VRAM exhaustion will occur. Use smaller quantized models or stop ComfyUI first.</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Browser / API client → ollama.madhan.app
+</span><span>  → homelab-gateway → ollama:11434
+</span><span>  → Ollama pod on k8s-worker4
+</span><span>  → nvidia-container-runtime (GPU injection)
+</span><span>  → RTX 5070 Ti (VRAM for model weights)
+</span><span>  → 100Gi Longhorn PVC (model file storage)
+</span></code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="model-pull-fails-oom">Model Pull Fails / OOM</h3>
+<p><strong>Symptoms:</strong> Model pull command hangs or returns OOM error.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check disk space on PVC
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> ollama</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=ollama</span><span style="color:#f29e74;"> --</span><span> df -h /root/.ollama
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check GPU memory
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> ollama</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=ollama</span><span style="color:#f29e74;"> --</span><span> nvidia-smi
+</span></code></pre>
+<h3 id="gpu-not-available-in-pod">GPU Not Available in Pod</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Verify pod spec
+</span><span style="color:#ffd580;">kubectl</span><span> get pod</span><span style="color:#ffcc66;"> -n</span><span> ollama</span><span style="color:#ffcc66;"> -o</span><span> yaml </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -E </span><span style="color:#bae67e;">&quot;runtimeClass|nvidia|dedicated&quot;
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check node advertises GPU
+</span><span style="color:#ffd580;">kubectl</span><span> describe node k8s-worker4 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep </span><span style="color:#bae67e;">&quot;nvidia.com/gpu&quot;
+</span></code></pre>
+<h3 id="inference-too-slow">Inference Too Slow</h3>
+<p>At idle, the RTX 5070 Ti uses 0dB fan mode and is essentially cold. First inference after idle warms up the GPU. Subsequent inferences are faster.</p>
 
 
     <!--  Errata section  -->
@@ -636,19 +668,25 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/ai/ollama/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/ai/ollama/#what-is-ollama" class="toc-link">What is Ollama?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/ai/ollama/#purpose" class="toc-link">Purpose</a>
+                    <a href="https://homelab.madhan.app/apps/ai/ollama/#why-ollama" class="toc-link">Why Ollama?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/ai/ollama/#gpu-configuration" class="toc-link">GPU Configuration</a>
+                    <a href="https://homelab.madhan.app/apps/ai/ollama/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/ollama/#configuration" class="toc-link">Configuration</a>
                     
                 </li>
             
@@ -660,13 +698,38 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/ai/ollama/#node-scheduling" class="toc-link">Node Scheduling</a>
+                    <a href="https://homelab.madhan.app/apps/ai/ollama/#coexistence-with-comfyui" class="toc-link">Coexistence with ComfyUI</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/ai/ollama/#coexistence-with-comfyui" class="toc-link">Coexistence with ComfyUI</a>
+                    <a href="https://homelab.madhan.app/apps/ai/ollama/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/ai/ollama/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/ollama/#model-pull-fails-oom" class="toc-link">Model Pull Fails &#x2F; OOM</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/ollama/#gpu-not-available-in-pod" class="toc-link">GPU Not Available in Pod</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/ollama/#inference-too-slow" class="toc-link">Inference Too Slow</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -860,6 +923,8 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
+                            
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
@@ -943,6 +1008,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -971,13 +1038,31 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/infisical">Infisical (Replaced)</a></li>
                                                 
                                                 
                                                     
@@ -995,6 +1080,22 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1037,155 +1138,27 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                        </ul>
-                    </details>
-                
-            </li>
-        
-            
-            <li>
-                
-                    <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
-                        <ul>
-                            
-                            
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/infisical">Infisical</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
