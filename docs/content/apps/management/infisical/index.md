@@ -1,150 +1,27 @@
 +++
-title = "Infisical"
-description = "Central secrets management platform. Operator authenticates via Kubernetes Auth — zero stored credentials."
+title = "Infisical (Replaced)"
+description = "Infisical was the previous secrets management platform — replaced by OpenBao + Secrets Store CSI Driver."
 weight = 30
 +++
 
-## Overview
+## Status: Replaced by OpenBao
 
-| Property | Value |
-|----------|-------|
-| CDK8s file | `workloads/secrets/infisical.go` |
-| Namespace | `infisical` |
-| HTTPRoute | `infisical.madhan.app` |
-| Operator version | `secrets-operator` v0.10.25 |
-| App chart | `infisical-standalone` v1.7.2 |
-| Auth method | **Kubernetes Auth (Option C)** — zero stored credentials |
-| Bootstrap Secret | `infisical/infisical-secrets` (from `just create-secrets`) |
+Infisical was the original runtime secrets management platform for this homelab. It has been replaced by [OpenBao](../../../apps/secrets/openbao/) + [Secrets Store CSI Driver](../../../apps/secrets/csi-driver/).
 
-## Purpose
+## Why Infisical Was Replaced
 
-Infisical is the central runtime secrets platform. All app secrets (Grafana, Harbor, n8n, Rancher, NetBird) are stored in Infisical projects and injected into Kubernetes pods via `InfisicalSecret` CRs managed by the Infisical operator.
+| Issue | Detail |
+|-------|--------|
+| Operator CRD schema bugs | The Infisical operator's `InfisicalSecret` CRD schema omits `projectSlug` from `secretsScope`, which breaks ArgoCD's ServerSideApply structured merge diff engine |
+| SA token discovery broken | Kubernetes auth flow broken on clusters running k8s 1.24+ due to changes in SA token projection |
+| ArgoCD SSA workaround required | Every `InfisicalSecret` resource needed `argocd.argoproj.io/sync-options: ServerSideApply=false` to avoid diff errors |
+| Features behind cloud plan | Key operator features required a paid Infisical Cloud subscription |
 
-CDK8s generates zero `Secret` manifests — secrets never touch git or the manifests branch.
+## Current Architecture
 
-## Architecture
+Runtime secrets are now managed by:
 
-```
-Bootstrap (SOPS/age)
-  └── infisical-secrets (k8s Secret)
-        └── Infisical Server (PostgreSQL backend, Redis)
-              │
-              └── Infisical Operator (secrets-operator)
-                    │  ← authenticates via Kubernetes JWT (Option C)
-                    └── InfisicalSecret CR → infisical-synced-secrets
-                          └── App pods (envFrom / volumeMount)
-```
+- **OpenBao** (Vault-compatible fork, MPL-2.0) — secrets store at `http://openbao.madhan.app`
+- **Secrets Store CSI Driver** v1.5.6 — mounts OpenBao secrets as files into pods
 
-## Kubernetes Auth (Option C)
-
-The operator authenticates to Infisical using its own ServiceAccount JWT — **no service tokens, no stored credentials anywhere**.
-
-### How it works
-
-```
-Operator reconcile loop
-  → mounts its own SA token (/var/run/secrets/...)
-  → POST /api/v1/auth/kubernetes-auth/login { jwt: <SA token> }
-  → Infisical calls k8s tokenreviews API to verify the JWT is legitimate
-  → Infisical returns a short-lived access token
-  → Operator fetches secrets using that token (auto-rotates every 60s)
-```
-
-### What CDK8s provisions
-
-| Resource | Name | Purpose |
-|----------|------|---------|
-| `ClusterRole` | `infisical-token-reviewer` | Grants `create` on `tokenreviews` |
-| `ClusterRoleBinding` | `infisical-token-reviewer` | Binds role to operator SA |
-| `InfisicalSecret` | `infisical-bootstrap-secret` | Drives secret sync with kubernetesAuth |
-
-### One-time setup (must do after first deploy)
-
-After ArgoCD sync applies the RBAC resources, register the cluster in the Infisical UI:
-
-**1. Get the token reviewer JWT:**
-```bash
-kubectl create token infisical-operator-controller-manager \
-  -n infisical --duration=8760h
-```
-
-**2. Infisical UI → Access Control → Machine Identities → Create → "k8s-homelab":**
-
-| Field | Value |
-|-------|-------|
-| Method | Kubernetes Auth |
-| Kubernetes Host | `https://192.168.1.210:6443` |
-| Token Reviewer JWT | *(paste from step 1)* |
-| Allowed SA Names | `infisical-operator-controller-manager` |
-| Allowed Namespaces | `infisical` |
-
-**3. Copy the `identityId`** and replace the placeholder in `workloads/secrets/infisical.go`:
-
-```go
-"identityId": "REPLACE_WITH_IDENTITY_ID",
-//              ↑ paste the UUID from the Infisical UI here
-```
-
-Then re-synthesize and push:
-```bash
-just synth
-git add workloads/secrets/infisical.go app/infisical/
-git commit -m "feat: set Infisical kubernetesAuth identityId"
-```
-
-### Verification
-
-```bash
-# CR created
-kubectl get infisicalsecret -n infisical
-
-# Operator authenticated successfully (look for "Successfully authenticated" log)
-kubectl logs -n infisical -l app.kubernetes.io/name=secrets-operator --tail=50
-
-# Synced secret created by operator
-kubectl get secret infisical-synced-secrets -n infisical
-
-# CR status conditions
-kubectl describe infisicalsecret infisical-bootstrap-secret -n infisical
-```
-
-## Backend Components
-
-### Infisical Server
-
-Deployed via `infisical-standalone` v1.7.2. Requires three secrets from `infisical-secrets`:
-
-| Key | Purpose |
-|-----|---------|
-| `DB_PASSWORD` | PostgreSQL password |
-| `ENCRYPTION_KEY` | At-rest secret encryption (AES-256) |
-| `AUTH_SECRET` | JWT signing secret |
-
-### PostgreSQL
-
-StatefulSet using `docker.io/library/postgres:17` on Longhorn PVC (10 Gi). The Bitnami PostgreSQL image is **not used** — it was removed from Docker Hub.
-
-### Redis
-
-In-cluster Redis (from the `infisical-standalone` chart). Password is the chart default; it's only reachable inside the `infisical` namespace.
-
-## Apps That Use Infisical
-
-| App | Infisical Path | k8s Secret synced |
-|-----|---------------|-------------------|
-| Grafana | `/grafana` | `grafana-admin` (`ADMIN_PASSWORD`) |
-| Harbor | `/harbor` | `harbor-admin` (`HARBOR_ADMIN_PASSWORD`) |
-| n8n | `/n8n` | `n8n-db` (`DB_PASSWORD`, `N8N_ENCRYPTION_KEY`) |
-| Rancher | `/rancher` | `rancher-bootstrap` (`BOOTSTRAP_PASSWORD`) |
-| NetBird | `/netbird` | `netbird-setup-key` (`NETBIRD_SETUP_KEY`) |
-
-## ArgoCD Note
-
-All `InfisicalSecret` resources use:
-
-```yaml
-annotations:
-  argocd.argoproj.io/sync-options: ServerSideApply=false
-```
-
-The Infisical CRD schema omits `projectSlug` from `serviceToken.secretsScope`, which breaks ArgoCD's SSA diff engine. Disabling SSA for these resources is the correct workaround.
+See the [Secrets Management](../../../apps/secrets/) section for current documentation.

@@ -186,12 +186,12 @@ The `netbird-peer` Deployment in the `netbird` namespace connects to the WireGua
 |---------|-------|
 | Image | `netbirdio/netbird:latest` |
 | Namespace | `netbird` (Pod Security Admission: `privileged`) |
-| Setup key | From Infisical `/netbird` → `NETBIRD_SETUP_KEY` |
+| Setup key | From OpenBao `secret/data/netbird` → `NETBIRD_SETUP_KEY` |
 | Management URL | `https://netbird.madhan.app` |
 | Capabilities | `NET_ADMIN`, `SYS_MODULE` |
 | `hostNetwork` | `true` — required for kernel WireGuard interface |
 
-The setup key is stored in Infisical (path `/netbird`, key `NETBIRD_SETUP_KEY`) and synced to the `netbird` namespace by an `InfisicalSecret` CR. See [Secrets Flow](/architecture/secrets-flow) for the InfisicalSecret pattern.
+The setup key is stored in OpenBao (`secret/data/netbird`, key `NETBIRD_SETUP_KEY`) and synced to the `netbird` namespace as the `netbird-setup-key` k8s Secret by the Secrets Store CSI Driver (Pattern B). See [OpenBao](/apps/secrets/openbao/) for the secrets pattern details.
 
 ---
 
@@ -235,7 +235,7 @@ After the initial `just core hetzner up` succeeds and all containers are running
 
 - [ ] Settings → Access Tokens → Create Personal Access Token — copy it → used as `NB_PROXY_TOKEN`
 - [ ] Setup Keys → Add key `bifrost-agent` (Reusable) → copy key value → used as `NB_BIFROST_SETUP_KEY`
-- [ ] Setup Keys → Add key `k8s-routing-peer` (Reusable) → copy key value → used as `NETBIRD_SETUP_KEY` in Infisical (Step 5)
+- [ ] Setup Keys → Add key `k8s-routing-peer` (Reusable) → copy key value → used as `NETBIRD_SETUP_KEY` in OpenBao (Step 5)
 
 ### Step 4 — Store tokens and re-deploy
 
@@ -252,8 +252,11 @@ Bootstrap.sh picks up the new tokens and starts `netbird-proxy` and `netbird-age
 
 ### Step 5 — Configure K8s routing peer
 
-- [ ] Open Infisical → Project `homelab-prod` → Env `prod` → Path `/netbird`
-  - Add `NETBIRD_SETUP_KEY: <value of the k8s-routing-peer setup key created in Step 3>`
+- [ ] Add the setup key to OpenBao:
+  ```bash
+  kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+    bao kv patch secret/netbird NETBIRD_SETUP_KEY=<value from Step 3>
+  ```
   - This is the key the `netbird-peer` pod uses to join the mesh at startup
 - [ ] Network Routes → Add Route: network `192.168.1.0/24`, peer group `k8s-routing-peer`
 - [ ] Verify both peers appear as **Connected** in the NetBird dashboard

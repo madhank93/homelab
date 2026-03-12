@@ -6,7 +6,7 @@ weight = 10
 
 ## Overview
 
-Pulumi provisions 7 QEMU VMs on Proxmox and bootstraps a 3-control-plane Talos Linux cluster. The entry point is `infra/pulumi/talos.go`.
+Pulumi provisions 7 QEMU VMs on Proxmox and bootstraps a 3-control-plane Talos Linux cluster. The entry point is `core/platform/talos.go`.
 
 ## Talos Images
 
@@ -103,7 +103,7 @@ Pulumi performs the full cluster bootstrap in dependency order:
 5. Apply configs via Talos API (in-band, using QEMU guest agent IP)
 6. Bootstrap etcd on `k8s-controller1`
 7. Wait for the cluster to become healthy
-8. Retrieve kubeconfig → write to `infra/pulumi/kubeconfig`
+8. Retrieve kubeconfig → write to `core/kubeconfig`
 
 The kubeconfig is used by downstream platform Pulumi code (Cilium, ArgoCD) via the Kubernetes provider.
 
@@ -117,4 +117,4 @@ pulumi stack output k8s-worker4-ip  # etc.
 
 ## PCIe GPU Passthrough
 
-k8s-worker4 is created with `PcieIDs: ["0000:28:00.0"]` which instructs Proxmox to pass the NVIDIA RTX 5070 Ti directly to the VM.
+k8s-worker4 is created with `PcieIDs: ["0000:09:00.0"]` which instructs Proxmox to pass the NVIDIA RTX 5070 Ti directly to the VM.

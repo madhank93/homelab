@@ -69,13 +69,6 @@ func main() {
 	observability.NewVictoriaLogsChart(victoriaLogsApp, "victoria-logs-app", "victoria-logs")
 	victoriaLogsApp.Synth()
 
-	alertManagerApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/alertmanager", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	observability.NewAlertManagerChart(alertManagerApp, "alertmanager-app", "alertmanager")
-	alertManagerApp.Synth()
-
 	// Container Registry
 	harborApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/harbor", rootFolder)),

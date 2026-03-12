@@ -12,22 +12,22 @@ All nodes are QEMU VMs on a Proxmox host, defined in `core/platform/talos.go`.
 
 | Name | IP | vCPUs | RAM | Disk | CPU Priority |
 |------|----|-------|-----|------|-------------|
-| k8s-controller1 | 192.168.1.211 | 4 | 6 GiB | 30 GiB | 1024 (high) |
-| k8s-controller2 | 192.168.1.212 | 4 | 6 GiB | 30 GiB | 1024 (high) |
-| k8s-controller3 | 192.168.1.213 | 4 | 6 GiB | 30 GiB | 1024 (high) |
+| k8s-controller1 | 192.168.1.211 | 4 | 8 GiB (8192 MB) | 50 GiB | 1024 (high) |
+| k8s-controller2 | 192.168.1.212 | 4 | 8 GiB (8192 MB) | 50 GiB | 1024 (high) |
+| k8s-controller3 | 192.168.1.213 | 4 | 8 GiB (8192 MB) | 50 GiB | 1024 (high) |
 
 Control plane nodes carry a floating VIP (`192.168.1.210`) on their primary interface. This VIP is configured as a Talos machine patch so the API server endpoint remains stable regardless of which node holds it.
 
 ### Worker Nodes
 
-| Name | IP | vCPUs | RAM | Disk | CPU Priority |
-|------|----|-------|-----|------|-------------|
-| k8s-worker1 | 192.168.1.221 | 4 | 6 GiB | 125 GiB | 100 (standard) |
-| k8s-worker2 | 192.168.1.222 | 4 | 6 GiB | 125 GiB | 100 (standard) |
-| k8s-worker3 | 192.168.1.223 | 4 | 6 GiB | 125 GiB | 100 (standard) |
-| k8s-worker4 | 192.168.1.224 | 4 | 6 GiB | 125 GiB | 100 (standard) |
+| Name | IP | vCPUs | RAM | Disk | CPU Priority | Notes |
+|------|----|-------|-----|------|-------------|-------|
+| k8s-worker1 | 192.168.1.221 | 4 | 14 GiB (14336 MB) | 200 GiB | 100 (standard) | |
+| k8s-worker2 | 192.168.1.222 | 4 | 14 GiB (14336 MB) | 200 GiB | 100 (standard) | |
+| k8s-worker3 | 192.168.1.223 | 4 | 14 GiB (14336 MB) | 200 GiB | 100 (standard) | |
+| k8s-worker4 | 192.168.1.224 | 8 | 16 GiB (16384 MB) | 250 GiB | 100 (standard) | GPU node — RTX 5070 Ti |
 
-Workers use 125 GiB disks to provide ~100 GiB of usable Longhorn storage per node.
+Workers use 200 GiB disks to provide ~90–95 GiB of usable Longhorn storage per node. The GPU worker (k8s-worker4) has a 250 GiB disk for extra AI model volume space.
 
 ## Talos Version
 

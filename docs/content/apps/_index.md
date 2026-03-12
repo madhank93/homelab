@@ -5,7 +5,7 @@ weight = 60
 sort_by = "weight"
 +++
 
-All applications are defined as CDK8s Go code in `platform/cdk8s/cots/`, synthesized to YAML by CI, and deployed by ArgoCD from the `v0.1.5-manifests` branch.
+All applications are defined as CDK8s Go code in `workloads/`, synthesized to YAML by CI, and deployed by ArgoCD from the `v0.1.5-manifests` branch.
 
 ## App Catalog
 
@@ -13,29 +13,32 @@ All applications are defined as CDK8s Go code in `platform/cdk8s/cots/`, synthes
 |-----|-----------|-----|----|---------|
 | ComfyUI | `comfyui` | http://comfyui.madhan.app | Yes | Stable Diffusion / Flux image generation |
 | Ollama | `ollama` | http://ollama.madhan.app | No (REST) | LLM inference server |
-| NVIDIA GPU Operator | `nvidia-gpu-operator` | — | No | GPU device plugin + NFD |
+| NVIDIA Device Plugin | `nvidia-gpu-operator` | — | No | GPU device plugin + NFD |
 | n8n | `n8n` | http://n8n.madhan.app | Yes | Workflow automation |
 | Grafana | `grafana` | http://grafana.madhan.app | Yes | Dashboards |
-| VictoriaMetrics | `victoria-metrics` | — | No | Metrics storage |
-| VictoriaLogs | `victoria-logs` | — | No | Log storage |
-| AlertManager | `alertmanager` | — | No | Alert routing |
+| VictoriaMetrics | `victoria-metrics` | http://vmselect.madhan.app | Yes (vmui) | Metrics storage |
+| VictoriaLogs | `victoria-logs` | http://victorialogs.madhan.app | Yes | Log storage |
+| AlertManager | `alertmanager` | http://alertmanager.madhan.app | Yes | Alert routing |
 | OpenTelemetry | `opentelemetry` | — | No | Metrics + log collection |
-| Falco | `falco` | — | No | Runtime syscall security |
+| Falco | `falco` | http://falco.madhan.app | Yes (sidekick-ui) | Runtime syscall security |
 | Trivy | `trivy` | — | No | Vulnerability scanning |
 | Rancher | `cattle-system` | http://rancher.madhan.app | Yes | Multi-cluster management |
 | Headlamp | `headlamp` | http://headlamp.madhan.app | Yes | Kubernetes dashboard |
-| Infisical | `infisical` | http://infisical.madhan.app | Yes | Secrets management |
+| OpenBao | `openbao` | http://openbao.madhan.app | Yes | Secrets management |
 | Harbor | `harbor` | http://harbor.madhan.app | Yes | Container registry |
-| n8n | `n8n` | http://n8n.madhan.app | Yes | Workflow automation |
-| Longhorn | `longhorn-system` | — | No | Distributed block storage |
+| Longhorn | `longhorn-system` | http://longhorn.madhan.app | Yes | Distributed block storage |
+| Reloader | `reloader` | — | No | Auto-reload pods on ConfigMap/Secret changes |
 
-## Apps Requiring Infisical
+## Runtime Secrets (OpenBao + CSI Driver)
 
-These apps use `InfisicalSecret` CRDs. They will not start correctly until the `infisical-service-token` Secret exists in the `infisical` namespace:
+All apps source their runtime secrets from OpenBao via the Secrets Store CSI Driver. CDK8s generates zero `Secret` resources.
 
-| App | Infisical Path | k8s Secret | Keys |
-|-----|---------------|------------|------|
-| Grafana | `/grafana` | `grafana-admin` | `ADMIN_PASSWORD` |
-| Harbor | `/harbor` | `harbor-admin` | `HARBOR_ADMIN_PASSWORD` |
-| n8n | `/n8n` | `n8n-db` | `DB_PASSWORD` |
-| Rancher | `/rancher` | `rancher-bootstrap` | `BOOTSTRAP_PASSWORD` |
+| App | OpenBao Path | Pattern | k8s Secret created |
+|-----|-------------|---------|-------------------|
+| Grafana | `secret/data/grafana` | A (file-only) | none |
+| Harbor | `secret/data/harbor` | B (secretObjects) | `harbor-admin` |
+| n8n | `secret/data/n8n` | B (secretObjects) | `n8n-secrets` |
+| Rancher | `secret/data/rancher` | B (secretObjects) | `rancher-bootstrap` |
+| NetBird | `secret/data/netbird` | B (secretObjects) | `netbird-setup-key` |
+
+> Pattern A mounts secrets as files only. Pattern B also syncs a k8s Secret so Helm charts that require `existingSecret` can reference it.

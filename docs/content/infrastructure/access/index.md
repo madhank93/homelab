@@ -6,7 +6,7 @@ weight = 25
 
 ## Architecture Overview
 
-Homelab services are LAN-only by default. Selectively exposing a service to the internet is a single-line config change, controlled by `publicServices` in `infra/pulumi/cloudflare.go`.
+Homelab services are LAN-only by default. Selectively exposing a service to the internet is a single-line config change, controlled by `publicServices` in `core/cloud/cloudflare.go`.
 
 ```
 *.madhan.app          → 192.168.1.220  (wildcard, LAN gateway — default for all services)
@@ -16,7 +16,6 @@ netbird.madhan.app    → 23.121.200.108 (NetBird — always public)
 proxy.madhan.app      → 23.121.200.108 (NetBird expose base — always public)
 *.proxy.madhan.app    → 23.121.200.108 (NetBird expose wildcard)
 grafana.madhan.app    → 23.121.200.108 (overrides wildcard → internet accessible)
-harbor.madhan.app     → 23.121.200.108 (overrides wildcard → internet accessible)
 headlamp.madhan.app   → 192.168.1.220  (no explicit record → LAN wildcard → private)
 ```
 
@@ -48,17 +47,22 @@ LAN Browser
 
 ## How to Expose a Service to the Internet
 
-**Step 1**: Add the service name to `publicServices` in `infra/pulumi/cloudflare.go`:
+**Step 1**: Add the service name to `publicServices` in `core/cloud/cloudflare.go`:
 
 ```go
-// Before
-var publicServices = []string{"grafana", "harbor"}
+// Before (only grafana is public by default)
+var publicServices = []PublicService{
+    {Name: "grafana", SkipAuth: true},
+}
 
-// After — adding Headlamp
-var publicServices = []string{"grafana", "harbor", "headlamp"}
+// After — adding Headlamp (requires Authentik forwardauth)
+var publicServices = []PublicService{
+    {Name: "grafana", SkipAuth: true},
+    {Name: "headlamp", SkipAuth: false},
+}
 ```
 
-**Step 2**: Add a Traefik router to `infra/pulumi/bifrost/traefik/dynamic/services.yml`:
+**Step 2**: Run `just core hetzner up` — Pulumi generates the Traefik router and updates Cloudflare DNS automatically. Alternatively, add a Traefik router manually to `core/cloud/bifrost/traefik/dynamic/services.yml`:
 
 ```yaml
 http:
@@ -71,7 +75,7 @@ http:
         certResolver: cloudflare-dns
 ```
 
-**Step 3**: Run `just pulumi platform up` — this:
+**Step 3**: Run `just core cloudflare up && just core hetzner up` — this:
 - Creates the Cloudflare A record `headlamp.madhan.app → 23.121.200.108`
 - Generates `traefik/dynamic/public-services.yml` with the new router
 - Copies updated config to Hetzner VPS via CopyToRemote
@@ -79,7 +83,7 @@ http:
 
 ## How to Revoke Internet Access
 
-Remove the service from `publicServices` in `cloudflare.go` and remove its router from `services.yml`, then run `just pulumi platform up`.
+Remove the service from `publicServices` in `cloudflare.go` and remove its router from `services.yml`, then run `just core cloudflare up && just core hetzner up`.
 
 The Cloudflare A record is deleted. DNS falls back to `*.madhan.app → 192.168.1.220` (private) — service becomes LAN-only again automatically.
 

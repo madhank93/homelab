@@ -215,7 +215,6 @@ Managed by `core/cloud/cloudflare.go`:
 | `proxy.madhan.app` | `178.156.199.250` | NetBird reverse proxy |
 | `*.proxy.madhan.app` | `178.156.199.250` | NetBird reverse proxy wildcard |
 | `grafana.madhan.app` | `178.156.199.250` | Traefik → WireGuard → cluster |
-| `harbor.madhan.app` | `178.156.199.250` | Traefik → WireGuard → cluster |
 
 > **Adding a new public service:** add the service name to `publicServices` in `core/cloud/cloudflare.go`, then run `just core cloudflare up` and `just core hetzner up`. The DNS record and Traefik route (with ForwardAuth) are created automatically.
 
@@ -254,9 +253,11 @@ After `just core hetzner up` succeeds, complete the one-time setup in this order
    ```
    Bootstrap.sh picks up the new tokens and starts `netbird-proxy` and `netbird-agent`.
 
-6. **Add K8s routing peer setup key to Infisical**
-   - Project `homelab-prod` → Env `prod` → Path `/netbird`
-   - Add `NETBIRD_SETUP_KEY: <k8s-routing-peer key>`
+6. **Add K8s routing peer setup key to OpenBao**
+   ```bash
+   kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+     bao kv patch secret/netbird NETBIRD_SETUP_KEY=<k8s-routing-peer key>
+   ```
 
 7. **Create the cluster route in NetBird**
    - Network Routes → Add Route: network `192.168.1.0/24`, peer `k8s-routing-peer`

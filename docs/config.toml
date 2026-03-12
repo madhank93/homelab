@@ -23,7 +23,7 @@ nav = [
     { name = "Hardware", url = "/hardware", type = "url", icon = "server" },
     { name = "Infrastructure", url = "/infrastructure", type = "url", icon = "network-wired" },
     { name = "Platform", url = "/platform", type = "url", icon = "layer-group" },
-    { name = "Workloads", url = "/workloads", type = "url", icon = "cubes" },
+    { name = "Apps", url = "/apps", type = "url", icon = "cubes" },
     { name = "Development", url = "/development", type = "url", icon = "code" },
     { name = "GitHub", url = "https://github.com/madhank93/homelab", type = "url", icon = "github" },
 ]

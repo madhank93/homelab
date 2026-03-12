@@ -8,8 +8,10 @@ weight = 20
 
 **Node:** k8s-worker4 (`192.168.1.224`)
 **GPU:** NVIDIA RTX 5070 Ti — 16 GB GDDR7 VRAM
-**PCIe ID:** `0000:28:00.0` (passthrough to VM)
-**Allocatable RAM on node:** ~5.4 GiB
+**PCIe ID:** `0000:09:00.0` (passthrough to VM)
+**vCPUs:** 8 cores (dedicated AI node)
+**RAM:** 16 GiB (16384 MB)
+**Disk:** 250 GiB (extra space for AI model volumes)
 
 ## Talos GPU Extensions
 
@@ -22,23 +24,38 @@ The GPU worker uses a custom Talos image with two additional system extensions:
 
 These extensions are baked into the Talos image at boot. No `machine.files` drop-ins are needed — the container toolkit extension configures containerd automatically. (Talos v1.10+ restricts `machine.files` writes to `/var`; `/etc/cri/conf.d/` is not writable.)
 
+## GPU Node Taint
+
+The GPU worker carries a `dedicated=ai:NoSchedule` taint, applied via the Talos machine patch:
+
+```yaml
+machine:
+  nodeTaints:
+    dedicated: "ai:NoSchedule"
+```
+
+Only workloads with a matching toleration (`key: dedicated, value: ai`) are scheduled on this node.
+
 ## Time-Slicing
 
-A single physical GPU is shared between **Ollama** and **ComfyUI** using NVIDIA GPU time-slicing. This is configured via:
+A single physical GPU is shared between **Ollama** and **ComfyUI** using NVIDIA GPU time-slicing. This is configured inline in the `nvidia-device-plugin` Helm values:
 
-1. A `time-slicing-config` ConfigMap in the `nvidia-gpu-operator` namespace with `replicas: 2`
-2. The `devicePlugin.config` reference in the ClusterPolicy
+```yaml
+sharing:
+  timeSlicing:
+    resources:
+      - name: nvidia.com/gpu
+        replicas: 2
+```
 
 Result: the node advertises **2 virtual `nvidia.com/gpu` resources** from 1 physical GPU. VRAM is shared (not partitioned), so both workloads compete for the 16 GB pool.
 
 ## Resource Requests
 
-| Workload | CPU | RAM Request | RAM Limit | GPU |
-|----------|-----|-------------|-----------|-----|
-| Ollama | — | 2 Gi | — | 1 |
-| ComfyUI | — | 1 Gi | 8 Gi | 1 |
-
-The low RAM requests (3 Gi total) fit within the 5.4 Gi allocatable on the node.
+| Workload | vCPU limit | RAM Request | RAM Limit | GPU |
+|----------|------------|-------------|-----------|-----|
+| Ollama | 4000m | 2 Gi | 4 Gi | 1 |
+| ComfyUI | 4000m | 1 Gi | 8 Gi | 1 |
 
 ## GPU Workload Configuration
 
@@ -46,6 +63,13 @@ Both GPU workloads use:
 
 ```yaml
 runtimeClassName: nvidia
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: ai
+    effect: NoSchedule
 resources:
   limits:
     nvidia.com/gpu: "1"
@@ -66,4 +90,14 @@ nvidia
 nvidia_uvm
 nvidia_drm
 nvidia_modeset
+```
+
+## DCGM Exporter
+
+A DCGM Exporter DaemonSet runs on the GPU node to export GPU metrics (utilisation, VRAM usage, temperature, power draw) to VictoriaMetrics via VMAgent. It also creates a Grafana dashboard ConfigMap.
+
+```bash
+# Check GPU metrics in Grafana: look for the DCGM dashboard
+# Or query directly:
+kubectl get pods -n nvidia-gpu-operator -l app=dcgm-exporter
 ```

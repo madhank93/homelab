@@ -37,7 +37,7 @@ icon = "globe"
 
 [[extra.features_section.features]]
 title = "Two-Tier Secrets"
-desc = "Bootstrap secrets encrypted with SOPS/age, committed safely to git. Runtime secrets managed by Infisical operator and never written to manifests."
+desc = "Bootstrap secrets encrypted with SOPS/age, committed safely to git. Runtime secrets managed by OpenBao + Secrets Store CSI Driver — never written to manifests."
 icon = "lock"
 
 [[extra.features_section.features]]
@@ -49,6 +49,16 @@ icon = "microchip"
 title = "Full Observability"
 desc = "VictoriaMetrics + VictoriaLogs + Grafana + OpenTelemetry collector on every node. Falco eBPF syscall monitoring. Trivy vulnerability scanning."
 icon = "chart-line"
+
+[[extra.features_section.features]]
+title = "Storage"
+desc = "Longhorn provides distributed block storage with RWX support via NFS share-manager, eliminating rolling update deadlocks on stateful apps."
+icon = "database"
+
+[[extra.features_section.features]]
+title = "Security"
+desc = "Falco provides runtime syscall monitoring via eBPF with alerts flowing through OpenTelemetry to VictoriaLogs. Trivy scans container images for vulnerabilities on every workload change."
+icon = "shield-check"
 
 [[extra.features_section.features]]
 title = "Zero-Touch Bootstrap"

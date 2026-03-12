@@ -25,7 +25,7 @@ cert-manager needs cloudflare-api-token Secret
     → just create-secrets reads from: secrets/bootstrap.sops.yaml (SOPS-encrypted)
 ```
 
-Run `just create-secrets` before `just pulumi platform up` on a fresh cluster.
+Run `just create-secrets` before `just core platform up` on a fresh cluster.
 
 ## Cloudflare API Token
 
@@ -61,4 +61,4 @@ Message: Certificate is up to date and has not expired
 
 > The HTTPS Gateway listener is currently **disabled** pending `wildcard-madhan-app-tls` creation. All app URLs use HTTP (`http://app.madhan.app`).
 >
-> Once the certificate exists in `kube-system`, re-enable the HTTPS listener in `infra/pulumi/cilium.go` and run `just pulumi platform up`.
+> Once the certificate exists in `kube-system`, re-enable the HTTPS listener in `core/platform/cilium.go` and run `just core platform up`.
