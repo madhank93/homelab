@@ -30,6 +30,16 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				"params": pulumi.Map{
 					"server.insecure": pulumi.Bool(false),
 				},
+				"cm": pulumi.Map{
+					// Kubernetes adds apiVersion, kind, volumeMode to VCT items in StatefulSets.
+					// CDK8s omits them. Ignore globally so all StatefulSets stay Synced.
+					"resource.customizations.ignoreDifferences.apps_StatefulSet": pulumi.String(
+						"jqPathExpressions:\n" +
+						"  - .spec.volumeClaimTemplates[]?.apiVersion\n" +
+						"  - .spec.volumeClaimTemplates[]?.kind\n" +
+						"  - .spec.volumeClaimTemplates[]?.spec.volumeMode\n",
+					),
+				},
 			},
 		},
 	}, pulumi.Provider(k8sProvider))
@@ -164,16 +174,10 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 								"jsonPointers": []string{"/data"},
 							},
 							{
-								"group":            "admissionregistration.k8s.io",
-								"kind":             "ValidatingWebhookConfiguration",
-								"name":             "victoria-metrics-victoria-metrics-operator-admission",
+								"group":             "admissionregistration.k8s.io",
+								"kind":              "ValidatingWebhookConfiguration",
+								"name":              "victoria-metrics-victoria-metrics-operator-admission",
 								"jqPathExpressions": []string{".webhooks[].clientConfig.caBundle"},
-							},
-							// CDK8s generates apiVersion/kind in volumeClaimTemplates;
-							// Kubernetes strips them on admission. Ignore to prevent permanent OutOfSync.
-							{
-								"kind":             "StatefulSet",
-								"jqPathExpressions": []string{".spec.volumeClaimTemplates[].apiVersion", ".spec.volumeClaimTemplates[].kind"},
 							},
 						},
 					},
