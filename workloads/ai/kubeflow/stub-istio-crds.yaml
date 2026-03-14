@@ -1,0 +1,24 @@
+# Stub Istio CRDs — profiles-controller watches AuthorizationPolicy unconditionally.
+# Without the CRD, controller-runtime cache sync fails and the controller crashes.
+# These stubs contain only the fields needed for the watch to register.
+# No actual Istio resources exist — the controller watches an empty list.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: authorizationpolicies.security.istio.io
+spec:
+  group: security.istio.io
+  names:
+    kind: AuthorizationPolicy
+    listKind: AuthorizationPolicyList
+    plural: authorizationpolicies
+    singular: authorizationpolicy
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true

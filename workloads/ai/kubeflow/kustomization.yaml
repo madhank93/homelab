@@ -33,6 +33,9 @@ sortOptions:
     - ValidatingWebhookConfiguration
 
 resources:
+# Stub Istio CRDs — profiles-controller watches AuthorizationPolicy unconditionally at startup.
+# Without the CRD, cache sync fails and the controller crashes. These stubs satisfy the watch.
+- stub-istio-crds.yaml
 # cert-manager kubeflow issuer only — cert-manager itself is already installed in the cluster
 - github.com/kubeflow/manifests//common/cert-manager/kubeflow-issuer/base?ref=v1.11.0
 # Kubeflow namespace + roles

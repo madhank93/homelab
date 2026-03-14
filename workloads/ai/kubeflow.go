@@ -37,7 +37,8 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 					{
 						"type": "RequestHeaderModifier",
 						"requestHeaderModifier": map[string]any{
-							"add": []map[string]any{
+							// set replaces (not appends) to avoid duplicate header values
+							"set": []map[string]any{
 								{"name": "kubeflow-userid", "value": "user@example.com"},
 							},
 						},
