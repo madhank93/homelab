@@ -1,0 +1,60 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+sortOptions:
+  order: legacy
+  legacySortOptions:
+    orderFirst:
+    - Namespace
+    - ResourceQuota
+    - StorageClass
+    - CustomResourceDefinition
+    - MutatingWebhookConfiguration
+    - ServiceAccount
+    - Role
+    - ClusterRole
+    - RoleBinding
+    - ClusterRoleBinding
+    - ConfigMap
+    - Secret
+    - Service
+    - PersistentVolumeClaim
+    - Deployment
+    - StatefulSet
+    orderLast:
+    - ValidatingWebhookConfiguration
+
+resources:
+# cert-manager Kubeflow issuer (cert-manager itself already installed in cluster)
+- github.com/kubeflow/manifests//common/cert-manager/kubeflow-issuer/base?ref=v1.11.0
+# Namespace + roles
+- github.com/kubeflow/manifests//common/kubeflow-namespace/base?ref=v1.11.0
+- github.com/kubeflow/manifests//common/kubeflow-roles/base?ref=v1.11.0
+# NetworkPolicies
+- github.com/kubeflow/manifests//common/networkpolicies/base?ref=v1.11.0
+# Kubeflow Pipelines — SeaweedFS + MySQL + cert-manager TLS, platform-agnostic multi-user
+- github.com/kubeflow/manifests//applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user?ref=v1.11.0
+# Katib — hyperparameter tuning with Kubeflow integration (includes MySQL)
+- github.com/kubeflow/manifests//applications/katib/upstream/installs/katib-with-kubeflow?ref=v1.11.0
+# Central Dashboard (base — no oauth2-proxy)
+- github.com/kubeflow/manifests//applications/centraldashboard/base?ref=v1.11.0
+# Admission Webhook — PodDefaults (GPU node injection per-notebook)
+- github.com/kubeflow/manifests//applications/admission-webhook/upstream/overlays/cert-manager?ref=v1.11.0
+# Notebook Controller
+- github.com/kubeflow/manifests//applications/jupyter/notebook-controller/upstream/overlays/kubeflow?ref=v1.11.0
+# Jupyter Web App (base — no Istio VirtualService)
+- github.com/kubeflow/manifests//applications/jupyter/jupyter-web-app/upstream/base?ref=v1.11.0
+# Profiles + KFAM
+- github.com/kubeflow/manifests//applications/profiles/upstream/overlays/kubeflow?ref=v1.11.0
+# PVC Viewer Controller
+- github.com/kubeflow/manifests//applications/pvcviewer-controller/upstream/base?ref=v1.11.0
+# Volumes Web App (base — no Istio VirtualService)
+- github.com/kubeflow/manifests//applications/volumes-web-app/upstream/base?ref=v1.11.0
+# Tensorboard Controller
+- github.com/kubeflow/manifests//applications/tensorboard/tensorboard-controller/upstream/overlays/kubeflow?ref=v1.11.0
+# Tensorboards Web App (base — no Istio VirtualService)
+- github.com/kubeflow/manifests//applications/tensorboard/tensorboards-web-app/upstream/base?ref=v1.11.0
+# Training Operator v1 (stable) — TFJob, PyTorchJob, MPIJob, etc.
+- github.com/kubeflow/manifests//applications/training-operator/upstream/overlays/kubeflow?ref=v1.11.0
+# Default user profile (creates kubeflow-user-example-com namespace)
+- github.com/kubeflow/manifests//common/user-namespace/base?ref=v1.11.0

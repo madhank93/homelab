@@ -115,6 +115,14 @@ func main() {
 	ai.NewComfyUIChart(comfyuiApp, "comfyui-app", "comfyui")
 	comfyuiApp.Synth()
 
+	// Kubeflow — Application CR (points to workloads/ai/kubeflow/ kustomize overlay) + HTTPRoute
+	kubeflowApp := cdk8s.NewApp(&cdk8s.AppProps{
+		Outdir:         jsii.String(fmt.Sprintf("%s/kubeflow", rootFolder)),
+		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+	})
+	ai.NewKubeflowChart(kubeflowApp, "kubeflow-app", "kubeflow")
+	kubeflowApp.Synth()
+
 	// Security & Compliance
 	trivyApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/trivy", rootFolder)),
