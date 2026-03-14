@@ -28,13 +28,16 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
 		},
 		"hostnames": []string{"kubeflow.madhan.app"},
-		// Each sub-service path must be routed BEFORE the catch-all centraldashboard rule.
-		// The central-dashboard uses IFRAME_LINK_PREFIX='_', so clicks navigate to /_/jupyter/
-		// and the iframe src is set to /jupyter/ on the same origin. Without these rules,
-		// /jupyter/ would be caught by the catch-all and serve centraldashboard index.html,
-		// which would show "not a valid page" error inside the iframe.
+		// Sub-service rules must come before the catch-all centraldashboard rule.
+		// The central-dashboard uses IFRAME_LINK_PREFIX='_': clicking "Notebooks" sets the
+		// browser URL to /_/jupyter/ and the iframe src to /jupyter/ (same origin).
+		//
+		// Each sub-app is a Python Flask SPA with APP_PREFIX=/jupyter etc. In Istio, the
+		// VirtualService rewrites /jupyter/ → / before forwarding to the Flask app, so Flask
+		// sees /static/runtime.js instead of /jupyter/static/runtime.js. We replicate that
+		// here with URLRewrite ReplacePrefixMatch so static assets and API routes all resolve.
 		"rules": []map[string]any{
-			// Jupyter Web App — handles /jupyter/ iframe src
+			// Jupyter Web App (/jupyter/ → /)
 			{
 				"matches": []map[string]any{
 					{"path": map[string]any{"type": "PathPrefix", "value": "/jupyter/"}},
@@ -43,12 +46,15 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
 						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
 					}},
+					{"type": "URLRewrite", "urlRewrite": map[string]any{
+						"path": map[string]any{"type": "ReplacePrefixMatch", "replacePrefixMatch": "/"},
+					}},
 				},
 				"backendRefs": []map[string]any{
 					{"group": "", "kind": "Service", "name": "jupyter-web-app-service", "port": 80, "weight": 1},
 				},
 			},
-			// Volumes Web App
+			// Volumes Web App (/volumes/ → /)
 			{
 				"matches": []map[string]any{
 					{"path": map[string]any{"type": "PathPrefix", "value": "/volumes/"}},
@@ -57,12 +63,15 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
 						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
 					}},
+					{"type": "URLRewrite", "urlRewrite": map[string]any{
+						"path": map[string]any{"type": "ReplacePrefixMatch", "replacePrefixMatch": "/"},
+					}},
 				},
 				"backendRefs": []map[string]any{
 					{"group": "", "kind": "Service", "name": "volumes-web-app-service", "port": 80, "weight": 1},
 				},
 			},
-			// Tensorboards Web App
+			// Tensorboards Web App (/tensorboards/ → /)
 			{
 				"matches": []map[string]any{
 					{"path": map[string]any{"type": "PathPrefix", "value": "/tensorboards/"}},
@@ -71,12 +80,15 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
 						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
 					}},
+					{"type": "URLRewrite", "urlRewrite": map[string]any{
+						"path": map[string]any{"type": "ReplacePrefixMatch", "replacePrefixMatch": "/"},
+					}},
 				},
 				"backendRefs": []map[string]any{
 					{"group": "", "kind": "Service", "name": "tensorboards-web-app-service", "port": 80, "weight": 1},
 				},
 			},
-			// Katib UI
+			// Katib UI (/katib/ → /)
 			{
 				"matches": []map[string]any{
 					{"path": map[string]any{"type": "PathPrefix", "value": "/katib/"}},
@@ -85,12 +97,15 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
 						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
 					}},
+					{"type": "URLRewrite", "urlRewrite": map[string]any{
+						"path": map[string]any{"type": "ReplacePrefixMatch", "replacePrefixMatch": "/"},
+					}},
 				},
 				"backendRefs": []map[string]any{
 					{"group": "", "kind": "Service", "name": "katib-ui", "port": 80, "weight": 1},
 				},
 			},
-			// Kubeflow Pipelines UI
+			// Kubeflow Pipelines UI (/pipeline/ → /)
 			{
 				"matches": []map[string]any{
 					{"path": map[string]any{"type": "PathPrefix", "value": "/pipeline/"}},
@@ -98,6 +113,9 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 				"filters": []map[string]any{
 					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
 						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
+					}},
+					{"type": "URLRewrite", "urlRewrite": map[string]any{
+						"path": map[string]any{"type": "ReplacePrefixMatch", "replacePrefixMatch": "/"},
 					}},
 				},
 				"backendRefs": []map[string]any{
