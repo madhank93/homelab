@@ -20,6 +20,17 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		Namespace:       pulumi.String("argocd"),
 		CreateNamespace: pulumi.Bool(true),
 		Values: pulumi.Map{
+			"repoServer": pulumi.Map{
+				// Kustomize 5.x has a hardcoded 27s git fetch timeout for remote bases.
+				// KUSTOMIZE_REMOTE_FETCH_TIMEOUT overrides it so large repos (e.g. kubeflow/manifests)
+				// can be fetched within CI/CD pipelines without timing out.
+				"env": pulumi.Array{
+					pulumi.Map{
+						"name":  pulumi.String("KUSTOMIZE_REMOTE_FETCH_TIMEOUT"),
+						"value": pulumi.String("180"),
+					},
+				},
+			},
 			"server": pulumi.Map{
 				"extraArgs": pulumi.StringArray{},
 				"service": pulumi.Map{
@@ -29,6 +40,8 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			"configs": pulumi.Map{
 				"params": pulumi.Map{
 					"server.insecure": pulumi.Bool(false),
+					// Kubeflow manifests repo is ~400MB; default 90s is too short for git fetch from cluster.
+					"reposerver.exec.timeout": pulumi.String("180s"),
 				},
 				"cm": pulumi.Map{
 					// Kubernetes adds apiVersion, kind, volumeMode to VCT items in StatefulSets.
