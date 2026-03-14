@@ -581,6 +581,25 @@
 <tr><td><code>grafana.madhan.app</code></td><td><code>23.121.200.108</code></td><td>Internet + ForwardAuth</td></tr>
 <tr><td><code>harbor.madhan.app</code></td><td><code>23.121.200.108</code></td><td>Internet + ForwardAuth</td></tr>
 </tbody></table>
+<h3 id="lan-user-accessing-a-public-service-hairpin-routing">LAN user accessing a public service (hairpin routing)</h3>
+<p>When a service is added to <code>publicServices</code>, Cloudflare resolves it to <code>23.121.200.108</code> for
+<strong>everyone</strong> — including devices already on the LAN. A LAN browser accessing <code>grafana.madhan.app</code>
+will still route out to the Hetzner VPS and tunnel back through WireGuard to reach the pod, even
+though both the client and the pod are on the same network.</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>LAN Browser
+</span><span>  → DNS (Cloudflare): grafana.madhan.app → 23.121.200.108   ← public IP, not LAN
+</span><span>  → Traefik on Hetzner VPS
+</span><span>  → WireGuard tunnel → 192.168.1.220 → Grafana pod
+</span><span>  (unnecessary internet round-trip for a LAN client)
+</span></code></pre>
+<p>To avoid this, run a local DNS resolver (e.g. Pi-hole) that overrides public service records to
+the LAN gateway IP for devices on your network:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span># Pi-hole custom DNS overrides
+</span><span>grafana.madhan.app  → 192.168.1.220
+</span><span>harbor.madhan.app   → 192.168.1.220
+</span></code></pre>
+<p>With Pi-hole, LAN clients resolve directly to <code>192.168.1.220</code> and bypass Hetzner entirely.
+Without it, all public services hairpin through the VPS regardless of where the client is.</p>
 <h2 id="public-services-config-single-source-of-truth">Public Services Config (Single Source of Truth)</h2>
 <p>The <code>publicServices</code> slice in <code>cloudflare.go</code> is the authoritative list. When you run <code>pulumi up</code>:</p>
 <ol>
@@ -744,7 +763,18 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/access/#dns-split-strategy" class="toc-link">DNS Split Strategy</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/access/#dns-split-strategy" class="toc-link">DNS Split Strategy</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/access/#lan-user-accessing-a-public-service-hairpin-routing" class="toc-link">LAN user accessing a public service (hairpin routing)</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -1073,24 +1103,6 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1123,11 +1135,13 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
                                                 
                                                 
                                             </ul>
@@ -1144,6 +1158,22 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
