@@ -24,6 +24,11 @@ spec:
               - name: kubeflow-userid
                 value: user@example.com
           type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
       matches:
         - path:
             type: PathPrefix
@@ -40,6 +45,11 @@ spec:
               - name: kubeflow-userid
                 value: user@example.com
           type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
       matches:
         - path:
             type: PathPrefix
@@ -56,6 +66,11 @@ spec:
               - name: kubeflow-userid
                 value: user@example.com
           type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
       matches:
         - path:
             type: PathPrefix
@@ -72,6 +87,11 @@ spec:
               - name: kubeflow-userid
                 value: user@example.com
           type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
       matches:
         - path:
             type: PathPrefix
@@ -88,6 +108,11 @@ spec:
               - name: kubeflow-userid
                 value: user@example.com
           type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
       matches:
         - path:
             type: PathPrefix
