@@ -74,6 +74,19 @@ components:
 - github.com/kubeflow/manifests//common/security/PSS/dynamic/baseline?ref=v1.11.0
 
 patches:
+# Fix Profile name — user-namespace/base uses $(profile-name) vars substitution which
+# is broken in kustomize 5.8.0 (replacements selector itself contains the var reference).
+# Explicitly rename the Profile to the correct value from params.env.
+- patch: |-
+    - op: replace
+      path: /metadata/name
+      value: kubeflow-user-example-com
+    - op: replace
+      path: /spec/owner/name
+      value: user@example.com
+  target:
+    group: kubeflow.org
+    kind: Profile
 # Strip all Istio resources — pipeline and katib overlays embed DestinationRules,
 # VirtualServices, and AuthorizationPolicies even in "platform-agnostic" variants.
 # These CRDs do not exist without Istio installed.
