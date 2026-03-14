@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: kubeflow
+  name: kubeflow-platform
   namespace: argocd
 spec:
   destination:
