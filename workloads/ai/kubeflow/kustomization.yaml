@@ -38,8 +38,9 @@ resources:
 # Kubeflow namespace + roles
 - github.com/kubeflow/manifests//common/kubeflow-namespace/base?ref=v1.11.0
 - github.com/kubeflow/manifests//common/kubeflow-roles/base?ref=v1.11.0
-# NetworkPolicies
-- github.com/kubeflow/manifests//common/networkpolicies/base?ref=v1.11.0
+# NetworkPolicies intentionally excluded — they are Istio-specific (restrict ingress to
+# same-namespace or istio-system). Without Istio, they block cilium-envoy (hostNetwork)
+# from reaching kubeflow pods. Remove entirely to allow all ingress.
 # Kubeflow Pipelines — SeaweedFS + MySQL + cert-manager TLS, platform-agnostic multi-user
 - github.com/kubeflow/manifests//applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user?ref=v1.11.0
 # Katib — hyperparameter tuning with Kubeflow integration (includes MySQL)
