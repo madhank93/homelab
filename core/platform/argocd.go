@@ -192,6 +192,16 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 								"name":              "victoria-metrics-victoria-metrics-operator-admission",
 								"jqPathExpressions": []string{".webhooks[].clientConfig.caBundle"},
 							},
+							// Kubeflow CRDs and ClusterRoles: Kubernetes mutates fields not in manifests.
+							{
+								"group": "apiextensions.k8s.io",
+								"kind": "CustomResourceDefinition",
+								"jqPathExpressions": []string{".spec.conversion", ".status"},
+							},
+							{
+								"kind": "ClusterRole",
+								"jqPathExpressions": []string{".metadata.annotations"},
+							},
 						},
 					},
 				},

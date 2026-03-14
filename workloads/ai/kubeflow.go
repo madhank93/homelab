@@ -27,7 +27,7 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 		"parentRefs": []map[string]any{
 			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
 		},
-		"hostnames": []string{"kubeflow.local"},
+		"hostnames": []string{"kubeflow.madhan.app"},
 		"rules": []map[string]any{
 			{
 				"matches": []map[string]any{
