@@ -52,6 +52,20 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						"  - .spec.volumeClaimTemplates[]?.kind\n" +
 						"  - .spec.volumeClaimTemplates[]?.spec.volumeMode\n",
 					),
+					// Kubeflow aggregationRule ClusterRoles: K8s auto-fills .rules from sub-roles;
+					// manifests have rules:null. Global customization handles all ClusterRoles.
+					"resource.customizations.ignoreDifferences.rbac.authorization.k8s.io_ClusterRole": pulumi.String(
+						"jqPathExpressions:\n" +
+						"  - .rules\n",
+					),
+					// Kubeflow CRDs: K8s adds .spec.conversion and .status after apply.
+					// .spec.preserveUnknownFields=false is explicit in manifests but K8s drops it (default).
+					"resource.customizations.ignoreDifferences.apiextensions.k8s.io_CustomResourceDefinition": pulumi.String(
+						"jqPathExpressions:\n" +
+						"  - .spec.conversion\n" +
+						"  - .spec.preserveUnknownFields\n" +
+						"  - .status\n",
+					),
 				},
 			},
 		},
@@ -199,9 +213,10 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 								"jqPathExpressions": []string{".spec.conversion", ".status"},
 							},
 							{
-								// aggregationRule ClusterRoles: K8s auto-fills .rules; manifest has null — ignore.
-							"kind":              "ClusterRole",
-							"jqPathExpressions": []string{".metadata.annotations", ".rules"},
+								// aggregationRule ClusterRoles: K8s auto-fills .rules from sub-roles;
+								// manifest has rules:null — use jsonPointers which handles null reliably.
+								"kind":         "ClusterRole",
+								"jsonPointers": []string{"/metadata/annotations", "/rules"},
 							},
 						},
 					},
