@@ -20,7 +20,7 @@ spec:
           weight: 1
       filters:
         - requestHeaderModifier:
-            add:
+            set:
               - name: kubeflow-userid
                 value: user@example.com
           type: RequestHeaderModifier
