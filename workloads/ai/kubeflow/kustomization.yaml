@@ -90,6 +90,18 @@ patches:
 # Strip all Istio resources — pipeline and katib overlays embed DestinationRules,
 # VirtualServices, and AuthorizationPolicies even in "platform-agnostic" variants.
 # These CRDs do not exist without Istio installed.
+# Allow Cilium Gateway (kube-system) to reach centraldashboard.
+# Default NetworkPolicy only allows istio-system + same-namespace, blocking the Gateway.
+- patch: |-
+    - op: add
+      path: /spec/ingress/0/from/-
+      value:
+        namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+  target:
+    kind: NetworkPolicy
+    name: centraldashboard
 - patch: |-
     $patch: delete
     apiVersion: networking.istio.io/v1alpha3
