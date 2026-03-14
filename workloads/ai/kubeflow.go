@@ -28,21 +28,91 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
 		},
 		"hostnames": []string{"kubeflow.madhan.app"},
+		// Each sub-service path must be routed BEFORE the catch-all centraldashboard rule.
+		// The central-dashboard uses IFRAME_LINK_PREFIX='_', so clicks navigate to /_/jupyter/
+		// and the iframe src is set to /jupyter/ on the same origin. Without these rules,
+		// /jupyter/ would be caught by the catch-all and serve centraldashboard index.html,
+		// which would show "not a valid page" error inside the iframe.
 		"rules": []map[string]any{
+			// Jupyter Web App — handles /jupyter/ iframe src
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/jupyter/"}},
+				},
+				"filters": []map[string]any{
+					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
+						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
+					}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "jupyter-web-app-service", "port": 80, "weight": 1},
+				},
+			},
+			// Volumes Web App
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/volumes/"}},
+				},
+				"filters": []map[string]any{
+					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
+						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
+					}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "volumes-web-app-service", "port": 80, "weight": 1},
+				},
+			},
+			// Tensorboards Web App
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/tensorboards/"}},
+				},
+				"filters": []map[string]any{
+					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
+						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
+					}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "tensorboards-web-app-service", "port": 80, "weight": 1},
+				},
+			},
+			// Katib UI
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/katib/"}},
+				},
+				"filters": []map[string]any{
+					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
+						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
+					}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "katib-ui", "port": 80, "weight": 1},
+				},
+			},
+			// Kubeflow Pipelines UI
+			{
+				"matches": []map[string]any{
+					{"path": map[string]any{"type": "PathPrefix", "value": "/pipeline/"}},
+				},
+				"filters": []map[string]any{
+					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
+						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
+					}},
+				},
+				"backendRefs": []map[string]any{
+					{"group": "", "kind": "Service", "name": "ml-pipeline-ui", "port": 80, "weight": 1},
+				},
+			},
+			// Catch-all → Central Dashboard (handles /, /_/*, /api/*, etc.)
 			{
 				"matches": []map[string]any{
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"filters": []map[string]any{
-					{
-						"type": "RequestHeaderModifier",
-						"requestHeaderModifier": map[string]any{
-							// set replaces (not appends) to avoid duplicate header values
-							"set": []map[string]any{
-								{"name": "kubeflow-userid", "value": "user@example.com"},
-							},
-						},
-					},
+					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
+						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
+					}},
 				},
 				"backendRefs": []map[string]any{
 					{"group": "", "kind": "Service", "name": "centraldashboard", "port": 80, "weight": 1},
