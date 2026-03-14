@@ -100,6 +100,33 @@ The Cloudflare A record is deleted. DNS falls back to `*.madhan.app → 192.168.
 | `grafana.madhan.app` | `23.121.200.108` | Internet + ForwardAuth |
 | `harbor.madhan.app` | `23.121.200.108` | Internet + ForwardAuth |
 
+### LAN user accessing a public service (hairpin routing)
+
+When a service is added to `publicServices`, Cloudflare resolves it to `23.121.200.108` for
+**everyone** — including devices already on the LAN. A LAN browser accessing `grafana.madhan.app`
+will still route out to the Hetzner VPS and tunnel back through WireGuard to reach the pod, even
+though both the client and the pod are on the same network.
+
+```
+LAN Browser
+  → DNS (Cloudflare): grafana.madhan.app → 23.121.200.108   ← public IP, not LAN
+  → Traefik on Hetzner VPS
+  → WireGuard tunnel → 192.168.1.220 → Grafana pod
+  (unnecessary internet round-trip for a LAN client)
+```
+
+To avoid this, run a local DNS resolver (e.g. Pi-hole) that overrides public service records to
+the LAN gateway IP for devices on your network:
+
+```
+# Pi-hole custom DNS overrides
+grafana.madhan.app  → 192.168.1.220
+harbor.madhan.app   → 192.168.1.220
+```
+
+With Pi-hole, LAN clients resolve directly to `192.168.1.220` and bypass Hetzner entirely.
+Without it, all public services hairpin through the VPS regardless of where the client is.
+
 ## Public Services Config (Single Source of Truth)
 
 The `publicServices` slice in `cloudflare.go` is the authoritative list. When you run `pulumi up`:
