@@ -14,18 +14,20 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 	// ArgoCD Application CR — tells ArgoCD to kustomize build workloads/ai/kubeflow/ from v0.1.5 branch.
 	// The kustomization.yaml uses remote bases from github.com/kubeflow/manifests which CDK8s cannot inline.
 	// Update targetRevision to "main" after this branch is merged.
+	// Named "kubeflow-platform" (not "kubeflow") to avoid colliding with the ApplicationSet-managed
+	// wrapper Application also named "kubeflow" that deploys this very directory.
 	cdk8s.NewApiObject(chart, jsii.String("kubeflow-application"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("argoproj.io/v1alpha1"),
 		Kind:       jsii.String("Application"),
 		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("kubeflow"),
+			Name:      jsii.String("kubeflow-platform"),
 			Namespace: jsii.String("argocd"),
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"project": "default",
 		"source": map[string]any{
 			"repoURL":        "https://github.com/madhank93/homelab.git",
-			"targetRevision": "v0.1.5",
+			"targetRevision": "v0.1.5", // update to main after this branch is merged
 			"path":           "workloads/ai/kubeflow",
 		},
 		"destination": map[string]any{
