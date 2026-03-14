@@ -5,7 +5,7 @@ metadata:
   namespace: kubeflow
 spec:
   hostnames:
-    - kubeflow.local
+    - kubeflow.madhan.app
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
