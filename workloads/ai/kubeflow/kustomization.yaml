@@ -72,3 +72,35 @@ resources:
 components:
 # Pod Security Standards — enforce baseline PSS on dynamic namespaces (requires K8s 1.33+)
 - github.com/kubeflow/manifests//common/security/PSS/dynamic/baseline?ref=v1.11.0
+
+patches:
+# Strip all Istio resources — pipeline and katib overlays embed DestinationRules,
+# VirtualServices, and AuthorizationPolicies even in "platform-agnostic" variants.
+# These CRDs do not exist without Istio installed.
+- patch: |-
+    $patch: delete
+    apiVersion: networking.istio.io/v1alpha3
+    kind: DestinationRule
+    metadata:
+      name: unused
+  target:
+    group: networking.istio.io
+    kind: DestinationRule
+- patch: |-
+    $patch: delete
+    apiVersion: networking.istio.io/v1alpha3
+    kind: VirtualService
+    metadata:
+      name: unused
+  target:
+    group: networking.istio.io
+    kind: VirtualService
+- patch: |-
+    $patch: delete
+    apiVersion: security.istio.io/v1beta1
+    kind: AuthorizationPolicy
+    metadata:
+      name: unused
+  target:
+    group: security.istio.io
+    kind: AuthorizationPolicy
