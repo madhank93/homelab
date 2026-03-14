@@ -35,6 +35,19 @@ jobs:
           go run .
           ls -la ../app/
 
+      - name: Install kustomize
+        run: |
+          KUSTOMIZE_VERSION=v5.8.0
+          curl -sLO "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          tar -xzf kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+          kustomize version
+
+      - name: Build Kubeflow manifests
+        working-directory: workloads
+        run: |
+          kustomize build ai/kubeflow/ > ../app/kubeflow/kubeflow-manifests.yaml
+
       - name: Deploy Manifests to Branch
         uses: peaceiris/actions-gh-pages@v4
         with:
