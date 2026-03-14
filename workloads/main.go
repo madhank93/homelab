@@ -121,6 +121,7 @@ func main() {
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
 	})
 	ai.NewKubeflowChart(kubeflowApp, "kubeflow-app", "kubeflow")
+	ai.NewNotebookGatewayControllerChart(kubeflowApp, "notebook-gateway-controller", "kubeflow")
 	kubeflowApp.Synth()
 
 	// Security & Compliance

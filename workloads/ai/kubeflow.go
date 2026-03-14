@@ -88,7 +88,7 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 					{"group": "", "kind": "Service", "name": "tensorboards-web-app-service", "port": 80, "weight": 1},
 				},
 			},
-			// Katib UI (/katib/ → /)
+			// Katib UI — prefix is baked into the Go binary, serves natively at /katib/. No URLRewrite.
 			{
 				"matches": []map[string]any{
 					{"path": map[string]any{"type": "PathPrefix", "value": "/katib/"}},
@@ -96,9 +96,6 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 				"filters": []map[string]any{
 					{"type": "RequestHeaderModifier", "requestHeaderModifier": map[string]any{
 						"set": []map[string]any{{"name": "kubeflow-userid", "value": "user@example.com"}},
-					}},
-					{"type": "URLRewrite", "urlRewrite": map[string]any{
-						"path": map[string]any{"type": "ReplacePrefixMatch", "replacePrefixMatch": "/"},
 					}},
 				},
 				"backendRefs": []map[string]any{
