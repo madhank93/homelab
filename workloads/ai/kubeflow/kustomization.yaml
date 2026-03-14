@@ -90,16 +90,17 @@ patches:
 # Strip all Istio resources — pipeline and katib overlays embed DestinationRules,
 # VirtualServices, and AuthorizationPolicies even in "platform-agnostic" variants.
 # These CRDs do not exist without Istio installed.
-# Allow Cilium Gateway to reach centraldashboard.
-# Default NetworkPolicy only allows istio-system + same-namespace.
-# Cilium-envoy uses hostNetwork (traffic from node IP, not pod IP) so namespace
-# selectors don't match — allow from all namespaces instead.
+# Delete centraldashboard NetworkPolicy entirely.
+# Cilium-envoy uses hostNetwork so its source IP is the node IP, not a pod IP.
+# Kubernetes NetworkPolicy pod selectors (namespaceSelector/podSelector) don't
+# match hostNetwork traffic — Cilium envoy gets cx_connect_fail connecting to the pod.
+# No Istio in this cluster, so the NetworkPolicy provides no value anyway.
 - patch: |-
-    - op: replace
-      path: /spec/ingress/0/from
-      value:
-        - namespaceSelector: {}
-        - podSelector: {}
+    $patch: delete
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: centraldashboard
   target:
     kind: NetworkPolicy
     name: centraldashboard

@@ -199,8 +199,9 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 								"jqPathExpressions": []string{".spec.conversion", ".status"},
 							},
 							{
-								"kind": "ClusterRole",
-								"jqPathExpressions": []string{".metadata.annotations"},
+								// aggregationRule ClusterRoles: K8s auto-fills .rules; manifest has null — ignore.
+							"kind":              "ClusterRole",
+							"jqPathExpressions": []string{".metadata.annotations", ".rules"},
 							},
 						},
 					},
