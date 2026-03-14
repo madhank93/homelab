@@ -1,0 +1,30 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kubeflow-dashboard
+  namespace: kubeflow
+spec:
+  hostnames:
+    - kubeflow.local
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
+      namespace: kube-system
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: centraldashboard
+          port: 80
+          weight: 1
+      filters:
+        - requestHeaderModifier:
+            add:
+              - name: kubeflow-userid
+                value: user@example.com
+          type: RequestHeaderModifier
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
