@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notebook-gateway-controller
+  namespace: kubeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notebook-gateway-controller
+  template:
+    metadata:
+      labels:
+        app: notebook-gateway-controller
+    spec:
+      containers:
+        - command:
+            - sh
+            - -c
+            - pip install kubernetes --quiet --no-cache-dir && python /app/controller.py
+          env:
+            - name: HOME
+              value: /tmp
+          image: python:3.11-slim
+          name: controller
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /app
+              name: script
+      serviceAccountName: notebook-gateway-controller
+      volumes:
+        - configMap:
+            name: notebook-gateway-controller-script
+          name: script
