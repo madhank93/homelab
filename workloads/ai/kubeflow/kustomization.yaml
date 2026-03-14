@@ -44,8 +44,8 @@ resources:
 - github.com/kubeflow/manifests//applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user?ref=v1.11.0
 # Katib — hyperparameter tuning with Kubeflow integration (includes MySQL)
 - github.com/kubeflow/manifests//applications/katib/upstream/installs/katib-with-kubeflow?ref=v1.11.0
-# Central Dashboard (base — no oauth2-proxy/Istio overlay)
-- github.com/kubeflow/manifests//applications/centraldashboard/base?ref=v1.11.0
+# Central Dashboard (upstream/base — no oauth2-proxy/Istio overlay)
+- github.com/kubeflow/manifests//applications/centraldashboard/upstream/base?ref=v1.11.0
 # Admission Webhook — PodDefaults (GPU node injection per-notebook)
 - github.com/kubeflow/manifests//applications/admission-webhook/upstream/overlays/cert-manager?ref=v1.11.0
 # Jupyter Web App (base — no Istio VirtualService)
