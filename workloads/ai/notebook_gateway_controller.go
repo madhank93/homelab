@@ -45,6 +45,11 @@ func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, na
 			"verbs":     []string{"get", "list", "watch"},
 		},
 		{
+			"apiGroups": []string{"kubeflow.org"},
+			"resources": []string{"pvcviewers"},
+			"verbs":     []string{"get", "list", "watch"},
+		},
+		{
 			"apiGroups": []string{"gateway.networking.k8s.io"},
 			"resources": []string{"httproutes"},
 			"verbs":     []string{"get", "list", "create", "update", "patch", "delete"},
@@ -73,7 +78,7 @@ func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, na
 
 	// Deployment — Python controller using the in-cluster Kubernetes client
 	controllerScript := `
-# notebook-gateway-controller v3 — watches Notebooks + Tensorboards
+# notebook-gateway-controller v5 — tensorboard URLRewrite + pvcviewer routing
 import threading, time, logging
 from kubernetes import client, config, watch
 
@@ -96,7 +101,14 @@ USERID_VALUE  = "user@example.com"
 def _route_name(kind, ns, name):
     return f"{kind}-{ns}-{name}"
 
-def _desired_httproute(route_name, path, svc_name, svc_ns):
+def _desired_httproute(route_name, path, svc_name, svc_ns, url_rewrite=False):
+    filters = [{"type": "RequestHeaderModifier", "requestHeaderModifier": {
+        "set": [{"name": USERID_HEADER, "value": USERID_VALUE}]
+    }}]
+    if url_rewrite:
+        filters.append({"type": "URLRewrite", "urlRewrite": {
+            "path": {"type": "ReplacePrefixMatch", "replacePrefixMatch": "/"}
+        }})
     return {
         "apiVersion": "gateway.networking.k8s.io/v1",
         "kind": "HTTPRoute",
@@ -110,9 +122,7 @@ def _desired_httproute(route_name, path, svc_name, svc_ns):
             "hostnames": [HOSTNAME],
             "rules": [{
                 "matches": [{"path": {"type": "PathPrefix", "value": path}}],
-                "filters": [{"type": "RequestHeaderModifier", "requestHeaderModifier": {
-                    "set": [{"name": USERID_HEADER, "value": USERID_VALUE}]
-                }}],
+                "filters": filters,
                 "backendRefs": [{"name": svc_name, "namespace": svc_ns, "port": 80, "group": "", "kind": "Service"}],
             }],
         },
@@ -187,10 +197,26 @@ def apply_tensorboard(ns, name):
         _route_name("tensorboard", ns, name),
         f"/tensorboard/{ns}/{name}/",
         name, ns,
+        url_rewrite=True,
     )
 
 def delete_tensorboard(ns, name):
     delete_httproute(_route_name("tensorboard", ns, name))
+
+# --- pvcviewer handlers ---
+
+def apply_pvcviewer(ns, name):
+    apply_refgrant(ns)
+    # filebrowser sets FB_BASEURL but still needs URLRewrite (Istio rewrite: / equivalent)
+    apply_httproute(
+        _route_name("pvcviewer", ns, name),
+        f"/pvcviewers/{ns}/{name}/",
+        f"pvcviewer-{name}", ns,
+        url_rewrite=True,
+    )
+
+def delete_pvcviewer(ns, name):
+    delete_httproute(_route_name("pvcviewer", ns, name))
 
 # --- sync + watch ---
 
@@ -204,6 +230,11 @@ def sync_all():
     for tb in tensorboards.get("items", []):
         apply_tensorboard(tb["metadata"]["namespace"], tb["metadata"]["name"])
     log.info(f"Synced {len(tensorboards.get('items', []))} tensorboards")
+
+    pvcviewers = custom.list_cluster_custom_object("kubeflow.org", "v1alpha1", "pvcviewers")
+    for pv in pvcviewers.get("items", []):
+        apply_pvcviewer(pv["metadata"]["namespace"], pv["metadata"]["name"])
+    log.info(f"Synced {len(pvcviewers.get('items', []))} pvcviewers")
 
 def watch_notebooks():
     w = watch.Watch()
@@ -237,11 +268,29 @@ def watch_tensorboards():
             time.sleep(10)
             sync_all()
 
+def watch_pvcviewers():
+    w = watch.Watch()
+    while True:
+        try:
+            for event in w.stream(custom.list_cluster_custom_object, "kubeflow.org", "v1alpha1", "pvcviewers", timeout_seconds=300):
+                etype, obj = event["type"], event["object"]
+                ns, name = obj["metadata"]["namespace"], obj["metadata"]["name"]
+                if etype in ("ADDED", "MODIFIED"):
+                    apply_pvcviewer(ns, name)
+                elif etype == "DELETED":
+                    delete_pvcviewer(ns, name)
+        except Exception as exc:
+            log.warning(f"PVCViewer watch error: {exc}. Resyncing in 10s...")
+            time.sleep(10)
+            sync_all()
+
 def run():
     sync_all()
-    log.info("Watching Notebook and Tensorboard CRs...")
-    t = threading.Thread(target=watch_tensorboards, daemon=True)
-    t.start()
+    log.info("Watching Notebook, Tensorboard, and PVCViewer CRs...")
+    t1 = threading.Thread(target=watch_tensorboards, daemon=True)
+    t2 = threading.Thread(target=watch_pvcviewers, daemon=True)
+    t1.start()
+    t2.start()
     watch_notebooks()
 
 if __name__ == "__main__":
