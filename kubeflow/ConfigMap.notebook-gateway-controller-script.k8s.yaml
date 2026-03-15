@@ -6,6 +6,7 @@ metadata:
 data:
   controller.py: |
     
+    # notebook-gateway-controller v3 — watches Notebooks + Tensorboards
     import threading, time, logging
     from kubernetes import client, config, watch
 
