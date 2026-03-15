@@ -73,6 +73,7 @@ func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, na
 
 	// Deployment — Python controller using the in-cluster Kubernetes client
 	controllerScript := `
+# notebook-gateway-controller v3 — watches Notebooks + Tensorboards
 import threading, time, logging
 from kubernetes import client, config, watch
 
