@@ -108,6 +108,18 @@ patches:
   target:
     kind: NetworkPolicy
     name: centraldashboard
+# SeaweedFS NetworkPolicy allows all ports from istio-system but restricts port 8111 (IAM/STS API)
+# from the kubeflow-pipelines-profile-controller. Without Istio, the policy blocks the profile
+# controller from initialising user namespaces (mlpipeline-minio-artifact secret never created).
+- patch: |-
+    $patch: delete
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: seaweedfs
+  target:
+    kind: NetworkPolicy
+    name: seaweedfs
 - patch: |-
     $patch: delete
     apiVersion: networking.istio.io/v1alpha3
