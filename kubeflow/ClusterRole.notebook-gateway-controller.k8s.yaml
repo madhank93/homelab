@@ -13,6 +13,14 @@ rules:
       - list
       - watch
   - apiGroups:
+      - tensorboard.kubeflow.org
+    resources:
+      - tensorboards
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - gateway.networking.k8s.io
     resources:
       - httproutes
