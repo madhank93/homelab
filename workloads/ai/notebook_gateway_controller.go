@@ -78,7 +78,7 @@ func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, na
 
 	// Deployment — Python controller using the in-cluster Kubernetes client
 	controllerScript := `
-# notebook-gateway-controller v5 — tensorboard URLRewrite + pvcviewer routing
+# notebook-gateway-controller v6 — fix apply_httproute url_rewrite passthrough
 import threading, time, logging
 from kubernetes import client, config, watch
 
@@ -143,8 +143,8 @@ def desired_refgrant(ns):
         },
     }
 
-def apply_httproute(rname, path, svc_name, svc_ns):
-    body = _desired_httproute(rname, path, svc_name, svc_ns)
+def apply_httproute(rname, path, svc_name, svc_ns, url_rewrite=False):
+    body = _desired_httproute(rname, path, svc_name, svc_ns, url_rewrite=url_rewrite)
     try:
         net.get_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname)
         net.patch_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname, body)
