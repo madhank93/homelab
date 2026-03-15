@@ -40,6 +40,11 @@ func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, na
 			"verbs":     []string{"get", "list", "watch"},
 		},
 		{
+			"apiGroups": []string{"tensorboard.kubeflow.org"},
+			"resources": []string{"tensorboards"},
+			"verbs":     []string{"get", "list", "watch"},
+		},
+		{
 			"apiGroups": []string{"gateway.networking.k8s.io"},
 			"resources": []string{"httproutes"},
 			"verbs":     []string{"get", "list", "create", "update", "patch", "delete"},
@@ -68,7 +73,7 @@ func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, na
 
 	// Deployment — Python controller using the in-cluster Kubernetes client
 	controllerScript := `
-import os, time, logging
+import threading, time, logging
 from kubernetes import client, config, watch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -76,26 +81,26 @@ log = logging.getLogger("ngc")
 
 config.load_incluster_config()
 custom = client.CustomObjectsApi()
-net_v1 = client.CustomObjectsApi()
-core_v1 = client.CoreV1Api()
+net    = client.CustomObjectsApi()
 
-GATEWAY_NS   = "kube-system"
-GATEWAY_NAME = "homelab-gateway"
-ROUTE_NS     = "kubeflow"
-HOSTNAME     = "kubeflow.madhan.app"
+GATEWAY_NS    = "kube-system"
+GATEWAY_NAME  = "homelab-gateway"
+ROUTE_NS      = "kubeflow"
+HOSTNAME      = "kubeflow.madhan.app"
 USERID_HEADER = "kubeflow-userid"
 USERID_VALUE  = "user@example.com"
 
-def route_name(ns, name):
-    return f"notebook-{ns}-{name}"
+# --- helpers ---
 
-def desired_httproute(ns, name):
-    path = f"/notebook/{ns}/{name}/"
+def _route_name(kind, ns, name):
+    return f"{kind}-{ns}-{name}"
+
+def _desired_httproute(route_name, path, svc_name, svc_ns):
     return {
         "apiVersion": "gateway.networking.k8s.io/v1",
         "kind": "HTTPRoute",
         "metadata": {
-            "name": route_name(ns, name),
+            "name": route_name,
             "namespace": ROUTE_NS,
             "labels": {"app.kubernetes.io/managed-by": "notebook-gateway-controller"},
         },
@@ -107,7 +112,7 @@ def desired_httproute(ns, name):
                 "filters": [{"type": "RequestHeaderModifier", "requestHeaderModifier": {
                     "set": [{"name": USERID_HEADER, "value": USERID_VALUE}]
                 }}],
-                "backendRefs": [{"name": name, "namespace": ns, "port": 80, "group": "", "kind": "Service"}],
+                "backendRefs": [{"name": svc_name, "namespace": svc_ns, "port": 80, "group": "", "kind": "Service"}],
             }],
         },
     }
@@ -127,16 +132,15 @@ def desired_refgrant(ns):
         },
     }
 
-def apply_route(ns, name):
-    body = desired_httproute(ns, name)
-    rname = route_name(ns, name)
+def apply_httproute(rname, path, svc_name, svc_ns):
+    body = _desired_httproute(rname, path, svc_name, svc_ns)
     try:
-        net_v1.get_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname)
-        net_v1.patch_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname, body)
+        net.get_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname)
+        net.patch_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname, body)
         log.info(f"Updated HTTPRoute {rname}")
     except client.exceptions.ApiException as e:
         if e.status == 404:
-            net_v1.create_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", body)
+            net.create_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", body)
             log.info(f"Created HTTPRoute {rname}")
         else:
             raise
@@ -144,54 +148,100 @@ def apply_route(ns, name):
 def apply_refgrant(ns):
     body = desired_refgrant(ns)
     try:
-        net_v1.get_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", "allow-kubeflow-gateway")
-        net_v1.patch_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", "allow-kubeflow-gateway", body)
+        net.get_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", "allow-kubeflow-gateway")
+        net.patch_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", "allow-kubeflow-gateway", body)
     except client.exceptions.ApiException as e:
         if e.status == 404:
-            net_v1.create_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", body)
+            net.create_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", body)
             log.info(f"Created ReferenceGrant in {ns}")
         else:
             raise
 
-def delete_route(ns, name):
-    rname = route_name(ns, name)
+def delete_httproute(rname):
     try:
-        net_v1.delete_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname)
+        net.delete_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname)
         log.info(f"Deleted HTTPRoute {rname}")
     except client.exceptions.ApiException as e:
         if e.status != 404:
             raise
 
+# --- notebook handlers ---
+
+def apply_notebook(ns, name):
+    apply_refgrant(ns)
+    apply_httproute(
+        _route_name("notebook", ns, name),
+        f"/notebook/{ns}/{name}/",
+        name, ns,
+    )
+
+def delete_notebook(ns, name):
+    delete_httproute(_route_name("notebook", ns, name))
+
+# --- tensorboard handlers ---
+
+def apply_tensorboard(ns, name):
+    apply_refgrant(ns)
+    apply_httproute(
+        _route_name("tensorboard", ns, name),
+        f"/tensorboard/{ns}/{name}/",
+        name, ns,
+    )
+
+def delete_tensorboard(ns, name):
+    delete_httproute(_route_name("tensorboard", ns, name))
+
+# --- sync + watch ---
+
 def sync_all():
-    """Reconcile all existing notebooks on startup."""
     notebooks = custom.list_cluster_custom_object("kubeflow.org", "v1", "notebooks")
     for nb in notebooks.get("items", []):
-        ns   = nb["metadata"]["namespace"]
-        name = nb["metadata"]["name"]
-        apply_refgrant(ns)
-        apply_route(ns, name)
-    log.info(f"Synced {len(notebooks.get('items',[]))} notebooks")
+        apply_notebook(nb["metadata"]["namespace"], nb["metadata"]["name"])
+    log.info(f"Synced {len(notebooks.get('items', []))} notebooks")
 
-def run():
-    sync_all()
+    tensorboards = custom.list_cluster_custom_object("tensorboard.kubeflow.org", "v1alpha1", "tensorboards")
+    for tb in tensorboards.get("items", []):
+        apply_tensorboard(tb["metadata"]["namespace"], tb["metadata"]["name"])
+    log.info(f"Synced {len(tensorboards.get('items', []))} tensorboards")
+
+def watch_notebooks():
     w = watch.Watch()
-    log.info("Watching Notebook CRs...")
     while True:
         try:
             for event in w.stream(custom.list_cluster_custom_object, "kubeflow.org", "v1", "notebooks", timeout_seconds=300):
-                etype = event["type"]
-                nb    = event["object"]
-                ns    = nb["metadata"]["namespace"]
-                name  = nb["metadata"]["name"]
+                etype, obj = event["type"], event["object"]
+                ns, name = obj["metadata"]["namespace"], obj["metadata"]["name"]
                 if etype in ("ADDED", "MODIFIED"):
-                    apply_refgrant(ns)
-                    apply_route(ns, name)
+                    apply_notebook(ns, name)
                 elif etype == "DELETED":
-                    delete_route(ns, name)
+                    delete_notebook(ns, name)
         except Exception as exc:
-            log.warning(f"Watch error: {exc}. Resyncing in 10s...")
+            log.warning(f"Notebook watch error: {exc}. Resyncing in 10s...")
             time.sleep(10)
             sync_all()
+
+def watch_tensorboards():
+    w = watch.Watch()
+    while True:
+        try:
+            for event in w.stream(custom.list_cluster_custom_object, "tensorboard.kubeflow.org", "v1alpha1", "tensorboards", timeout_seconds=300):
+                etype, obj = event["type"], event["object"]
+                ns, name = obj["metadata"]["namespace"], obj["metadata"]["name"]
+                if etype in ("ADDED", "MODIFIED"):
+                    apply_tensorboard(ns, name)
+                elif etype == "DELETED":
+                    delete_tensorboard(ns, name)
+        except Exception as exc:
+            log.warning(f"Tensorboard watch error: {exc}. Resyncing in 10s...")
+            time.sleep(10)
+            sync_all()
+
+def run():
+    sync_all()
+    log.info("Watching Notebook and Tensorboard CRs...")
+    t = threading.Thread(target=watch_tensorboards, daemon=True)
+    t.start()
+    watch_notebooks()
 
 if __name__ == "__main__":
     run()
