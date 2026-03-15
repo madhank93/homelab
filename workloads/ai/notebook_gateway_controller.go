@@ -250,7 +250,13 @@ if __name__ == "__main__":
 	cdk8s.NewApiObject(chart, jsii.String("ngc-deploy"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("apps/v1"),
 		Kind:       jsii.String("Deployment"),
-		Metadata:   &cdk8s.ApiObjectMetadata{Name: jsii.String("notebook-gateway-controller"), Namespace: jsii.String(namespace)},
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("notebook-gateway-controller"),
+			Namespace: jsii.String(namespace),
+			Annotations: &map[string]*string{
+				"reloader.stakater.com/auto": jsii.String("true"),
+			},
+		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"replicas": 1,
 		"selector": map[string]any{"matchLabels": map[string]any{"app": "notebook-gateway-controller"}},
