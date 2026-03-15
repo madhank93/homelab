@@ -67,8 +67,10 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 			// - plugin.deviceListStrategy: envvar — CDI hostPath mounts fail on Talos
 			//   (libs at non-standard paths); envvar injects NVIDIA_VISIBLE_DEVICES instead.
 			//   NOTE: plugin is nested under flags, not a top-level key (per v1 config schema).
-			// - timeSlicing replicas: 2 — Ollama and ComfyUI share the RTX 5070 Ti
-			//   (VRAM is not isolated; ~4 GB + ~6 GB fits within the 16 GB pool).
+			// - timeSlicing replicas: 5 — Ollama + ComfyUI + Kubeflow notebook +
+			//   training job + Katib trial. VRAM is not isolated; typical concurrent
+			//   active load is 2-3 processes (~10-12 GB), well within the 16 GB pool.
+			//   Running Flux (12 GB) + Ollama simultaneously would OOM — user responsibility.
 			"config": map[string]any{
 				"default": "default",
 				"map": map[string]any{
@@ -82,7 +84,7 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 						"  timeSlicing:\n" +
 						"    resources:\n" +
 						"    - name: nvidia.com/gpu\n" +
-						"      replicas: 2\n",
+						"      replicas: 5\n",
 				},
 			},
 		},
