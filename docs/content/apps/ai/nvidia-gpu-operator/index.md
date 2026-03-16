@@ -41,7 +41,7 @@ Source: [`workloads/hardware/nvidia_gpu_operator.go`](https://github.com/madhank
 | `runtimeClassName` | `nvidia` | Routes containers through nvidia-container-runtime |
 | `deviceDiscoveryStrategy` | `nvml` | Direct kernel module NVML access (not standard paths) |
 | `deviceListStrategy` | `envvar` | Inject `NVIDIA_VISIBLE_DEVICES` (CDI hostPath fails on Talos) |
-| Time-slicing replicas | `2` | Ollama + ComfyUI share one physical GPU |
+| Time-slicing replicas | `5` | Ollama + ComfyUI + Kubeflow notebook + training job + Katib trial |
 | NFD | enabled | Labels GPU nodes with `feature.node.kubernetes.io/pci-10de.present=true` |
 | GFD | enabled | Labels with `nvidia.com/gpu.present=true`, product, memory, count |
 
@@ -54,10 +54,10 @@ sharing:
   timeSlicing:
     resources:
       - name: nvidia.com/gpu
-        replicas: 2
+        replicas: 5
 ```
 
-After applying, the GPU node advertises `nvidia.com/gpu: 2` (allocatable). Both Ollama and ComfyUI can request `nvidia.com/gpu: 1` simultaneously. VRAM is shared (not isolated) — roughly 4 GB (Ollama 7B model) + 6 GB (ComfyUI SDXL) fits within the 16 GB RTX 5070 Ti VRAM pool.
+After applying, the GPU node advertises `nvidia.com/gpu: 5` (allocatable). Ollama, ComfyUI, and up to 3 Kubeflow workloads (notebooks, training jobs, Katib trials) can each request `nvidia.com/gpu: 1` simultaneously. VRAM is shared (not isolated) — typical concurrent load is 2–3 processes (~10–12 GB), well within the 16 GB pool. Running Flux.1 (~12 GB) + Ollama simultaneously will OOM.
 
 ## Talos-Specific Configuration
 
