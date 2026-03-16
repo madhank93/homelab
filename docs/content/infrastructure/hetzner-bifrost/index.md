@@ -15,16 +15,24 @@ just core hetzner up
     ├─ generateBifrostDotEnv()       writes .env from SOPS
     ├─ CopyToRemote                  uploads /etc/bifrost/ to VPS
     └─ remote.Command → bootstrap.sh
-           ├─ 1/5  traefik              TLS termination + routing
-           ├─ 2/5  authentik-postgres
-           ├─ 3/5  authentik-server + worker
+           ├─ 1/6  traefik              TLS termination + routing
+           ├─ 2/6  authentik-postgres
+           ├─ 3/6  authentik-server + worker
            ├─      process_netbird_config()
            │         sed: substitute ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}
            │         python: bcrypt hash NB_OWNER_PASSWORD → ${NB_OWNER_HASH}
-           ├─ 4/5  netbird-server     management + signal + relay + STUN + embedded Dex
+           ├─ 4/6  netbird-server     management + signal + relay + STUN + embedded Dex
            ├─      netbird-dashboard  (started in same step)
-           └─ 5/5  netbird-proxy      (only if NB_PROXY_TOKEN set)
+           ├─ 5/6  netbird-agent      WireGuard peer (only if NB_BIFROST_SETUP_KEY set)
+           └─ 6/6  netbird-proxy      (only if NB_PROXY_TOKEN set)
 ```
+
+> **netbird-server vs netbird-agent on the same host:** These are two distinct roles.
+> `netbird-server` is the coordination plane — it manages the mesh, assigns WireGuard keys,
+> and distributes routes to peers. It does **not** create a WireGuard interface on the host.
+> `netbird-agent` is a WireGuard peer that joins the mesh, establishes tunnels, and receives
+> routes advertised by other peers (e.g. `192.168.1.0/24` from `k8s-routing-peer`). Without
+> the agent, Traefik cannot reach `192.168.1.220` and all public service proxying returns 504.
 
 ---
 
@@ -95,13 +103,20 @@ flowchart TB
     subgraph S4["Step 4/5"]
         NS["docker compose up -d netbird-server netbird-dashboard<br/>wait_healthy 120s / 60s"]
     end
-    subgraph S5["Step 5/5"]
+    subgraph S5["Step 5/6"]
+        NA{"NB_BIFROST_SETUP_KEY set?"}
+        NAY["docker compose up -d netbird-agent<br/>wait_healthy 60s"]
+        NAN["skip — Traefik cannot reach 192.168.1.x!"]
+    end
+    subgraph S6["Step 6/6"]
         NP{"NB_PROXY_TOKEN set?"}
         NPY["docker compose up -d netbird-proxy<br/>wait_healthy 60s"]
         NPN["skip — show setup instructions"]
     end
 
-    PF --> S1 --> S2 --> S3 --> CFG --> S4 --> S5
+    PF --> S1 --> S2 --> S3 --> CFG --> S4 --> S5 --> S6
+    NA -->|Yes| NAY
+    NA -->|No| NAN
     NP -->|Yes| NPY
     NP -->|No| NPN
 {% end %}

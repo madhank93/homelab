@@ -178,6 +178,44 @@ The dashboard client `netbird-dashboard` is a public OIDC client registered stat
 
 ---
 
+## NetBird Agent on Bifrost (`netbird-agent`)
+
+The Bifrost VPS runs both the NetBird **server** and a NetBird **agent**. These are distinct roles:
+
+| Container | Role | Creates WireGuard interface? |
+|-----------|------|------------------------------|
+| `netbird-server` | Coordination plane — assigns keys, distributes routes, relays traffic | No |
+| `netbird-agent` | WireGuard peer — joins the mesh, receives routes, routes traffic | **Yes** |
+
+Without `netbird-agent`, Traefik has no route to `192.168.1.0/24`. Every proxy request to the cluster returns **504 Gateway Timeout**. The agent receives the `192.168.1.0/24` route advertised by `k8s-routing-peer` and sets up a WireGuard tunnel:
+
+```
+External user
+    ↓ HTTPS
+Traefik (Bifrost)
+    ↓ http://192.168.1.220
+netbird-agent (Bifrost) ←── WireGuard ───→ k8s-routing-peer (worker3)
+                                                    ↓
+                                            192.168.1.220 (Cilium gateway)
+                                                    ↓
+                                              cluster pods
+```
+
+`netbird-agent` uses `network_mode: host` so WireGuard routes are created on the Bifrost host directly, making them reachable from all Docker containers (including Traefik in `bifrost_net`).
+
+### Setup Key Storage
+
+Two peers, two setup keys, two storage locations — matching where each consumer reads secrets:
+
+| Peer | Setup key stored in | Key name | Reason |
+|------|-------------------|----------|--------|
+| `k8s-routing-peer` (k8s pod) | **OpenBao** `secret/data/netbird` | `NETBIRD_SETUP_KEY` | Read by k8s workload via CSI driver |
+| `netbird-agent` (Bifrost Docker) | **SOPS** `bootstrap.sops.yaml` | `NB_BIFROST_SETUP_KEY` | Read by Pulumi → `.secrets.env` → Docker |
+
+Both keys can share the same **Reusable** setup key value from the NetBird UI — they just live in different stores because each consumer has different access patterns.
+
+---
+
 ## K8s Routing Peer
 
 The `netbird-peer` Deployment in the `netbird` namespace connects to the WireGuard mesh and advertises `192.168.1.0/24` as a route. This makes all cluster services reachable from any NetBird-connected device.

@@ -31,6 +31,7 @@ Source: [`workloads/monitoring/grafana.go`](https://github.com/madhank93/homelab
 | Namespace | `grafana` | Isolated namespace |
 | HTTPRoute | `grafana.madhan.app` → port 3000 | Gateway API |
 | Access | Public (Cloudflare A record) | GitHub SSO via Authentik |
+| `root_url` | `https://grafana.madhan.app` | Forces `https://` in OAuth redirect_uri (see below) |
 | Persistence | `10Gi` RWX Longhorn | Avoids rolling update deadlock |
 | Admin user | `admin` | Set via env var |
 | Admin password | File at `/mnt/secrets/ADMIN_PASSWORD` | Pattern A (CSI file mount) |
@@ -172,6 +173,14 @@ kubectl describe pod -n grafana -l app.kubernetes.io/name=grafana | grep -A5 "op
 ```
 
 **Fix:** If the `grafana-oauth-secret` k8s Secret is missing, the CSI volume mount may have failed. Check OpenBao is unsealed and the `grafana` role exists.
+
+### GitHub SSO Works on LAN but Fails Externally
+
+**Symptoms:** Clicking "GitHub via Authentik" on LAN completes successfully, but from the internet Authentik returns a `redirect_uri mismatch` or `invalid_grant` error.
+
+**Root cause:** Without `root_url` set, Grafana detects its scheme from the incoming request. TLS terminates at Bifrost/Traefik, which proxies to the cluster as plain HTTP. Grafana sees an HTTP request and constructs the OAuth callback as `http://grafana.madhan.app/login/generic_oauth`. Authentik has `https://...` registered — the mismatch causes OAuth to fail. On LAN, the request is plain HTTP end-to-end, so `http://` is correct and it works.
+
+**Fix:** `root_url = https://grafana.madhan.app` is set in `[server]` in `grafana.ini` (already applied). This forces Grafana to always construct the correct `https://` callback URL regardless of the incoming request scheme.
 
 ### Pod Connection Timeout (kubelet nodeIP issue with NetBird)
 
