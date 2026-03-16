@@ -532,7 +532,7 @@
 <tr><td><code>runtimeClassName</code></td><td><code>nvidia</code></td><td>Routes containers through nvidia-container-runtime</td></tr>
 <tr><td><code>deviceDiscoveryStrategy</code></td><td><code>nvml</code></td><td>Direct kernel module NVML access (not standard paths)</td></tr>
 <tr><td><code>deviceListStrategy</code></td><td><code>envvar</code></td><td>Inject <code>NVIDIA_VISIBLE_DEVICES</code> (CDI hostPath fails on Talos)</td></tr>
-<tr><td>Time-slicing replicas</td><td><code>2</code></td><td>Ollama + ComfyUI share one physical GPU</td></tr>
+<tr><td>Time-slicing replicas</td><td><code>5</code></td><td>Ollama + ComfyUI + Kubeflow notebook + training job + Katib trial</td></tr>
 <tr><td>NFD</td><td>enabled</td><td>Labels GPU nodes with <code>feature.node.kubernetes.io/pci-10de.present=true</code></td></tr>
 <tr><td>GFD</td><td>enabled</td><td>Labels with <code>nvidia.com/gpu.present=true</code>, product, memory, count</td></tr>
 </tbody></table>
@@ -542,9 +542,9 @@
 </span><span>  </span><span style="color:#73d0ff;">timeSlicing</span><span style="color:#ccc9c2cc;">:
 </span><span>    </span><span style="color:#73d0ff;">resources</span><span style="color:#ccc9c2cc;">:
 </span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia.com/gpu
-</span><span>        </span><span style="color:#73d0ff;">replicas</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">2
+</span><span>        </span><span style="color:#73d0ff;">replicas</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">5
 </span></code></pre>
-<p>After applying, the GPU node advertises <code>nvidia.com/gpu: 2</code> (allocatable). Both Ollama and ComfyUI can request <code>nvidia.com/gpu: 1</code> simultaneously. VRAM is shared (not isolated) — roughly 4 GB (Ollama 7B model) + 6 GB (ComfyUI SDXL) fits within the 16 GB RTX 5070 Ti VRAM pool.</p>
+<p>After applying, the GPU node advertises <code>nvidia.com/gpu: 5</code> (allocatable). Ollama, ComfyUI, and up to 3 Kubeflow workloads (notebooks, training jobs, Katib trials) can each request <code>nvidia.com/gpu: 1</code> simultaneously. VRAM is shared (not isolated) — typical concurrent load is 2–3 processes (~10–12 GB), well within the 16 GB pool. Running Flux.1 (~12 GB) + Ollama simultaneously will OOM.</p>
 <h2 id="talos-specific-configuration">Talos-Specific Configuration</h2>
 <ul>
 <li><strong><code>deviceDiscoveryStrategy: nvml</code></strong> — <code>auto</code> probes standard paths that don't exist on Talos. <code>nvml</code> talks directly to the kernel module loaded by the <code>nvidia-open-gpu-kernel-modules-production</code> extension.</li>
@@ -1015,6 +1015,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/kubeflow">Kubeflow</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -1119,11 +1121,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1135,11 +1137,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>

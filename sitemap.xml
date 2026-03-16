@@ -13,6 +13,9 @@
         <loc>https://homelab.madhan.app/apps/ai/comfyui/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/apps/ai/kubeflow/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/apps/ai/nvidia-gpu-operator/</loc>
     </url>
     <url>

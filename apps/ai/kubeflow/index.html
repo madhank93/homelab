@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi." />
+            <meta name="description" content="ML platform on Kubernetes: Notebooks, Pipelines, Katib, Training Operator — without Istio or KServe." />
         
     
 
-    <title>Proxmox + Talos | Homelab</title>
+    <title>Kubeflow | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="Proxmox + Talos | Homelab" />
-      <meta property="og:description" content="Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi." />
+      <meta property="og:title" content="Kubeflow | Homelab" />
+      <meta property="og:description" content="ML platform on Kubernetes: Notebooks, Pipelines, Katib, Training Operator — without Istio or KServe." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Proxmox + Talos" />
-      <meta name="twitter:description" content="Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi." />
+      <meta name="twitter:title" content="Kubeflow" />
+      <meta name="twitter:description" content="ML platform on Kubernetes: Notebooks, Pipelines, Katib, Training Operator — without Istio or KServe." />
       
       
       
@@ -503,99 +503,270 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            Proxmox + Talos
+            Kubeflow
             
         </h1>
-        <p class="text-gray-500">Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi.</p>
+        <p class="text-gray-500">ML platform on Kubernetes: Notebooks, Pipelines, Katib, Training Operator — without Istio or KServe.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<p>Pulumi provisions 7 QEMU VMs on Proxmox and bootstraps a 3-control-plane Talos Linux cluster. The entry point is <code>core/platform/talos.go</code>.</p>
-<h2 id="talos-images">Talos Images</h2>
-<p>Two image variants are downloaded from the Talos image factory:</p>
-<p><strong>Base image</strong> (for controllers and standard workers):</p>
+    <h2 id="what-is-kubeflow">What is Kubeflow?</h2>
+<p><a href="https://www.kubeflow.org/">Kubeflow</a> is an open-source ML platform for Kubernetes. It provides:</p>
 <ul>
-<li>Schematic: <code>88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b</code></li>
-<li>Extensions: <code>iscsi-tools</code>, <code>util-linux-tools</code>, <code>qemu-guest-agent</code></li>
+<li><strong>Notebooks</strong> — JupyterLab environments with GPU access, lifecycle management, and per-user namespaces</li>
+<li><strong>Pipelines</strong> — DAG-based ML workflow orchestration (KFP v2)</li>
+<li><strong>Katib</strong> — Automated hyperparameter tuning and neural architecture search</li>
+<li><strong>Training Operator</strong> — Distributed training jobs (PyTorchJob, TFJob, MPIJob)</li>
+<li><strong>Tensorboard</strong> — Training metric visualisation</li>
+<li><strong>Volumes</strong> — PVC management UI</li>
 </ul>
-<p><strong>GPU image</strong> (for k8s-worker4):</p>
-<ul>
-<li>Schematic: <code>901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829</code></li>
-<li>Extensions: all base extensions + <code>nvidia-container-toolkit-production</code>, <code>nvidia-open-gpu-kernel-modules-production</code></li>
-</ul>
-<h2 id="cluster-configuration">Cluster Configuration</h2>
-<p><strong>Cluster name:</strong> <code>talos-cluster</code>
-<strong>Talos version:</strong> v1.12.4
-<strong>API endpoint (VIP):</strong> <code>https://192.168.1.210:6443</code></p>
-<h3 id="cluster-level-patch">Cluster-Level Patch</h3>
-<p>Applied to all nodes:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">cluster</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">network</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">cni</span><span style="color:#ccc9c2cc;">:
-</span><span>      </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">none   </span><span style="font-style:italic;color:#5c6773;"># Cilium is installed separately
-</span><span>  </span><span style="color:#73d0ff;">proxy</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">disabled</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true  </span><span style="font-style:italic;color:#5c6773;"># kube-proxy replaced by Cilium eBPF
+<h2 id="why-no-istio-knative-kserve">Why No Istio / Knative / KServe?</h2>
+<p>Kubeflow's default installation bundles Istio (service mesh), Knative (serverless), Dex (OIDC), and KServe (model serving). This cluster does not use any of them:</p>
+<table><thead><tr><th>Component</th><th>Status</th><th>Reason</th></tr></thead><tbody>
+<tr><td>Istio</td><td>Excluded</td><td>Cilium already provides network policy and L7 observability</td></tr>
+<tr><td>Knative</td><td>Excluded</td><td>No serverless workloads; adds unnecessary complexity</td></tr>
+<tr><td>KServe</td><td>Excluded</td><td>Not needed for current workloads</td></tr>
+<tr><td>Dex / oauth2-proxy</td><td>Excluded</td><td>Identity handled by Authentik at the Bifrost VPS edge</td></tr>
+</tbody></table>
+<p>Without Istio, several upstream Kubeflow controllers still watch Istio CRDs at startup (they call it unconditionally). Stub CRDs are installed to prevent crashes:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>workloads/ai/kubeflow/stub-istio-crds.yaml
+</span><span>  ├── AuthorizationPolicy  (security.istio.io/v1beta1)   — profiles-controller
+</span><span>  ├── VirtualService       (networking.istio.io/v1alpha3) — notebook-controller
+</span><span>  └── DestinationRule      (networking.istio.io/v1alpha3) — metacontroller / KFP profile controller
 </span></code></pre>
-<h3 id="control-plane-patch">Control Plane Patch</h3>
-<p>Adds VIP to the primary interface:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">machine</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">network</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">interfaces</span><span style="color:#ccc9c2cc;">:
-</span><span>      - </span><span style="color:#73d0ff;">deviceSelector</span><span style="color:#ccc9c2cc;">:
-</span><span>          </span><span style="color:#73d0ff;">physical</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
-</span><span>        </span><span style="color:#73d0ff;">dhcp</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
-</span><span>        </span><span style="color:#73d0ff;">vip</span><span style="color:#ccc9c2cc;">:
-</span><span>          </span><span style="color:#73d0ff;">ip</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">192</span><span style="color:#ccc9c2cc;">.</span><span style="color:#ffcc66;">168.1.210
+<p>These stubs contain only the minimum schema needed for the watch to register. No actual Istio resources exist — the controllers watch empty lists.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>Kubeflow v1.11.0 is deployed via a kustomize overlay pointing at the upstream manifests repository. ArgoCD manages it from the <code>v0.1.5</code> branch.</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>workloads/ai/kubeflow/kustomization.yaml
+</span><span>  ├── remote bases → github.com/kubeflow/manifests v1.11.0 (no Istio overlay)
+</span><span>  ├── stub-istio-crds.yaml
+</span><span>  └── patches:
+</span><span>      ├── Profile name fix (kustomize 5.8.0 variable substitution bug)
+</span><span>      ├── Delete centraldashboard NetworkPolicy (blocks Cilium-envoy hostNetwork traffic)
+</span><span>      ├── Delete seaweedfs NetworkPolicy (blocks profile controller IAM port 8111)
+</span><span>      └── Delete all Istio resources (DestinationRule, VirtualService, AuthorizationPolicy)
 </span></code></pre>
-<h3 id="worker-patch">Worker Patch</h3>
-<p>Adds Longhorn label and loads storage/iSCSI kernel modules:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">machine</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">nodeLabels</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#bae67e;">&quot;node.longhorn.io/create-default-disk&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;config&quot;
-</span><span>  </span><span style="color:#73d0ff;">network</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">interfaces</span><span style="color:#ccc9c2cc;">:
-</span><span>      - </span><span style="color:#73d0ff;">deviceSelector</span><span style="color:#ccc9c2cc;">:
-</span><span>          </span><span style="color:#73d0ff;">physical</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
-</span><span>        </span><span style="color:#73d0ff;">dhcp</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
-</span><span>  </span><span style="color:#73d0ff;">kernel</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">modules</span><span style="color:#ccc9c2cc;">:
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nbd
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">iscsi_tcp
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">iscsi_generic
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">configfs
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/kubeflow/kustomization.yaml"><code>workloads/ai/kubeflow/kustomization.yaml</code></a></p>
+<p>Components installed:</p>
+<table><thead><tr><th>Component</th><th>Path</th></tr></thead><tbody>
+<tr><td>cert-manager Kubeflow issuer</td><td><code>common/cert-manager/kubeflow-issuer/base</code></td></tr>
+<tr><td>Kubeflow namespace + roles</td><td><code>common/kubeflow-namespace/base</code> + <code>kubeflow-roles/base</code></td></tr>
+<tr><td>Kubeflow Pipelines</td><td><code>applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user</code></td></tr>
+<tr><td>Katib</td><td><code>applications/katib/upstream/installs/katib-with-kubeflow</code></td></tr>
+<tr><td>Central Dashboard</td><td><code>applications/centraldashboard/upstream/base</code></td></tr>
+<tr><td>Admission Webhook (PodDefaults)</td><td><code>applications/admission-webhook/upstream/overlays/cert-manager</code></td></tr>
+<tr><td>Jupyter Web App</td><td><code>applications/jupyter/jupyter-web-app/upstream/base</code></td></tr>
+<tr><td>Notebook Controller</td><td><code>applications/jupyter/notebook-controller/upstream/overlays/kubeflow</code></td></tr>
+<tr><td>Profiles + KFAM</td><td><code>applications/profiles/pss</code></td></tr>
+<tr><td>PVC Viewer Controller</td><td><code>applications/pvcviewer-controller/upstream/base</code></td></tr>
+<tr><td>Volumes Web App</td><td><code>applications/volumes-web-app/upstream/base</code></td></tr>
+<tr><td>Tensorboard Controller</td><td><code>applications/tensorboard/tensorboard-controller/upstream/overlays/kubeflow</code></td></tr>
+<tr><td>Tensorboards Web App</td><td><code>applications/tensorboard/tensorboards-web-app/upstream/base</code></td></tr>
+<tr><td>Training Operator (Trainer v2)</td><td><code>applications/trainer/overlays</code></td></tr>
+<tr><td>Spark Operator</td><td><code>applications/spark/spark-operator/overlays/kubeflow</code></td></tr>
+<tr><td>User namespace</td><td><code>common/user-namespace/base</code></td></tr>
+</tbody></table>
+<h2 id="access">Access</h2>
+<p>All Kubeflow sub-apps are exposed at <code>https://kubeflow.madhan.app</code> via the Cilium Gateway. A static <code>kubeflow-dashboard</code> HTTPRoute routes path prefixes to each service. No authentication — the gateway injects <code>kubeflow-userid: user@example.com</code> header on all requests.</p>
+<table><thead><tr><th>Path</th><th>Service</th><th>URL rewrite</th></tr></thead><tbody>
+<tr><td><code>/</code></td><td><code>centraldashboard:80</code></td><td>None (catch-all)</td></tr>
+<tr><td><code>/jupyter/</code></td><td><code>jupyter-web-app-service:80</code></td><td><code>ReplacePrefixMatch: /</code></td></tr>
+<tr><td><code>/volumes/</code></td><td><code>volumes-web-app-service:80</code></td><td><code>ReplacePrefixMatch: /</code></td></tr>
+<tr><td><code>/tensorboards/</code></td><td><code>tensorboards-web-app-service:80</code></td><td><code>ReplacePrefixMatch: /</code></td></tr>
+<tr><td><code>/pipeline/</code></td><td><code>ml-pipeline-ui:80</code></td><td><code>ReplacePrefixMatch: /</code></td></tr>
+<tr><td><code>/katib/</code></td><td><code>katib-ui:80</code></td><td><strong>None</strong> — katib-ui is a Go binary that serves at its path natively</td></tr>
+</tbody></table>
+<blockquote>
+<p><strong>Why URL rewrite?</strong> Flask-based web apps (jupyter, volumes, tensorboards, pipeline UI) serve their HTML at <code>/</code> and generate relative links. The gateway strips the path prefix so the Flask app receives <code>/</code> and everything works. The <code>katib-ui</code> Go binary is aware of its path prefix and serves correctly without rewriting.</p>
+</blockquote>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml"><code>app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml</code></a></p>
+<h2 id="notebook-and-tensorboard-routing">Notebook and Tensorboard Routing</h2>
+<p>Notebook and Tensorboard CRs each get their own HTTPRoute dynamically. The upstream controllers create Istio VirtualServices per CR — without Istio those are no-ops. A custom controller watches the CRs and creates Gateway API HTTPRoutes instead.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/notebook_gateway_controller.go"><code>workloads/ai/notebook_gateway_controller.go</code></a></p>
+<p>The controller runs as a Python deployment in the <code>kubeflow</code> namespace and watches three CRD types:</p>
+<table><thead><tr><th>CR type</th><th>URL pattern</th><th>URL rewrite</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>notebooks.kubeflow.org/v1</code></td><td><code>/notebook/&lt;ns&gt;/&lt;name&gt;/</code></td><td><strong>None</strong></td><td>notebook-controller sets <code>--NotebookApp.base_url</code> — Jupyter serves at its own prefix</td></tr>
+<tr><td><code>tensorboards.tensorboard.kubeflow.org/v1alpha1</code></td><td><code>/tensorboard/&lt;ns&gt;/&lt;name&gt;/</code></td><td><code>ReplacePrefixMatch: /</code></td><td>TensorBoard starts without <code>--path_prefix</code>; serves at <code>/</code></td></tr>
+<tr><td><code>pvcviewers.kubeflow.org/v1alpha1</code></td><td><code>/pvcviewers/&lt;ns&gt;/&lt;name&gt;/</code></td><td><code>ReplacePrefixMatch: /</code></td><td>filebrowser uses <code>FB_BASEURL</code> for link generation but serves at <code>/</code></td></tr>
+</tbody></table>
+<p>For each CR in a user namespace, the controller also creates a <code>ReferenceGrant</code> (once per namespace) allowing the <code>kubeflow</code> namespace HTTPRoute to reference services in the user namespace.</p>
+<h3 id="how-the-controller-works">How the Controller Works</h3>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>notebook-gateway-controller (Python, kubeflow ns)
+</span><span>  sync_all() on startup → patch all existing CRs
+</span><span>  watch_notebooks()     → main thread
+</span><span>  watch_tensorboards()  → daemon thread
+</span><span>  watch_pvcviewers()    → daemon thread
+</span><span>
+</span><span>On ADDED/MODIFIED event:
+</span><span>  1. apply_refgrant(user_ns)  → ensure ReferenceGrant exists
+</span><span>  2. apply_httproute(...)      → create/patch HTTPRoute in kubeflow ns
+</span><span>
+</span><span>On DELETED event:
+</span><span>  delete_httproute(...)        → remove HTTPRoute from kubeflow ns
 </span></code></pre>
-<h3 id="gpu-worker-patch">GPU Worker Patch</h3>
-<p>Extends the worker patch with NVIDIA kernel modules:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span>  </span><span style="color:#73d0ff;">kernel</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">modules</span><span style="color:#ccc9c2cc;">:
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nbd
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">iscsi_tcp
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">iscsi_generic
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">configfs
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia_uvm
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia_drm
-</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia_modeset
+<h2 id="gpu-notebooks">GPU Notebooks</h2>
+<h3 id="required-pod-spec">Required Pod Spec</h3>
+<p>GPU notebooks on this cluster require three specific settings:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">template</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
+</span><span>      </span><span style="color:#73d0ff;">runtimeClassName</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia          </span><span style="font-style:italic;color:#5c6773;"># REQUIRED — without this the nvidia-container-runtime
+</span><span>                                        </span><span style="font-style:italic;color:#5c6773;"># hook never fires and CUDA is inaccessible even with
+</span><span>                                        </span><span style="font-style:italic;color:#5c6773;"># nvidia.com/gpu: 1 in the resource limits
+</span><span>      </span><span style="color:#73d0ff;">nodeSelector</span><span style="color:#ccc9c2cc;">:
+</span><span>        </span><span style="color:#73d0ff;">nvidia.com/gpu.present</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;true&quot;  </span><span style="font-style:italic;color:#5c6773;"># Routes to k8s-worker4 (the GPU node)
+</span><span>                                        </span><span style="font-style:italic;color:#5c6773;"># NOTE: worker4 has no dedicated=ai label or taint;
+</span><span>                                        </span><span style="font-style:italic;color:#5c6773;"># this GFD label is the correct selector
+</span><span>      </span><span style="color:#73d0ff;">containers</span><span style="color:#ccc9c2cc;">:
+</span><span>      - </span><span style="color:#73d0ff;">resources</span><span style="color:#ccc9c2cc;">:
+</span><span>          </span><span style="color:#73d0ff;">requests</span><span style="color:#ccc9c2cc;">:
+</span><span>            </span><span style="color:#73d0ff;">nvidia.com/gpu</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;1&quot;         </span><span style="font-style:italic;color:#5c6773;"># Requests one time-sliced virtual GPU
+</span><span>          </span><span style="color:#73d0ff;">limits</span><span style="color:#ccc9c2cc;">:
+</span><span>            </span><span style="color:#73d0ff;">nvidia.com/gpu</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;1&quot;
 </span></code></pre>
-<h2 id="bootstrap-flow">Bootstrap Flow</h2>
-<p>Pulumi performs the full cluster bootstrap in dependency order:</p>
-<ol>
-<li>Download Talos images to Proxmox</li>
-<li>Create VMs (Proxmox QEMU resources)</li>
-<li>Generate Talos machine secrets (PKI, tokens)</li>
-<li>Patch per-node configs (hostname, static IP, gateway, DNS)</li>
-<li>Apply configs via Talos API (in-band, using QEMU guest agent IP)</li>
-<li>Bootstrap etcd on <code>k8s-controller1</code></li>
-<li>Wait for the cluster to become healthy</li>
-<li>Retrieve kubeconfig → write to <code>core/kubeconfig</code></li>
-</ol>
-<p>The kubeconfig is used by downstream platform Pulumi code (Cilium, ArgoCD) via the Kubernetes provider.</p>
-<h2 id="exported-outputs">Exported Outputs</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">pulumi</span><span> stack output talosconfig   </span><span style="font-style:italic;color:#5c6773;"># Talos client config
-</span><span style="color:#ffd580;">pulumi</span><span> stack output kubeconfig    </span><span style="font-style:italic;color:#5c6773;"># Kubernetes admin config
-</span><span style="color:#ffd580;">pulumi</span><span> stack output k8s-worker4-ip  </span><span style="font-style:italic;color:#5c6773;"># etc.
+<blockquote>
+<p><strong>Why <code>runtimeClassName: nvidia</code>?</strong> On Talos, NVIDIA libraries live inside a squashfs at <code>/usr/local/glibc/usr/lib/</code> — not at standard paths. The <code>nvidia-container-runtime</code> hook (configured by the <code>nvidia-container-toolkit-production</code> Talos extension) knows the Talos-specific paths and injects them. Without <code>runtimeClassName: nvidia</code>, the default <code>runc</code> runtime runs and no injection happens. <code>torch.cuda.is_available()</code> returns <code>True</code> (the device is visible via <code>NVIDIA_VISIBLE_DEVICES</code>), but any CUDA kernel call fails with <code>no kernel image is available for execution on the device</code>.</p>
+</blockquote>
+<h3 id="pytorch-and-sm-120-blackwell">PyTorch and sm_120 (Blackwell)</h3>
+<p>The RTX 5070 Ti is <strong>NVIDIA Blackwell architecture, compute capability sm_120</strong>. Standard PyTorch wheels do not include sm_120 kernels until PyTorch 2.7.0 (May 2025). The <code>kubeflownotebookswg/jupyter-pytorch-cuda-full:v1.10.0-rc.1</code> image ships PyTorch compiled for sm_50–sm_90 only.</p>
+<p><strong>Symptom:</strong> <code>CUDA available: True</code> and <code>GPU: NVIDIA GeForce RTX 5070 Ti</code> but any tensor operation on the GPU raises:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>RuntimeError: CUDA error: no kernel image is available for execution on the device
 </span></code></pre>
-<h2 id="pcie-gpu-passthrough">PCIe GPU Passthrough</h2>
-<p>k8s-worker4 is created with <code>PcieIDs: ["0000:09:00.0"]</code> which instructs Proxmox to pass the NVIDIA RTX 5070 Ti directly to the VM.</p>
+<p><strong>Fix — run once per notebook session, then restart the kernel:</strong></p>
+<pre data-lang="python" style="background-color:#212733;color:#ccc9c2;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#ffa759;">import </span><span>subprocess</span><span style="color:#ccc9c2cc;">, </span><span>sys
+</span><span>subprocess</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">run</span><span>(
+</span><span>    [sys</span><span style="color:#f29e74;">.</span><span>executable</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;-m&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;pip&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;install&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;--pre&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>     </span><span style="color:#bae67e;">&quot;torch&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;torchvision&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>     </span><span style="color:#bae67e;">&quot;--index-url&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;https://download.pytorch.org/whl/nightly/cu128&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>     </span><span style="color:#bae67e;">&quot;--force-reinstall&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;--quiet&quot;</span><span>]</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#ffcc66;">check</span><span style="color:#f29e74;">=</span><span style="color:#ffcc66;">True
+</span><span>)
+</span><span style="color:#f28779;">print</span><span>(</span><span style="color:#bae67e;">&quot;Restart kernel now.&quot;</span><span>)
+</span></code></pre>
+<p><strong>Verify after restart:</strong></p>
+<pre data-lang="python" style="background-color:#212733;color:#ccc9c2;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#ffa759;">import </span><span>torch
+</span><span style="color:#f28779;">print</span><span>(torch</span><span style="color:#f29e74;">.</span><span>__version__)        </span><span style="font-style:italic;color:#5c6773;"># e.g. 2.12.0.dev20260316+cu128
+</span><span style="color:#f28779;">print</span><span>(torch</span><span style="color:#f29e74;">.</span><span>cuda</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">is_available</span><span>())   </span><span style="font-style:italic;color:#5c6773;"># True
+</span><span style="color:#f28779;">print</span><span>(torch</span><span style="color:#f29e74;">.</span><span>cuda</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">get_device_name</span><span>(</span><span style="color:#ffcc66;">0</span><span>))  </span><span style="font-style:italic;color:#5c6773;"># NVIDIA GeForce RTX 5070 Ti
+</span><span>x </span><span style="color:#f29e74;">= </span><span>torch</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">randn</span><span>(</span><span style="color:#ffcc66;">64</span><span style="color:#ccc9c2cc;">, </span><span style="color:#ffcc66;">784</span><span style="color:#ccc9c2cc;">, </span><span style="color:#ffcc66;">device</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">&quot;cuda&quot;</span><span>)  </span><span style="font-style:italic;color:#5c6773;"># must not raise
+</span><span style="color:#f28779;">print</span><span>(</span><span style="color:#bae67e;">&quot;sm_120 works!&quot;</span><span>)
+</span></code></pre>
+<h3 id="recommended-notebook-image">Recommended Notebook Image</h3>
+<table><thead><tr><th>Image</th><th>CUDA</th><th>PyTorch</th><th>sm_120</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>kubeflownotebookswg/jupyter-pytorch-cuda-full:v1.10.0-rc.1</code></td><td>12.x</td><td>2.5.x</td><td>No — install nightly</td><td>Best Kubeflow-native image; handles <code>NB_PREFIX</code>, JupyterLab startup</td></tr>
+<tr><td><code>kubeflownotebookswg/jupyter-pytorch-cuda-full:v1.9.0</code></td><td>12.x</td><td>2.3.x</td><td>No</td><td>Older; works the same way</td></tr>
+<tr><td><code>nvcr.io/nvidia/pytorch:25.xx-py3</code></td><td>12.8</td><td>2.6+</td><td>Yes</td><td>Does <strong>not</strong> handle <code>NB_PREFIX</code> — requires custom startup wrapper to work as a Kubeflow notebook</td></tr>
+</tbody></table>
+<h3 id="gpu-time-slicing">GPU Time-Slicing</h3>
+<p>The RTX 5070 Ti is configured with 5 time-sliced virtual GPUs. VRAM (16 GB) is <strong>not isolated</strong> between processes — all virtual GPU holders share the same physical VRAM pool.</p>
+<table><thead><tr><th>Workload</th><th>Virtual GPUs</th><th>Typical VRAM</th></tr></thead><tbody>
+<tr><td>Ollama (7B model)</td><td>1</td><td>~4 GB</td></tr>
+<tr><td>ComfyUI (SDXL)</td><td>1</td><td>~6 GB</td></tr>
+<tr><td>Kubeflow notebook</td><td>1</td><td>variable</td></tr>
+<tr><td>Training job</td><td>1</td><td>variable</td></tr>
+<tr><td>Katib trial</td><td>1</td><td>variable</td></tr>
+</tbody></table>
+<p>Running Flux.1 (~12 GB) + Ollama simultaneously will OOM. The user is responsible for managing concurrent VRAM usage.</p>
+<h2 id="pipelines-kfp-v2">Pipelines (KFP v2)</h2>
+<p>Pipelines use SeaweedFS (bundled S3-compatible object store) and MySQL (bundled). Artifact credentials are provisioned per user namespace by the <code>kubeflow-pipelines-profile-controller</code> via metacontroller.</p>
+<h3 id="mlpipeline-minio-artifact-secret">mlpipeline-minio-artifact Secret</h3>
+<p>This secret is automatically created in every user namespace (e.g. <code>kubeflow-user-example-com</code>) by the profile controller. It contains S3 credentials for writing pipeline artifacts to SeaweedFS. Pipeline pods mount it as a volume — if it is missing, all pipeline runs fail with:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>MountVolume.SetUp failed: secret &quot;mlpipeline-minio-artifact&quot; not found
+</span></code></pre>
+<p>If the secret is missing, check:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Is the profile controller responding?
+</span><span style="color:#ffd580;">kubectl</span><span> logs deployment/kubeflow-pipelines-profile-controller</span><span style="color:#ffcc66;"> -n</span><span> kubeflow</span><span style="color:#ffcc66;"> --tail</span><span style="color:#f29e74;">=</span><span>20
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Is metacontroller retrying?
+</span><span style="color:#ffd580;">kubectl</span><span> logs metacontroller-0</span><span style="color:#ffcc66;"> -n</span><span> kubeflow</span><span style="color:#ffcc66;"> --tail</span><span style="color:#f29e74;">=</span><span>20 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> error
+</span></code></pre>
+<p><strong>Known cause in this cluster:</strong> The upstream SeaweedFS NetworkPolicy (installed by the pipeline manifests) only allows port 8333 (S3 API) to SeaweedFS, not port 8111 (IAM/STS API). The profile controller uses <code>AWS_ENDPOINT_URL=http://seaweedfs.kubeflow:8111</code> which routes all boto3 calls (including S3 bucket creation) through port 8111. Without access to 8111, the profile controller times out and never creates the secret. The fix is applied via a kustomize patch that deletes the seaweedfs NetworkPolicy.</p>
+<h2 id="pvc-viewer">PVC Viewer</h2>
+<p>The PVC viewer (filebrowser) is launched by the <code>pvcviewer-controller</code> when a <code>PVCViewer</code> CR exists. The controller is triggered from the Volumes Web App when a user clicks <strong>Connect</strong> on a volume.</p>
+<h3 id="rwo-limitation">RWO Limitation</h3>
+<p>Longhorn RWO (ReadWriteOnce) volumes can only be attached to one node at a time. If the PVC is in use by a running notebook (attached to its node), the PVC viewer pod will be scheduled on a <strong>different</strong> node and get stuck in <code>ContainerCreating</code> indefinitely:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>AttachVolume: waiting for volumes to attach/detach  (PVC already attached to another node)
+</span></code></pre>
+<p><strong>Workaround:</strong> Stop the notebook first (releases the PVC from its node), then click Connect in the Volumes page. The PVC viewer pod can then attach and mount the PVC.</p>
+<p><strong>Future fix:</strong> Use an RWX (ReadWriteMany) storage class for notebook PVCs. Longhorn supports RWX via NFS. RWX PVCs can be mounted on multiple nodes simultaneously, allowing the PVC viewer and notebook to coexist.</p>
+<h2 id="default-user">Default User</h2>
+<p>The default user is <code>user@example.com</code>. The user namespace is <code>kubeflow-user-example-com</code>.</p>
+<p>Authentication is not configured — the gateway injects <code>kubeflow-userid: user@example.com</code> on every request via a <code>RequestHeaderModifier</code> filter. The central dashboard and all sub-apps receive this header and treat the user as authenticated.</p>
+<p>To create additional users: add a <code>Profile</code> CR pointing to the new user's email, and update the <code>kubeflow-userid</code> header value (or deploy a proper OIDC proxy).</p>
+<h2 id="how-it-connects">How It Connects</h2>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Browser → kubeflow.madhan.app
+</span><span>  → homelab-gateway (Cilium, kube-system)
+</span><span>  → HTTPRoute: kubeflow-dashboard (static, kubeflow ns)
+</span><span>      ├── /jupyter/      → jupyter-web-app-service (URLRewrite /)
+</span><span>      ├── /volumes/      → volumes-web-app-service (URLRewrite /)
+</span><span>      ├── /tensorboards/ → tensorboards-web-app-service (URLRewrite /)
+</span><span>      ├── /katib/        → katib-ui (no rewrite)
+</span><span>      ├── /pipeline/     → ml-pipeline-ui (URLRewrite /)
+</span><span>      └── /              → centraldashboard
+</span><span>  → HTTPRoute: notebook-&lt;ns&gt;-&lt;name&gt; (dynamic, kubeflow ns)
+</span><span>      → /notebook/&lt;ns&gt;/&lt;name&gt;/ → &lt;name&gt;.&lt;ns&gt;:80 (no rewrite)
+</span><span>  → HTTPRoute: tensorboard-&lt;ns&gt;-&lt;name&gt; (dynamic, kubeflow ns)
+</span><span>      → /tensorboard/&lt;ns&gt;/&lt;name&gt;/ → &lt;name&gt;.&lt;ns&gt;:80 (URLRewrite /)
+</span><span>  → HTTPRoute: pvcviewer-&lt;ns&gt;-&lt;name&gt; (dynamic, kubeflow ns)
+</span><span>      → /pvcviewers/&lt;ns&gt;/&lt;name&gt;/ → pvcviewer-&lt;name&gt;.&lt;ns&gt;:80 (URLRewrite /)
+</span><span>
+</span><span>notebook-gateway-controller (Python, kubeflow ns)
+</span><span>  → watches Notebooks, Tensorboards, PVCViewers
+</span><span>  → creates/deletes HTTPRoutes + ReferenceGrants per CR
+</span><span>
+</span><span>kubeflow-pipelines-profile-controller
+</span><span>  → called by metacontroller on Namespace events
+</span><span>  → creates S3 bucket in SeaweedFS (port 8111 IAM API)
+</span><span>  → creates mlpipeline-minio-artifact Secret in user ns
+</span><span>  → creates kfp-launcher, artifact-repositories, metadata-grpc-configmap ConfigMaps
+</span><span>
+</span><span>Notebook pod (GPU) on k8s-worker4:
+</span><span>  → runtimeClassName: nvidia
+</span><span>  → nvidia-container-runtime injects libnvidia-ml.so.1
+</span><span>  → RTX 5070 Ti (sm_120, CUDA 12.8)
+</span><span>  → PyTorch nightly cu128 required (stable wheels don&#39;t include sm_120 kernels)
+</span></code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="sub-app-page-shows-not-a-valid-page">Sub-app page shows "not a valid page"</h3>
+<p>The path prefix rules in the HTTPRoute are missing or wrong.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get httproute kubeflow-dashboard</span><span style="color:#ffcc66;"> -n</span><span> kubeflow</span><span style="color:#ffcc66;"> -o</span><span> yaml
+</span></code></pre>
+<p>Each sub-app must have an explicit <code>PathPrefix</code> match in the <code>kubeflow-dashboard</code> HTTPRoute. Flask apps need <code>URLRewrite ReplacePrefixMatch: /</code>; Go binaries (katib-ui) do not.</p>
+<h3 id="notebook-url-404">Notebook URL 404</h3>
+<p>The <code>notebook-gateway-controller</code> creates the HTTPRoute. Check it is running and healthy:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> kubeflow </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> notebook-gateway
+</span><span style="color:#ffd580;">kubectl</span><span> logs deployment/notebook-gateway-controller</span><span style="color:#ffcc66;"> -n</span><span> kubeflow</span><span style="color:#ffcc66;"> --tail</span><span style="color:#f29e74;">=</span><span>30
+</span></code></pre>
+<p>If the controller is crashlooping, check logs for Python errors — the ConfigMap version should bump on each deploy (Reloader restarts the pod on ConfigMap change).</p>
+<h3 id="tensorboard-url-404">Tensorboard URL 404</h3>
+<p>TensorBoard serves at <code>/</code> — it is started without <code>--path_prefix</code>. The HTTPRoute must have <code>URLRewrite ReplacePrefixMatch: /</code> to strip the prefix.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Confirm URLRewrite is present
+</span><span style="color:#ffd580;">kubectl</span><span> get httproute tensorboard-</span><span style="color:#f29e74;">&lt;</span><span>ns</span><span style="color:#f29e74;">&gt;</span><span style="color:#ccc9c2cc;">-</span><span style="color:#f29e74;">&lt;</span><span>name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n kubeflow </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffcc66;">  -o</span><span> jsonpath=</span><span style="color:#bae67e;">&#39;{.spec.rules[0].filters}&#39; </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">python3</span><span style="color:#ffcc66;"> -m</span><span> json.tool
+</span></code></pre>
+<h3 id="cuda-not-working-in-gpu-notebook">CUDA Not Working in GPU Notebook</h3>
+<p><strong>Symptom 1:</strong> <code>Found no NVIDIA driver on your system</code></p>
+<p>Pod is running without <code>runtimeClassName: nvidia</code>. The nvidia-container-runtime hook never fires.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pod </span><span style="color:#f29e74;">&lt;</span><span>notebook</span><span style="color:#f29e74;">&gt;</span><span style="color:#ccc9c2cc;">-</span><span>0</span><span style="color:#ffcc66;"> -n</span><span> kubeflow-user-example-com </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffcc66;">  -o</span><span> jsonpath=</span><span style="color:#bae67e;">&#39;{.spec.runtimeClassName}&#39;
+</span><span style="font-style:italic;color:#5c6773;"># Must return: nvidia
+</span></code></pre>
+<p><strong>Symptom 2:</strong> <code>no kernel image is available for execution on the device</code></p>
+<p>PyTorch was compiled without sm_120 (Blackwell) kernels. Install nightly:</p>
+<pre data-lang="python" style="background-color:#212733;color:#ccc9c2;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#ffa759;">import </span><span>subprocess</span><span style="color:#ccc9c2cc;">, </span><span>sys
+</span><span>subprocess</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">run</span><span>([sys</span><span style="color:#f29e74;">.</span><span>executable</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;-m&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;pip&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;install&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;--pre&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;torch&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;torchvision&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;--index-url&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;https://download.pytorch.org/whl/nightly/cu128&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;--force-reinstall&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;--quiet&quot;</span><span>]</span><span style="color:#ccc9c2cc;">, </span><span style="color:#ffcc66;">check</span><span style="color:#f29e74;">=</span><span style="color:#ffcc66;">True</span><span>)
+</span><span style="font-style:italic;color:#5c6773;"># Then: Kernel → Restart Kernel
+</span></code></pre>
+<h3 id="pipeline-run-stuck-at-init-0-1">Pipeline Run Stuck at Init:0/1</h3>
+<p>The init container mounts <code>mlpipeline-minio-artifact</code> secret. If the secret does not exist, the pod never starts.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get secret mlpipeline-minio-artifact</span><span style="color:#ffcc66;"> -n</span><span> kubeflow-user-example-com
+</span></code></pre>
+<p>If missing, check the profile controller logs for SeaweedFS connection errors. The seaweedfs NetworkPolicy should be absent (deleted by the kustomize patch):</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get networkpolicy seaweedfs</span><span style="color:#ffcc66;"> -n</span><span> kubeflow
+</span><span style="font-style:italic;color:#5c6773;"># Should return: Error from server (NotFound)
+</span></code></pre>
+<h3 id="controller-crashloop-after-configmap-update">Controller CrashLoop After ConfigMap Update</h3>
+<p>The Stakater Reloader annotation (<code>reloader.stakater.com/auto: "true"</code>) on the controller Deployment causes a rolling restart when the ConfigMap changes. If the restart loops, check the Python script for syntax errors in the controller logs.</p>
 
 
     <!--  Errata section  -->
@@ -608,7 +779,7 @@
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/infrastructure&#x2F;proxmox-talos&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/apps&#x2F;ai&#x2F;kubeflow&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -640,7 +811,7 @@
                                     
     
         
-        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/infrastructure/">
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/apps/ai/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -648,7 +819,7 @@
                     </svg>
                     <span class="nav-button-label">Back to</span>
                 </div>
-                <div class="nav-button-title">Infrastructure</div>
+                <div class="nav-button-title">AI</div>
             </div>
         </a>
     
@@ -657,17 +828,75 @@
                                 <div class="next-nav-item">
                                     
     
-        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/infrastructure/control-plane-ha/">
-            <div class="nav-button-content">
-                <div class="nav-button-direction">
-                    <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                    <span class="nav-button-label">Next</span>
-                </div>
-                <div class="nav-button-title">Control Plane HA</div>
-            </div>
-        </a>
+        
+        
+        
+            
+            
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+        
+            
+            
+            
+        
     
 
                                 </div>
@@ -685,13 +914,25 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#what-is-kubeflow" class="toc-link">What is Kubeflow?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#talos-images" class="toc-link">Talos Images</a>
+                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#why-no-istio-knative-kserve" class="toc-link">Why No Istio &#x2F; Knative &#x2F; KServe?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#access" class="toc-link">Access</a>
                     
                 </li>
             
@@ -699,24 +940,12 @@
                     
                     <details class="toc-details" >
                         <summary>
-                            <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#cluster-configuration" class="toc-link">Cluster Configuration</a>
+                            <a href="https://homelab.madhan.app/apps/ai/kubeflow/#notebook-and-tensorboard-routing" class="toc-link">Notebook and Tensorboard Routing</a>
                         </summary>
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#cluster-level-patch" class="toc-link">Cluster-Level Patch</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#control-plane-patch" class="toc-link">Control Plane Patch</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#worker-patch" class="toc-link">Worker Patch</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#gpu-worker-patch" class="toc-link">GPU Worker Patch</a>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#how-the-controller-works" class="toc-link">How the Controller Works</a>
                                 </li>
                             
                         </ul>
@@ -726,19 +955,113 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#bootstrap-flow" class="toc-link">Bootstrap Flow</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/ai/kubeflow/#gpu-notebooks" class="toc-link">GPU Notebooks</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#required-pod-spec" class="toc-link">Required Pod Spec</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#pytorch-and-sm-120-blackwell" class="toc-link">PyTorch and sm_120 (Blackwell)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#recommended-notebook-image" class="toc-link">Recommended Notebook Image</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#gpu-time-slicing" class="toc-link">GPU Time-Slicing</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#exported-outputs" class="toc-link">Exported Outputs</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/ai/kubeflow/#pipelines-kfp-v2" class="toc-link">Pipelines (KFP v2)</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#mlpipeline-minio-artifact-secret" class="toc-link">mlpipeline-minio-artifact Secret</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/proxmox-talos/#pcie-gpu-passthrough" class="toc-link">PCIe GPU Passthrough</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/ai/kubeflow/#pvc-viewer" class="toc-link">PVC Viewer</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#rwo-limitation" class="toc-link">RWO Limitation</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#default-user" class="toc-link">Default User</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#how-it-connects" class="toc-link">How It Connects</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/apps/ai/kubeflow/#troubleshooting" class="toc-link">Troubleshooting</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#sub-app-page-shows-not-a-valid-page" class="toc-link">Sub-app page shows &quot;not a valid page&quot;</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#notebook-url-404" class="toc-link">Notebook URL 404</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#tensorboard-url-404" class="toc-link">Tensorboard URL 404</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#cuda-not-working-in-gpu-notebook" class="toc-link">CUDA Not Working in GPU Notebook</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#pipeline-run-stuck-at-init-0-1" class="toc-link">Pipeline Run Stuck at Init:0&#x2F;1</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/ai/kubeflow/#controller-crashloop-after-configmap-update" class="toc-link">Controller CrashLoop After ConfigMap Update</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -930,7 +1253,7 @@
                         <ul>
                             
                             
-                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
                             
@@ -995,7 +1318,7 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/kubeflow">Kubeflow</a></li>
+                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/kubeflow">Kubeflow</a></li>
                                                 
                                                 
                                             </ul>

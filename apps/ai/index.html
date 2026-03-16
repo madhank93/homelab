@@ -109,14 +109,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="AI | Homelab" />
-      <meta property="og:description" content="GPU-accelerated AI workloads: Ollama, ComfyUI, and NVIDIA GPU Operator." />
+      <meta property="og:description" content="GPU-accelerated AI workloads: Ollama, ComfyUI, Kubeflow, and NVIDIA GPU Operator." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Homelab" />
-      <meta name="twitter:description" content="GPU-accelerated AI workloads: Ollama, ComfyUI, and NVIDIA GPU Operator." />
+      <meta name="twitter:description" content="GPU-accelerated AI workloads: Ollama, ComfyUI, Kubeflow, and NVIDIA GPU Operator." />
       
       
       
@@ -521,10 +521,10 @@
             
 
         </h1>
-        <p class="text-gray-500">GPU-accelerated AI workloads: Ollama, ComfyUI, and NVIDIA GPU Operator.</p>
+        <p class="text-gray-500">GPU-accelerated AI workloads: Ollama, ComfyUI, Kubeflow, and NVIDIA GPU Operator.</p>
     </div>
-    <p>All AI workloads run on <strong>k8s-worker4</strong> (<code>192.168.1.224</code>), which has PCIe passthrough to an NVIDIA RTX 5070 Ti (16 GB VRAM).</p>
-<p>GPU time-slicing allows Ollama and ComfyUI to run simultaneously by advertising 2 virtual GPU resources from 1 physical GPU.</p>
+    <p>All AI workloads run on <strong>k8s-worker4</strong> (<code>192.168.1.224</code>), which has PCIe passthrough to an NVIDIA RTX 5070 Ti (16 GB VRAM, Blackwell sm_120).</p>
+<p>GPU time-slicing advertises 5 virtual GPU resources from 1 physical GPU, allowing Ollama, ComfyUI, and Kubeflow notebooks/training jobs to run concurrently. VRAM is not isolated between processes.</p>
 
 
     
@@ -874,6 +874,8 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
                                                 
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/kubeflow">Kubeflow</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
@@ -978,11 +980,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -994,11 +996,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
