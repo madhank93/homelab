@@ -48,5 +48,6 @@ data:
     provisioning = /etc/grafana/provisioning
     [server]
     domain = ''
+    root_url = https://grafana.madhan.app
     [unified_storage]
     index_path = /var/lib/grafana-search/bleve
