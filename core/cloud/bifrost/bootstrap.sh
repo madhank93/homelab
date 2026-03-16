@@ -204,15 +204,15 @@ PYEOF
 
 preflight
 
-log_step "1/5  traefik — TLS termination + routing"
+log_step "1/6  traefik — TLS termination + routing"
 $COMPOSE up -d traefik
 wait_healthy traefik 60
 
-log_step "2/5  authentik-postgres — database"
+log_step "2/6  authentik-postgres — database"
 $COMPOSE up -d authentik-postgres
 wait_healthy authentik-postgres 120
 
-log_step "3/5  authentik-server + authentik-worker — SSO"
+log_step "3/6  authentik-server + authentik-worker — SSO"
 $COMPOSE up -d authentik-server authentik-worker
 log "  containers started — waiting for Authentik to be healthy ..."
 wait_healthy authentik-server 300
@@ -220,7 +220,7 @@ wait_healthy authentik-server 300
 # Process netbird config before starting netbird-server
 process_netbird_config
 
-log_step "4/5  netbird-server + netbird-dashboard — NetBird"
+log_step "4/6  netbird-server + netbird-dashboard — NetBird"
 $COMPOSE up -d netbird-server netbird-dashboard
 wait_healthy netbird-server 120
 wait_healthy netbird-dashboard 60
@@ -235,7 +235,26 @@ log "  │     Client Secret: (from sops: NETBIRD_CLIENT_SECRET)            │"
 log "  │     Issuer:        https://auth.madhan.app/application/o/netbird/│"
 log "  └─────────────────────────────────────────────────────────────────┘"
 
-log_step "5/5  netbird-proxy — TCP expose feature"
+log_step "5/6  netbird-agent — WireGuard routing peer (Bifrost → homelab LAN)"
+if has_secret "NB_BIFROST_SETUP_KEY"; then
+  log "  NB_BIFROST_SETUP_KEY present ($(secret_len NB_BIFROST_SETUP_KEY) chars)"
+  $COMPOSE up -d netbird-agent
+  wait_healthy netbird-agent 60
+  log "  netbird-agent connected — Bifrost can now route to 192.168.1.0/24 ✓"
+else
+  log "  NB_BIFROST_SETUP_KEY not set — netbird-agent skipped (k8s services unreachable from internet!)"
+  log ""
+  log "  ┌─ One-time setup needed (required for public k8s service access) ──┐"
+  log "  │  1. Open https://netbird.madhan.app                               │"
+  log "  │  2. Network Routes → verify 192.168.1.0/24 on k8s-routing-peer   │"
+  log "  │  3. Setup Keys → Create Reusable key: bifrost-agent               │"
+  log "  │  4. sops edit secrets/bootstrap.sops.yaml                         │"
+  log "  │     Add:  NB_BIFROST_SETUP_KEY=<key>                              │"
+  log "  │  5. just core hetzner up                                           │"
+  log "  └────────────────────────────────────────────────────────────────────┘"
+fi
+
+log_step "6/6  netbird-proxy — TCP expose feature"
 if has_secret "NB_PROXY_TOKEN"; then
   log "  NB_PROXY_TOKEN present ($(secret_len NB_PROXY_TOKEN) chars)"
   $COMPOSE up -d --force-recreate netbird-proxy
