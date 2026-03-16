@@ -516,16 +516,25 @@
 </span><span>    ├─ generateBifrostDotEnv()       writes .env from SOPS
 </span><span>    ├─ CopyToRemote                  uploads /etc/bifrost/ to VPS
 </span><span>    └─ remote.Command → bootstrap.sh
-</span><span>           ├─ 1/5  traefik              TLS termination + routing
-</span><span>           ├─ 2/5  authentik-postgres
-</span><span>           ├─ 3/5  authentik-server + worker
+</span><span>           ├─ 1/6  traefik              TLS termination + routing
+</span><span>           ├─ 2/6  authentik-postgres
+</span><span>           ├─ 3/6  authentik-server + worker
 </span><span>           ├─      process_netbird_config()
 </span><span>           │         sed: substitute ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}
 </span><span>           │         python: bcrypt hash NB_OWNER_PASSWORD → ${NB_OWNER_HASH}
-</span><span>           ├─ 4/5  netbird-server     management + signal + relay + STUN + embedded Dex
+</span><span>           ├─ 4/6  netbird-server     management + signal + relay + STUN + embedded Dex
 </span><span>           ├─      netbird-dashboard  (started in same step)
-</span><span>           └─ 5/5  netbird-proxy      (only if NB_PROXY_TOKEN set)
+</span><span>           ├─ 5/6  netbird-agent      WireGuard peer (only if NB_BIFROST_SETUP_KEY set)
+</span><span>           └─ 6/6  netbird-proxy      (only if NB_PROXY_TOKEN set)
 </span></code></pre>
+<blockquote>
+<p><strong>netbird-server vs netbird-agent on the same host:</strong> These are two distinct roles.
+<code>netbird-server</code> is the coordination plane — it manages the mesh, assigns WireGuard keys,
+and distributes routes to peers. It does <strong>not</strong> create a WireGuard interface on the host.
+<code>netbird-agent</code> is a WireGuard peer that joins the mesh, establishes tunnels, and receives
+routes advertised by other peers (e.g. <code>192.168.1.0/24</code> from <code>k8s-routing-peer</code>). Without
+the agent, Traefik cannot reach <code>192.168.1.220</code> and all public service proxying returns 504.</p>
+</blockquote>
 <hr />
 <h2 id="services">Services</h2>
 <p>All services run via <code>docker compose</code> from <code>/etc/bifrost/</code>:</p>
@@ -580,13 +589,20 @@
     subgraph S4[&quot;Step 4&#x2F;5&quot;]
         NS[&quot;docker compose up -d netbird-server netbird-dashboard&lt;br&#x2F;&gt;wait_healthy 120s &#x2F; 60s&quot;]
     end
-    subgraph S5[&quot;Step 5&#x2F;5&quot;]
+    subgraph S5[&quot;Step 5&#x2F;6&quot;]
+        NA{&quot;NB_BIFROST_SETUP_KEY set?&quot;}
+        NAY[&quot;docker compose up -d netbird-agent&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
+        NAN[&quot;skip — Traefik cannot reach 192.168.1.x!&quot;]
+    end
+    subgraph S6[&quot;Step 6&#x2F;6&quot;]
         NP{&quot;NB_PROXY_TOKEN set?&quot;}
         NPY[&quot;docker compose up -d netbird-proxy&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
         NPN[&quot;skip — show setup instructions&quot;]
     end
 
-    PF --&gt; S1 --&gt; S2 --&gt; S3 --&gt; CFG --&gt; S4 --&gt; S5
+    PF --&gt; S1 --&gt; S2 --&gt; S3 --&gt; CFG --&gt; S4 --&gt; S5 --&gt; S6
+    NA --&gt;|Yes| NAY
+    NA --&gt;|No| NAN
     NP --&gt;|Yes| NPY
     NP --&gt;|No| NPN
 </pre>
@@ -1312,11 +1328,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1328,11 +1344,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

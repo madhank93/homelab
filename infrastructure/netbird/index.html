@@ -642,6 +642,32 @@
 </tbody></table>
 <p>The dashboard client <code>netbird-dashboard</code> is a public OIDC client registered statically inside embedded Dex. No secret is required.</p>
 <hr />
+<h2 id="netbird-agent-on-bifrost-netbird-agent">NetBird Agent on Bifrost (<code>netbird-agent</code>)</h2>
+<p>The Bifrost VPS runs both the NetBird <strong>server</strong> and a NetBird <strong>agent</strong>. These are distinct roles:</p>
+<table><thead><tr><th>Container</th><th>Role</th><th>Creates WireGuard interface?</th></tr></thead><tbody>
+<tr><td><code>netbird-server</code></td><td>Coordination plane — assigns keys, distributes routes, relays traffic</td><td>No</td></tr>
+<tr><td><code>netbird-agent</code></td><td>WireGuard peer — joins the mesh, receives routes, routes traffic</td><td><strong>Yes</strong></td></tr>
+</tbody></table>
+<p>Without <code>netbird-agent</code>, Traefik has no route to <code>192.168.1.0/24</code>. Every proxy request to the cluster returns <strong>504 Gateway Timeout</strong>. The agent receives the <code>192.168.1.0/24</code> route advertised by <code>k8s-routing-peer</code> and sets up a WireGuard tunnel:</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>External user
+</span><span>    ↓ HTTPS
+</span><span>Traefik (Bifrost)
+</span><span>    ↓ http://192.168.1.220
+</span><span>netbird-agent (Bifrost) ←── WireGuard ───→ k8s-routing-peer (worker3)
+</span><span>                                                    ↓
+</span><span>                                            192.168.1.220 (Cilium gateway)
+</span><span>                                                    ↓
+</span><span>                                              cluster pods
+</span></code></pre>
+<p><code>netbird-agent</code> uses <code>network_mode: host</code> so WireGuard routes are created on the Bifrost host directly, making them reachable from all Docker containers (including Traefik in <code>bifrost_net</code>).</p>
+<h3 id="setup-key-storage">Setup Key Storage</h3>
+<p>Two peers, two setup keys, two storage locations — matching where each consumer reads secrets:</p>
+<table><thead><tr><th>Peer</th><th>Setup key stored in</th><th>Key name</th><th>Reason</th></tr></thead><tbody>
+<tr><td><code>k8s-routing-peer</code> (k8s pod)</td><td><strong>OpenBao</strong> <code>secret/data/netbird</code></td><td><code>NETBIRD_SETUP_KEY</code></td><td>Read by k8s workload via CSI driver</td></tr>
+<tr><td><code>netbird-agent</code> (Bifrost Docker)</td><td><strong>SOPS</strong> <code>bootstrap.sops.yaml</code></td><td><code>NB_BIFROST_SETUP_KEY</code></td><td>Read by Pulumi → <code>.secrets.env</code> → Docker</td></tr>
+</tbody></table>
+<p>Both keys can share the same <strong>Reusable</strong> setup key value from the NetBird UI — they just live in different stores because each consumer has different access patterns.</p>
+<hr />
 <h2 id="k8s-routing-peer">K8s Routing Peer</h2>
 <p>The <code>netbird-peer</code> Deployment in the <code>netbird</code> namespace connects to the WireGuard mesh and advertises <code>192.168.1.0/24</code> as a route. This makes all cluster services reachable from any NetBird-connected device.</p>
 <table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
@@ -869,6 +895,23 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                 <li>
                     
                     <a href="https://homelab.madhan.app/infrastructure/netbird/#netbird-dashboard-environment" class="toc-link">NetBird Dashboard Environment</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/netbird/#netbird-agent-on-bifrost-netbird-agent" class="toc-link">NetBird Agent on Bifrost (netbird-agent)</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#setup-key-storage" class="toc-link">Setup Key Storage</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -1324,11 +1367,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1340,11 +1383,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

@@ -528,6 +528,7 @@
 <tr><td>Namespace</td><td><code>grafana</code></td><td>Isolated namespace</td></tr>
 <tr><td>HTTPRoute</td><td><code>grafana.madhan.app</code> → port 3000</td><td>Gateway API</td></tr>
 <tr><td>Access</td><td>Public (Cloudflare A record)</td><td>GitHub SSO via Authentik</td></tr>
+<tr><td><code>root_url</code></td><td><code>https://grafana.madhan.app</code></td><td>Forces <code>https://</code> in OAuth redirect_uri (see below)</td></tr>
 <tr><td>Persistence</td><td><code>10Gi</code> RWX Longhorn</td><td>Avoids rolling update deadlock</td></tr>
 <tr><td>Admin user</td><td><code>admin</code></td><td>Set via env var</td></tr>
 <tr><td>Admin password</td><td>File at <code>/mnt/secrets/ADMIN_PASSWORD</code></td><td>Pattern A (CSI file mount)</td></tr>
@@ -631,6 +632,10 @@
 </span><span style="color:#ffd580;">kubectl</span><span> describe pod</span><span style="color:#ffcc66;"> -n</span><span> grafana</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=grafana </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -A5 </span><span style="color:#bae67e;">&quot;openbao-secrets&quot;
 </span></code></pre>
 <p><strong>Fix:</strong> If the <code>grafana-oauth-secret</code> k8s Secret is missing, the CSI volume mount may have failed. Check OpenBao is unsealed and the <code>grafana</code> role exists.</p>
+<h3 id="github-sso-works-on-lan-but-fails-externally">GitHub SSO Works on LAN but Fails Externally</h3>
+<p><strong>Symptoms:</strong> Clicking "GitHub via Authentik" on LAN completes successfully, but from the internet Authentik returns a <code>redirect_uri mismatch</code> or <code>invalid_grant</code> error.</p>
+<p><strong>Root cause:</strong> Without <code>root_url</code> set, Grafana detects its scheme from the incoming request. TLS terminates at Bifrost/Traefik, which proxies to the cluster as plain HTTP. Grafana sees an HTTP request and constructs the OAuth callback as <code>http://grafana.madhan.app/login/generic_oauth</code>. Authentik has <code>https://...</code> registered — the mismatch causes OAuth to fail. On LAN, the request is plain HTTP end-to-end, so <code>http://</code> is correct and it works.</p>
+<p><strong>Fix:</strong> <code>root_url = https://grafana.madhan.app</code> is set in <code>[server]</code> in <code>grafana.ini</code> (already applied). This forces Grafana to always construct the correct <code>https://</code> callback URL regardless of the incoming request scheme.</p>
 <h3 id="pod-connection-timeout-kubelet-nodeip-issue-with-netbird">Pod Connection Timeout (kubelet nodeIP issue with NetBird)</h3>
 <p><strong>Symptoms:</strong> Grafana pod shows connection timeouts to VictoriaMetrics or VictoriaLogs.</p>
 <p><strong>Diagnosis:</strong> Check if the NetBird peer is running on the same node as Grafana. NetBird adds a WireGuard interface, which can confuse kubelet's nodeIP detection.</p>
@@ -811,6 +816,10 @@
                             
                                 <li>
                                     <a href="https://homelab.madhan.app/apps/monitoring/grafana/#oauth-client-secret-not-loading" class="toc-link">OAuth Client Secret Not Loading</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/monitoring/grafana/#github-sso-works-on-lan-but-fails-externally" class="toc-link">GitHub SSO Works on LAN but Fails Externally</a>
                                 </li>
                             
                                 <li>
@@ -1229,11 +1238,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1245,11 +1254,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
