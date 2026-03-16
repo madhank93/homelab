@@ -94,6 +94,13 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		//        bao kv patch secret/grafana OAUTH_CLIENT_SECRET=<secret>
 		//   6. In Authentik, create a group "grafana-admins" and add yourself to it for Admin role.
 		"grafana.ini": map[string]any{
+			// root_url must be set so Grafana constructs OAuth redirect_uri with https://.
+			// Without it, Grafana uses the incoming request scheme (http — TLS terminates at
+			// Bifrost/Traefik) and sends http://grafana.madhan.app/login/generic_oauth,
+			// which mismatches the https:// redirect_uri registered in Authentik.
+			"server": map[string]any{
+				"root_url": "https://grafana.madhan.app",
+			},
 			"auth.generic_oauth": map[string]any{
 				"enabled": true,
 				"name":    "GitHub via Authentik",
