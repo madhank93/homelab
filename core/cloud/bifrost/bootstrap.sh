@@ -238,7 +238,7 @@ log "  └───────────────────────�
 log_step "5/6  netbird-agent — WireGuard routing peer (Bifrost → homelab LAN)"
 if has_secret "NB_BIFROST_SETUP_KEY"; then
   log "  NB_BIFROST_SETUP_KEY present ($(secret_len NB_BIFROST_SETUP_KEY) chars)"
-  $COMPOSE up -d netbird-agent
+  NB_BIFROST_SETUP_KEY=$(read_secret NB_BIFROST_SETUP_KEY) $COMPOSE up -d netbird-agent
   wait_healthy netbird-agent 60
   log "  netbird-agent connected — Bifrost can now route to 192.168.1.0/24 ✓"
 else
