@@ -669,16 +669,27 @@
 <p>Both keys can share the same <strong>Reusable</strong> setup key value from the NetBird UI — they just live in different stores because each consumer has different access patterns.</p>
 <hr />
 <h2 id="k8s-routing-peer">K8s Routing Peer</h2>
-<p>The <code>netbird-peer</code> Deployment in the <code>netbird</code> namespace connects to the WireGuard mesh and advertises <code>192.168.1.0/24</code> as a route. This makes all cluster services reachable from any NetBird-connected device.</p>
+<p>The <code>netbird-peer</code> StatefulSet in the <code>netbird</code> namespace connects to the WireGuard mesh and advertises <code>192.168.1.0/24</code> as a route. This makes all cluster services reachable from any NetBird-connected device.</p>
 <table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
-<tr><td>Image</td><td><code>netbirdio/netbird:latest</code></td></tr>
+<tr><td>Image</td><td><code>netbirdio/netbird:0.66.2</code></td></tr>
 <tr><td>Namespace</td><td><code>netbird</code> (Pod Security Admission: <code>privileged</code>)</td></tr>
 <tr><td>Setup key</td><td>From OpenBao <code>secret/data/netbird</code> → <code>NETBIRD_SETUP_KEY</code></td></tr>
 <tr><td>Management URL</td><td><code>https://netbird.madhan.app</code></td></tr>
 <tr><td>Capabilities</td><td><code>NET_ADMIN</code>, <code>SYS_MODULE</code></td></tr>
 <tr><td><code>hostNetwork</code></td><td><code>true</code> — required for kernel WireGuard interface</td></tr>
+<tr><td>Config persistence</td><td>PVC <code>netbird-config</code> mounted at <code>/var/lib/netbird/</code></td></tr>
 </tbody></table>
 <p>The setup key is stored in OpenBao (<code>secret/data/netbird</code>, key <code>NETBIRD_SETUP_KEY</code>) and synced to the <code>netbird</code> namespace as the <code>netbird-setup-key</code> k8s Secret by the Secrets Store CSI Driver (Pattern B). See <a href="/apps/secrets/openbao/">OpenBao</a> for the secrets pattern details.</p>
+<h3 id="config-persistence-critical-detail">Config Persistence — Critical Detail</h3>
+<p>NetBird stores its private key and peer registration at <strong><code>/var/lib/netbird/</code></strong> (not <code>/etc/netbird/</code>). The StatefulSet PVC must mount at <code>/var/lib/netbird/</code>. Without this, every pod restart generates a new private key, creating a new peer registration with a different IP. Stale peers accumulate in the NetBird UI, and the Network Route loses its association with the active peer.</p>
+<blockquote>
+<p><strong>If k8s-routing-peer keeps changing IP</strong>: the PVC mount path was wrong. After fixing, check for duplicate "k8s-routing-peer" entries in <strong>Peers</strong> — delete the disconnected stale ones, then re-assign the homelab-vpc route to the active peer.</p>
+</blockquote>
+<h3 id="masquerade-rule-for-return-traffic">MASQUERADE Rule for Return Traffic</h3>
+<p>Forwarded traffic from Bifrost's WireGuard range (<code>100.109.0.0/16</code>) arrives on worker3's <code>wt0</code> interface and is routed to <code>eth0</code> toward <code>192.168.1.220</code>. Without source NAT, return packets from the cluster can't route back to the WireGuard IP range. An <code>initContainer</code> in the StatefulSet adds this rule on every pod start:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">iptables</span><span style="color:#ffcc66;"> -t</span><span> nat</span><span style="color:#ffcc66;"> -A</span><span> POSTROUTING</span><span style="color:#ffcc66;"> -s</span><span> 100.109.0.0/16</span><span style="color:#ffcc66;"> -d</span><span> 192.168.1.0/24</span><span style="color:#ffcc66;"> -j</span><span> MASQUERADE
+</span></code></pre>
+<p>The <code>-C</code> check prevents duplicates on pod restart.</p>
 <hr />
 <h2 id="netbird-reverse-proxy-proxy-madhan-app">NetBird Reverse Proxy (<code>*.proxy.madhan.app</code>)</h2>
 <p>The <code>netbird-proxy</code> container exposes NetBird peers as TCP endpoints via <code>*.proxy.madhan.app</code>. Traefik routes <code>*.proxy.madhan.app</code> TCP traffic to <code>netbird-proxy:8443</code> via a wildcard TCP router.</p>
@@ -748,10 +759,34 @@ Add the setup key to OpenBao:<pre data-lang="bash" style="background-color:#2127
 </ul>
 </li>
 <li><input disabled="" type="checkbox"/>
-Network Routes → Add Route: network <code>192.168.1.0/24</code>, peer group <code>k8s-routing-peer</code></li>
+Wait for <code>netbird-peer-0</code> to show <code>Running</code> and check it connected:<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> --</span><span> netbird status
+</span><span style="font-style:italic;color:#5c6773;"># Should show: Management: Connected, Peers count: N/N Connected
+</span></code></pre>
+</li>
+<li><input disabled="" type="checkbox"/>
+<strong>Peers</strong> → verify only ONE "k8s-routing-peer" entry exists (delete any stale/disconnected duplicates from previous registrations)</li>
+<li><input disabled="" type="checkbox"/>
+<strong>Network Routes</strong> → Add Route: network <code>192.168.1.0/24</code>, routing peer: <code>k8s-routing-peer</code>, Distribution Groups: <code>All</code>
+<ul>
+<li><code>All</code> distribution group ensures <code>bifrost-agent</code> receives the route automatically</li>
+</ul>
+</li>
 <li><input disabled="" type="checkbox"/>
 Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard</li>
 </ul>
+<blockquote>
+<p><strong>Important:</strong> The Network Route must reference the <strong>currently active</strong> k8s-routing-peer. If the pod was restarted before the route was configured, stale peer entries may exist — delete them from Peers page first.</p>
+</blockquote>
+<h3 id="step-6-verify-traffic-flows">Step 6 — Verify traffic flows</h3>
+<p>After the route is configured, Traefik on Bifrost should be able to reach <code>192.168.1.220</code>:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># From within the cluster, check traffic is flowing through worker3&#39;s MASQUERADE rule
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> --</span><span> iptables -t nat -L POSTROUTING -n -v </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> 100.109
+</span><span style="font-style:italic;color:#5c6773;"># Non-zero packet count means traffic is flowing from Bifrost through the tunnel
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check bifrost-agent sees the route (run on Bifrost VPS)
+</span><span style="color:#ffd580;">docker</span><span> exec bifrost-netbird-agent-1 netbird routes list
+</span><span style="font-style:italic;color:#5c6773;"># Should show: 192.168.1.0/24 via k8s-routing-peer
+</span></code></pre>
 
 
     <!--  Errata section  -->
@@ -917,7 +952,22 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/netbird/#k8s-routing-peer" class="toc-link">K8s Routing Peer</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/infrastructure/netbird/#k8s-routing-peer" class="toc-link">K8s Routing Peer</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#config-persistence-critical-detail" class="toc-link">Config Persistence — Critical Detail</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#masquerade-rule-for-return-traffic" class="toc-link">MASQUERADE Rule for Return Traffic</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -953,6 +1003,10 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                             
                                 <li>
                                     <a href="https://homelab.madhan.app/infrastructure/netbird/#step-5-configure-k8s-routing-peer" class="toc-link">Step 5 — Configure K8s routing peer</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#step-6-verify-traffic-flows" class="toc-link">Step 6 — Verify traffic flows</a>
                                 </li>
                             
                         </ul>
@@ -1367,11 +1421,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
@@ -1383,11 +1437,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

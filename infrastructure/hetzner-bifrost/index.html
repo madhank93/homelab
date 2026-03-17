@@ -630,6 +630,17 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
 </span></code></pre>
 <p>The password is passed via an environment variable, never via command-line arguments, and never logged.</p>
 <p>This substitution is idempotent: on re-runs <code>CopyToRemote</code> restores the original template from the laptop, then the placeholders are substituted again.</p>
+<h3 id="netbird-agent-setup-key-docker-compose-env-var-caveat">netbird-agent setup key — Docker Compose env var caveat</h3>
+<p><code>docker-compose.yml</code> uses Compose-level interpolation for <code>netbird-agent</code>'s setup key:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">netbird-agent</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">network_mode</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">host
+</span><span>  </span><span style="color:#73d0ff;">environment</span><span style="color:#ccc9c2cc;">:
+</span><span>    - </span><span style="color:#bae67e;">NB_SETUP_KEY=${NB_BIFROST_SETUP_KEY}
+</span></code></pre>
+<p>Docker Compose <code>${VAR}</code> interpolation reads from the OS environment or <code>.env</code> file — <strong>not</strong> from <code>env_file:</code>. Since <code>NB_BIFROST_SETUP_KEY</code> is only in <code>.secrets.env</code> (container-level), it was always blank when using <code>$COMPOSE up -d netbird-agent</code> directly.</p>
+<p><code>bootstrap.sh</code> works around this by exporting the secret to the OS environment for that specific command:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span>NB_BIFROST_SETUP_KEY</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">$</span><span>(</span><span style="color:#ffd580;">read_secret</span><span style="color:#bae67e;"> NB_BIFROST_SETUP_KEY</span><span>) </span><span style="color:#ffd580;">$</span><span>COMPOSE up</span><span style="color:#ffcc66;"> -d</span><span> netbird-agent
+</span></code></pre>
 <hr />
 <h2 id="generated-files">Generated Files</h2>
 <p>Pulumi writes these files on the <strong>laptop</strong> before uploading:</p>
@@ -739,9 +750,33 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
 </span></code></pre>
 </li>
 <li>
+<p><strong>Wait for netbird-peer-0 to connect, then clean up stale peers</strong></p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> --</span><span> netbird status
+</span><span style="font-style:italic;color:#5c6773;"># Management: Connected, Peers count: N/N Connected
+</span></code></pre>
+<p>Go to <strong>Peers</strong> in the NetBird UI — delete any disconnected "k8s-routing-peer" entries from previous registrations. Only the currently-connected one should remain.</p>
+</li>
+<li>
 <p><strong>Create the cluster route in NetBird</strong></p>
 <ul>
-<li>Network Routes → Add Route: network <code>192.168.1.0/24</code>, peer <code>k8s-routing-peer</code></li>
+<li><strong>Network Routes</strong> → Add Route:
+<ul>
+<li>Network: <code>192.168.1.0/24</code></li>
+<li>Routing peer: <code>k8s-routing-peer</code> (the connected one)</li>
+<li>Distribution Groups: <code>All</code></li>
+</ul>
+</li>
+<li>Distribution <code>All</code> ensures <code>bifrost-agent</code> automatically receives the route</li>
+</ul>
+</li>
+<li>
+<p><strong>Verify end-to-end connectivity</strong></p>
+<ul>
+<li>Public service (e.g. <code>https://grafana.madhan.app</code>) should no longer return 504</li>
+<li>Check the MASQUERADE rule is matching traffic on worker3:<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> --</span><span> iptables -t nat -L POSTROUTING -n -v </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> 100.109
+</span><span style="font-style:italic;color:#5c6773;"># pkts should be non-zero after accessing a public service
+</span></code></pre>
+</li>
 </ul>
 </li>
 </ol>
@@ -869,6 +904,10 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                             
                                 <li>
                                     <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#netbird-config-yaml-template-substitution" class="toc-link">netbird&#x2F;config.yaml template substitution</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#netbird-agent-setup-key-docker-compose-env-var-caveat" class="toc-link">netbird-agent setup key — Docker Compose env var caveat</a>
                                 </li>
                             
                         </ul>
@@ -1328,11 +1367,11 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
@@ -1344,11 +1383,11 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
