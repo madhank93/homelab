@@ -255,7 +255,8 @@ func generateBifrostSecretsEnv() error {
 		{"NB_PROXY_TOKEN", "NB_PROXY_TOKEN", false},
 
 		// NetBird setup key for the bifrost WireGuard routing agent.
-		// Created in the NetBird UI under Setup Keys. Optional on initial deploy.
+		// Reusable key created in NetBird UI → Setup Keys.
+		// Add to secrets/bootstrap.sops.yaml: NB_BIFROST_SETUP_KEY=<key>
 		{"NB_BIFROST_SETUP_KEY", "NB_BIFROST_SETUP_KEY", false},
 	}
 

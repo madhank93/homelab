@@ -158,6 +158,25 @@ The password is passed via an environment variable, never via command-line argum
 
 This substitution is idempotent: on re-runs `CopyToRemote` restores the original template from the laptop, then the placeholders are substituted again.
 
+### netbird-agent setup key — Docker Compose env var caveat
+
+`docker-compose.yml` uses Compose-level interpolation for `netbird-agent`'s setup key:
+
+```yaml
+netbird-agent:
+  network_mode: host
+  environment:
+    - NB_SETUP_KEY=${NB_BIFROST_SETUP_KEY}
+```
+
+Docker Compose `${VAR}` interpolation reads from the OS environment or `.env` file — **not** from `env_file:`. Since `NB_BIFROST_SETUP_KEY` is only in `.secrets.env` (container-level), it was always blank when using `$COMPOSE up -d netbird-agent` directly.
+
+`bootstrap.sh` works around this by exporting the secret to the OS environment for that specific command:
+
+```bash
+NB_BIFROST_SETUP_KEY=$(read_secret NB_BIFROST_SETUP_KEY) $COMPOSE up -d netbird-agent
+```
+
 ---
 
 ## Generated Files
@@ -274,7 +293,26 @@ After `just core hetzner up` succeeds, complete the one-time setup in this order
      bao kv patch secret/netbird NETBIRD_SETUP_KEY=<k8s-routing-peer key>
    ```
 
-7. **Create the cluster route in NetBird**
-   - Network Routes → Add Route: network `192.168.1.0/24`, peer `k8s-routing-peer`
+7. **Wait for netbird-peer-0 to connect, then clean up stale peers**
+   ```bash
+   kubectl exec -n netbird netbird-peer-0 -- netbird status
+   # Management: Connected, Peers count: N/N Connected
+   ```
+   Go to **Peers** in the NetBird UI — delete any disconnected "k8s-routing-peer" entries from previous registrations. Only the currently-connected one should remain.
+
+8. **Create the cluster route in NetBird**
+   - **Network Routes** → Add Route:
+     - Network: `192.168.1.0/24`
+     - Routing peer: `k8s-routing-peer` (the connected one)
+     - Distribution Groups: `All`
+   - Distribution `All` ensures `bifrost-agent` automatically receives the route
+
+9. **Verify end-to-end connectivity**
+   - Public service (e.g. `https://grafana.madhan.app`) should no longer return 504
+   - Check the MASQUERADE rule is matching traffic on worker3:
+     ```bash
+     kubectl exec -n netbird netbird-peer-0 -- iptables -t nat -L POSTROUTING -n -v | grep 100.109
+     # pkts should be non-zero after accessing a public service
+     ```
 
 See [NetBird VPN](/infrastructure/netbird) and the [Deployment Guide](/getting-started/deployment) for the complete setup sequence.

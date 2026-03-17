@@ -108,6 +108,28 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 							},
 						},
 					},
+					// Init container: add iptables MASQUERADE so forwarded traffic from
+					// Bifrost's WireGuard IP range (100.109.0.0/16) to the cluster LB subnet
+					// (192.168.1.0/24) is source-NAT'd to this node's eth0 IP. Without this,
+					// return traffic from the cluster can't route back to 100.109.x.x.
+					// The -C check prevents duplicate rules on pod restart.
+					InitContainers: &[]*k8s.Container{
+						{
+							Name:    jsii.String("setup-iptables"),
+							Image:   jsii.String("netbirdio/netbird:0.66.2"),
+							Command: &[]*string{jsii.String("/bin/sh")},
+							Args: &[]*string{
+								jsii.String("-c"),
+								jsii.String("iptables -t nat -C POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE"),
+							},
+							SecurityContext: &k8s.SecurityContext{
+								Privileged: jsii.Bool(true),
+								Capabilities: &k8s.Capabilities{
+									Add: &[]*string{jsii.String("NET_ADMIN")},
+								},
+							},
+						},
+					},
 					Containers: &[]*k8s.Container{
 						{
 							Name: jsii.String("netbird"),
@@ -149,7 +171,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 									// Persists NetBird private key + config across restarts.
 									// Without this, every restart = new key = new peer registration.
 									Name:      jsii.String("netbird-config"),
-									MountPath: jsii.String("/etc/netbird"),
+									MountPath: jsii.String("/var/lib/netbird"),
 								},
 								{
 									// CSI mount triggers secretObjects sync → creates netbird-setup-key Secret.
