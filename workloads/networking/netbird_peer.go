@@ -96,6 +96,9 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 				Spec: &k8s.PodSpec{
 					HostNetwork: jsii.Bool(true),
 					DnsPolicy:   jsii.String("ClusterFirstWithHostNet"),
+					NodeSelector: &map[string]*string{
+						"kubernetes.io/hostname": jsii.String("k8s-worker1"),
+					},
 					Volumes: &[]*k8s.Volume{
 						{
 							Name: jsii.String("openbao-secrets"),
@@ -155,6 +158,13 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 								{
 									Name:  jsii.String("NB_HOSTNAME"),
 									Value: jsii.String("k8s-routing-peer"),
+								},
+								{
+									// Prevent NetBird from setting net.ipv4.conf.all.src_valid_mark=1
+									// globally. That sysctl conflicts with Cilium's BPF fwmark-based
+									// routing on the same node (see netbirdio/netbird#4575).
+									Name:  jsii.String("NB_SKIP_SOCKET_MARK"),
+									Value: jsii.String("true"),
 								},
 							},
 							SecurityContext: &k8s.SecurityContext{

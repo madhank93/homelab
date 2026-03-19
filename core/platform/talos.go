@@ -364,6 +364,15 @@ func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
 								map[string]any{
 									"gateway": "192.168.1.254",
 								},
+								// Static route: return traffic to Bifrost's NetBird subnet
+								// must go via k8s-routing-peer (worker1). Cilium's eBPF
+								// bypasses iptables MASQUERADE, so a kernel route is required
+								// on every node so SYN-ACKs reach worker1's wt0 tunnel.
+								map[string]any{
+									"network": "100.109.0.0/16",
+									"gateway": "192.168.1.221",
+									"metric":  1024,
+								},
 							}
 						}
 					}
