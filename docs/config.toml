@@ -21,7 +21,7 @@ nav = [
     { name = "Getting Started", url = "/getting-started", type = "url", icon = "rocket" },
     { name = "Architecture", url = "/architecture", type = "url", icon = "diagram-project" },
     { name = "Hardware", url = "/hardware", type = "url", icon = "server" },
-    { name = "Infrastructure", url = "/infrastructure", type = "url", icon = "network-wired" },
+    { name = "Cloud", url = "/infrastructure", type = "url", icon = "cloud" },
     { name = "Platform", url = "/platform", type = "url", icon = "layer-group" },
     { name = "Apps", url = "/apps", type = "url", icon = "cubes" },
     { name = "Development", url = "/development", type = "url", icon = "code" },

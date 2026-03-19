@@ -1,7 +1,7 @@
 +++
 title = "Proxmox + Talos"
 description = "Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi."
-weight = 10
+weight = 30
 +++
 
 ## Overview

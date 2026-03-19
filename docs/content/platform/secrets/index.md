@@ -1,7 +1,7 @@
 +++
 title = "Secrets"
 description = "SOPS/age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git."
-weight = 50
+weight = 60
 +++
 
 ## Architecture

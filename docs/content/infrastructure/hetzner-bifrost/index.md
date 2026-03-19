@@ -1,7 +1,7 @@
 +++
 title = "Hetzner Bifrost"
 description = "Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab."
-weight = 30
+weight = 10
 +++
 
 ## Overview

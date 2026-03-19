@@ -1,7 +1,7 @@
 +++
 title = "Networking"
 description = "Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble."
-weight = 20
+weight = 50
 +++
 
 ## Cilium CNI

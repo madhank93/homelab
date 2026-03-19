@@ -1,11 +1,20 @@
 +++
 title = "Platform"
-description = "GitOps platform: CDK8s manifest generation and ArgoCD deployment."
+description = "core/platform/ Pulumi stacks: Proxmox/Talos cluster, Cilium CNI, ArgoCD GitOps, cert-manager, and secrets."
 weight = 50
 sort_by = "weight"
 +++
 
-The platform layer sits above bare infrastructure and delivers all applications via GitOps.
+Platform covers both cluster provisioning (`core/platform/`) and the GitOps delivery layer.
+
+## Pulumi Stacks (`core/platform/`)
+
+| Stack | Command | Manages |
+|-------|---------|---------|
+| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap, Cilium CNI, ArgoCD |
+| `platform` | `just core platform up` | Gateway API, IP pool, HTTPRoutes, cert-manager |
+
+## GitOps Layer
 
 - **No secrets in git** — CDK8s generates zero `Secret` resources. Bootstrap secrets are created by `just create-secrets` from a laptop.
 - **Manifests are generated, not hand-written** — The `v0.1.5-manifests` branch is machine-generated YAML. Never edit it by hand.

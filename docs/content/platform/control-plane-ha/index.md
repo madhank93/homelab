@@ -1,7 +1,7 @@
 +++
 title = "Control Plane HA"
 description = "3-node control plane with Talos VIP — how HA works, what fails over, and what does not."
-weight = 15
+weight = 40
 +++
 
 ## What Is Control Plane HA?

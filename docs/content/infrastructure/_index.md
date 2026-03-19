@@ -1,34 +1,25 @@
 +++
-title = "Infrastructure"
-description = "Pulumi stacks: Proxmox/Talos cluster, Cilium networking, Hetzner Bifrost VPS, DNS/TLS, and secrets."
+title = "Cloud"
+description = "core/cloud/ Pulumi stacks: Hetzner Bifrost VPS, Authentik SSO, NetBird VPN, Cloudflare DNS/TLS."
 weight = 40
 sort_by = "weight"
 +++
 
-Infrastructure is managed entirely by **Pulumi** (Go), running from a developer laptop. It is never run in CI — infrastructure changes are intentional, human-reviewed operations.
+Cloud infrastructure is managed entirely by **Pulumi** (Go) from `core/cloud/`, running from a developer laptop. It is never run in CI — infrastructure changes are intentional, human-reviewed operations.
 
 All secrets are injected at runtime via SOPS. No plaintext secrets exist on disk or in CI.
 
 ---
 
-## Pulumi Stacks
+## Pulumi Stacks (`core/cloud/`)
 
-The `core/` directory is split into two sub-packages that mirror the two concerns:
+| Stack | Command | Manages |
+|-------|---------|---------|
+| `hetzner` | `just core hetzner up` | Hetzner VPS + full Bifrost bootstrap |
+| `authentik` | `just core authentik up` | OIDC apps, GitHub OAuth, ForwardAuth outpost |
+| `cloudflare` | `just core cloudflare up` | DNS A records, public service exposure |
 
-**`core/cloud/`** — external cloud services (Hetzner VPS, Cloudflare DNS, Authentik OIDC):
-
-| Stack | Command | Manages | Docs |
-|-------|---------|---------|------|
-| `hetzner` | `just core hetzner up` | Hetzner VPS + full Bifrost bootstrap | [Hetzner Bifrost](/infrastructure/hetzner-bifrost/) |
-| `authentik` | `just core authentik up` | OIDC apps, GitHub OAuth, ForwardAuth outpost | [Authentik](/infrastructure/authentik/) |
-| `cloudflare` | `just core cloudflare up` | DNS A records, public service exposure | [DNS & TLS](/infrastructure/dns-tls/) |
-
-**`core/platform/`** — Kubernetes cluster provisioning and platform services:
-
-| Stack | Command | Manages | Docs |
-|-------|---------|---------|------|
-| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap | [Proxmox + Talos](/infrastructure/proxmox-talos/) |
-| `platform` | `just core platform up` | Cilium CNI, Gateway API, IP pool, cert-manager | [Networking](/infrastructure/networking/) |
+Kubernetes cluster provisioning lives in [Platform](/platform/) (`core/platform/`).
 
 ---
 

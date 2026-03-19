@@ -1,7 +1,7 @@
 +++
 title = "NetBird VPN"
 description = "NetBird v0.66 combined server — WireGuard mesh for remote cluster access, with embedded Dex OIDC and Authentik as the upstream identity connector."
-weight = 35
+weight = 30
 +++
 
 ## Overview

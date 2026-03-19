@@ -1,7 +1,7 @@
 +++
 title = "Service Access & Internet Exposure"
 description = "DNS split strategy, public vs internal service routing, and how to expose or restrict services"
-weight = 25
+weight = 50
 +++
 
 ## Architecture Overview

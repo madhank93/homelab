@@ -1,7 +1,7 @@
 +++
 title = "Authentik"
 description = "OIDC identity provider running on the Bifrost VPS — GitHub SSO, ForwardAuth, and OIDC for Grafana and NetBird."
-weight = 35
+weight = 20
 +++
 
 ## Overview

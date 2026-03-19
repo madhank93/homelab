@@ -59,7 +59,7 @@ source ~/.zshrc
 sops secrets/bootstrap.sops.yaml
 ```
 
-See [Secrets Architecture](/infrastructure/secrets) and the [Deployment Guide](/getting-started/deployment) for the full secrets list.
+See [Secrets Architecture](/platform/secrets) and the [Deployment Guide](/getting-started/deployment) for the full secrets list.
 
 ### Proxmox Host
 
