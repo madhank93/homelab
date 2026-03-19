@@ -353,14 +353,6 @@ docker exec netbird-agent netbird routes list
 # Check it's in the "All" distribution group in NetBird UI → Network Routes
 ```
 
-### Connection type: Relayed (no direct P2P)
-
-Expected when NAT prevents direct UDP. Traffic still works through the relay. Latency ~35–40 ms. To improve: open UDP 3478 and 50000–50500 in the Hetzner firewall and home router.
-
 ### Tunnel dead — wt0: 0 bytes
 
-Check `NB_SKIP_SOCKET_MARK` is NOT set on the `netbird-peer` StatefulSet. See [NB_SKIP_SOCKET_MARK breaks the tunnel](/architecture/network-flow/#nb_skip_socket_mark-breaks-the-tunnel) in the Network Flow doc.
-
-### k8s-routing-peer gets new IP on restart
-
-PVC mount path is wrong. Must be `/var/lib/netbird/` (not `/etc/netbird/`). Fix the StatefulSet and delete stale peers from the NetBird UI.
+`NB_SKIP_SOCKET_MARK` must not be set on the `netbird-peer` StatefulSet — it disables the socket fwmark, causing management traffic to loop through the WireGuard tunnel and breaking the relay connection.

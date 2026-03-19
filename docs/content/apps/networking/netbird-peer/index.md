@@ -143,17 +143,6 @@ ssh root@178.156.199.250 'docker exec netbird-agent netbird routes list'
 # Expect: 192.168.1.0/24  Status: Selected
 ```
 
-### Duplicate peers in NetBird UI
-
-**Why:** PVC was deleted, or the pod ran as a Deployment previously. Each restart without a persisted key creates a new peer identity.
-
-**Fix:** Delete all stale/disconnected "k8s-routing-peer" entries from the NetBird UI → Peers. Then verify the StatefulSet's PVC persists across restarts:
-
-```bash
-kubectl get pvc -n netbird
-# Must show: netbird-config-netbird-peer-0  Bound
-```
-
 ### 504 from public services but tunnel is up
 
 The route is connected but traffic doesn't reach the cluster backend. Check the Cilium device configuration first:
