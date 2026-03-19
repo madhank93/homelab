@@ -107,8 +107,8 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 				// Client ID set in core/cloud/authentik.go — matches GrafanaOIDCClientID export.
 				"client_id":            "grafana-homelab",
 				"scopes":               "openid email profile",
-				"auth_url":             "https://auth.madhan.app/application/o/grafana/authorize/",
-				"token_url":            "https://auth.madhan.app/application/o/grafana/token/",
+				"auth_url":             "https://auth.madhan.app/application/o/authorize/",
+				"token_url":            "https://auth.madhan.app/application/o/token/",
 				"api_url":              "https://auth.madhan.app/application/o/userinfo/",
 				"use_pkce":             true,
 				"allow_sign_up":        true,
