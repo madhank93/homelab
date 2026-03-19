@@ -14,13 +14,13 @@ Three Talos control-plane nodes sit behind a KubeVIP virtual IP. Four worker nod
 
 | Name | Role | IP | CPU | RAM | Storage |
 |------|------|----|-----|-----|---------|
-| `k8s-controller1` | Control plane | 192.168.1.211 | 4 vCPU | 6 GiB | 30 GiB |
-| `k8s-controller2` | Control plane | 192.168.1.212 | 4 vCPU | 6 GiB | 30 GiB |
-| `k8s-controller3` | Control plane | 192.168.1.213 | 4 vCPU | 6 GiB | 30 GiB |
-| `k8s-worker1` | Worker | 192.168.1.221 | 4 vCPU | 6 GiB | 125 GiB |
-| `k8s-worker2` | Worker | 192.168.1.222 | 4 vCPU | 6 GiB | 125 GiB |
-| `k8s-worker3` | Worker | 192.168.1.223 | 4 vCPU | 6 GiB | 125 GiB |
-| `k8s-worker4` | Worker + GPU | 192.168.1.224 | 4 vCPU | 6 GiB | 125 GiB + RTX 5070 Ti |
+| `k8s-controller1` | Control plane | 192.168.1.211 | 4 vCPU | 8 GiB | 50 GiB |
+| `k8s-controller2` | Control plane | 192.168.1.212 | 4 vCPU | 8 GiB | 50 GiB |
+| `k8s-controller3` | Control plane | 192.168.1.213 | 4 vCPU | 8 GiB | 50 GiB |
+| `k8s-worker1` | Worker | 192.168.1.221 | 4 vCPU | 14 GiB | 200 GiB |
+| `k8s-worker2` | Worker | 192.168.1.222 | 4 vCPU | 14 GiB | 200 GiB |
+| `k8s-worker3` | Worker | 192.168.1.223 | 4 vCPU | 14 GiB | 200 GiB |
+| `k8s-worker4` | Worker + GPU | 192.168.1.224 | 8 vCPU | 16 GiB | 250 GiB + RTX 5070 Ti |
 | **KubeVIP** | Virtual IP | 192.168.1.210 | — | — | Floats across control-plane nodes |
 | **Cilium L2 LB** | LoadBalancer pool | 192.168.1.220–230 | — | — | Assigned per LoadBalancer Service |
 

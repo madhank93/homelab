@@ -85,24 +85,9 @@ In practice the actual NAT is performed by Cilium's `CILIUM_POST_nat` BPF chain,
 
 ## Cilium Constraint — wt0 Must NOT Be in Devices
 
-When debugging, it may be tempting to add `wt0` to Cilium's `devices` list so that Cilium attaches TC BPF programs to it. **This does not work and actively breaks traffic.**
+Do **not** add `wt0` to Cilium's `devices` list in `core/platform/cilium.go`. WireGuard interfaces are `NOARP/POINTOPOINT` with no Ethernet header — Cilium's `cil_from_netdev` TC BPF silently drops all packets without monitor events, breaking all traffic from Bifrost.
 
-WireGuard interfaces (`wt0`) are `NOARP/POINTOPOINT` and have **no Ethernet header**. Cilium's `cil_from_netdev` TC BPF program expects IEEE 802.3 Ethernet frames. Attaching it to `wt0` causes:
-
-- All packets arriving on `wt0` are silently dropped
-- Zero events appear in `cilium-dbg monitor` (the program exits early before logging)
-- `cilium-dbg service get` shows the L7LB entry exists but no traffic reaches it
-- `curl` from Bifrost to `192.168.1.220` times out
-
-The correct configuration in `core/platform/cilium.go`:
-
-```go
-"devices": pulumi.StringArray{
-    pulumi.String("eth0"),  // eth0 only
-},
-```
-
-Traffic from `wt0` must reach Cilium BPF via **another node's `eth0`** — after kernel IP forwarding and MASQUERADE on worker1 put it on the LAN wire. See [Network Flow — Why wt0 is NOT in Cilium Devices](/architecture/network-flow/#why-wt0-is-not-in-cilium-devices) for the full explanation.
+`devices` must list only `eth0`. Traffic from `wt0` reaches Cilium BPF via another node's `eth0` after kernel IP forwarding and MASQUERADE on worker1. See [Network Flow — Why wt0 is NOT in Cilium Devices](/architecture/network-flow/#why-wt0-is-not-in-cilium-devices).
 
 ---
 

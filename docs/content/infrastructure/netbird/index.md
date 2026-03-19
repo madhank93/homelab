@@ -239,55 +239,7 @@ Both keys can share the same **Reusable** setup key value from the NetBird UI �
 
 The `netbird-peer` StatefulSet in the `netbird` namespace runs on **worker1** (`192.168.1.221`), connects to the WireGuard mesh, and advertises `192.168.1.0/24` as a route. This makes all cluster services reachable from any NetBird-connected device.
 
-| Setting | Value |
-|---------|-------|
-| Image | `netbirdio/netbird:0.66.2` |
-| Namespace | `netbird` (Pod Security Admission: `privileged`) |
-| Node | `k8s-worker1` (192.168.1.221) — via PVC affinity |
-| Setup key | From OpenBao `secret/data/netbird` → `NETBIRD_SETUP_KEY` |
-| Management URL | `https://netbird.madhan.app` |
-| Capabilities | `NET_ADMIN`, `SYS_MODULE` |
-| `hostNetwork` | `true` — required for kernel WireGuard interface |
-| Config persistence | PVC `netbird-config` mounted at `/var/lib/netbird/` |
-
-The setup key is stored in OpenBao (`secret/data/netbird`, key `NETBIRD_SETUP_KEY`) and synced to the `netbird` namespace as the `netbird-setup-key` k8s Secret by the Secrets Store CSI Driver (Pattern B). See [OpenBao](/apps/secrets/openbao/) for the secrets pattern details.
-
-### Config Persistence
-
-NetBird stores its private key and peer registration at **`/var/lib/netbird/`** (not `/etc/netbird/`). The StatefulSet PVC must mount at `/var/lib/netbird/`. Without this, every pod restart generates a new private key, creating a new peer registration with a different IP. Stale peers accumulate in the NetBird UI, and the Network Route loses its association with the active peer.
-
-> **If k8s-routing-peer keeps changing IP**: the PVC mount path was wrong. After fixing, check for duplicate "k8s-routing-peer" entries in **Peers** — delete the disconnected stale ones, then re-assign the homelab-vpc route to the active peer.
-
-### MASQUERADE Rule for Return Traffic
-
-Forwarded traffic from Bifrost's WireGuard range (`100.109.0.0/16`) arrives on worker1's `wt0` interface with source IP `100.109.47.211` (bifrost-agent) and destination `192.168.1.220`. The kernel IP-forwards the packet toward `eth0`.
-
-Without source NAT, return packets from the cluster would have `dst=100.109.47.211` — a WireGuard IP unreachable via normal LAN routing. An `initContainer` in the StatefulSet adds this iptables rule on every pod start:
-
-```bash
-iptables -t nat -A POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE
-```
-
-This rule is installed in the `POSTROUTING` chain. In practice, the actual NAT is performed by Cilium's `CILIUM_POST_nat` BPF chain (which runs first), not the raw iptables rule. Both mechanisms achieve the same result: source IP becomes `192.168.1.221` (worker1), allowing the cluster to send replies back to a known LAN address.
-
-Static routes on all cluster nodes (`100.109.0.0/16 via 192.168.1.221`) ensure reply packets know to go back through worker1 for the reverse conntrack and WireGuard re-encapsulation.
-
-### Why wt0 is NOT in Cilium Devices
-
-Adding `wt0` to `core/platform/cilium.go`'s `devices` list was tried during setup and is **incorrect**. WireGuard interfaces are `NOARP/POINTOPOINT` — they have no Ethernet header. Cilium's TC BPF program `cil_from_netdev` expects IEEE 802.3 Ethernet frames. When attached to `wt0`, it silently misparses all incoming packets and drops them without emitting any monitor events.
-
-**Consequence if wt0 is in devices:**
-- `cilium-dbg monitor` shows zero events for wt0 traffic
-- `192.168.1.220` times out from Bifrost
-- `iptables MASQUERADE` shows 0 packets (BPF dropped before reaching netfilter)
-- Only `NodePort` addresses on _other_ workers (e.g., `192.168.1.222:32601`) work
-
-**Correct config in `core/platform/cilium.go`:**
-```go
-"devices": pulumi.StringArray{
-    pulumi.String("eth0"),   // eth0 only — wt0 must NOT be listed
-},
-```
+See [NetBird Peer](/apps/networking/netbird-peer/) for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium `wt0` constraint.
 
 ---
 

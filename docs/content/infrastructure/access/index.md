@@ -11,11 +11,11 @@ Homelab services are LAN-only by default. Selectively exposing a service to the 
 ```
 *.madhan.app          → 192.168.1.220  (wildcard, LAN gateway — default for all services)
 *.internal.madhan.app → 192.168.1.220  (explicit internal label)
-auth.madhan.app       → 23.121.200.108 (Authentik — always public)
-netbird.madhan.app    → 23.121.200.108 (NetBird — always public)
-proxy.madhan.app      → 23.121.200.108 (NetBird expose base — always public)
-*.proxy.madhan.app    → 23.121.200.108 (NetBird expose wildcard)
-grafana.madhan.app    → 23.121.200.108 (overrides wildcard → internet accessible)
+auth.madhan.app       → 178.156.199.250 (Authentik — always public)
+netbird.madhan.app    → 178.156.199.250 (NetBird — always public)
+proxy.madhan.app      → 178.156.199.250 (NetBird expose base — always public)
+*.proxy.madhan.app    → 178.156.199.250 (NetBird expose wildcard)
+grafana.madhan.app    → 178.156.199.250 (overrides wildcard → internet accessible)
 headlamp.madhan.app   → 192.168.1.220  (no explicit record → LAN wildcard → private)
 ```
 
@@ -27,7 +27,7 @@ Cloudflare resolves specific records before wildcards. A service with no explici
 
 ```
 Internet Browser
-  → Cloudflare: grafana.madhan.app → 23.121.200.108
+  → Cloudflare: grafana.madhan.app → 178.156.199.250
   → Traefik (TLS termination on Hetzner VPS)
   → [no session] → Authentik ForwardAuth
       → auth.madhan.app → GitHub OAuth → redirect back
@@ -76,7 +76,7 @@ http:
 ```
 
 **Step 3**: Run `just core cloudflare up && just core hetzner up` — this:
-- Creates the Cloudflare A record `headlamp.madhan.app → 23.121.200.108`
+- Creates the Cloudflare A record `headlamp.madhan.app → 178.156.199.250`
 - Generates `traefik/dynamic/public-services.yml` with the new router
 - Copies updated config to Hetzner VPS via CopyToRemote
 - Traefik file-watcher hot-reloads the new route (no container restart needed)
@@ -93,23 +93,22 @@ The Cloudflare A record is deleted. DNS falls back to `*.madhan.app → 192.168.
 |----------------|-------------|-----------------|
 | `*.madhan.app` (wildcard) | `192.168.1.220` | LAN only |
 | `*.internal.madhan.app` | `192.168.1.220` | LAN only (explicit label) |
-| `auth.madhan.app` | `23.121.200.108` | Internet |
-| `netbird.madhan.app` | `23.121.200.108` | Internet |
-| `proxy.madhan.app` | `23.121.200.108` | Internet |
-| `*.proxy.madhan.app` | `23.121.200.108` | Internet (NetBird expose) |
-| `grafana.madhan.app` | `23.121.200.108` | Internet + ForwardAuth |
-| `harbor.madhan.app` | `23.121.200.108` | Internet + ForwardAuth |
+| `auth.madhan.app` | `178.156.199.250` | Internet |
+| `netbird.madhan.app` | `178.156.199.250` | Internet |
+| `proxy.madhan.app` | `178.156.199.250` | Internet |
+| `*.proxy.madhan.app` | `178.156.199.250` | Internet (NetBird expose) |
+| `grafana.madhan.app` | `178.156.199.250` | Internet + ForwardAuth |
 
 ### LAN user accessing a public service (hairpin routing)
 
-When a service is added to `publicServices`, Cloudflare resolves it to `23.121.200.108` for
+When a service is added to `publicServices`, Cloudflare resolves it to `178.156.199.250` for
 **everyone** — including devices already on the LAN. A LAN browser accessing `grafana.madhan.app`
 will still route out to the Hetzner VPS and tunnel back through WireGuard to reach the pod, even
 though both the client and the pod are on the same network.
 
 ```
 LAN Browser
-  → DNS (Cloudflare): grafana.madhan.app → 23.121.200.108   ← public IP, not LAN
+  → DNS (Cloudflare): grafana.madhan.app → 178.156.199.250   ← public IP, not LAN
   → Traefik on Hetzner VPS
   → WireGuard tunnel → 192.168.1.220 → Grafana pod
   (unnecessary internet round-trip for a LAN client)
@@ -121,7 +120,6 @@ the LAN gateway IP for devices on your network:
 ```
 # Pi-hole custom DNS overrides
 grafana.madhan.app  → 192.168.1.220
-harbor.madhan.app   → 192.168.1.220
 ```
 
 With Pi-hole, LAN clients resolve directly to `192.168.1.220` and bypass Hetzner entirely.
@@ -157,7 +155,7 @@ This is useful for:
 
 ```bash
 # DNS resolves correctly
-dig grafana.madhan.app     # → 23.121.200.108  (public, explicit A record)
+dig grafana.madhan.app     # → 178.156.199.250  (public, explicit A record)
 dig headlamp.madhan.app    # → 192.168.1.220   (LAN wildcard, private)
 
 # Unauthenticated access redirects to SSO

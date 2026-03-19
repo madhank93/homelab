@@ -28,3 +28,4 @@ The homelab repo ships a devcontainer for a consistent, reproducible development
 | golangci-lint | Go linting |
 | gofumpt | Go formatting |
 | Docker (outside-of-docker) | Container builds |
+| Claude Code | AI coding assistant used for development and debugging |

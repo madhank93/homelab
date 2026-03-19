@@ -6,7 +6,7 @@ weight = 30
 
 ## Overview
 
-**Bifrost** is a lightweight Hetzner Cloud VPS that acts as the public edge of the homelab. A single Pulumi command (`just core hetzner up`) provisions the server, copies all config files, and runs a bootstrap script that starts every service in dependency order — fully unattended. No manual SSH required.
+**Bifrost** is a lightweight Hetzner Cloud VPS that acts as the public edge of the homelab. The name comes from Norse mythology — Bifrost is the rainbow bridge connecting the human realm (Midgard) to the divine realm (Asgard). Here it bridges the public internet to the private homelab cluster. A single Pulumi command (`just core hetzner up`) provisions the server, copies all config files, and runs a bootstrap script that starts every service in dependency order — fully unattended. No manual SSH required.
 
 ```
 just core hetzner up
@@ -256,63 +256,4 @@ Managed by `core/cloud/cloudflare.go`:
 
 ## After the First Deploy
 
-After `just core hetzner up` succeeds, complete the one-time setup in this order:
-
-1. **Log in to NetBird with the local admin account**
-   - Open `https://netbird.madhan.app`
-   - Sign in with email: `admin@madhan.app`, password: the value of `NB_OWNER_PASSWORD` in SOPS
-   - This uses the embedded Dex owner account, which only works before an external IdP is configured
-
-2. **Connect Authentik as the Identity Provider**
-   - Settings → Identity Providers → Add → **Authentik**
-   - Client ID: `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT`
-   - Client Secret: value of `NETBIRD_CLIENT_SECRET` from SOPS
-   - Issuer: `https://auth.madhan.app/application/o/netbird/`
-   - This configures Authentik as a connector inside embedded Dex — users will then log in via GitHub (Authentik) through Dex
-
-3. **Create a Personal Access Token**
-   - Settings → Access Tokens → Create — copy the token
-
-4. **Create Setup Keys**
-   - Setup Keys → Add key `bifrost-agent` (Reusable) for the VPS WireGuard agent
-   - Setup Keys → Add key `k8s-routing-peer` (Reusable) for the K8s pod
-
-5. **Add tokens to SOPS and re-deploy**
-   ```bash
-   sops edit secrets/bootstrap.sops.yaml
-   # Add:
-   #   NB_PROXY_TOKEN: <personal access token>
-   #   NB_BIFROST_SETUP_KEY: <bifrost-agent setup key>
-   just core hetzner up
-   ```
-   Bootstrap.sh picks up the new tokens and starts `netbird-proxy` and `netbird-agent`.
-
-6. **Add K8s routing peer setup key to OpenBao**
-   ```bash
-   kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-     bao kv patch secret/netbird NETBIRD_SETUP_KEY=<k8s-routing-peer key>
-   ```
-
-7. **Wait for netbird-peer-0 to connect, then clean up stale peers**
-   ```bash
-   kubectl exec -n netbird netbird-peer-0 -- netbird status
-   # Management: Connected, Peers count: N/N Connected
-   ```
-   Go to **Peers** in the NetBird UI — delete any disconnected "k8s-routing-peer" entries from previous registrations. Only the currently-connected one should remain.
-
-8. **Create the cluster route in NetBird**
-   - **Network Routes** → Add Route:
-     - Network: `192.168.1.0/24`
-     - Routing peer: `k8s-routing-peer` (the connected one)
-     - Distribution Groups: `All`
-   - Distribution `All` ensures `bifrost-agent` automatically receives the route
-
-9. **Verify end-to-end connectivity**
-   - Public service (e.g. `https://grafana.madhan.app`) should no longer return 504
-   - Check the MASQUERADE rule is matching traffic on worker3:
-     ```bash
-     kubectl exec -n netbird netbird-peer-0 -- iptables -t nat -L POSTROUTING -n -v | grep 100.109
-     # pkts should be non-zero after accessing a public service
-     ```
-
-See [NetBird VPN](/infrastructure/netbird) and the [Deployment Guide](/getting-started/deployment) for the complete setup sequence.
+After `just core hetzner up` succeeds, NetBird setup must be completed manually. See [NetBird VPN — First-Time Setup Checklist](/infrastructure/netbird/#first-time-setup-checklist) for the full step-by-step sequence (connecting Authentik, creating setup keys, configuring the K8s routing peer, and verifying end-to-end connectivity).

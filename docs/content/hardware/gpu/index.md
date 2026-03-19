@@ -24,31 +24,19 @@ The GPU worker uses a custom Talos image with two additional system extensions:
 
 These extensions are baked into the Talos image at boot. No `machine.files` drop-ins are needed — the container toolkit extension configures containerd automatically. (Talos v1.10+ restricts `machine.files` writes to `/var`; `/etc/cri/conf.d/` is not writable.)
 
-## GPU Node Taint
-
-The GPU worker carries a `dedicated=ai:NoSchedule` taint, applied via the Talos machine patch:
-
-```yaml
-machine:
-  nodeTaints:
-    dedicated: "ai:NoSchedule"
-```
-
-Only workloads with a matching toleration (`key: dedicated, value: ai`) are scheduled on this node.
-
 ## Time-Slicing
 
-A single physical GPU is shared between **Ollama** and **ComfyUI** using NVIDIA GPU time-slicing. This is configured inline in the `nvidia-device-plugin` Helm values:
+A single physical GPU is shared across multiple workloads (Ollama, ComfyUI, Kubeflow notebooks, training jobs) using NVIDIA GPU time-slicing. This is configured inline in the `nvidia-device-plugin` Helm values:
 
 ```yaml
 sharing:
   timeSlicing:
     resources:
       - name: nvidia.com/gpu
-        replicas: 2
+        replicas: 5
 ```
 
-Result: the node advertises **2 virtual `nvidia.com/gpu` resources** from 1 physical GPU. VRAM is shared (not partitioned), so both workloads compete for the 16 GB pool.
+Result: the node advertises **5 virtual `nvidia.com/gpu` resources** from 1 physical GPU. VRAM is shared (not partitioned), so all workloads compete for the 16 GB pool.
 
 ## Resource Requests
 
@@ -59,26 +47,18 @@ Result: the node advertises **2 virtual `nvidia.com/gpu` resources** from 1 phys
 
 ## GPU Workload Configuration
 
-Both GPU workloads use:
+All GPU workloads use `nodeSelector: nvidia.com/gpu.present: "true"` to pin to `k8s-worker4`. `runtimeClassName: nvidia` is required — without it the NVIDIA container hook does not fire and CUDA is inaccessible even with the `nvidia.com/gpu` resource requested.
 
 ```yaml
 runtimeClassName: nvidia
 nodeSelector:
   nvidia.com/gpu.present: "true"
-tolerations:
-  - key: dedicated
-    operator: Equal
-    value: ai
-    effect: NoSchedule
 resources:
   limits:
     nvidia.com/gpu: "1"
-```
-
-And the environment variable:
-```yaml
-- name: NVIDIA_VISIBLE_DEVICES
-  value: all
+env:
+  - name: NVIDIA_VISIBLE_DEVICES
+    value: all
 ```
 
 ## Kernel Modules

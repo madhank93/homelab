@@ -13,13 +13,22 @@ All secrets are injected at runtime via SOPS. No plaintext secrets exist on disk
 
 ## Pulumi Stacks
 
-| Stack | Command | Manages |
-|-------|---------|---------|
-| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap, Cilium CNI, ArgoCD |
-| `platform` | `just core platform up` | Gateway API, IP pool, HTTPRoutes, cert-manager |
-| `hetzner` | `just core hetzner up` | Hetzner VPS + full Bifrost bootstrap automation |
-| `authentik` | `just core authentik up` | OIDC apps, GitHub OAuth, ForwardAuth outpost |
-| `cloudflare` | `just core cloudflare up` | DNS A records, public service exposure |
+The `core/` directory is split into two sub-packages that mirror the two concerns:
+
+**`core/cloud/`** — external cloud services (Hetzner VPS, Cloudflare DNS, Authentik OIDC):
+
+| Stack | Command | Manages | Docs |
+|-------|---------|---------|------|
+| `hetzner` | `just core hetzner up` | Hetzner VPS + full Bifrost bootstrap | [Hetzner Bifrost](/infrastructure/hetzner-bifrost/) |
+| `authentik` | `just core authentik up` | OIDC apps, GitHub OAuth, ForwardAuth outpost | [Authentik](/infrastructure/authentik/) |
+| `cloudflare` | `just core cloudflare up` | DNS A records, public service exposure | [DNS & TLS](/infrastructure/dns-tls/) |
+
+**`core/platform/`** — Kubernetes cluster provisioning and platform services:
+
+| Stack | Command | Manages | Docs |
+|-------|---------|---------|------|
+| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap | [Proxmox + Talos](/infrastructure/proxmox-talos/) |
+| `platform` | `just core platform up` | Cilium CNI, Gateway API, IP pool, cert-manager | [Networking](/infrastructure/networking/) |
 
 ---
 
