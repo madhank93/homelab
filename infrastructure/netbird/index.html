@@ -689,43 +689,7 @@
 <hr />
 <h2 id="k8s-routing-peer">K8s Routing Peer</h2>
 <p>The <code>netbird-peer</code> StatefulSet in the <code>netbird</code> namespace runs on <strong>worker1</strong> (<code>192.168.1.221</code>), connects to the WireGuard mesh, and advertises <code>192.168.1.0/24</code> as a route. This makes all cluster services reachable from any NetBird-connected device.</p>
-<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
-<tr><td>Image</td><td><code>netbirdio/netbird:0.66.2</code></td></tr>
-<tr><td>Namespace</td><td><code>netbird</code> (Pod Security Admission: <code>privileged</code>)</td></tr>
-<tr><td>Node</td><td><code>k8s-worker1</code> (192.168.1.221) — via PVC affinity</td></tr>
-<tr><td>Setup key</td><td>From OpenBao <code>secret/data/netbird</code> → <code>NETBIRD_SETUP_KEY</code></td></tr>
-<tr><td>Management URL</td><td><code>https://netbird.madhan.app</code></td></tr>
-<tr><td>Capabilities</td><td><code>NET_ADMIN</code>, <code>SYS_MODULE</code></td></tr>
-<tr><td><code>hostNetwork</code></td><td><code>true</code> — required for kernel WireGuard interface</td></tr>
-<tr><td>Config persistence</td><td>PVC <code>netbird-config</code> mounted at <code>/var/lib/netbird/</code></td></tr>
-</tbody></table>
-<p>The setup key is stored in OpenBao (<code>secret/data/netbird</code>, key <code>NETBIRD_SETUP_KEY</code>) and synced to the <code>netbird</code> namespace as the <code>netbird-setup-key</code> k8s Secret by the Secrets Store CSI Driver (Pattern B). See <a href="/apps/secrets/openbao/">OpenBao</a> for the secrets pattern details.</p>
-<h3 id="config-persistence">Config Persistence</h3>
-<p>NetBird stores its private key and peer registration at <strong><code>/var/lib/netbird/</code></strong> (not <code>/etc/netbird/</code>). The StatefulSet PVC must mount at <code>/var/lib/netbird/</code>. Without this, every pod restart generates a new private key, creating a new peer registration with a different IP. Stale peers accumulate in the NetBird UI, and the Network Route loses its association with the active peer.</p>
-<blockquote>
-<p><strong>If k8s-routing-peer keeps changing IP</strong>: the PVC mount path was wrong. After fixing, check for duplicate "k8s-routing-peer" entries in <strong>Peers</strong> — delete the disconnected stale ones, then re-assign the homelab-vpc route to the active peer.</p>
-</blockquote>
-<h3 id="masquerade-rule-for-return-traffic">MASQUERADE Rule for Return Traffic</h3>
-<p>Forwarded traffic from Bifrost's WireGuard range (<code>100.109.0.0/16</code>) arrives on worker1's <code>wt0</code> interface with source IP <code>100.109.47.211</code> (bifrost-agent) and destination <code>192.168.1.220</code>. The kernel IP-forwards the packet toward <code>eth0</code>.</p>
-<p>Without source NAT, return packets from the cluster would have <code>dst=100.109.47.211</code> — a WireGuard IP unreachable via normal LAN routing. An <code>initContainer</code> in the StatefulSet adds this iptables rule on every pod start:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">iptables</span><span style="color:#ffcc66;"> -t</span><span> nat</span><span style="color:#ffcc66;"> -A</span><span> POSTROUTING</span><span style="color:#ffcc66;"> -s</span><span> 100.109.0.0/16</span><span style="color:#ffcc66;"> -d</span><span> 192.168.1.0/24</span><span style="color:#ffcc66;"> -j</span><span> MASQUERADE
-</span></code></pre>
-<p>This rule is installed in the <code>POSTROUTING</code> chain. In practice, the actual NAT is performed by Cilium's <code>CILIUM_POST_nat</code> BPF chain (which runs first), not the raw iptables rule. Both mechanisms achieve the same result: source IP becomes <code>192.168.1.221</code> (worker1), allowing the cluster to send replies back to a known LAN address.</p>
-<p>Static routes on all cluster nodes (<code>100.109.0.0/16 via 192.168.1.221</code>) ensure reply packets know to go back through worker1 for the reverse conntrack and WireGuard re-encapsulation.</p>
-<h3 id="why-wt0-is-not-in-cilium-devices">Why wt0 is NOT in Cilium Devices</h3>
-<p>Adding <code>wt0</code> to <code>core/platform/cilium.go</code>'s <code>devices</code> list was tried during setup and is <strong>incorrect</strong>. WireGuard interfaces are <code>NOARP/POINTOPOINT</code> — they have no Ethernet header. Cilium's TC BPF program <code>cil_from_netdev</code> expects IEEE 802.3 Ethernet frames. When attached to <code>wt0</code>, it silently misparses all incoming packets and drops them without emitting any monitor events.</p>
-<p><strong>Consequence if wt0 is in devices:</strong></p>
-<ul>
-<li><code>cilium-dbg monitor</code> shows zero events for wt0 traffic</li>
-<li><code>192.168.1.220</code> times out from Bifrost</li>
-<li><code>iptables MASQUERADE</code> shows 0 packets (BPF dropped before reaching netfilter)</li>
-<li>Only <code>NodePort</code> addresses on <em>other</em> workers (e.g., <code>192.168.1.222:32601</code>) work</li>
-</ul>
-<p><strong>Correct config in <code>core/platform/cilium.go</code>:</strong></p>
-<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;devices&quot;</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span>StringArray{
-</span><span>    pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;eth0&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,   </span><span style="font-style:italic;color:#5c6773;">// eth0 only — wt0 must NOT be listed
-</span><span>}</span><span style="color:#ccc9c2cc;">,
-</span></code></pre>
+<p>See <a href="/apps/networking/netbird-peer/">NetBird Peer</a> for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium <code>wt0</code> constraint.</p>
 <hr />
 <h2 id="netbird-reverse-proxy-proxy-madhan-app">NetBird Reverse Proxy (<code>*.proxy.madhan.app</code>)</h2>
 <p>The <code>netbird-proxy</code> container exposes NetBird peers as TCP endpoints via <code>*.proxy.madhan.app</code>. Traefik routes <code>*.proxy.madhan.app</code> TCP traffic to <code>netbird-proxy:8443</code> via a wildcard TCP router.</p>
@@ -1007,26 +971,7 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
             
                 <li>
                     
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/infrastructure/netbird/#k8s-routing-peer" class="toc-link">K8s Routing Peer</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#config-persistence" class="toc-link">Config Persistence</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#masquerade-rule-for-return-traffic" class="toc-link">MASQUERADE Rule for Return Traffic</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#why-wt0-is-not-in-cilium-devices" class="toc-link">Why wt0 is NOT in Cilium Devices</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
+                    <a href="https://homelab.madhan.app/infrastructure/netbird/#k8s-routing-peer" class="toc-link">K8s Routing Peer</a>
                     
                 </li>
             
@@ -1415,6 +1360,24 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1437,24 +1400,6 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>

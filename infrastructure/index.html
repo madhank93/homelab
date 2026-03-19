@@ -527,12 +527,17 @@
 <p>All secrets are injected at runtime via SOPS. No plaintext secrets exist on disk or in CI.</p>
 <hr />
 <h2 id="pulumi-stacks">Pulumi Stacks</h2>
-<table><thead><tr><th>Stack</th><th>Command</th><th>Manages</th></tr></thead><tbody>
-<tr><td><code>talos</code></td><td><code>just core talos up</code></td><td>Proxmox VMs, Talos bootstrap, Cilium CNI, ArgoCD</td></tr>
-<tr><td><code>platform</code></td><td><code>just core platform up</code></td><td>Gateway API, IP pool, HTTPRoutes, cert-manager</td></tr>
-<tr><td><code>hetzner</code></td><td><code>just core hetzner up</code></td><td>Hetzner VPS + full Bifrost bootstrap automation</td></tr>
-<tr><td><code>authentik</code></td><td><code>just core authentik up</code></td><td>OIDC apps, GitHub OAuth, ForwardAuth outpost</td></tr>
-<tr><td><code>cloudflare</code></td><td><code>just core cloudflare up</code></td><td>DNS A records, public service exposure</td></tr>
+<p>The <code>core/</code> directory is split into two sub-packages that mirror the two concerns:</p>
+<p><strong><code>core/cloud/</code></strong> — external cloud services (Hetzner VPS, Cloudflare DNS, Authentik OIDC):</p>
+<table><thead><tr><th>Stack</th><th>Command</th><th>Manages</th><th>Docs</th></tr></thead><tbody>
+<tr><td><code>hetzner</code></td><td><code>just core hetzner up</code></td><td>Hetzner VPS + full Bifrost bootstrap</td><td><a href="/infrastructure/hetzner-bifrost/">Hetzner Bifrost</a></td></tr>
+<tr><td><code>authentik</code></td><td><code>just core authentik up</code></td><td>OIDC apps, GitHub OAuth, ForwardAuth outpost</td><td><a href="/infrastructure/authentik/">Authentik</a></td></tr>
+<tr><td><code>cloudflare</code></td><td><code>just core cloudflare up</code></td><td>DNS A records, public service exposure</td><td><a href="/infrastructure/dns-tls/">DNS &amp; TLS</a></td></tr>
+</tbody></table>
+<p><strong><code>core/platform/</code></strong> — Kubernetes cluster provisioning and platform services:</p>
+<table><thead><tr><th>Stack</th><th>Command</th><th>Manages</th><th>Docs</th></tr></thead><tbody>
+<tr><td><code>talos</code></td><td><code>just core talos up</code></td><td>Proxmox VMs, Talos bootstrap</td><td><a href="/infrastructure/proxmox-talos/">Proxmox + Talos</a></td></tr>
+<tr><td><code>platform</code></td><td><code>just core platform up</code></td><td>Cilium CNI, Gateway API, IP pool, cert-manager</td><td><a href="/infrastructure/networking/">Networking</a></td></tr>
 </tbody></table>
 <hr />
 <h2 id="cluster-architecture">Cluster Architecture</h2>
@@ -1055,6 +1060,24 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1077,24 +1100,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>

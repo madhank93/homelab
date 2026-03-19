@@ -513,13 +513,13 @@
 <hr />
 <h2 id="node-inventory">Node Inventory</h2>
 <table><thead><tr><th>Name</th><th>Role</th><th>IP</th><th>CPU</th><th>RAM</th><th>Storage</th></tr></thead><tbody>
-<tr><td><code>k8s-controller1</code></td><td>Control plane</td><td>192.168.1.211</td><td>4 vCPU</td><td>6 GiB</td><td>30 GiB</td></tr>
-<tr><td><code>k8s-controller2</code></td><td>Control plane</td><td>192.168.1.212</td><td>4 vCPU</td><td>6 GiB</td><td>30 GiB</td></tr>
-<tr><td><code>k8s-controller3</code></td><td>Control plane</td><td>192.168.1.213</td><td>4 vCPU</td><td>6 GiB</td><td>30 GiB</td></tr>
-<tr><td><code>k8s-worker1</code></td><td>Worker</td><td>192.168.1.221</td><td>4 vCPU</td><td>6 GiB</td><td>125 GiB</td></tr>
-<tr><td><code>k8s-worker2</code></td><td>Worker</td><td>192.168.1.222</td><td>4 vCPU</td><td>6 GiB</td><td>125 GiB</td></tr>
-<tr><td><code>k8s-worker3</code></td><td>Worker</td><td>192.168.1.223</td><td>4 vCPU</td><td>6 GiB</td><td>125 GiB</td></tr>
-<tr><td><code>k8s-worker4</code></td><td>Worker + GPU</td><td>192.168.1.224</td><td>4 vCPU</td><td>6 GiB</td><td>125 GiB + RTX 5070 Ti</td></tr>
+<tr><td><code>k8s-controller1</code></td><td>Control plane</td><td>192.168.1.211</td><td>4 vCPU</td><td>8 GiB</td><td>50 GiB</td></tr>
+<tr><td><code>k8s-controller2</code></td><td>Control plane</td><td>192.168.1.212</td><td>4 vCPU</td><td>8 GiB</td><td>50 GiB</td></tr>
+<tr><td><code>k8s-controller3</code></td><td>Control plane</td><td>192.168.1.213</td><td>4 vCPU</td><td>8 GiB</td><td>50 GiB</td></tr>
+<tr><td><code>k8s-worker1</code></td><td>Worker</td><td>192.168.1.221</td><td>4 vCPU</td><td>14 GiB</td><td>200 GiB</td></tr>
+<tr><td><code>k8s-worker2</code></td><td>Worker</td><td>192.168.1.222</td><td>4 vCPU</td><td>14 GiB</td><td>200 GiB</td></tr>
+<tr><td><code>k8s-worker3</code></td><td>Worker</td><td>192.168.1.223</td><td>4 vCPU</td><td>14 GiB</td><td>200 GiB</td></tr>
+<tr><td><code>k8s-worker4</code></td><td>Worker + GPU</td><td>192.168.1.224</td><td>8 vCPU</td><td>16 GiB</td><td>250 GiB + RTX 5070 Ti</td></tr>
 <tr><td><strong>KubeVIP</strong></td><td>Virtual IP</td><td>192.168.1.210</td><td>—</td><td>—</td><td>Floats across control-plane nodes</td></tr>
 <tr><td><strong>Cilium L2 LB</strong></td><td>LoadBalancer pool</td><td>192.168.1.220–230</td><td>—</td><td>—</td><td>Assigned per LoadBalancer Service</td></tr>
 </tbody></table>
@@ -1052,6 +1052,24 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1074,24 +1092,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>

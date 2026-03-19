@@ -522,44 +522,31 @@
 <tr><td><code>nvidia-container-toolkit-production</code></td><td>Container runtime hook — configures containerd CDI automatically</td></tr>
 </tbody></table>
 <p>These extensions are baked into the Talos image at boot. No <code>machine.files</code> drop-ins are needed — the container toolkit extension configures containerd automatically. (Talos v1.10+ restricts <code>machine.files</code> writes to <code>/var</code>; <code>/etc/cri/conf.d/</code> is not writable.)</p>
-<h2 id="gpu-node-taint">GPU Node Taint</h2>
-<p>The GPU worker carries a <code>dedicated=ai:NoSchedule</code> taint, applied via the Talos machine patch:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">machine</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">nodeTaints</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">dedicated</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;ai:NoSchedule&quot;
-</span></code></pre>
-<p>Only workloads with a matching toleration (<code>key: dedicated, value: ai</code>) are scheduled on this node.</p>
 <h2 id="time-slicing">Time-Slicing</h2>
-<p>A single physical GPU is shared between <strong>Ollama</strong> and <strong>ComfyUI</strong> using NVIDIA GPU time-slicing. This is configured inline in the <code>nvidia-device-plugin</code> Helm values:</p>
+<p>A single physical GPU is shared across multiple workloads (Ollama, ComfyUI, Kubeflow notebooks, training jobs) using NVIDIA GPU time-slicing. This is configured inline in the <code>nvidia-device-plugin</code> Helm values:</p>
 <pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">sharing</span><span style="color:#ccc9c2cc;">:
 </span><span>  </span><span style="color:#73d0ff;">timeSlicing</span><span style="color:#ccc9c2cc;">:
 </span><span>    </span><span style="color:#73d0ff;">resources</span><span style="color:#ccc9c2cc;">:
 </span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia.com/gpu
-</span><span>        </span><span style="color:#73d0ff;">replicas</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">2
+</span><span>        </span><span style="color:#73d0ff;">replicas</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">5
 </span></code></pre>
-<p>Result: the node advertises <strong>2 virtual <code>nvidia.com/gpu</code> resources</strong> from 1 physical GPU. VRAM is shared (not partitioned), so both workloads compete for the 16 GB pool.</p>
+<p>Result: the node advertises <strong>5 virtual <code>nvidia.com/gpu</code> resources</strong> from 1 physical GPU. VRAM is shared (not partitioned), so all workloads compete for the 16 GB pool.</p>
 <h2 id="resource-requests">Resource Requests</h2>
 <table><thead><tr><th>Workload</th><th>vCPU limit</th><th>RAM Request</th><th>RAM Limit</th><th>GPU</th></tr></thead><tbody>
 <tr><td>Ollama</td><td>4000m</td><td>2 Gi</td><td>4 Gi</td><td>1</td></tr>
 <tr><td>ComfyUI</td><td>4000m</td><td>1 Gi</td><td>8 Gi</td><td>1</td></tr>
 </tbody></table>
 <h2 id="gpu-workload-configuration">GPU Workload Configuration</h2>
-<p>Both GPU workloads use:</p>
+<p>All GPU workloads use <code>nodeSelector: nvidia.com/gpu.present: "true"</code> to pin to <code>k8s-worker4</code>. <code>runtimeClassName: nvidia</code> is required — without it the NVIDIA container hook does not fire and CUDA is inaccessible even with the <code>nvidia.com/gpu</code> resource requested.</p>
 <pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">runtimeClassName</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia
 </span><span style="color:#73d0ff;">nodeSelector</span><span style="color:#ccc9c2cc;">:
 </span><span>  </span><span style="color:#73d0ff;">nvidia.com/gpu.present</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;true&quot;
-</span><span style="color:#73d0ff;">tolerations</span><span style="color:#ccc9c2cc;">:
-</span><span>  - </span><span style="color:#73d0ff;">key</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">dedicated
-</span><span>    </span><span style="color:#73d0ff;">operator</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">Equal
-</span><span>    </span><span style="color:#73d0ff;">value</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ai
-</span><span>    </span><span style="color:#73d0ff;">effect</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">NoSchedule
 </span><span style="color:#73d0ff;">resources</span><span style="color:#ccc9c2cc;">:
 </span><span>  </span><span style="color:#73d0ff;">limits</span><span style="color:#ccc9c2cc;">:
 </span><span>    </span><span style="color:#73d0ff;">nvidia.com/gpu</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;1&quot;
-</span></code></pre>
-<p>And the environment variable:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span>- </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">NVIDIA_VISIBLE_DEVICES
-</span><span>  </span><span style="color:#73d0ff;">value</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">all
+</span><span style="color:#73d0ff;">env</span><span style="color:#ccc9c2cc;">:
+</span><span>  - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">NVIDIA_VISIBLE_DEVICES
+</span><span>    </span><span style="color:#73d0ff;">value</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">all
 </span></code></pre>
 <h2 id="kernel-modules">Kernel Modules</h2>
 <p>The GPU worker's Talos machine patch loads these modules at boot:</p>
@@ -743,12 +730,6 @@
                 <li>
                     
                     <a href="https://homelab.madhan.app/hardware/gpu/#talos-gpu-extensions" class="toc-link">Talos GPU Extensions</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/hardware/gpu/#gpu-node-taint" class="toc-link">GPU Node Taint</a>
                     
                 </li>
             
@@ -1091,6 +1072,24 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1113,24 +1112,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>

@@ -509,7 +509,7 @@
         <p class="text-gray-500">Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab.</p>
     </div>
     <h2 id="overview">Overview</h2>
-<p><strong>Bifrost</strong> is a lightweight Hetzner Cloud VPS that acts as the public edge of the homelab. A single Pulumi command (<code>just core hetzner up</code>) provisions the server, copies all config files, and runs a bootstrap script that starts every service in dependency order — fully unattended. No manual SSH required.</p>
+<p><strong>Bifrost</strong> is a lightweight Hetzner Cloud VPS that acts as the public edge of the homelab. The name comes from Norse mythology — Bifrost is the rainbow bridge connecting the human realm (Midgard) to the divine realm (Asgard). Here it bridges the public internet to the private homelab cluster. A single Pulumi command (<code>just core hetzner up</code>) provisions the server, copies all config files, and runs a bootstrap script that starts every service in dependency order — fully unattended. No manual SSH required.</p>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>just core hetzner up
 </span><span>    │
 </span><span>    ├─ generateBifrostSecretsEnv()   writes .secrets.env from SOPS
@@ -700,87 +700,7 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
 </blockquote>
 <hr />
 <h2 id="after-the-first-deploy">After the First Deploy</h2>
-<p>After <code>just core hetzner up</code> succeeds, complete the one-time setup in this order:</p>
-<ol>
-<li>
-<p><strong>Log in to NetBird with the local admin account</strong></p>
-<ul>
-<li>Open <code>https://netbird.madhan.app</code></li>
-<li>Sign in with email: <code>admin@madhan.app</code>, password: the value of <code>NB_OWNER_PASSWORD</code> in SOPS</li>
-<li>This uses the embedded Dex owner account, which only works before an external IdP is configured</li>
-</ul>
-</li>
-<li>
-<p><strong>Connect Authentik as the Identity Provider</strong></p>
-<ul>
-<li>Settings → Identity Providers → Add → <strong>Authentik</strong></li>
-<li>Client ID: <code>aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT</code></li>
-<li>Client Secret: value of <code>NETBIRD_CLIENT_SECRET</code> from SOPS</li>
-<li>Issuer: <code>https://auth.madhan.app/application/o/netbird/</code></li>
-<li>This configures Authentik as a connector inside embedded Dex — users will then log in via GitHub (Authentik) through Dex</li>
-</ul>
-</li>
-<li>
-<p><strong>Create a Personal Access Token</strong></p>
-<ul>
-<li>Settings → Access Tokens → Create — copy the token</li>
-</ul>
-</li>
-<li>
-<p><strong>Create Setup Keys</strong></p>
-<ul>
-<li>Setup Keys → Add key <code>bifrost-agent</code> (Reusable) for the VPS WireGuard agent</li>
-<li>Setup Keys → Add key <code>k8s-routing-peer</code> (Reusable) for the K8s pod</li>
-</ul>
-</li>
-<li>
-<p><strong>Add tokens to SOPS and re-deploy</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">sops</span><span> edit secrets/bootstrap.sops.yaml
-</span><span style="font-style:italic;color:#5c6773;"># Add:
-</span><span style="font-style:italic;color:#5c6773;">#   NB_PROXY_TOKEN: &lt;personal access token&gt;
-</span><span style="font-style:italic;color:#5c6773;">#   NB_BIFROST_SETUP_KEY: &lt;bifrost-agent setup key&gt;
-</span><span style="color:#ffd580;">just</span><span> core hetzner up
-</span></code></pre>
-<p>Bootstrap.sh picks up the new tokens and starts <code>netbird-proxy</code> and <code>netbird-agent</code>.</p>
-</li>
-<li>
-<p><strong>Add K8s routing peer setup key to OpenBao</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv patch secret/netbird NETBIRD_SETUP_KEY=</span><span style="color:#f29e74;">&lt;</span><span>k8s-routing-peer key</span><span style="color:#f29e74;">&gt;
-</span></code></pre>
-</li>
-<li>
-<p><strong>Wait for netbird-peer-0 to connect, then clean up stale peers</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> --</span><span> netbird status
-</span><span style="font-style:italic;color:#5c6773;"># Management: Connected, Peers count: N/N Connected
-</span></code></pre>
-<p>Go to <strong>Peers</strong> in the NetBird UI — delete any disconnected "k8s-routing-peer" entries from previous registrations. Only the currently-connected one should remain.</p>
-</li>
-<li>
-<p><strong>Create the cluster route in NetBird</strong></p>
-<ul>
-<li><strong>Network Routes</strong> → Add Route:
-<ul>
-<li>Network: <code>192.168.1.0/24</code></li>
-<li>Routing peer: <code>k8s-routing-peer</code> (the connected one)</li>
-<li>Distribution Groups: <code>All</code></li>
-</ul>
-</li>
-<li>Distribution <code>All</code> ensures <code>bifrost-agent</code> automatically receives the route</li>
-</ul>
-</li>
-<li>
-<p><strong>Verify end-to-end connectivity</strong></p>
-<ul>
-<li>Public service (e.g. <code>https://grafana.madhan.app</code>) should no longer return 504</li>
-<li>Check the MASQUERADE rule is matching traffic on worker3:<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> --</span><span> iptables -t nat -L POSTROUTING -n -v </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> 100.109
-</span><span style="font-style:italic;color:#5c6773;"># pkts should be non-zero after accessing a public service
-</span></code></pre>
-</li>
-</ul>
-</li>
-</ol>
-<p>See <a href="/infrastructure/netbird">NetBird VPN</a> and the <a href="/getting-started/deployment">Deployment Guide</a> for the complete setup sequence.</p>
+<p>After <code>just core hetzner up</code> succeeds, NetBird setup must be completed manually. See <a href="/infrastructure/netbird/#first-time-setup-checklist">NetBird VPN — First-Time Setup Checklist</a> for the full step-by-step sequence (connecting Authentik, creating setup keys, configuring the K8s routing peer, and verifying end-to-end connectivity).</p>
 
 
     <!--  Errata section  -->
@@ -1269,6 +1189,24 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1291,24 +1229,6 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>

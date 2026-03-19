@@ -566,20 +566,8 @@
 <p>In practice the actual NAT is performed by Cilium's <code>CILIUM_POST_nat</code> BPF chain, not the raw iptables rule. Both coexist without conflict.</p>
 <hr />
 <h2 id="cilium-constraint-wt0-must-not-be-in-devices">Cilium Constraint — wt0 Must NOT Be in Devices</h2>
-<p>When debugging, it may be tempting to add <code>wt0</code> to Cilium's <code>devices</code> list so that Cilium attaches TC BPF programs to it. <strong>This does not work and actively breaks traffic.</strong></p>
-<p>WireGuard interfaces (<code>wt0</code>) are <code>NOARP/POINTOPOINT</code> and have <strong>no Ethernet header</strong>. Cilium's <code>cil_from_netdev</code> TC BPF program expects IEEE 802.3 Ethernet frames. Attaching it to <code>wt0</code> causes:</p>
-<ul>
-<li>All packets arriving on <code>wt0</code> are silently dropped</li>
-<li>Zero events appear in <code>cilium-dbg monitor</code> (the program exits early before logging)</li>
-<li><code>cilium-dbg service get</code> shows the L7LB entry exists but no traffic reaches it</li>
-<li><code>curl</code> from Bifrost to <code>192.168.1.220</code> times out</li>
-</ul>
-<p>The correct configuration in <code>core/platform/cilium.go</code>:</p>
-<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;devices&quot;</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span>StringArray{
-</span><span>    pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;eth0&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,  </span><span style="font-style:italic;color:#5c6773;">// eth0 only
-</span><span>}</span><span style="color:#ccc9c2cc;">,
-</span></code></pre>
-<p>Traffic from <code>wt0</code> must reach Cilium BPF via <strong>another node's <code>eth0</code></strong> — after kernel IP forwarding and MASQUERADE on worker1 put it on the LAN wire. See <a href="/architecture/network-flow/#why-wt0-is-not-in-cilium-devices">Network Flow — Why wt0 is NOT in Cilium Devices</a> for the full explanation.</p>
+<p>Do <strong>not</strong> add <code>wt0</code> to Cilium's <code>devices</code> list in <code>core/platform/cilium.go</code>. WireGuard interfaces are <code>NOARP/POINTOPOINT</code> with no Ethernet header — Cilium's <code>cil_from_netdev</code> TC BPF silently drops all packets without monitor events, breaking all traffic from Bifrost.</p>
+<p><code>devices</code> must list only <code>eth0</code>. Traffic from <code>wt0</code> reaches Cilium BPF via another node's <code>eth0</code> after kernel IP forwarding and MASQUERADE on worker1. See <a href="/architecture/network-flow/#why-wt0-is-not-in-cilium-devices">Network Flow — Why wt0 is NOT in Cilium Devices</a>.</p>
 <hr />
 <h2 id="route-configuration">Route Configuration</h2>
 <p>The peer registers in NetBird but does <strong>not</strong> automatically advertise routes. Routes must be configured in the NetBird Management UI:</p>
@@ -1181,6 +1169,24 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1203,24 +1209,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>
