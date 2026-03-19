@@ -31,13 +31,13 @@ data:
     [auth.generic_oauth]
     allow_sign_up = true
     api_url = https://auth.madhan.app/application/o/userinfo/
-    auth_url = https://auth.madhan.app/application/o/grafana/authorize/
+    auth_url = https://auth.madhan.app/application/o/authorize/
     client_id = grafana-homelab
     enabled = true
     name = GitHub via Authentik
     role_attribute_path = contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'
     scopes = openid email profile
-    token_url = https://auth.madhan.app/application/o/grafana/token/
+    token_url = https://auth.madhan.app/application/o/token/
     use_pkce = true
     [log]
     mode = console
