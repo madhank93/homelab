@@ -166,6 +166,9 @@
         <loc>https://homelab.madhan.app/platform/cdk8s/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/platform/cert-manager/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/platform/control-plane-ha/</loc>
     </url>
     <url>

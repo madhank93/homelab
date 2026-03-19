@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="Node layout, CNI, platform services, and workload placement on the Talos cluster." />
+            <meta name="description" content="Wildcard TLS certificate for *.madhan.app via Let&#x27;s Encrypt DNS-01 challenge and Cloudflare." />
         
     
 
-    <title>Kubernetes Architecture | Homelab</title>
+    <title>cert-manager | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="Kubernetes Architecture | Homelab" />
-      <meta property="og:description" content="Node layout, CNI, platform services, and workload placement on the Talos cluster." />
+      <meta property="og:title" content="cert-manager | Homelab" />
+      <meta property="og:description" content="Wildcard TLS certificate for *.madhan.app via Let&#x27;s Encrypt DNS-01 challenge and Cloudflare." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Kubernetes Architecture" />
-      <meta name="twitter:description" content="Node layout, CNI, platform services, and workload placement on the Talos cluster." />
+      <meta name="twitter:title" content="cert-manager" />
+      <meta name="twitter:description" content="Wildcard TLS certificate for *.madhan.app via Let&#x27;s Encrypt DNS-01 challenge and Cloudflare." />
       
       
       
@@ -502,117 +502,64 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            Kubernetes Architecture
+            cert-manager
             
         </h1>
-        <p class="text-gray-500">Node layout, CNI, platform services, and workload placement on the Talos cluster.</p>
+        <p class="text-gray-500">Wildcard TLS certificate for *.madhan.app via Let&#x27;s Encrypt DNS-01 challenge and Cloudflare.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<p>Three Talos control-plane nodes sit behind a KubeVIP virtual IP. Four worker nodes run all workloads. <strong>Cilium</strong> handles CNI, Gateway API ingress, and L2 LoadBalancer announcements. <strong>ArgoCD</strong> syncs all apps via GitOps.</p>
-<hr />
-<h2 id="node-inventory">Node Inventory</h2>
-<table><thead><tr><th>Name</th><th>Role</th><th>IP</th><th>CPU</th><th>RAM</th><th>Storage</th></tr></thead><tbody>
-<tr><td><code>k8s-controller1</code></td><td>Control plane</td><td>192.168.1.211</td><td>4 vCPU</td><td>8 GiB</td><td>50 GiB</td></tr>
-<tr><td><code>k8s-controller2</code></td><td>Control plane</td><td>192.168.1.212</td><td>4 vCPU</td><td>8 GiB</td><td>50 GiB</td></tr>
-<tr><td><code>k8s-controller3</code></td><td>Control plane</td><td>192.168.1.213</td><td>4 vCPU</td><td>8 GiB</td><td>50 GiB</td></tr>
-<tr><td><code>k8s-worker1</code></td><td>Worker</td><td>192.168.1.221</td><td>4 vCPU</td><td>14 GiB</td><td>200 GiB</td></tr>
-<tr><td><code>k8s-worker2</code></td><td>Worker</td><td>192.168.1.222</td><td>4 vCPU</td><td>14 GiB</td><td>200 GiB</td></tr>
-<tr><td><code>k8s-worker3</code></td><td>Worker</td><td>192.168.1.223</td><td>4 vCPU</td><td>14 GiB</td><td>200 GiB</td></tr>
-<tr><td><code>k8s-worker4</code></td><td>Worker + GPU</td><td>192.168.1.224</td><td>8 vCPU</td><td>16 GiB</td><td>250 GiB + RTX 5070 Ti</td></tr>
-<tr><td><strong>KubeVIP</strong></td><td>Virtual IP</td><td>192.168.1.210</td><td>—</td><td>—</td><td>Floats across control-plane nodes</td></tr>
-<tr><td><strong>Cilium L2 LB</strong></td><td>LoadBalancer pool</td><td>192.168.1.220–230</td><td>—</td><td>—</td><td>Assigned per LoadBalancer Service</td></tr>
+    <p>cert-manager issues a wildcard TLS certificate for <code>*.madhan.app</code> using Let's Encrypt DNS-01 challenge via the Cloudflare API. Managed by Pulumi (<code>core/platform/cert_manager.go</code>, stack: <code>platform</code>):</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core platform up
+</span></code></pre>
+<h2 id="chart">Chart</h2>
+<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
+<tr><td>Chart</td><td><code>cert-manager</code></td></tr>
+<tr><td>Repo</td><td><code>https://charts.jetstack.io</code></td></tr>
+<tr><td>Version</td><td><code>v1.19.3</code></td></tr>
+<tr><td>Namespace</td><td><code>cert-manager</code></td></tr>
+<tr><td>CRDs</td><td>Bundled (<code>installCRDs: true</code>)</td></tr>
 </tbody></table>
-<hr />
-<h2 id="cluster-diagram">Cluster Diagram</h2>
-<pre class="mermaid border border-gray-500/15">
- flowchart TB
-    subgraph CP[&quot;Control Plane · 3 nodes&quot;]
-        VIP[&quot;KubeVIP&lt;br&#x2F;&gt;192.168.1.210:6443&quot;]
-        CP1[&quot;k8s-controller1&lt;br&#x2F;&gt;.211&quot;]
-        CP2[&quot;k8s-controller2&lt;br&#x2F;&gt;.212&quot;]
-        CP3[&quot;k8s-controller3&lt;br&#x2F;&gt;.213&quot;]
-        VIP --- CP1 &amp; CP2 &amp; CP3
-    end
-
-    subgraph WRK[&quot;Workers&quot;]
-        W1[&quot;k8s-worker1&lt;br&#x2F;&gt;.221&quot;]
-        W2[&quot;k8s-worker2&lt;br&#x2F;&gt;.222&quot;]
-        W3[&quot;k8s-worker3&lt;br&#x2F;&gt;.223&quot;]
-        W4[&quot;k8s-worker4&lt;br&#x2F;&gt;.224&lt;br&#x2F;&gt;RTX 5070 Ti&quot;]
-    end
-
-    subgraph PLT[&quot;Platform Services&quot;]
-        CIL[&quot;Cilium L2 LB&lt;br&#x2F;&gt;192.168.1.220&quot;]
-        ARGO[&quot;ArgoCD&lt;br&#x2F;&gt;ApplicationSet&quot;]
-        LONG[&quot;Longhorn&lt;br&#x2F;&gt;distributed storage&quot;]
-        OB[&quot;OpenBao&lt;br&#x2F;&gt;CSI Driver + KV secrets&quot;]
-        CERT[&quot;cert-manager&lt;br&#x2F;&gt;wildcard TLS&quot;]
-    end
-
-    subgraph BIFROST[&quot;Bifrost VPS · Hetzner&quot;]
-        WG[&quot;NetBird routing peer&lt;br&#x2F;&gt;WireGuard mesh&quot;]
-    end
-
-    VIP --&gt; CIL
-    CIL --&gt; W1 &amp; W2 &amp; W3 &amp; W4
-    ARGO --&gt;|&quot;syncs workloads&lt;br&#x2F;&gt;from manifests branch&quot;| W1 &amp; W2 &amp; W3 &amp; W4
-    LONG --&gt; W1 &amp; W2 &amp; W3 &amp; W4
-    OB --&gt;|&quot;CSI volume mounts&quot;| W1 &amp; W2 &amp; W3 &amp; W4
-    CERT --&gt;|&quot;cert-manager ACME&quot;| CIL
-    WG &lt;--&gt;|&quot;WireGuard&lt;br&#x2F;&gt;192.168.1.0&#x2F;24&quot;| CIL
-</pre>
-<hr />
-<h2 id="talos-configuration">Talos Configuration</h2>
-<p>Talos Linux is provisioned by Pulumi (<code>core/platform/talos.go</code>). Each role gets a machine config with role-specific patches:</p>
-<table><thead><tr><th>Patch</th><th>Controller</th><th>Worker</th><th>Worker4 (GPU)</th></tr></thead><tbody>
-<tr><td><code>controlplane.patch.yaml</code></td><td>✓</td><td>—</td><td>—</td></tr>
-<tr><td><code>worker.patch.yaml</code></td><td>—</td><td>✓</td><td>✓</td></tr>
-<tr><td><code>nvidia.patch.yaml</code></td><td>—</td><td>—</td><td>✓</td></tr>
+<h2 id="clusterissuers">ClusterIssuers</h2>
+<table><thead><tr><th>Name</th><th>Type</th><th>Used For</th></tr></thead><tbody>
+<tr><td><code>letsencrypt-prod</code></td><td>ACME DNS-01 via Cloudflare</td><td>Wildcard <code>*.madhan.app</code> certificate</td></tr>
+<tr><td><code>homelab-ca</code></td><td>Self-signed</td><td>Internal / testing certificates</td></tr>
 </tbody></table>
-<p><strong>Talos image schematics</strong> (from factory.talos.dev):</p>
-<table><thead><tr><th>Schematic</th><th>Extensions</th><th>Used by</th></tr></thead><tbody>
-<tr><td>Base</td><td><code>iscsi-tools</code>, <code>qemu-guest-agent</code></td><td>All nodes</td></tr>
-<tr><td>GPU</td><td>Base + <code>nvidia-container-toolkit</code></td><td><code>k8s-worker4</code></td></tr>
+<h2 id="wildcard-certificate">Wildcard Certificate</h2>
+<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
+<tr><td>Name</td><td><code>wildcard-madhan-app</code></td></tr>
+<tr><td>Namespace</td><td><code>kube-system</code></td></tr>
+<tr><td>Secret</td><td><code>wildcard-madhan-app-tls</code></td></tr>
+<tr><td>DNS names</td><td><code>madhan.app</code>, <code>*.madhan.app</code></td></tr>
+<tr><td>Issuer</td><td><code>letsencrypt-prod</code></td></tr>
 </tbody></table>
-<p>The cluster endpoint is <code>https://192.168.1.210:6443</code> (KubeVIP).</p>
-<hr />
-<h2 id="cilium-gateway-api">Cilium + Gateway API</h2>
-<p>Cilium handles both CNI and north-south ingress via the Gateway API:</p>
-<table><thead><tr><th>Feature</th><th>Config</th></tr></thead><tbody>
-<tr><td>CNI mode</td><td>kube-proxy replacement</td></tr>
-<tr><td>L2 announcements</td><td><code>192.168.1.220–230</code> pool (LAN)</td></tr>
-<tr><td>Gateway class</td><td><code>cilium</code></td></tr>
-<tr><td>HTTPRoute for Hubble UI</td><td><code>hubble.madhan.app → hubble-relay:80</code></td></tr>
-<tr><td>ForwardAuth</td><td>Via Traefik on Bifrost (not in-cluster)</td></tr>
+<p>The certificate lives in <code>kube-system</code> so the <code>homelab-gateway</code> HTTPS listener can reference it across namespaces.</p>
+<h2 id="cloudflare-api-token">Cloudflare API Token</h2>
+<p>The DNS-01 solver requires a Cloudflare API token scoped to <code>madhan.app</code>:</p>
+<table><thead><tr><th>Permission</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>Zone → Zone → Read</td><td>Resolve domain to Cloudflare Zone ID</td></tr>
+<tr><td>Zone → DNS → Edit</td><td>Create/delete <code>_acme-challenge</code> TXT records</td></tr>
 </tbody></table>
-<p>The Gateway API <code>GatewayClass</code> is provisioned by <code>core/platform/cilium.go</code>. App HTTPRoutes are defined in CDK8s (<code>workloads/**/*.go</code>).</p>
-<hr />
-<h2 id="workload-placement">Workload Placement</h2>
-<table><thead><tr><th>Package</th><th>Components</th><th>Node affinity</th></tr></thead><tbody>
-<tr><td><code>storage/</code></td><td>Longhorn</td><td>DaemonSet — all workers</td></tr>
-<tr><td><code>secrets/</code></td><td>OpenBao + CSI Driver</td><td>Any worker</td></tr>
-<tr><td><code>observability/</code></td><td>VictoriaMetrics, VictoriaLogs, OTel</td><td>Deployment + DaemonSet</td></tr>
-<tr><td><code>monitoring/</code></td><td>Grafana</td><td>Any worker</td></tr>
-<tr><td><code>security/</code></td><td>Falco (eBPF), Kyverno, Trivy</td><td>DaemonSet + CronJob</td></tr>
-<tr><td><code>hardware/</code></td><td>NVIDIA GPU Operator</td><td>DaemonSet, NodeFeatureDiscovery</td></tr>
-<tr><td><code>networking/</code></td><td>NetBird peer</td><td><code>hostNetwork: true</code>, any worker</td></tr>
-<tr><td><code>registry/</code></td><td>Harbor</td><td>Deployments + RWO PVCs</td></tr>
-<tr><td><code>automation/</code></td><td>n8n + PostgreSQL</td><td>Any worker</td></tr>
-<tr><td><code>ai/</code></td><td>Ollama, ComfyUI</td><td><strong><code>k8s-worker4</code> only</strong> (GPU)</td></tr>
-<tr><td><code>management/</code></td><td>Headlamp, Rancher, Fleet</td><td>Any worker</td></tr>
-<tr><td><code>support/</code></td><td>Stakater Reloader</td><td>Any worker</td></tr>
-</tbody></table>
-<hr />
-<h2 id="service-access">Service Access</h2>
-<table><thead><tr><th>Service URL</th><th>DNS resolves to</th><th>Access</th></tr></thead><tbody>
-<tr><td><code>grafana.madhan.app</code></td><td><code>178.156.199.250</code> (public)</td><td>Via Bifrost + ForwardAuth</td></tr>
-<tr><td><code>auth.madhan.app</code></td><td><code>178.156.199.250</code> (public)</td><td>Authentik on Bifrost</td></tr>
-<tr><td><code>netbird.madhan.app</code></td><td><code>178.156.199.250</code> (public)</td><td>NetBird on Bifrost</td></tr>
-<tr><td><code>harbor.madhan.app</code></td><td><code>192.168.1.220</code> (LAN)</td><td>LAN or VPN only</td></tr>
-<tr><td><code>headlamp.madhan.app</code></td><td><code>192.168.1.220</code> (LAN)</td><td>LAN or VPN only</td></tr>
-<tr><td><code>hubble.madhan.app</code></td><td><code>192.168.1.220</code> (LAN)</td><td>LAN or VPN only</td></tr>
-</tbody></table>
-<p>See <a href="/architecture/network-flow">Network Flow</a> for the complete traffic path breakdown.</p>
+<p>The token is stored in the <code>cert-manager/cloudflare-api-token</code> Secret (key: <code>CLOUDFLARE_API_TOKEN</code>), created by <code>just create-secrets</code> from SOPS. It carries <code>argocd.argoproj.io/sync-options: Prune=false</code> so ArgoCD never deletes it.</p>
+<h2 id="bootstrap-dependency">Bootstrap Dependency</h2>
+<p>cert-manager needs the <code>cloudflare-api-token</code> Secret before it can issue certificates:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> create-secrets   </span><span style="font-style:italic;color:#5c6773;"># creates the Secret from SOPS
+</span><span style="color:#ffd580;">just</span><span> core platform up </span><span style="font-style:italic;color:#5c6773;"># deploys cert-manager + ClusterIssuer
+</span></code></pre>
+<h2 id="current-status">Current Status</h2>
+<blockquote>
+<p>The HTTPS Gateway listener is currently <strong>disabled</strong> pending <code>wildcard-madhan-app-tls</code> creation. All app URLs use HTTP.</p>
+<p>Once the certificate exists in <code>kube-system</code>, re-enable the HTTPS listener in <code>core/platform/cilium.go</code> and run <code>just core platform up</code>.</p>
+</blockquote>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Watch Certificate status
+</span><span style="color:#ffd580;">kubectl</span><span> describe certificate wildcard-madhan-app</span><span style="color:#ffcc66;"> -n</span><span> kube-system
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Watch CertificateRequest and Order objects
+</span><span style="color:#ffd580;">kubectl</span><span> get certificaterequests,orders</span><span style="color:#ffcc66;"> -n</span><span> kube-system
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check cert-manager logs for Cloudflare API errors
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> cert-manager deployment/cert-manager </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -i</span><span> cloudflare
+</span></code></pre>
+<p>A successful issuance shows: <code>Status: True  Type: Ready  Message: Certificate is up to date and has not expired</code></p>
 
 
     <!--  Errata section  -->
@@ -625,7 +572,7 @@
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/architecture&#x2F;kubernetes-architecture&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/platform&#x2F;cert-manager&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -657,7 +604,7 @@
                                     
     
         
-        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/architecture/">
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/platform/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -665,7 +612,7 @@
                     </svg>
                     <span class="nav-button-label">Back to</span>
                 </div>
-                <div class="nav-button-title">Architecture</div>
+                <div class="nav-button-title">Platform</div>
             </div>
         </a>
     
@@ -674,7 +621,7 @@
                                 <div class="next-nav-item">
                                     
     
-        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/architecture/gitops-flow/">
+        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/platform/secrets/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -682,7 +629,7 @@
                     </svg>
                     <span class="nav-button-label">Next</span>
                 </div>
-                <div class="nav-button-title">GitOps Flow</div>
+                <div class="nav-button-title">Secrets</div>
             </div>
         </a>
     
@@ -702,43 +649,43 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/architecture/kubernetes-architecture/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#chart" class="toc-link">Chart</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/architecture/kubernetes-architecture/#node-inventory" class="toc-link">Node Inventory</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#clusterissuers" class="toc-link">ClusterIssuers</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/architecture/kubernetes-architecture/#cluster-diagram" class="toc-link">Cluster Diagram</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#wildcard-certificate" class="toc-link">Wildcard Certificate</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/architecture/kubernetes-architecture/#talos-configuration" class="toc-link">Talos Configuration</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#cloudflare-api-token" class="toc-link">Cloudflare API Token</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/architecture/kubernetes-architecture/#cilium-gateway-api" class="toc-link">Cilium + Gateway API</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#bootstrap-dependency" class="toc-link">Bootstrap Dependency</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/architecture/kubernetes-architecture/#workload-placement" class="toc-link">Workload Placement</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#current-status" class="toc-link">Current Status</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/architecture/kubernetes-architecture/#service-access" class="toc-link">Service Access</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#troubleshooting" class="toc-link">Troubleshooting</a>
                     
                 </li>
             
@@ -876,7 +823,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/network-flow">Network Flow</a></li>
                             
-                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/kubernetes-architecture">Kubernetes Architecture</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/kubernetes-architecture">Kubernetes Architecture</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/gitops-flow">GitOps Flow</a></li>
                             
@@ -964,7 +911,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/networking">Cilium</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cert-manager">cert-manager</a></li>
+                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cert-manager">cert-manager</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
                             

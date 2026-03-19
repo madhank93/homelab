@@ -608,12 +608,6 @@
 </span><span style="color:#ffd580;">ssh</span><span> root@178.156.199.250 </span><span style="color:#bae67e;">&#39;docker exec netbird-agent netbird routes list&#39;
 </span><span style="font-style:italic;color:#5c6773;"># Expect: 192.168.1.0/24  Status: Selected
 </span></code></pre>
-<h3 id="duplicate-peers-in-netbird-ui">Duplicate peers in NetBird UI</h3>
-<p><strong>Why:</strong> PVC was deleted, or the pod ran as a Deployment previously. Each restart without a persisted key creates a new peer identity.</p>
-<p><strong>Fix:</strong> Delete all stale/disconnected "k8s-routing-peer" entries from the NetBird UI → Peers. Then verify the StatefulSet's PVC persists across restarts:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pvc</span><span style="color:#ffcc66;"> -n</span><span> netbird
-</span><span style="font-style:italic;color:#5c6773;"># Must show: netbird-config-netbird-peer-0  Bound
-</span></code></pre>
 <h3 id="504-from-public-services-but-tunnel-is-up">504 from public services but tunnel is up</h3>
 <p>The route is connected but traffic doesn't reach the cluster backend. Check the Cilium device configuration first:</p>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Confirm wt0 is NOT in Cilium&#39;s device list on worker1
@@ -764,6 +758,8 @@
             
                 
             
+                
+            
         
             
             
@@ -840,10 +836,6 @@
                             
                                 <li>
                                     <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#route-shows-networks-on-bifrost-agent" class="toc-link">Route shows &quot;Networks: -&quot; on bifrost-agent</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#duplicate-peers-in-netbird-ui" class="toc-link">Duplicate peers in NetBird UI</a>
                                 </li>
                             
                                 <li>
@@ -1053,7 +1045,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">Cloudflare</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
@@ -1079,7 +1071,9 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/control-plane-ha">Control Plane HA</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/networking">Networking</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/networking">Cilium</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cert-manager">cert-manager</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
                             
@@ -1218,11 +1212,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1234,11 +1228,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1266,11 +1260,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1282,11 +1276,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

@@ -799,12 +799,8 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
 </span><span style="font-style:italic;color:#5c6773;"># If &quot;Networks: -&quot; or route missing:
 </span><span style="font-style:italic;color:#5c6773;"># Check it&#39;s in the &quot;All&quot; distribution group in NetBird UI → Network Routes
 </span></code></pre>
-<h3 id="connection-type-relayed-no-direct-p2p">Connection type: Relayed (no direct P2P)</h3>
-<p>Expected when NAT prevents direct UDP. Traffic still works through the relay. Latency ~35–40 ms. To improve: open UDP 3478 and 50000–50500 in the Hetzner firewall and home router.</p>
 <h3 id="tunnel-dead-wt0-0-bytes">Tunnel dead — wt0: 0 bytes</h3>
-<p>Check <code>NB_SKIP_SOCKET_MARK</code> is NOT set on the <code>netbird-peer</code> StatefulSet. See <a href="/architecture/network-flow/#nb_skip_socket_mark-breaks-the-tunnel">NB_SKIP_SOCKET_MARK breaks the tunnel</a> in the Network Flow doc.</p>
-<h3 id="k8s-routing-peer-gets-new-ip-on-restart">k8s-routing-peer gets new IP on restart</h3>
-<p>PVC mount path is wrong. Must be <code>/var/lib/netbird/</code> (not <code>/etc/netbird/</code>). Fix the StatefulSet and delete stale peers from the NetBird UI.</p>
+<p><code>NB_SKIP_SOCKET_MARK</code> must not be set on the <code>netbird-peer</code> StatefulSet — it disables the socket fwmark, causing management traffic to loop through the WireGuard tunnel and breaking the relay connection.</p>
 
 
     <!--  Errata section  -->
@@ -874,7 +870,7 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                     </svg>
                     <span class="nav-button-label">Next</span>
                 </div>
-                <div class="nav-button-title">DNS &amp; TLS</div>
+                <div class="nav-button-title">Cloudflare</div>
             </div>
         </a>
     
@@ -1034,15 +1030,7 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#connection-type-relayed-no-direct-p2p" class="toc-link">Connection type: Relayed (no direct P2P)</a>
-                                </li>
-                            
-                                <li>
                                     <a href="https://homelab.madhan.app/infrastructure/netbird/#tunnel-dead-wt0-0-bytes" class="toc-link">Tunnel dead — wt0: 0 bytes</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/netbird/#k8s-routing-peer-gets-new-ip-on-restart" class="toc-link">k8s-routing-peer gets new IP on restart</a>
                                 </li>
                             
                         </ul>
@@ -1244,7 +1232,7 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                             
                                 <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">Cloudflare</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
@@ -1270,7 +1258,9 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/control-plane-ha">Control Plane HA</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/networking">Networking</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/networking">Cilium</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cert-manager">cert-manager</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
                             
@@ -1409,11 +1399,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1425,11 +1415,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1457,11 +1447,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1473,11 +1463,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
