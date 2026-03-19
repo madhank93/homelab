@@ -27,6 +27,8 @@ spec:
               value: https://netbird.madhan.app
             - name: NB_HOSTNAME
               value: k8s-routing-peer
+            - name: NB_SKIP_SOCKET_MARK
+              value: "true"
           image: netbirdio/netbird:0.66.2
           name: netbird
           securityContext:
@@ -56,6 +58,8 @@ spec:
               add:
                 - NET_ADMIN
             privileged: true
+      nodeSelector:
+        kubernetes.io/hostname: k8s-worker1
       volumes:
         - csi:
             driver: secrets-store.csi.k8s.io
