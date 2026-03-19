@@ -109,14 +109,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Platform | Homelab" />
-      <meta property="og:description" content="GitOps platform: CDK8s manifest generation and ArgoCD deployment." />
+      <meta property="og:description" content="core&#x2F;platform&#x2F; Pulumi stacks: Proxmox&#x2F;Talos cluster, Cilium CNI, ArgoCD GitOps, cert-manager, and secrets." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Homelab" />
-      <meta name="twitter:description" content="GitOps platform: CDK8s manifest generation and ArgoCD deployment." />
+      <meta name="twitter:description" content="core&#x2F;platform&#x2F; Pulumi stacks: Proxmox&#x2F;Talos cluster, Cilium CNI, ArgoCD GitOps, cert-manager, and secrets." />
       
       
       
@@ -385,12 +385,11 @@
 
 
 
-<span class="icon " aria-hidden="true">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 64l128 0 0 64-128 0 0-64zM240 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l48 0 0 32L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 256 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-256 0 0-32 48 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48L240 0zM96 448l0-64 128 0 0 64L96 448zm320-64l128 0 0 64-128 0 0-64z"/></svg>
-  </span>
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/cloud.svg'); mask-image: url('https://homelab.madhan.app/icons/cloud.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
 
 
-          Infrastructure
+          Cloud
         </a>
     </li>
     
@@ -521,9 +520,15 @@
             
 
         </h1>
-        <p class="text-gray-500">GitOps platform: CDK8s manifest generation and ArgoCD deployment.</p>
+        <p class="text-gray-500">core&#x2F;platform&#x2F; Pulumi stacks: Proxmox&#x2F;Talos cluster, Cilium CNI, ArgoCD GitOps, cert-manager, and secrets.</p>
     </div>
-    <p>The platform layer sits above bare infrastructure and delivers all applications via GitOps.</p>
+    <p>Platform covers both cluster provisioning (<code>core/platform/</code>) and the GitOps delivery layer.</p>
+<h2 id="pulumi-stacks-core-platform">Pulumi Stacks (<code>core/platform/</code>)</h2>
+<table><thead><tr><th>Stack</th><th>Command</th><th>Manages</th></tr></thead><tbody>
+<tr><td><code>talos</code></td><td><code>just core talos up</code></td><td>Proxmox VMs, Talos bootstrap, Cilium CNI, ArgoCD</td></tr>
+<tr><td><code>platform</code></td><td><code>just core platform up</code></td><td>Gateway API, IP pool, HTTPRoutes, cert-manager</td></tr>
+</tbody></table>
+<h2 id="gitops-layer">GitOps Layer</h2>
 <ul>
 <li><strong>No secrets in git</strong> — CDK8s generates zero <code>Secret</code> resources. Bootstrap secrets are created by <code>just create-secrets</code> from a laptop.</li>
 <li><strong>Manifests are generated, not hand-written</strong> — The <code>v0.1.5-manifests</code> branch is machine-generated YAML. Never edit it by hand.</li>
@@ -584,7 +589,7 @@
             
                 
                     
-                    <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/infrastructure/secrets/">
+                    <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/infrastructure/access/">
                         <div class="nav-button-content">
                             <div class="nav-button-direction">
                                 <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -592,7 +597,7 @@
                                 </svg>
                                 <span class="nav-button-label">Previous</span>
                             </div>
-                            <div class="nav-button-title">Secrets</div>
+                            <div class="nav-button-title">Service Access &amp; Internet Exposure</div>
                         </div>
                     </a>
                 
@@ -647,6 +652,27 @@
                     
                     
                         
+
+<div class="hidden lg:block" >
+    <div class="sticky top-20 px-4 py-2 border-l border-gray-500/15">
+        <h4 class="text-lg font-bold mb-1">ON THIS PAGE</h4>
+            <ul class="menu menu-sm toc-menu">
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/#pulumi-stacks-core-platform" class="toc-link">Pulumi Stacks (core&#x2F;platform&#x2F;)</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/#gitops-layer" class="toc-link">GitOps Layer</a>
+                    
+                </li>
+            
+            </ul>
+    </div>
+</div>
 
 
                     
@@ -827,17 +853,9 @@
             <li>
                 
                     <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure">Infrastructure</a></summary>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure">Cloud</a></summary>
                         <ul>
                             
-                            
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
-                            
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
-                            
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
-                            
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
                             
@@ -847,7 +865,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/secrets">Secrets</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
                             
                         </ul>
@@ -866,6 +884,14 @@
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/proxmox-talos">Proxmox + Talos</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/control-plane-ha">Control Plane HA</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/networking">Networking</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
                             
                             
                         </ul>

@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble." />
+            <meta name="description" content="Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi." />
         
     
 
-    <title>Networking | Homelab</title>
+    <title>Proxmox + Talos | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="Networking | Homelab" />
-      <meta property="og:description" content="Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble." />
+      <meta property="og:title" content="Proxmox + Talos | Homelab" />
+      <meta property="og:description" content="Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Networking" />
-      <meta name="twitter:description" content="Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble." />
+      <meta name="twitter:title" content="Proxmox + Talos" />
+      <meta name="twitter:description" content="Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi." />
       
       
       
@@ -387,12 +387,11 @@
 
 
 
-<span class="icon " aria-hidden="true">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 64l128 0 0 64-128 0 0-64zM240 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l48 0 0 32L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 256 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-256 0 0-32 48 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48L240 0zM96 448l0-64 128 0 0 64L96 448zm320-64l128 0 0 64-128 0 0-64z"/></svg>
-  </span>
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/cloud.svg'); mask-image: url('https://homelab.madhan.app/icons/cloud.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
 
 
-          Infrastructure
+          Cloud
         </a>
     </li>
     
@@ -503,179 +502,99 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            Networking
+            Proxmox + Talos
             
         </h1>
-        <p class="text-gray-500">Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gateway API, and Hubble.</p>
+        <p class="text-gray-500">Proxmox VM provisioning and Talos Linux cluster bootstrap via Pulumi.</p>
     </div>
-    <h2 id="cilium-cni">Cilium CNI</h2>
-<p><a href="https://cilium.io/">Cilium</a> v1.16.6 is installed via Helm in the <code>kube-system</code> namespace by Pulumi (<code>core/platform/cilium.go</code>).</p>
-<table><thead><tr><th>Setting</th><th>Value</th><th>Purpose</th></tr></thead><tbody>
-<tr><td><code>ipam.mode</code></td><td><code>kubernetes</code></td><td>IPAM managed by Kubernetes</td></tr>
-<tr><td><code>kubeProxyReplacement</code></td><td><code>true</code></td><td>Full eBPF kube-proxy replacement</td></tr>
-<tr><td><code>l2Announcements.enabled</code></td><td><code>true</code></td><td>L2 ARP announcements for LoadBalancer IPs</td></tr>
-<tr><td><code>gatewayAPI.enabled</code></td><td><code>true</code></td><td>Kubernetes Gateway API support</td></tr>
-<tr><td><code>hubble.enabled</code></td><td><code>true</code></td><td>Network observability</td></tr>
-<tr><td><code>hubble.relay.enabled</code></td><td><code>true</code></td><td>Hubble relay for cross-node visibility</td></tr>
-<tr><td><code>hubble.ui.enabled</code></td><td><code>true</code></td><td>Hubble UI dashboard</td></tr>
-<tr><td><code>k8sServiceHost</code></td><td><code>192.168.1.210</code></td><td>VIP for API server connectivity</td></tr>
-<tr><td><code>k8sServicePort</code></td><td><code>6443</code></td><td>API server port</td></tr>
-</tbody></table>
-<h2 id="cilium-as-kube-proxy-replacement">Cilium as kube-proxy Replacement</h2>
-<p>Standard Kubernetes uses <code>kube-proxy</code> as a DaemonSet to manage <code>iptables</code> rules for Service-to-Pod routing. This homelab replaces kube-proxy entirely with Cilium's eBPF data plane.</p>
-<p><strong>How it's disabled in Talos</strong> (from <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/talos.go"><code>core/platform/talos.go</code></a>):</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">cluster</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">proxy</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">disabled</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
-</span></code></pre>
-<p><strong>How Cilium takes over</strong> (from <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go"><code>core/platform/cilium.go</code></a>):</p>
-<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;kubeProxyReplacement&quot;</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">Bool</span><span>(</span><span style="color:#ffcc66;">true</span><span>)</span><span style="color:#ccc9c2cc;">,
-</span><span style="color:#bae67e;">&quot;k8sServiceHost&quot;</span><span style="color:#ccc9c2cc;">:       </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;192.168.1.210&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,  </span><span style="font-style:italic;color:#5c6773;">// VIP
-</span><span style="color:#bae67e;">&quot;k8sServicePort&quot;</span><span style="color:#ccc9c2cc;">:       </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">Int</span><span>(</span><span style="color:#ffcc66;">6443</span><span>)</span><span style="color:#ccc9c2cc;">,
-</span></code></pre>
-<p>Cilium needs to know the API server address directly (not through kube-proxy) because it is replacing kube-proxy. This is why <code>k8sServiceHost</code> must be set to the VIP.</p>
-<p><strong>What this means in practice:</strong></p>
+    <h2 id="overview">Overview</h2>
+<p>Pulumi provisions 7 QEMU VMs on Proxmox and bootstraps a 3-control-plane Talos Linux cluster. The entry point is <code>core/platform/talos.go</code>.</p>
+<h2 id="talos-images">Talos Images</h2>
+<p>Two image variants are downloaded from the Talos image factory:</p>
+<p><strong>Base image</strong> (for controllers and standard workers):</p>
 <ul>
-<li>No <code>kube-proxy</code> DaemonSet exists on any node</li>
-<li>All Service→Pod routing is handled in the Linux kernel via eBPF programs loaded by Cilium</li>
-<li>This eliminates iptables overhead and provides faster, more observable routing</li>
+<li>Schematic: <code>88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b</code></li>
+<li>Extensions: <code>iscsi-tools</code>, <code>util-linux-tools</code>, <code>qemu-guest-agent</code></li>
 </ul>
-<p><strong>Verify:</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># No kube-proxy DaemonSet
-</span><span style="color:#ffd580;">kubectl</span><span> get ds</span><span style="color:#ffcc66;"> -n</span><span> kube-system </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> kube-proxy  </span><span style="font-style:italic;color:#5c6773;"># should return nothing
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Cilium reports kube-proxy replacement active
-</span><span style="color:#ffd580;">cilium</span><span> status </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> KubeProxyReplacement
-</span><span style="font-style:italic;color:#5c6773;"># KubeProxyReplacement: True
+<p><strong>GPU image</strong> (for k8s-worker4):</p>
+<ul>
+<li>Schematic: <code>901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829</code></li>
+<li>Extensions: all base extensions + <code>nvidia-container-toolkit-production</code>, <code>nvidia-open-gpu-kernel-modules-production</code></li>
+</ul>
+<h2 id="cluster-configuration">Cluster Configuration</h2>
+<p><strong>Cluster name:</strong> <code>talos-cluster</code>
+<strong>Talos version:</strong> v1.12.4
+<strong>API endpoint (VIP):</strong> <code>https://192.168.1.210:6443</code></p>
+<h3 id="cluster-level-patch">Cluster-Level Patch</h3>
+<p>Applied to all nodes:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">cluster</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">network</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">cni</span><span style="color:#ccc9c2cc;">:
+</span><span>      </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">none   </span><span style="font-style:italic;color:#5c6773;"># Cilium is installed separately
+</span><span>  </span><span style="color:#73d0ff;">proxy</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">disabled</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true  </span><span style="font-style:italic;color:#5c6773;"># kube-proxy replaced by Cilium eBPF
 </span></code></pre>
-<h2 id="l2-announcements-and-loadbalancer-ips">L2 Announcements and LoadBalancer IPs</h2>
-<p>Bare-metal clusters have no cloud provider to assign LoadBalancer IPs. Cilium's L2 announcement feature fills this role using ARP.</p>
-<p><strong>IP Pool</strong> (from <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go"><code>core/platform/cilium.go</code></a>):</p>
-<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// IPs: 192.168.1.220 through 192.168.1.230 (11 addresses, each as /32)
-</span><span style="color:#ffa759;">for </span><span>i </span><span style="color:#f29e74;">:= </span><span style="color:#ffcc66;">220</span><span style="color:#ccc9c2cc;">; </span><span>i </span><span style="color:#f29e74;">&lt;= </span><span style="color:#ffcc66;">230</span><span style="color:#ccc9c2cc;">; </span><span>i</span><span style="color:#f29e74;">++ </span><span>{
-</span><span>    cidr</span><span style="color:#ccc9c2cc;">: </span><span>fmt</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">Sprintf</span><span>(</span><span style="color:#bae67e;">&quot;192.168.1.</span><span style="color:#ffcc66;">%d</span><span style="color:#bae67e;">/32&quot;</span><span style="color:#ccc9c2cc;">, </span><span>i)
-</span><span>}
+<h3 id="control-plane-patch">Control Plane Patch</h3>
+<p>Adds VIP to the primary interface:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">machine</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">network</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">interfaces</span><span style="color:#ccc9c2cc;">:
+</span><span>      - </span><span style="color:#73d0ff;">deviceSelector</span><span style="color:#ccc9c2cc;">:
+</span><span>          </span><span style="color:#73d0ff;">physical</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
+</span><span>        </span><span style="color:#73d0ff;">dhcp</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
+</span><span>        </span><span style="color:#73d0ff;">vip</span><span style="color:#ccc9c2cc;">:
+</span><span>          </span><span style="color:#73d0ff;">ip</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">192</span><span style="color:#ccc9c2cc;">.</span><span style="color:#ffcc66;">168.1.210
 </span></code></pre>
-<p>A <code>CiliumLoadBalancerIPPool</code> named <code>address-pool</code> reserves these 11 IPs. Services with <code>type: LoadBalancer</code> are assigned IPs from this pool.</p>
-<p><strong>L2 Announcement Policy:</strong></p>
-<p>A <code>CiliumL2AnnouncementPolicy</code> named <code>l2-policy</code> restricts announcements to <strong>worker nodes only</strong> (no <code>node-role.kubernetes.io/control-plane</code> label):</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">nodeSelector</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">matchExpressions</span><span style="color:#ccc9c2cc;">:
-</span><span>      - </span><span style="color:#73d0ff;">key</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">node-role.kubernetes.io/control-plane
-</span><span>        </span><span style="color:#73d0ff;">operator</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">DoesNotExist
+<h3 id="worker-patch">Worker Patch</h3>
+<p>Adds Longhorn label and loads storage/iSCSI kernel modules:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">machine</span><span style="color:#ccc9c2cc;">:
+</span><span>  </span><span style="color:#73d0ff;">nodeLabels</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#bae67e;">&quot;node.longhorn.io/create-default-disk&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;config&quot;
+</span><span>  </span><span style="color:#73d0ff;">network</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">interfaces</span><span style="color:#ccc9c2cc;">:
+</span><span>      - </span><span style="color:#73d0ff;">deviceSelector</span><span style="color:#ccc9c2cc;">:
+</span><span>          </span><span style="color:#73d0ff;">physical</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
+</span><span>        </span><span style="color:#73d0ff;">dhcp</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true
+</span><span>  </span><span style="color:#73d0ff;">kernel</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">modules</span><span style="color:#ccc9c2cc;">:
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nbd
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">iscsi_tcp
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">iscsi_generic
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">configfs
 </span></code></pre>
-<p><strong>Traffic flow for a LoadBalancer Service:</strong></p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Client ARP: &quot;Who has 192.168.1.220?&quot;
-</span><span>  → Worker node responds (Cilium L2 announcement leader)
-</span><span>  → Client sends traffic to that worker&#39;s MAC
-</span><span>  → Cilium eBPF programs on the worker route to the correct pod
-</span><span>  → Pod responds directly back to client
+<h3 id="gpu-worker-patch">GPU Worker Patch</h3>
+<p>Extends the worker patch with NVIDIA kernel modules:</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span>  </span><span style="color:#73d0ff;">kernel</span><span style="color:#ccc9c2cc;">:
+</span><span>    </span><span style="color:#73d0ff;">modules</span><span style="color:#ccc9c2cc;">:
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nbd
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">iscsi_tcp
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">iscsi_generic
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">configfs
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia_uvm
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia_drm
+</span><span>      - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">nvidia_modeset
 </span></code></pre>
-<p><strong>Lease-based leader election:</strong> Each LoadBalancer IP has a Lease resource (<code>coordination.k8s.io/leases</code>) for leader election among worker nodes. The <code>cilium-leases-access</code> ClusterRole grants Cilium permission to manage these Leases.</p>
-<p><strong>Primary gateway IP:</strong> <code>192.168.1.220</code> is always the first IP assigned (to the homelab-gateway Service). The wildcard DNS record <code>*.madhan.app</code> resolves to this IP, so all cluster services are reachable at their hostnames.</p>
-<h2 id="gateway-api">Gateway API</h2>
-<p>The <a href="https://gateway-api.sigs.k8s.io/">Gateway API</a> is the successor to the Kubernetes Ingress spec. It separates infrastructure concerns (the Gateway, managed by the platform team) from application routing (HTTPRoutes, managed by app teams).</p>
-<p><strong>Why Gateway API over Ingress:</strong></p>
-<table><thead><tr><th>Aspect</th><th>Ingress</th><th>Gateway API</th></tr></thead><tbody>
-<tr><td>Role separation</td><td>None</td><td>Gateway (infra) vs HTTPRoute (app)</td></tr>
-<tr><td>Multi-protocol</td><td>HTTP/HTTPS only</td><td>HTTP, HTTPS, TCP, TLS, gRPC</td></tr>
-<tr><td>Expressiveness</td><td>Limited header/path matching</td><td>Rich routing rules</td></tr>
-<tr><td>Future</td><td>Legacy</td><td>Active development</td></tr>
-</tbody></table>
-<p><strong>The shared Gateway</strong> (from <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go"><code>core/platform/cilium.go</code></a>):</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">gateway.networking.k8s.io/v1
-</span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">Gateway
-</span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">homelab-gateway
-</span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">kube-system
-</span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">gatewayClassName</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">cilium
-</span><span>  </span><span style="color:#73d0ff;">listeners</span><span style="color:#ccc9c2cc;">:
-</span><span>    - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">http
-</span><span>      </span><span style="color:#73d0ff;">protocol</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">HTTP
-</span><span>      </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">80
-</span><span>      </span><span style="color:#73d0ff;">allowedRoutes</span><span style="color:#ccc9c2cc;">:
-</span><span>        </span><span style="color:#73d0ff;">namespaces</span><span style="color:#ccc9c2cc;">:
-</span><span>          </span><span style="color:#73d0ff;">from</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">All       </span><span style="font-style:italic;color:#5c6773;"># Any namespace can attach an HTTPRoute
-</span><span>    - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https
-</span><span>      </span><span style="color:#73d0ff;">protocol</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">HTTPS
-</span><span>      </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">443
-</span><span>      </span><span style="color:#73d0ff;">tls</span><span style="color:#ccc9c2cc;">:
-</span><span>        </span><span style="color:#73d0ff;">mode</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">Terminate
-</span><span>        </span><span style="color:#73d0ff;">certificateRefs</span><span style="color:#ccc9c2cc;">:
-</span><span>          - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">wildcard-madhan-app-tls   </span><span style="font-style:italic;color:#5c6773;"># cert-manager wildcard cert
-</span><span>            </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">kube-system
-</span><span>      </span><span style="color:#73d0ff;">allowedRoutes</span><span style="color:#ccc9c2cc;">:
-</span><span>        </span><span style="color:#73d0ff;">namespaces</span><span style="color:#ccc9c2cc;">:
-</span><span>          </span><span style="color:#73d0ff;">from</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">All
+<h2 id="bootstrap-flow">Bootstrap Flow</h2>
+<p>Pulumi performs the full cluster bootstrap in dependency order:</p>
+<ol>
+<li>Download Talos images to Proxmox</li>
+<li>Create VMs (Proxmox QEMU resources)</li>
+<li>Generate Talos machine secrets (PKI, tokens)</li>
+<li>Patch per-node configs (hostname, static IP, gateway, DNS)</li>
+<li>Apply configs via Talos API (in-band, using QEMU guest agent IP)</li>
+<li>Bootstrap etcd on <code>k8s-controller1</code></li>
+<li>Wait for the cluster to become healthy</li>
+<li>Retrieve kubeconfig → write to <code>core/kubeconfig</code></li>
+</ol>
+<p>The kubeconfig is used by downstream platform Pulumi code (Cilium, ArgoCD) via the Kubernetes provider.</p>
+<h2 id="exported-outputs">Exported Outputs</h2>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">pulumi</span><span> stack output talosconfig   </span><span style="font-style:italic;color:#5c6773;"># Talos client config
+</span><span style="color:#ffd580;">pulumi</span><span> stack output kubeconfig    </span><span style="font-style:italic;color:#5c6773;"># Kubernetes admin config
+</span><span style="color:#ffd580;">pulumi</span><span> stack output k8s-worker4-ip  </span><span style="font-style:italic;color:#5c6773;"># etc.
 </span></code></pre>
-<p><code>allowedRoutes.namespaces.from: All</code> is a deliberate single-tenant homelab choice. In a multi-tenant cluster you would restrict this to specific namespaces.</p>
-<p><strong>Per-app HTTPRoutes:</strong></p>
-<p>Each app creates its own <code>HTTPRoute</code> in its own namespace pointing back to the shared gateway. Example from <code>workloads/monitoring/grafana.go</code>:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">gateway.networking.k8s.io/v1
-</span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">HTTPRoute
-</span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
-</span><span>  </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
-</span><span style="color:#73d0ff;">spec</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">parentRefs</span><span style="color:#ccc9c2cc;">:
-</span><span>    - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">homelab-gateway
-</span><span>      </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">kube-system
-</span><span>  </span><span style="color:#73d0ff;">hostnames</span><span style="color:#ccc9c2cc;">:
-</span><span>    - </span><span style="color:#bae67e;">grafana.madhan.app
-</span><span>  </span><span style="color:#73d0ff;">rules</span><span style="color:#ccc9c2cc;">:
-</span><span>    - </span><span style="color:#73d0ff;">matches</span><span style="color:#ccc9c2cc;">:
-</span><span>        - </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">:
-</span><span>            </span><span style="color:#73d0ff;">type</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">PathPrefix
-</span><span>            </span><span style="color:#73d0ff;">value</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">/
-</span><span>      </span><span style="color:#73d0ff;">backendRefs</span><span style="color:#ccc9c2cc;">:
-</span><span>        - </span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">grafana
-</span><span>          </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">3000
-</span></code></pre>
-<p>Cilium runs an Envoy proxy per Gateway to handle HTTP routing and TLS termination.</p>
-<h2 id="traffic-flow">Traffic Flow</h2>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>LAN Client
-</span><span>  → DNS: *.madhan.app → 192.168.1.220
-</span><span>  → ARP: worker node responds (Cilium L2 leader)
-</span><span>  → TCP: port 80 or 443 to worker
-</span><span>  → Cilium eBPF: routes to homelab-gateway (Envoy)
-</span><span>  → Envoy: matches HTTPRoute by hostname
-</span><span>  → Cilium eBPF: routes to app ClusterIP Service
-</span><span>  → Pod: handles request
-</span></code></pre>
-<h2 id="hubble-ui">Hubble UI</h2>
-<p>Hubble UI is accessible at <code>http://hubble.madhan.app</code>. It provides network flow visibility across the cluster — which pods talk to which, which connections are dropped, and L7 protocol details.</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># HTTPRoute created by Pulumi in core/platform/cilium.go
-</span><span style="color:#73d0ff;">hostnames</span><span style="color:#ccc9c2cc;">: </span><span>[</span><span style="color:#bae67e;">hubble.madhan.app</span><span>]
-</span><span style="color:#73d0ff;">backendRefs</span><span style="color:#ccc9c2cc;">: </span><span>[{</span><span style="color:#73d0ff;">name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">hubble-ui</span><span style="color:#ccc9c2cc;">, </span><span style="color:#73d0ff;">port</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">80</span><span style="color:#ccc9c2cc;">, </span><span style="color:#73d0ff;">namespace</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">kube-system</span><span>}]
-</span></code></pre>
-<h2 id="rbac-patch">RBAC Patch</h2>
-<p>A <code>ClusterRole</code> and <code>ClusterRoleBinding</code> (<code>cilium-leases-access</code>) are created to allow Cilium to manage <code>coordination.k8s.io/leases</code> for L2 announcements. This is required because the Cilium Helm chart does not include these permissions by default.</p>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="cilium-crashloop-exit-137">Cilium CrashLoop (exit 137)</h3>
-<p><strong>Symptoms:</strong> Cilium pods restart repeatedly with OOMKilled or exit 137.</p>
-<p><strong>Diagnosis:</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> kube-system</span><span style="color:#ffcc66;"> -l</span><span> k8s-app=cilium
-</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> kube-system</span><span style="color:#ffcc66;"> -l</span><span> k8s-app=cilium</span><span style="color:#ffcc66;"> --previous
-</span></code></pre>
-<p><strong>Fix:</strong> Pod deletion alone does not fix BPF state corruption. Reboot the affected node:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">talosctl</span><span style="color:#ffcc66;"> --talosconfig </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.talos/config reboot</span><span style="color:#ffcc66;"> --nodes </span><span style="color:#f29e74;">&lt;</span><span>node-IP</span><span style="color:#f29e74;">&gt;
-</span></code></pre>
-<p><strong>Why this happens:</strong> The eBPF maps in the kernel can get corrupted if Cilium crashes mid-update. A node reboot clears all BPF state and lets Cilium start cleanly.</p>
-<h3 id="l2-announcement-not-working">L2 Announcement Not Working</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check policy exists
-</span><span style="color:#ffd580;">kubectl</span><span> get ciliuml2announcementpolicies
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Check IP pool
-</span><span style="color:#ffd580;">kubectl</span><span> get ciliumloadbalancerippool
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Check leases
-</span><span style="color:#ffd580;">kubectl</span><span> get leases</span><span style="color:#ffcc66;"> -n</span><span> kube-system </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> cilium
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Test ARP from a LAN machine
-</span><span style="color:#ffd580;">arping</span><span style="color:#ffcc66;"> -I</span><span> eth0 192.168.1.220
-</span></code></pre>
+<h2 id="pcie-gpu-passthrough">PCIe GPU Passthrough</h2>
+<p>k8s-worker4 is created with <code>PcieIDs: ["0000:09:00.0"]</code> which instructs Proxmox to pass the NVIDIA RTX 5070 Ti directly to the VM.</p>
 
 
     <!--  Errata section  -->
@@ -688,7 +607,7 @@
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/infrastructure&#x2F;networking&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/platform&#x2F;proxmox-talos&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -720,7 +639,7 @@
                                     
     
         
-        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/infrastructure/">
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/platform/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -728,7 +647,7 @@
                     </svg>
                     <span class="nav-button-label">Back to</span>
                 </div>
-                <div class="nav-button-title">Infrastructure</div>
+                <div class="nav-button-title">Platform</div>
             </div>
         </a>
     
@@ -737,7 +656,7 @@
                                 <div class="next-nav-item">
                                     
     
-        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/infrastructure/access/">
+        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/platform/control-plane-ha/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -745,7 +664,7 @@
                     </svg>
                     <span class="nav-button-label">Next</span>
                 </div>
-                <div class="nav-button-title">Service Access &amp; Internet Exposure</div>
+                <div class="nav-button-title">Control Plane HA</div>
             </div>
         </a>
     
@@ -765,43 +684,13 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#cilium-cni" class="toc-link">Cilium CNI</a>
+                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#overview" class="toc-link">Overview</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#cilium-as-kube-proxy-replacement" class="toc-link">Cilium as kube-proxy Replacement</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#l2-announcements-and-loadbalancer-ips" class="toc-link">L2 Announcements and LoadBalancer IPs</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#gateway-api" class="toc-link">Gateway API</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#traffic-flow" class="toc-link">Traffic Flow</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#hubble-ui" class="toc-link">Hubble UI</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/infrastructure/networking/#rbac-patch" class="toc-link">RBAC Patch</a>
+                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#talos-images" class="toc-link">Talos Images</a>
                     
                 </li>
             
@@ -809,20 +698,46 @@
                     
                     <details class="toc-details" >
                         <summary>
-                            <a href="https://homelab.madhan.app/infrastructure/networking/#troubleshooting" class="toc-link">Troubleshooting</a>
+                            <a href="https://homelab.madhan.app/platform/proxmox-talos/#cluster-configuration" class="toc-link">Cluster Configuration</a>
                         </summary>
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/networking/#cilium-crashloop-exit-137" class="toc-link">Cilium CrashLoop (exit 137)</a>
+                                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#cluster-level-patch" class="toc-link">Cluster-Level Patch</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/networking/#l2-announcement-not-working" class="toc-link">L2 Announcement Not Working</a>
+                                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#control-plane-patch" class="toc-link">Control Plane Patch</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#worker-patch" class="toc-link">Worker Patch</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#gpu-worker-patch" class="toc-link">GPU Worker Patch</a>
                                 </li>
                             
                         </ul>
                     </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#bootstrap-flow" class="toc-link">Bootstrap Flow</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#exported-outputs" class="toc-link">Exported Outputs</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/platform/proxmox-talos/#pcie-gpu-passthrough" class="toc-link">PCIe GPU Passthrough</a>
                     
                 </li>
             
@@ -1010,17 +925,9 @@
             <li>
                 
                     <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure">Infrastructure</a></summary>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure">Cloud</a></summary>
                         <ul>
                             
-                            
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/proxmox-talos">Proxmox + Talos</a></li>
-                            
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/control-plane-ha">Control Plane HA</a></li>
-                            
-                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/networking">Networking</a></li>
-                            
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/hetzner-bifrost">Hetzner Bifrost</a></li>
                             
@@ -1030,7 +937,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">DNS &amp; TLS</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/secrets">Secrets</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
                             
                         </ul>
@@ -1049,6 +956,14 @@
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
+                            
+                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/platform/proxmox-talos">Proxmox + Talos</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/control-plane-ha">Control Plane HA</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/networking">Networking</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
                             
                             
                         </ul>

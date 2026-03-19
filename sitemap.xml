@@ -148,9 +148,6 @@
         <loc>https://homelab.madhan.app/infrastructure/authentik/</loc>
     </url>
     <url>
-        <loc>https://homelab.madhan.app/infrastructure/control-plane-ha/</loc>
-    </url>
-    <url>
         <loc>https://homelab.madhan.app/infrastructure/dns-tls/</loc>
     </url>
     <url>
@@ -160,15 +157,6 @@
         <loc>https://homelab.madhan.app/infrastructure/netbird/</loc>
     </url>
     <url>
-        <loc>https://homelab.madhan.app/infrastructure/networking/</loc>
-    </url>
-    <url>
-        <loc>https://homelab.madhan.app/infrastructure/proxmox-talos/</loc>
-    </url>
-    <url>
-        <loc>https://homelab.madhan.app/infrastructure/secrets/</loc>
-    </url>
-    <url>
         <loc>https://homelab.madhan.app/platform/</loc>
     </url>
     <url>
@@ -176,5 +164,17 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/platform/cdk8s/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/platform/control-plane-ha/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/platform/networking/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/platform/proxmox-talos/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/platform/secrets/</loc>
     </url>
 </urlset>
