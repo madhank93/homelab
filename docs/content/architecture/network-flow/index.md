@@ -33,70 +33,143 @@ The split happens at DNS. Specific hostnames point to Bifrost (Hetzner VPS); eve
 
 ---
 
-## Full Traffic Diagram
+## High-Level Traffic Diagram
 
 {% mermaid() %}
 flowchart TB
     subgraph INET["Internet"]
         BROWSER["Browser / Client"]
-        CF["Cloudflare DNS<br/>auth · netbird · grafana"]
+        CF["Cloudflare DNS<br/>grafana → 178.156.199.250<br/>*.madhan.app → 192.168.1.220"]
     end
 
     subgraph BIF["Bifrost VPS · 178.156.199.250"]
         TR["Traefik :443<br/>TLS termination<br/>ForwardAuth middleware"]
-        AUTH["Authentik<br/>SSO · GitHub OAuth<br/>ForwardAuth provider"]
+        AUTH["Authentik<br/>SSO · GitHub OAuth"]
         NBS["NetBird Server<br/>management + signal + relay + STUN"]
-        NBD["NetBird Dashboard"]
+        NBAGENT["netbird-agent<br/>network_mode: host<br/>wt0: 100.109.47.211"]
     end
 
-    subgraph WG["WireGuard Mesh"]
-        NBP["NetBird routing peer<br/>K8s pod · 192.168.1.0/24"]
-        NBLAP["NetBird client<br/>laptop / phone"]
+    subgraph WG["WireGuard Mesh · 100.109.0.0/16"]
+        direction LR
+        RELAY["NetBird Relay<br/>TURN/STUN via Bifrost"]
     end
 
-    subgraph CLUSTER["Talos Cluster · 192.168.1.0/24"]
-        GW["Cilium Gateway API<br/>192.168.1.220"]
-        POD["Service Pods<br/>grafana · harbor · etc."]
+    subgraph K8S["Talos Cluster · worker1 · 192.168.1.221"]
+        NBPEER["netbird-peer pod<br/>hostNetwork · wt0: 100.109.244.71<br/>routes 192.168.1.0/24"]
+        MASQ["iptables MASQUERADE<br/>src 100.109.x → 192.168.1.221"]
+        CILIUMETH["Cilium BPF · eth0<br/>L7LB DNAT → Envoy :13507"]
     end
 
-    subgraph LAN["Home LAN"]
-        LANCLI["LAN browser<br/>DNS → 192.168.1.220"]
+    subgraph GW["Cilium Gateway API · 192.168.1.220"]
+        ENV["Cilium Envoy proxy<br/>HTTPRoute matching"]
+        POD["Grafana pod<br/>grafana.madhan.app"]
     end
 
-    BROWSER -->|"DNS lookup<br/>grafana.madhan.app"| CF
-    CF -->|"178.156.199.250"| TR
-    TR -->|"ForwardAuth check"| AUTH
-    AUTH -->|"401 → redirect to login<br/>200 → allow request"| TR
-    TR -->|"authenticated request<br/>via WireGuard"| GW
-    GW --> POD
+    subgraph LAN["Home LAN · 192.168.1.0/24"]
+        LANCLI["LAN browser<br/>DNS → 192.168.1.220<br/>direct · no VPS hop"]
+    end
 
-    BROWSER -->|"auth.madhan.app"| CF
-    CF -->|direct| AUTH
-    BROWSER -->|"netbird.madhan.app"| CF
-    CF -->|direct| NBD
-    NBS <-->|"WireGuard<br/>tunnel"| NBP
-    NBS <-->|"WireGuard<br/>tunnel"| NBLAP
-    NBLAP -->|"192.168.1.0/24<br/>via routing peer"| NBP
-    NBP --> GW
+    BROWSER -->|"DNS grafana.madhan.app<br/>→ 178.156.199.250"| CF
+    CF --> TR
+    TR -->|"ForwardAuth /outpost.goauthentik.io/auth/nginx"| AUTH
+    AUTH -->|"200 OK (authenticated)"| TR
+    TR -->|"proxy to 192.168.1.220:80<br/>via host network"| NBAGENT
+    NBAGENT -->|"WireGuard · 100.109.x.x"| RELAY
+    RELAY -->|"decapsulated on wt0"| NBPEER
+    NBPEER -->|"kernel IP forward<br/>wt0 → eth0"| MASQ
+    MASQ -->|"src=192.168.1.221<br/>dst=192.168.1.220"| CILIUMETH
+    CILIUMETH --> ENV
+    ENV --> POD
 
-    LANCLI -->|"DNS → 192.168.1.220<br/>no VPS hop"| GW
-    GW --> POD
+    LANCLI -->|"DNS → 192.168.1.220<br/>direct"| CILIUMETH
+    CILIUMETH --> ENV
 {% end %}
 
 ---
 
-## Public Request Step-by-Step
+## Public Request — Packet-Level Detail
 
-When a user opens `https://grafana.madhan.app` from the internet:
+When a user opens `https://grafana.madhan.app`, the request traverses seven distinct hops before reaching the Grafana pod.
 
-1. **DNS** resolves `grafana.madhan.app` → `178.156.199.250` (Hetzner VPS)
-2. **Traefik** receives the HTTPS request, terminates TLS (wildcard cert from Cloudflare ACME)
-3. **ForwardAuth middleware** sends a sub-request to Authentik: `Is this session authenticated?`
-4. **Authentik** returns:
-   - `401` — user is redirected to `https://auth.madhan.app` to log in (GitHub OAuth)
-   - `200` — request is forwarded
-5. **Traefik** proxies the authenticated request through the **WireGuard mesh** to the Cilium Gateway (`192.168.1.220`)
-6. **Cilium Gateway API** routes to the Grafana pod via `HTTPRoute`
+{% mermaid() %}
+sequenceDiagram
+    actor Browser
+    participant CF as Cloudflare DNS
+    participant TR as Traefik<br/>178.156.199.250:443
+    participant AU as Authentik<br/>auth.madhan.app
+    participant NA as netbird-agent<br/>wt0:100.109.47.211
+    participant RE as NetBird Relay<br/>rels://netbird.madhan.app:443
+    participant NP as netbird-peer<br/>wt0:100.109.244.71<br/>worker1 eth0:192.168.1.221
+    participant GW as Cilium Gateway<br/>192.168.1.220
+    participant GR as Grafana pod
+
+    Browser->>CF: DNS? grafana.madhan.app
+    CF-->>Browser: 178.156.199.250
+
+    Browser->>TR: TLS ClientHello → HTTPS GET /
+    Note over TR: Terminates TLS<br/>wildcard cert (Cloudflare ACME)
+
+    TR->>AU: ForwardAuth sub-request<br/>GET /outpost.goauthentik.io/auth/nginx
+    alt not authenticated
+        AU-->>TR: 401
+        TR-->>Browser: redirect → auth.madhan.app/login
+        Browser->>AU: GitHub OAuth flow
+        AU-->>Browser: session cookie
+        Browser->>TR: retry GET / with cookie
+        TR->>AU: ForwardAuth sub-request
+    end
+    AU-->>TR: 200 OK
+
+    Note over TR,NA: Traefik proxies to 192.168.1.220:80<br/>via Docker bridge → host wt0
+
+    TR->>NA: HTTP GET / Host:grafana.madhan.app<br/>src:172.30.0.10 → dst:192.168.1.220:80
+    Note over NA: wt0 AllowedIPs: 192.168.1.0/24<br/>WireGuard encapsulates packet
+    NA->>RE: WireGuard UDP (encrypted)<br/>src:100.109.47.211 → dst:100.109.244.71
+    RE->>NP: relay → decapsulated on wt0<br/>src:100.109.47.211 dst:192.168.1.220:80
+
+    Note over NP: No Cilium BPF on wt0 (NOARP/P2P)<br/>kernel IP forwards: wt0 → eth0<br/>CILIUM_POST_nat MASQUERADE:<br/>src 100.109.47.211 → 192.168.1.221
+
+    NP->>GW: src:192.168.1.221 dst:192.168.1.220:80<br/>arrives on L2-announced node eth0
+    Note over GW: Cilium cil_from_netdev (eth0)<br/>L7LB DNAT: dst → Envoy :13507<br/>Envoy matches HTTPRoute for grafana.madhan.app
+    GW->>GR: HTTP GET / Host:grafana.madhan.app
+    GR-->>GW: 302 Found → /login
+    GW-->>NP: response (conntrack reverses DNAT)
+    NP-->>NA: MASQUERADE conntrack reverses src NAT<br/>WireGuard re-encrypts
+    NA-->>TR: HTTP 302
+    TR-->>Browser: HTTPS 302 (TLS wrapped)
+{% end %}
+
+---
+
+## IP Address Transformation at Each Hop
+
+| Hop | Interface | Source IP | Destination IP | What changes |
+|-----|-----------|-----------|----------------|--------------|
+| Browser → Traefik | public internet | client IP | `178.156.199.250` | TLS terminated |
+| Traefik → netbird-agent | Docker bridge `bifrost_net` | `172.30.0.10` (Traefik) | `192.168.1.220` | Nothing — Docker routes to host |
+| netbird-agent wt0 → relay | WireGuard encapsulated | `100.109.47.211` | `100.109.244.71` | Original IP hidden inside WireGuard |
+| relay → netbird-peer wt0 | decapsulated WireGuard | `100.109.47.211` | `192.168.1.220` | Original packet restored |
+| wt0 → eth0 (kernel fwd) | worker1 | `100.109.47.211` | `192.168.1.220` | IP forwarding only |
+| MASQUERADE (CILIUM_POST_nat) | worker1 eth0 | **`192.168.1.221`** | `192.168.1.220` | Source NAT — cluster can reply |
+| eth0 → Cilium LB | another worker's eth0 | `192.168.1.221` | **Envoy :13507** | L7LB DNAT by Cilium BPF |
+| Envoy → Grafana pod | pod overlay | pod IP | Grafana pod IP | L7 routing by HTTPRoute |
+
+---
+
+## Why wt0 is NOT in Cilium Devices
+
+During debugging of the `504 Gateway Timeout`, the `wt0` WireGuard interface was added to Cilium's `devices` list under the assumption that Cilium's TC BPF programs needed to be attached to it for LB DNAT. This was incorrect.
+
+**The root cause:** `wt0` is a `NOARP/POINTOPOINT` WireGuard interface — it has no Ethernet header. Cilium's `cil_from_netdev` TC BPF program expects Ethernet frames (IEEE 802.3) and silently misparsed all packets arriving on `wt0`, dropping them without any monitor events. The `cilium-dbg monitor` showed zero traces for wt0 traffic even when packets were confirmed arriving (verified by `/proc/net/dev` byte counters).
+
+**The fix:** Remove `wt0` from `devices` in `core/platform/cilium.go`. With no BPF on `wt0`, the kernel handles the forwarded packets normally:
+
+1. Packet arrives on `wt0` (decapsulated by WireGuard)
+2. Kernel IP forwarding routes it toward `eth0` (192.168.1.0/24 is directly connected)
+3. `CILIUM_POST_nat` BPF chain applies MASQUERADE (source → `192.168.1.221`)
+4. Packet goes on the LAN wire to `192.168.1.220`
+5. The node that owns ARP for `192.168.1.220` receives it on **its** `eth0`
+6. Cilium's `cil_from_netdev` on that `eth0` — a real Ethernet interface — does the L7LB DNAT correctly
 
 ---
 
@@ -104,8 +177,8 @@ When a user opens `https://grafana.madhan.app` from the internet:
 
 LAN clients resolve `*.madhan.app` (except the explicitly listed public ones) to `192.168.1.220` — the Cilium L2 LoadBalancer IP. Traffic never leaves the home network.
 
-> **Bypassing SSO on LAN:** For `grafana.madhan.app`, you can override DNS locally to hit the cluster directly and skip the Authentik redirect:
-> ```bash
+> **Bypassing SSO on LAN:** For any public service, you can override DNS locally to hit the cluster directly and skip the Authentik ForwardAuth redirect:
+> ```
 > # /etc/hosts — bypasses Hetzner + ForwardAuth
 > 192.168.1.220  grafana.madhan.app
 > ```
@@ -120,8 +193,6 @@ From anywhere in the world, a connected NetBird client (laptop or phone) can rea
 2. **Routing peer** (K8s pod) advertises `192.168.1.0/24` into the mesh
 3. Cluster IPs (`192.168.1.220–230`) are routable from the client — no browser, no SSO redirect
 
-This is how the [devcontainer](/development/devcontainer) connects to the cluster remotely.
-
 ---
 
 ## Traefik Routing in Detail
@@ -134,3 +205,104 @@ Traefik on Bifrost uses the **file provider** only (no Docker provider). Routes 
 | `public-services.yml` | **Auto-generated** by `hetzner.go` — public homelab routes with ForwardAuth |
 
 `public-services.yml` is gitignored and regenerated on every `just core hetzner up`. To expose a new service, add its name to `publicServices` in `core/cloud/cloudflare.go`.
+
+---
+
+## Troubleshooting the Public Traffic Path
+
+### 504 Gateway Timeout from public URL
+
+Traefik is reachable but cannot proxy to the cluster backend.
+
+```bash
+# 1. Check netbird-agent is running and connected on Bifrost
+ssh root@178.156.199.250 'docker exec netbird-agent netbird status'
+# Must show: Management: Connected, Peers count: 1/1 Connected
+
+# 2. Check the route is selected
+ssh root@178.156.199.250 'docker exec netbird-agent netbird routes list'
+# Must show: 192.168.1.0/24 Status: Selected
+
+# 3. Verify kernel route table has the tunnel entry
+ssh root@178.156.199.250 'ip route show table 7120'
+# Must show: 192.168.1.0/24 dev wt0
+
+# 4. Test direct HTTP to the Cilium LB from Bifrost
+ssh root@178.156.199.250 'curl -sv -H "Host: grafana.madhan.app" --connect-timeout 5 http://192.168.1.220/'
+# Expect: HTTP/1.1 302 Found
+```
+
+If step 4 times out, the WireGuard → cluster path is broken. Continue to the next section.
+
+### WireGuard tunnel up but traffic not flowing to cluster
+
+The `netbird-peer` pod is connected but `192.168.1.220` is unreachable from Bifrost.
+
+```bash
+# Check netbird-peer pod status
+kubectl exec -n netbird statefulset/netbird-peer -- netbird status
+# Must show: Networks: 192.168.1.0/24, Peers count: 1/1 Connected
+
+# Confirm WireGuard bytes are flowing during a test
+kubectl exec -n netbird statefulset/netbird-peer -- cat /proc/net/dev | grep wt0
+# RX bytes should increase while making requests
+
+# Check worker1 can reach the Cilium LB via another worker's NodePort
+ssh root@178.156.199.250 'curl -sv -H "Host: grafana.madhan.app" --connect-timeout 3 http://192.168.1.222:32601/'
+# If this returns 302 but 192.168.1.220 times out, see Cilium BPF issue below
+```
+
+### Cilium BPF silently drops wt0 traffic (wt0 in devices)
+
+**Symptom:** `cilium-dbg monitor` shows zero events for traffic arriving on `wt0` even when bytes are confirmed flowing. Curl from Bifrost to `192.168.1.220` times out. Curl to a different worker's NodePort (e.g., `192.168.1.222:32601`) works.
+
+**Root cause:** `wt0` was added to Cilium's `devices` list. WireGuard interfaces are `NOARP/POINTOPOINT` with no Ethernet header. Cilium's `cil_from_netdev` TC BPF program expects Ethernet frames and silently drops all wt0 packets.
+
+**Fix:** Ensure `wt0` is **not** in `core/platform/cilium.go`'s `devices` list:
+
+```go
+// Correct — eth0 only
+"devices": pulumi.StringArray{
+    pulumi.String("eth0"),
+},
+```
+
+Apply with `just core platform up` (targets the Cilium Helm release). Then restart the Cilium pod on worker1:
+
+```bash
+kubectl delete pod -n kube-system $(kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium-agent -o wide | grep k8s-worker1 | awk '{print $1}')
+kubectl rollout status ds/cilium -n kube-system
+```
+
+### ICE: Disconnected — relay-only connection
+
+**Symptom:** `netbird status` shows `Connection type: Relayed` and `ICE candidate (Local/Remote): -/-`. The tunnel works but with higher latency (~35–40 ms through the relay).
+
+This is expected when the two peers (bifrost-agent and k8s-routing-peer) cannot establish a direct UDP path due to NAT/firewall. The relay server on Bifrost (`rels://netbird.madhan.app:443`) acts as intermediary. Traffic still flows correctly — relay mode is functional, just not optimal.
+
+To enable direct P2P: ensure UDP port 3478 (STUN) and the ephemeral TURN range (50000–50500) are open in the Hetzner firewall, and that the homelab router forwards those ports.
+
+### Static routes missing — return traffic drops
+
+**Symptom:** Requests from Bifrost reach the cluster (Cilium BPF receives them) but responses never return to Bifrost.
+
+After MASQUERADE, response packets from the cluster's Envoy/pods have `dst=192.168.1.221` (worker1). Worker1 performs conntrack reverse-MASQUERADE to restore `dst=100.109.47.211`, then routes via `wt0`. But other cluster nodes that receive traffic as VXLAN-forwarded replies need to know to send packets for `100.109.0.0/16` back to worker1.
+
+**Fix:** Static routes must be configured on ALL cluster nodes in `core/platform/talos.go`:
+
+```yaml
+routes:
+  - destination: 100.109.0.0/16
+    gateway: 192.168.1.221
+    metric: 1024
+```
+
+Apply with `just core platform up`.
+
+### NB_SKIP_SOCKET_MARK breaks the tunnel
+
+**Symptom:** `wt0` interface has 0 bytes transferred even though `netbird status` shows `Connected`.
+
+**Root cause:** `NB_SKIP_SOCKET_MARK=true` was set on `netbird-peer`. The routing peer adds a host route `178.156.199.250 via 127.0.0.1 dev lo` to prevent management traffic from looping back through the WireGuard tunnel. The fwmark mechanism (socket mark `0x1bd00`) bypasses this route for WireGuard packets. Disabling the socket mark removes the bypass, causing management traffic to loop through the tunnel, which breaks the relay connection.
+
+**Fix:** Never set `NB_SKIP_SOCKET_MARK=true` on the `netbird-peer` StatefulSet.
