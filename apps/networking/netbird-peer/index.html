@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="In-cluster WireGuard peer that routes LAN traffic (192.168.1.0&#x2F;24) through the NetBird VPN mesh." />
+            <meta name="description" content="In-cluster WireGuard routing peer that advertises 192.168.1.0&#x2F;24 into the NetBird mesh and forwards traffic to the Cilium Gateway." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="NetBird Peer | Homelab" />
-      <meta property="og:description" content="In-cluster WireGuard peer that routes LAN traffic (192.168.1.0&#x2F;24) through the NetBird VPN mesh." />
+      <meta property="og:description" content="In-cluster WireGuard routing peer that advertises 192.168.1.0&#x2F;24 into the NetBird mesh and forwards traffic to the Cilium Gateway." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="NetBird Peer" />
-      <meta name="twitter:description" content="In-cluster WireGuard peer that routes LAN traffic (192.168.1.0&#x2F;24) through the NetBird VPN mesh." />
+      <meta name="twitter:description" content="In-cluster WireGuard routing peer that advertises 192.168.1.0&#x2F;24 into the NetBird mesh and forwards traffic to the Cilium Gateway." />
       
       
       
@@ -506,19 +506,36 @@
             NetBird Peer
             
         </h1>
-        <p class="text-gray-500">In-cluster WireGuard peer that routes LAN traffic (192.168.1.0&#x2F;24) through the NetBird VPN mesh.</p>
+        <p class="text-gray-500">In-cluster WireGuard routing peer that advertises 192.168.1.0&#x2F;24 into the NetBird mesh and forwards traffic to the Cilium Gateway.</p>
     </div>
     <h2 id="what-is-the-netbird-peer">What is the NetBird Peer?</h2>
-<p>The NetBird peer is an in-cluster WireGuard client that connects to the NetBird VPN mesh and acts as a <strong>routing peer</strong> for the cluster's LAN subnet (<code>192.168.1.0/24</code>). It enables the Hetzner VPS (Bifrost) to reach cluster services via WireGuard, making public service routing possible.</p>
+<p>The NetBird peer is an in-cluster WireGuard client that connects to the NetBird VPN mesh and acts as a <strong>routing peer</strong> for the cluster's LAN subnet (<code>192.168.1.0/24</code>). It runs on <strong>worker1</strong> (<code>192.168.1.221</code>) with <code>hostNetwork: true</code> and enables the Hetzner VPS (Bifrost) to reach cluster services via WireGuard, making public service routing through Traefik possible.</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Bifrost Traefik
+</span><span>    │  proxy to 192.168.1.220:80
+</span><span>    ↓
+</span><span>netbird-agent (Bifrost · wt0: 100.109.47.211)
+</span><span>    │  WireGuard tunnel via relay
+</span><span>    ↓
+</span><span>netbird-peer-0 (worker1 · wt0: 100.109.244.71)
+</span><span>    │  kernel IP forward: wt0 → eth0
+</span><span>    │  CILIUM_POST_nat MASQUERADE: src → 192.168.1.221
+</span><span>    ↓
+</span><span>192.168.1.220 (Cilium Gateway · another node&#39;s eth0)
+</span><span>    │  Cilium BPF L7LB DNAT → Envoy :13507
+</span><span>    ↓
+</span><span>Grafana / other cluster pod
+</span></code></pre>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/networking/netbird_peer.go"><code>workloads/networking/netbird_peer.go</code></a></p>
+<hr />
 <h2 id="why-a-kubernetes-statefulset">Why a Kubernetes StatefulSet?</h2>
-<p>The in-cluster NetBird peer is deployed as a <strong>StatefulSet</strong> (not a Deployment) with a persistent PVC for <code>/etc/netbird/</code>:</p>
+<p>The in-cluster NetBird peer is deployed as a <strong>StatefulSet</strong> (not a Deployment) with a persistent PVC for <code>/var/lib/netbird/</code>:</p>
 <ul>
-<li><code>/etc/netbird/</code> stores the WireGuard private key and peer registration state</li>
+<li><code>/var/lib/netbird/</code> stores the WireGuard private key and peer registration state</li>
 <li>Without persistence, every pod restart generates a new private key → new peer registration in NetBird Management → accumulating duplicate peers in the UI</li>
 <li>StatefulSet + PVC ensures the same peer identity is reused across restarts</li>
 </ul>
 <p>A simple Deployment would create a new peer registration on every restart (e.g., every ArgoCD sync that changes the pod spec), filling the NetBird Management UI with ghost peers.</p>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/networking/netbird_peer.go"><code>workloads/networking/netbird_peer.go</code></a></p>
+<hr />
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>netbird</code></td><td>Privileged PSA (needs NET_ADMIN, SYS_MODULE)</td></tr>
@@ -526,59 +543,115 @@
 <tr><td>Kind</td><td><code>StatefulSet</code></td><td>Persistent identity across restarts</td></tr>
 <tr><td><code>hostNetwork: true</code></td><td>true</td><td>WireGuard must manipulate host routing table</td></tr>
 <tr><td><code>dnsPolicy</code></td><td><code>ClusterFirstWithHostNet</code></td><td>DNS works with hostNetwork</td></tr>
-<tr><td>PVC</td><td><code>100Mi</code> RWO</td><td><code>/etc/netbird/</code> — private key + config</td></tr>
+<tr><td>PVC</td><td><code>100Mi</code> RWO</td><td><code>/var/lib/netbird/</code> — private key + config</td></tr>
 <tr><td>Capabilities</td><td><code>NET_ADMIN</code>, <code>SYS_MODULE</code></td><td>WireGuard kernel module management</td></tr>
 <tr><td><code>NB_MANAGEMENT_URL</code></td><td><code>https://netbird.madhan.app</code></td><td>NetBird Management server on Bifrost</td></tr>
 <tr><td><code>NB_HOSTNAME</code></td><td><code>k8s-routing-peer</code></td><td>Peer name in NetBird UI</td></tr>
 <tr><td><code>NB_SETUP_KEY</code></td><td>From OpenBao (Pattern B)</td><td>Used only on first registration</td></tr>
 </tbody></table>
+<blockquote>
+<p><strong>Critical:</strong> PVC mount path is <code>/var/lib/netbird/</code> — <strong>not</strong> <code>/etc/netbird/</code>. NetBird v0.66 stores its private key at <code>/var/lib/netbird/</code> regardless of what <code>NB_CONFIG</code> points to. Mounting at the wrong path means the key is never persisted.</p>
+</blockquote>
+<hr />
 <h2 id="secrets-openbao">Secrets (OpenBao)</h2>
 <p>Pattern B (secretObjects sync). <code>NETBIRD_SETUP_KEY</code> is fetched from OpenBao (<code>secret/data/netbird</code>) and synced into the <code>netbird-setup-key</code> k8s Secret.</p>
 <p>The setup key is only used on <strong>first registration</strong>. Once the peer is registered, subsequent restarts reuse the private key from the PVC and ignore the setup key.</p>
+<hr />
+<h2 id="masquerade-initcontainer">MASQUERADE initContainer</h2>
+<p>The StatefulSet includes an <code>initContainer</code> that adds an iptables rule before the NetBird agent starts:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">iptables</span><span style="color:#ffcc66;"> -t</span><span> nat</span><span style="color:#ffcc66;"> -C</span><span> POSTROUTING</span><span style="color:#ffcc66;"> -s</span><span> 100.109.0.0/16</span><span style="color:#ffcc66;"> -d</span><span> 192.168.1.0/24</span><span style="color:#ffcc66;"> -j</span><span> MASQUERADE </span><span style="color:#ffcc66;">2</span><span style="color:#f29e74;">&gt;</span><span>/dev/null </span><span style="color:#ccc9c2cc;">\
+</span><span>  </span><span style="color:#f29e74;">|| </span><span style="color:#ffd580;">iptables</span><span style="color:#ffcc66;"> -t</span><span> nat</span><span style="color:#ffcc66;"> -A</span><span> POSTROUTING</span><span style="color:#ffcc66;"> -s</span><span> 100.109.0.0/16</span><span style="color:#ffcc66;"> -d</span><span> 192.168.1.0/24</span><span style="color:#ffcc66;"> -j</span><span> MASQUERADE
+</span></code></pre>
+<p>The <code>-C</code> check prevents duplicate rules on pod restart. This rule ensures that traffic from Bifrost's WireGuard IP range (<code>100.109.x.x</code>) destined for the cluster LAN gets source-NAT'd to <code>192.168.1.221</code> (worker1's eth0 IP), allowing cluster nodes to send replies back via normal LAN routing.</p>
+<p>In practice the actual NAT is performed by Cilium's <code>CILIUM_POST_nat</code> BPF chain, not the raw iptables rule. Both coexist without conflict.</p>
+<hr />
+<h2 id="cilium-constraint-wt0-must-not-be-in-devices">Cilium Constraint — wt0 Must NOT Be in Devices</h2>
+<p>When debugging, it may be tempting to add <code>wt0</code> to Cilium's <code>devices</code> list so that Cilium attaches TC BPF programs to it. <strong>This does not work and actively breaks traffic.</strong></p>
+<p>WireGuard interfaces (<code>wt0</code>) are <code>NOARP/POINTOPOINT</code> and have <strong>no Ethernet header</strong>. Cilium's <code>cil_from_netdev</code> TC BPF program expects IEEE 802.3 Ethernet frames. Attaching it to <code>wt0</code> causes:</p>
+<ul>
+<li>All packets arriving on <code>wt0</code> are silently dropped</li>
+<li>Zero events appear in <code>cilium-dbg monitor</code> (the program exits early before logging)</li>
+<li><code>cilium-dbg service get</code> shows the L7LB entry exists but no traffic reaches it</li>
+<li><code>curl</code> from Bifrost to <code>192.168.1.220</code> times out</li>
+</ul>
+<p>The correct configuration in <code>core/platform/cilium.go</code>:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;devices&quot;</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span>StringArray{
+</span><span>    pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;eth0&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,  </span><span style="font-style:italic;color:#5c6773;">// eth0 only
+</span><span>}</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p>Traffic from <code>wt0</code> must reach Cilium BPF via <strong>another node's <code>eth0</code></strong> — after kernel IP forwarding and MASQUERADE on worker1 put it on the LAN wire. See <a href="/architecture/network-flow/#why-wt0-is-not-in-cilium-devices">Network Flow — Why wt0 is NOT in Cilium Devices</a> for the full explanation.</p>
+<hr />
 <h2 id="route-configuration">Route Configuration</h2>
 <p>The peer registers in NetBird but does <strong>not</strong> automatically advertise routes. Routes must be configured in the NetBird Management UI:</p>
 <p><strong>NetBird Management UI → Network → Routes → Add Route:</strong></p>
 <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
 <tr><td>Network</td><td><code>192.168.1.0/24</code></td></tr>
 <tr><td>Routing peer</td><td><code>k8s-routing-peer</code></td></tr>
+<tr><td>Distribution Groups</td><td><code>All</code></td></tr>
 </tbody></table>
 <p>Without this route configuration, the Bifrost VPS cannot reach the cluster's LAN services even though the WireGuard tunnel is up.</p>
-<h2 id="how-it-connects">How It Connects</h2>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>NetBird Management (netbird.madhan.app on Bifrost)
-</span><span>  ↕ WireGuard tunnel
-</span><span>NetBird peer pod in cluster (k8s-routing-peer)
-</span><span>  → hostNetwork: true → accesses 192.168.1.0/24 subnet
-</span><span>  ← Bifrost VPS sends traffic for 192.168.1.0/24
-</span><span>  → Routes to cluster nodes and services
-</span><span>
-</span><span>Bifrost Traefik → NetBird WireGuard → k8s-routing-peer
-</span><span>  → 192.168.1.220 (homelab-gateway) → pod
-</span></code></pre>
+<hr />
 <h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="peer-not-connecting">Peer Not Connecting</h3>
+<h3 id="peer-not-connecting">Peer not connecting</h3>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check pod is running
-</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> netbird
+</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> netbird</span><span style="color:#ffcc66;"> -o</span><span> wide
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Check NetBird agent logs
-</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0
+</span><span style="font-style:italic;color:#5c6773;"># Check NetBird agent status
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> --</span><span> netbird status
+</span><span style="font-style:italic;color:#5c6773;"># Expect: Management: Connected, Peers count: 1/1 Connected
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Verify management URL is reachable
+</span><span style="font-style:italic;color:#5c6773;"># Check NetBird agent logs for errors
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">tail</span><span style="color:#ffcc66;"> -30
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Verify management URL is reachable from the pod
 </span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> -- </span><span style="color:#ccc9c2cc;">\
-</span><span>  curl -s https://netbird.madhan.app/api/v1/peers
+</span><span>  wget -qO- --timeout=5 https://netbird.madhan.app/api/v1/peers </span><span style="color:#ffcc66;">2</span><span style="color:#f29e74;">&gt;&amp;</span><span style="color:#ffcc66;">1 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">head</span><span style="color:#ffcc66;"> -5
 </span></code></pre>
-<h3 id="duplicate-peers-in-netbird-ui">Duplicate Peers in NetBird UI</h3>
-<p><strong>Why:</strong> This happens when the old PVC was deleted (or if the pod was previously a Deployment). Each pod restart without the persisted private key creates a new peer identity.</p>
-<p><strong>Fix:</strong> In the NetBird Management UI, manually delete the stale/ghost peers. Then verify the StatefulSet's PVC persists across restarts:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pvc</span><span style="color:#ffcc66;"> -n</span><span> netbird
-</span><span style="font-style:italic;color:#5c6773;"># Should show: netbird-config-netbird-peer-0 (Bound)
-</span></code></pre>
-<h3 id="route-not-working">Route Not Working</h3>
-<p>If Bifrost can reach the NetBird peer but cannot route to 192.168.1.x addresses:</p>
+<h3 id="route-shows-networks-on-bifrost-agent">Route shows "Networks: -" on bifrost-agent</h3>
+<p>The peer is connected but not advertising the route. Either:</p>
 <ol>
-<li>Check the route is configured in NetBird Management UI (Network → Routes)</li>
-<li>Check the peer shows as "Connected" in the NetBird UI</li>
-<li>Verify <code>hostNetwork: true</code> is set on the pod</li>
+<li>The Network Route hasn't been created in NetBird UI → Network Routes</li>
+<li>The route references a stale/disconnected peer — delete old entries and re-assign to the current peer</li>
 </ol>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Verify from the peer side
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> --</span><span> netbird status
+</span><span style="font-style:italic;color:#5c6773;"># Look for: Networks: 192.168.1.0/24
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Verify from Bifrost
+</span><span style="color:#ffd580;">ssh</span><span> root@178.156.199.250 </span><span style="color:#bae67e;">&#39;docker exec netbird-agent netbird routes list&#39;
+</span><span style="font-style:italic;color:#5c6773;"># Expect: 192.168.1.0/24  Status: Selected
+</span></code></pre>
+<h3 id="duplicate-peers-in-netbird-ui">Duplicate peers in NetBird UI</h3>
+<p><strong>Why:</strong> PVC was deleted, or the pod ran as a Deployment previously. Each restart without a persisted key creates a new peer identity.</p>
+<p><strong>Fix:</strong> Delete all stale/disconnected "k8s-routing-peer" entries from the NetBird UI → Peers. Then verify the StatefulSet's PVC persists across restarts:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pvc</span><span style="color:#ffcc66;"> -n</span><span> netbird
+</span><span style="font-style:italic;color:#5c6773;"># Must show: netbird-config-netbird-peer-0  Bound
+</span></code></pre>
+<h3 id="504-from-public-services-but-tunnel-is-up">504 from public services but tunnel is up</h3>
+<p>The route is connected but traffic doesn't reach the cluster backend. Check the Cilium device configuration first:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Confirm wt0 is NOT in Cilium&#39;s device list on worker1
+</span><span>CILIUM_POD</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">$</span><span>(</span><span style="color:#ffd580;">kubectl</span><span style="color:#bae67e;"> get pods</span><span style="color:#ffcc66;"> -n</span><span style="color:#bae67e;"> kube-system</span><span style="color:#ffcc66;"> -l</span><span style="color:#bae67e;"> app.kubernetes.io/name=cilium-agent </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffcc66;">  -o</span><span style="color:#bae67e;"> wide </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#bae67e;"> k8s-worker1 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">awk </span><span style="color:#bae67e;">&#39;{print $1}&#39;</span><span>)
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> kube-system $CILIUM_POD</span><span style="color:#ffcc66;"> -c</span><span> cilium-agent</span><span style="color:#f29e74;"> --</span><span> cilium-dbg status </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> KubeProxy
+</span><span style="font-style:italic;color:#5c6773;"># Must show only: [eth0  192.168.1.221 ...]
+</span><span style="font-style:italic;color:#5c6773;"># If wt0 appears: update core/platform/cilium.go and run just core platform up
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Test connectivity to the Cilium LB from Bifrost
+</span><span style="color:#ffd580;">ssh</span><span> root@178.156.199.250 </span><span style="color:#ccc9c2cc;">\
+</span><span>  </span><span style="color:#bae67e;">&#39;curl -sv -H &quot;Host: grafana.madhan.app&quot; --connect-timeout 5 http://192.168.1.220/&#39;
+</span><span style="font-style:italic;color:#5c6773;"># Expect: HTTP/1.1 302 Found
+</span></code></pre>
+<h3 id="masquerade-rule-not-taking-effect">MASQUERADE rule not taking effect</h3>
+<p>The iptables MASQUERADE rule requires the pod to have <code>NET_ADMIN</code> capability. Check the initContainer ran:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> describe pod</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -A5 </span><span style="color:#bae67e;">&quot;Init Containers&quot;
+</span><span style="font-style:italic;color:#5c6773;"># setup-iptables should show: State: Terminated, Reason: Completed
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Check the rule is installed
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> netbird netbird-peer-0</span><span style="color:#f29e74;"> -- </span><span style="color:#ccc9c2cc;">\
+</span><span>  iptables -t nat -L POSTROUTING -n -v </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -E </span><span style="color:#bae67e;">&quot;MASQUERADE|CILIUM&quot;
+</span><span style="font-style:italic;color:#5c6773;"># CILIUM_POST_nat chain should show high packet count
+</span><span style="font-style:italic;color:#5c6773;"># MASQUERADE rule (backup) shows 0 packets — this is normal with Cilium BPF active
+</span></code></pre>
 
 
     <!--  Errata section  -->
@@ -750,13 +823,19 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#route-configuration" class="toc-link">Route Configuration</a>
+                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#masquerade-initcontainer" class="toc-link">MASQUERADE initContainer</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#how-it-connects" class="toc-link">How It Connects</a>
+                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#cilium-constraint-wt0-must-not-be-in-devices" class="toc-link">Cilium Constraint — wt0 Must NOT Be in Devices</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#route-configuration" class="toc-link">Route Configuration</a>
                     
                 </li>
             
@@ -769,15 +848,23 @@
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#peer-not-connecting" class="toc-link">Peer Not Connecting</a>
+                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#peer-not-connecting" class="toc-link">Peer not connecting</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#duplicate-peers-in-netbird-ui" class="toc-link">Duplicate Peers in NetBird UI</a>
+                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#route-shows-networks-on-bifrost-agent" class="toc-link">Route shows &quot;Networks: -&quot; on bifrost-agent</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#route-not-working" class="toc-link">Route Not Working</a>
+                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#duplicate-peers-in-netbird-ui" class="toc-link">Duplicate peers in NetBird UI</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#504-from-public-services-but-tunnel-is-up" class="toc-link">504 from public services but tunnel is up</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/apps/networking/netbird-peer/#masquerade-rule-not-taking-effect" class="toc-link">MASQUERADE rule not taking effect</a>
                                 </li>
                             
                         </ul>
@@ -1094,24 +1181,6 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1134,6 +1203,24 @@
                                                             </details>
                                                         
                                                     </li>
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
                                                 
                                             </ul>
                                         </details>
