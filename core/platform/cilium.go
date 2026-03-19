@@ -73,12 +73,13 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			"gatewayAPI": pulumi.Map{
 				"enabled": pulumi.Bool(true),
 			},
-			// Include wt0 (NetBird WireGuard) so Cilium attaches TC/BPF hooks to it.
-			// Without this, traffic arriving from Bifrost via WireGuard (wt0) is never
-			// DNAT'd by Cilium's LB engine and times out — 0 packets reach FORWARD.
+			// Only eth0 in devices. wt0 (NetBird WireGuard) is NOARP/POINTOPOINT -
+			// Cilium TC BPF silently misparses non-Ethernet frames and drops all wt0
+			// packets without monitor events. Traffic from wt0 flows via kernel IP
+			// forwarding + iptables MASQUERADE, hitting another node's eth0 where
+			// Cilium BPF works correctly.
 			"devices": pulumi.StringArray{
 				pulumi.String("eth0"),
-				pulumi.String("wt0"),
 			},
 		},
 	}, pulumi.Provider(k8sProvider))
