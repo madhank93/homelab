@@ -4,15 +4,23 @@ description = "ArgoCD Helm bootstrap, ApplicationSet directory generator, and sy
 weight = 10
 +++
 
+## What is ArgoCD?
+
+[ArgoCD](https://argo-cd.readthedocs.io/) is a Kubernetes-native GitOps controller that continuously reconciles cluster state against a git repository. It watches a target branch and automatically applies any changes, reverting manual `kubectl` edits and pruning resources that are removed from the repo.
+
+## Why ArgoCD?
+
+GitOps with ArgoCD ensures the cluster state is always derivable from code — there are no manual steps that can't be reproduced. Its ApplicationSet directory generator means adding a new workload requires only pushing a new directory to the manifests branch; no ArgoCD config changes are needed.
+
+## How It's Used Here
+
+ArgoCD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.5-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
+
+**Code:** [`core/platform/argocd.go`](https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/argocd.go) · **Namespace:** `argocd` · **Chart version:** `9.4.2`
+
 ## Screenshots
 
 ![ArgoCD application list showing all workloads with sync status and health indicators](/assets/screenshots/argocd/app-list.png)
-
-## Overview
-
-ArgoCD is installed once by Pulumi (`core/platform/argocd.go`) and then manages all workloads via GitOps from the `v0.1.5-manifests` branch. It self-manages after the initial bootstrap.
-
-**Code:** [`core/platform/argocd.go`](https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/argocd.go) · **Namespace:** `argocd` · **Chart version:** `9.4.2`
 
 ## Helm Installation
 

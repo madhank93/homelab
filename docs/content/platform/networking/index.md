@@ -4,9 +4,19 @@ description = "Cilium CNI as kube-proxy replacement, L2 LoadBalancer IPs, Gatewa
 weight = 50
 +++
 
-## Cilium CNI
+## What is Cilium?
 
-[Cilium](https://cilium.io/) v1.16.6 is installed via Helm in the `kube-system` namespace by Pulumi (`core/platform/cilium.go`).
+[Cilium](https://cilium.io/) is a CNI plugin that uses Linux eBPF programs to handle networking, security, and observability for Kubernetes clusters. It can fully replace `kube-proxy`, implement the Gateway API, assign LoadBalancer IPs on bare metal, and provide deep network visibility through its Hubble component.
+
+## Why Cilium?
+
+Cilium's eBPF data plane eliminates `iptables` overhead and enables features not available with standard CNIs: L2 LoadBalancer IP announcements (no MetalLB needed), Gateway API support (no Ingress controller needed), and per-flow network observability through Hubble — all in a single component.
+
+## How It's Used Here
+
+Cilium v1.16.6 replaces kube-proxy entirely, manages LoadBalancer IPs in the `192.168.1.220–230` pool, runs the shared `homelab-gateway` (Envoy) for all HTTP routing, and exposes Hubble UI at `hubble.madhan.app`. Installed via Pulumi at `core/platform/cilium.go`.
+
+## Configuration
 
 | Setting | Value | Purpose |
 |---------|-------|---------|

@@ -4,11 +4,17 @@ description = "NetBird v0.66 combined server — WireGuard mesh for remote clust
 weight = 30
 +++
 
-## Overview
+## What is NetBird?
 
-[NetBird](https://netbird.io) provides a WireGuard-based overlay mesh for secure remote access to the homelab. The **combined server** (`netbirdio/netbird-server:0.66.0`) runs on Bifrost (Hetzner VPS) and consolidates management, signal, relay, STUN, and an **embedded Dex OIDC provider** into a single container.
+[NetBird](https://netbird.io) is an open-source WireGuard-based mesh VPN that automates peer discovery, NAT traversal, and route distribution. A central management server coordinates the mesh; each peer connects directly to others using WireGuard tunnels without traffic passing through the server.
 
-A **routing peer** pod runs inside Kubernetes on **worker1** (`192.168.1.221`) and advertises the cluster subnet `192.168.1.0/24` into the mesh — making all cluster services reachable from any connected NetBird client, and enabling Traefik on Bifrost to proxy public services through the tunnel.
+## Why NetBird?
+
+NetBird eliminates the need to manage WireGuard configs manually — peers register via a setup key, routes are distributed automatically, and OIDC login replaces static keys for user authentication. A single setup key puts the k8s routing peer into the mesh and gives Traefik on Bifrost a tunnel path to all cluster services.
+
+## How It's Used Here
+
+The NetBird combined server runs on Bifrost alongside a `netbird-agent` WireGuard peer. A `netbird-peer` StatefulSet on Kubernetes worker1 joins the mesh and advertises `192.168.1.0/24`, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.
 
 ```
 Your laptop (NetBird client)
@@ -239,7 +245,7 @@ Both keys can share the same **Reusable** setup key value from the NetBird UI �
 
 The `netbird-peer` StatefulSet in the `netbird` namespace runs on **worker1** (`192.168.1.221`), connects to the WireGuard mesh, and advertises `192.168.1.0/24` as a route. This makes all cluster services reachable from any NetBird-connected device.
 
-See [NetBird Peer](/apps/networking/netbird-peer/) for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium `wt0` constraint.
+See [NetBird Peer](/workloads/networking/netbird-peer/) for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium `wt0` constraint.
 
 ---
 

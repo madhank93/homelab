@@ -4,6 +4,18 @@ description = "DNS split strategy, public vs internal service routing, and how t
 weight = 50
 +++
 
+## What is Service Access?
+
+Service access describes how homelab services are reachable — whether from the local network only, or from the internet. The routing strategy combines Cloudflare DNS, the Bifrost Hetzner VPS, and the cluster's Cilium Gateway to implement a clean LAN-vs-public split.
+
+## Why This Split?
+
+Keeping services LAN-only by default minimizes attack surface — a service is private until explicitly promoted to public with a single config change. Adding ForwardAuth via Authentik on the public path means no service is directly exposed without authentication, even if it lacks its own login.
+
+## How It's Used Here
+
+All services default to `*.madhan.app → 192.168.1.220` (LAN wildcard). Adding a service name to `publicServices` in `cloudflare.go` creates an explicit Cloudflare A record pointing to the Bifrost VPS and generates the corresponding Traefik router with ForwardAuth — one `pulumi up` call makes a service public or private.
+
 ## Architecture Overview
 
 Homelab services are LAN-only by default. Selectively exposing a service to the internet is a single-line config change, controlled by `publicServices` in `core/cloud/cloudflare.go`.

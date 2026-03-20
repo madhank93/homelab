@@ -4,9 +4,17 @@ description = "Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik �
 weight = 10
 +++
 
-## Overview
+## What is Hetzner Bifrost?
 
-**Bifrost** is a lightweight Hetzner Cloud VPS that acts as the public edge of the homelab. The name comes from Norse mythology — Bifrost is the rainbow bridge connecting the human realm (Midgard) to the divine realm (Asgard). Here it bridges the public internet to the private homelab cluster. A single Pulumi command (`just core hetzner up`) provisions the server, copies all config files, and runs a bootstrap script that starts every service in dependency order — fully unattended. No manual SSH required.
+[Hetzner Cloud](https://www.hetzner.com/cloud) is a European cloud provider offering low-cost VPS instances. **Bifrost** is this homelab's Hetzner VPS — named after the Norse rainbow bridge connecting worlds — acting as the public edge that bridges the internet to the private cluster.
+
+## Why a Separate Edge VPS?
+
+Running a public-facing edge on a cheap VPS (rather than exposing the home cluster directly) keeps the cluster's private IP range off the internet entirely. Traefik on Bifrost handles TLS, ForwardAuth, and routing; the cluster itself only receives traffic that has passed through the VPS's WireGuard tunnel.
+
+## How It's Used Here
+
+A single Pulumi command (`just core hetzner up`) provisions the Hetzner VPS, uploads all config, and runs `bootstrap.sh` which starts Traefik, Authentik, NetBird server, and a WireGuard peer in dependency order — fully unattended. The VPS sits in front of every public `madhan.app` service and routes traffic through the NetBird WireGuard mesh to the cluster's Cilium gateway at `192.168.1.220`.
 
 ```
 just core hetzner up

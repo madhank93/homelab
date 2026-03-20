@@ -4,9 +4,17 @@ description = "Proxmox VM provisioning and Talos Linux cluster bootstrap via Pul
 weight = 30
 +++
 
-## Overview
+## What is Proxmox + Talos?
 
-Pulumi provisions 7 QEMU VMs on Proxmox and bootstraps a 3-control-plane Talos Linux cluster. The entry point is `core/platform/talos.go`.
+[Proxmox VE](https://www.proxmox.com/) is an open-source hypervisor for running KVM virtual machines. [Talos Linux](https://www.talos.dev/) is an immutable, API-driven Linux distribution purpose-built for Kubernetes — there is no SSH, no shell login, and all node configuration is applied declaratively via the Talos API.
+
+## Why Proxmox + Talos?
+
+Proxmox provides bare-metal virtualization on a single home server, allowing the cluster to be rebuilt from scratch with one command. Talos eliminates configuration drift by making every node stateless and reproducible — node config is code, not accumulated shell history.
+
+## How It's Used Here
+
+Pulumi provisions 7 QEMU VMs on Proxmox and bootstraps a 3-control-plane Talos Linux cluster entirely unattended. One GPU worker (k8s-worker4) passes through an NVIDIA RTX 5070 Ti via PCIe. The entry point is `core/platform/talos.go`.
 
 ## Talos Images
 

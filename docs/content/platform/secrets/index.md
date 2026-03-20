@@ -4,6 +4,18 @@ description = "SOPS/age for bootstrap secrets. OpenBao + Secrets Store CSI Drive
 weight = 60
 +++
 
+## What is SOPS + OpenBao?
+
+[SOPS](https://github.com/getsops/sops) (Secrets OPerationS) is a tool for encrypting secret files using age, PGP, or cloud KMS keys — allowing encrypted secrets to be safely committed to a public git repository. [OpenBao](https://openbao.org/) (a community fork of HashiCorp Vault) is a secrets management server that stores runtime credentials and serves them to pods via the Secrets Store CSI Driver.
+
+## Why This Approach?
+
+SOPS with age encryption keeps bootstrap secrets version-controlled and reproducible without any external service dependency. OpenBao handles runtime secrets at pod startup — no credentials ever appear in Kubernetes manifests, git history, or CDK8s-generated YAML.
+
+## How It's Used Here
+
+Bootstrap secrets (OpenBao unseal key, Cloudflare API token) are age-encrypted in `secrets/bootstrap.sops.yaml` and applied once with `just create-secrets`. All other app credentials live in OpenBao's KV store and are mounted into pods as files via the CSI driver at runtime, keeping CDK8s manifests completely secret-free.
+
 ## Architecture
 
 Secrets management uses a two-tier approach:

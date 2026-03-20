@@ -4,15 +4,17 @@ description = "OIDC identity provider running on the Bifrost VPS — GitHub SSO,
 weight = 20
 +++
 
-## Overview
+## What is Authentik?
 
-[Authentik](https://goauthentik.io/) is the identity provider for the homelab. It runs on the Bifrost Hetzner VPS (not inside the cluster) and is managed by Pulumi (`core/cloud/authentik.go`, stack: `authentik`).
+[Authentik](https://goauthentik.io/) is a self-hosted identity provider (IdP) supporting OIDC, SAML, OAuth2, and LDAP. It allows centralizing authentication across multiple apps through a single SSO layer, with support for external OAuth sources like GitHub.
 
-Authentik handles three things:
+## Why Authentik?
 
-1. **GitHub OAuth login** — users authenticate with their GitHub account
-2. **OIDC for cluster apps** — Grafana and NetBird use Authentik as their OIDC provider
-3. **ForwardAuth for public services** — Traefik's `authentik-forwardauth` middleware gates public cluster services behind a session cookie
+Authentik provides a fully self-hosted SSO with GitHub OAuth as the upstream identity source — no user passwords to manage. Its ForwardAuth outpost integrates directly with Traefik, gating every public service behind a session cookie without any per-app OAuth configuration.
+
+## How It's Used Here
+
+Authentik runs on the Bifrost VPS (not inside the cluster) and handles three roles: GitHub OAuth login for all users, OIDC provider for Grafana and NetBird, and ForwardAuth middleware for Traefik to protect public cluster services. Managed by Pulumi's `authentik` stack (`core/cloud/authentik.go`, `just core authentik up`).
 
 ---
 

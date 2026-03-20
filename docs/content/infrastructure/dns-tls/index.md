@@ -4,15 +4,19 @@ description = "Cloudflare DNS records and the publicServices toggle — how serv
 weight = 40
 +++
 
-## Cloudflare DNS
+## What is Cloudflare?
 
-All cluster services use the `madhan.app` domain managed by Cloudflare. DNS records are provisioned by Pulumi (`core/cloud/cloudflare.go`, stack: `cloudflare`):
+[Cloudflare](https://www.cloudflare.com/) is a DNS provider (and optional CDN/proxy) that manages the `madhan.app` domain for this homelab. All DNS records are provisioned as code via the Cloudflare Terraform/Pulumi provider, keeping DNS configuration in sync with the cluster.
 
-```bash
-just core cloudflare up
-```
+## Why Cloudflare?
 
-### Record Layout
+Cloudflare's API is required by cert-manager's DNS-01 ACME solver to issue wildcard TLS certificates without a public HTTP endpoint. It also provides a clean separation between LAN-only services (pointing to the private wildcard `192.168.1.220`) and internet-exposed services (pointing to the Bifrost VPS), controlled by a single `publicServices` list in code.
+
+## How It's Used Here
+
+The `madhan.app` domain uses a wildcard A record (`*.madhan.app → 192.168.1.220`) as the default for all LAN services. Public services override the wildcard with an explicit A record pointing to the Bifrost VPS (`178.156.199.250`). Everything is managed by Pulumi (`core/cloud/cloudflare.go`, `just core cloudflare up`).
+
+## Record Layout
 
 | Record | Resolves To | Purpose |
 |--------|-------------|---------|

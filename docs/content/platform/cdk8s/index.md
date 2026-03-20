@@ -19,6 +19,10 @@ weight = 20
 
 CDK8s enables Go functions to generate manifests, making it easy to share patterns (like the OpenBao CSI volume + SecretProviderClass pattern) across all apps without duplicating YAML.
 
+## How It's Used Here
+
+All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in `workloads/`. A CI pipeline runs `go run .` on every push to synthesize YAML into `app/` and force-pushes that output to the `v0.1.5-manifests` branch, which ArgoCD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero `Secret` resources.
+
 ## Structure
 
 ```

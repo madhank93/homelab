@@ -146,7 +146,7 @@ See [Hetzner Bifrost](/infrastructure/hetzner-bifrost) for the full bootstrap se
 
 ## Runtime Secrets (OpenBao + CSI Driver)
 
-After the cluster is up, all application secrets are managed by [OpenBao](/apps/secrets/openbao). Apps consume secrets via the Secrets Store CSI Driver — secrets are mounted as files in pods, or synced to k8s Secrets via `secretObjects`.
+After the cluster is up, all application secrets are managed by [OpenBao](/workloads/secrets/openbao). Apps consume secrets via the Secrets Store CSI Driver — secrets are mounted as files in pods, or synced to k8s Secrets via `secretObjects`.
 
 ### Patterns
 
@@ -180,7 +180,7 @@ Used by: **Harbor**, **n8n**, **Rancher**, **NetBird peer**
 
 ### One-time setup
 
-After first deploy, run `just openbao-setup` to configure K8s auth, policies, roles, and write initial secrets. See [OpenBao](/apps/secrets/openbao) for details.
+After first deploy, run `just openbao-setup` to configure K8s auth, policies, roles, and write initial secrets. See [OpenBao](/workloads/secrets/openbao) for details.
 
 ---
 

@@ -1,6 +1,6 @@
 +++
-title = "Apps"
-description = "All platform applications deployed via CDK8s and ArgoCD."
+title = "Workloads"
+description = "All workloads deployed to the cluster via CDK8s and ArgoCD."
 weight = 60
 sort_by = "weight"
 +++

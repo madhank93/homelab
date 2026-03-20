@@ -8,6 +8,14 @@ weight = 40
 
 A highly available control plane means the Kubernetes API server remains reachable even when one control plane node goes down. This homelab runs 3 control plane nodes, which is the minimum count needed for etcd quorum-based HA.
 
+## Why This Setup?
+
+Three control plane nodes give etcd the ability to survive one node failure while maintaining quorum. Talos Linux's built-in VIP feature provides automatic failover without requiring any external load balancer or keepalived daemon.
+
+## How It's Used Here
+
+Three control plane VMs (192.168.1.211–213) share a floating VIP at `192.168.1.210:6443`. All workers and external tooling connect exclusively through the VIP — if the current VIP holder crashes, another control plane node takes over within 1–3 seconds. Configured in `core/platform/talos.go`.
+
 ## Node Configuration
 
 | Node | IP | Role |

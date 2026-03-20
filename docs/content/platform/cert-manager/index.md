@@ -4,7 +4,17 @@ description = "Wildcard TLS certificate for *.madhan.app via Let's Encrypt DNS-0
 weight = 55
 +++
 
-cert-manager issues a wildcard TLS certificate for `*.madhan.app` using Let's Encrypt DNS-01 challenge via the Cloudflare API. Managed by Pulumi (`core/platform/cert_manager.go`, stack: `platform`):
+## What is cert-manager?
+
+[cert-manager](https://cert-manager.io/) is a Kubernetes controller that automates the issuance and renewal of TLS certificates from ACME providers like Let's Encrypt. It supports DNS-01 challenges, which allow issuing wildcard certificates without requiring public HTTP access.
+
+## Why cert-manager?
+
+DNS-01 challenge via Cloudflare lets cert-manager obtain a wildcard `*.madhan.app` certificate for a private cluster that has no public HTTP endpoint — the only requirement is write access to the Cloudflare DNS zone.
+
+## How It's Used Here
+
+cert-manager issues and renews a single wildcard certificate (`wildcard-madhan-app-tls`) stored in `kube-system`, which the shared Cilium Gateway uses for HTTPS termination across all services. Managed by Pulumi (`core/platform/cert_manager.go`, stack: `platform`):
 
 ```bash
 just core platform up
