@@ -1,12 +1,13 @@
 package cloud
 
 import (
-	"github.com/madhank93/homelab/core/internal/cfg"
 	"fmt"
 	"os"
 
 	cf "github.com/pulumi/pulumi-cloudflare/sdk/v5/go/cloudflare"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+
+	"github.com/madhank93/homelab/core/internal/cfg"
 )
 
 // PublicService describes a service exposed to the public internet via the Hetzner VPS.
@@ -26,7 +27,12 @@ var publicServices = []PublicService{
 	{Name: "grafana", SkipAuth: true},
 }
 
-// ManageCloudflare manages Cloudflare DNS records for the homelab.
+// ManageCloudflare provisions Cloudflare DNS records for the homelab domain.
+//
+// It creates a wildcard A record pointing all *.madhan.app subdomains at the
+// LAN gateway (192.168.1.220), static records for always-public services
+// (auth, netbird, proxy), and per-entry records for each service listed in
+// [publicServices]. Run `just core cloudflare up` to apply changes.
 func ManageCloudflare(ctx *pulumi.Context) error {
 	var hetznerCfg HetznerConfig
 	if err := cfg.Load("hetzner", &hetznerCfg); err != nil {

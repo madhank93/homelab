@@ -7,6 +7,15 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
+// NewOpenBaoChart deploys OpenBao (open-source Vault fork) as the cluster secrets manager.
+//
+// The namespace is labelled privileged because the OpenBao CSI provider DaemonSet
+// requires elevated privileges to mount secrets into pods via the CSI interface.
+//
+// OpenBao is configured in high-availability mode with Kubernetes auth enabled.
+// An unseal sidecar runs via extraContainers (not initContainers — init containers
+// cannot reach the server during its own startup) to auto-unseal on pod restart.
+// The unseal key is stored as a bootstrap k8s Secret (Prune=false in ArgoCD).
 func NewOpenBaoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

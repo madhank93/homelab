@@ -7,6 +7,12 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
+// NewComfyUIChart deploys ComfyUI, a node-based Stable Diffusion UI, as a Deployment
+// pinned to the GPU worker node (nvidia.com/gpu.present=true).
+//
+// Image: yanwk/comfyui-boot:cu128-megapak-20260223 (CUDA 12.8, sm_120 Blackwell).
+// A model PVC is mounted at /root so model files persist across pod restarts.
+// An HTTPRoute exposes ComfyUI at comfyui.madhan.app through the homelab Gateway.
 func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

@@ -8,6 +8,18 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
+// NewHarborChart deploys Harbor container registry via the Helm chart.
+//
+// Secrets are sourced from OpenBao via the CSI Driver (Pattern B). Because the
+// Harbor Helm chart does not support extraVolumes natively, a dedicated secret-sync
+// Deployment and ServiceAccount mount the CSI volume to trigger secretObjects sync,
+// making the Harbor admin password and registry credentials available as k8s Secrets.
+//
+// The HTTPRoute exposes Harbor at harbor.madhan.app via the homelab Gateway.
+// Traffic must be routed to the harbor:80 nginx proxy Service, not harbor-core:80.
+//
+// Known issue: RWO PVC deadlock on rolling update — force-delete pods and scale
+// down the old ReplicaSet to zero to resolve.
 func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -105,48 +117,48 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		},
 	})
 
-	values := map[string]interface{}{
-		"expose": map[string]interface{}{
+	values := map[string]any{
+		"expose": map[string]any{
 			"type": "clusterIP",
-			"tls":  map[string]interface{}{"enabled": false},
+			"tls":  map[string]any{"enabled": false},
 		},
 		"externalURL": "https://harbor.madhan.app",
-		"persistence": map[string]interface{}{
+		"persistence": map[string]any{
 			"enabled": true,
 			// ReadWriteMany via Longhorn NFS — eliminates RWO multi-attach deadlocks
 			// on rolling updates. Longhorn automatically provisions an NFS server pod
 			// for each RWX volume.
-			"persistentVolumeClaim": map[string]interface{}{
-				"registry": map[string]interface{}{
+			"persistentVolumeClaim": map[string]any{
+				"registry": map[string]any{
 					"size":       "50Gi",
 					"accessMode": "ReadWriteMany",
 				},
-				"jobservice": map[string]interface{}{
-					"jobLog": map[string]interface{}{
+				"jobservice": map[string]any{
+					"jobLog": map[string]any{
 						"accessMode": "ReadWriteMany",
 					},
 				},
-				"database": map[string]interface{}{"size": "10Gi"},
+				"database": map[string]any{"size": "10Gi"},
 			},
 		},
 		"harborAdminPassword": "",
 		"existingSecret":      "harbor-admin", // Secret synced by SecretProviderClass + secret-sync pod
-		"core": map[string]interface{}{
-			"resources": map[string]interface{}{
-				"limits":   map[string]interface{}{"cpu": "1000m", "memory": "1Gi"},
-				"requests": map[string]interface{}{"cpu": "100m", "memory": "256Mi"},
+		"core": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
 			},
 		},
-		"jobservice": map[string]interface{}{
-			"resources": map[string]interface{}{
-				"limits":   map[string]interface{}{"cpu": "500m", "memory": "512Mi"},
-				"requests": map[string]interface{}{"cpu": "100m", "memory": "128Mi"},
+		"jobservice": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 			},
 		},
-		"registry": map[string]interface{}{
-			"resources": map[string]interface{}{
-				"limits":   map[string]interface{}{"cpu": "1000m", "memory": "1Gi"},
-				"requests": map[string]interface{}{"cpu": "100m", "memory": "256Mi"},
+		"registry": map[string]any{
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
 			},
 		},
 	}

@@ -15,15 +15,26 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// HetznerConfig holds Bifrost VPS provisioning parameters read from config.yml
+// under the "hetzner" key.
 type HetznerConfig struct {
 	ServerName string `koanf:"server_name"`
 	Image      string `koanf:"image"`
 	ServerType string `koanf:"server_type"`
 	Location   string `koanf:"location"`
-	SshKey     string `koanf:"ssh_key"`
+	SSHKey     string `koanf:"ssh_key"`
 	VpsIP      string `koanf:"vps_ip"`
 }
 
+// DeployHetznerVPS provisions the Bifrost VPS on Hetzner Cloud and bootstraps it.
+//
+// It creates a firewall (ports 22, 80, 443, STUN/TURN 3478/5349, TURN ephemeral
+// 50000-50500), a server with cloud-init, then copies the ./cloud/bifrost/ config
+// directory to the server and runs bootstrap.sh. The bootstrap is re-triggered
+// whenever configs or secrets change via a SHA-256 hash stored as a Pulumi trigger.
+//
+// Secrets are written to .secrets.env and .env under ./cloud/bifrost/ (gitignored)
+// before the copy step. Run via `just core hetzner up`.
 func DeployHetznerVPS(ctx *pulumi.Context) error {
 	var hcfg HetznerConfig
 	if err := cfg.Load("hetzner", &hcfg); err != nil {
@@ -139,7 +150,7 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 		ServerType: pulumi.String(hcfg.ServerType),
 		Location:   pulumi.String(hcfg.Location),
 		SshKeys: pulumi.StringArray{
-			pulumi.String(hcfg.SshKey),
+			pulumi.String(hcfg.SSHKey),
 		},
 		FirewallIds: pulumi.IntArray{
 			fwID,

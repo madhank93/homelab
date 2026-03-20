@@ -1,23 +1,29 @@
 package platform
 
 import (
-	"github.com/madhank93/homelab/core/internal/cfg"
 	"fmt"
 
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve"
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/download"
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/vm"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+
+	"github.com/madhank93/homelab/core/internal/cfg"
 )
 
-// Proxmox-specific config structs
+// ProxmoxClusterConfig holds Proxmox provider settings read from config.yml
+// under the "proxmox" key.
 type ProxmoxClusterConfig struct {
 	Username string `koanf:"username"`
 	Endpoint string `koanf:"endpoint"`
 	NodeName string `koanf:"nodename"`
-	ImageUrl string `koanf:"image_url"`
+	ImageURL string `koanf:"image_url"`
 }
 
+// NodeConfig describes a single Talos VM to create on Proxmox.
+// HasGPU and PcieIDs enable PCIe passthrough for the GPU worker node.
+// CpuUnits controls the Proxmox CPU weight (scheduling priority).
+// Balloon is the minimum guaranteed RAM in MiB (balloon floor).
 type NodeConfig struct {
 	Name       string
 	IP         string
@@ -33,7 +39,8 @@ type NodeConfig struct {
 	Balloon    int
 }
 
-// Initializes the Proxmox provider
+// NewProxmoxProvider initialises the Proxmox VE provider from config.yml and
+// the PROXMOX_PASSWORD environment variable (injected via SOPS).
 func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, *ProxmoxClusterConfig, error) {
 	var pcfg ProxmoxClusterConfig
 	if err := cfg.Load("proxmox", &pcfg); err != nil {
@@ -86,7 +93,10 @@ func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceNa
 	)
 }
 
-// Virtual Machine
+// NewProxmoxVM creates a Talos virtual machine on the given Proxmox node.
+// It uses OVMF BIOS + q35 machine type, virtio-scsi-single, and an EFI disk.
+// When config.HasGPU is true, each PcieID is added as a PCIe passthrough device
+// with Xvga=false (compute-only; no VGA BAR constraints).
 func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string, config NodeConfig, imageID pulumi.IDInput) (*vm.VirtualMachine, error) {
 	diskArgs := vm.VirtualMachineDiskArgs{
 		Size:        pulumi.Int(config.DiskSize),

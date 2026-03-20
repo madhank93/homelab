@@ -6,6 +6,20 @@ import (
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 )
 
+// NewKubeflowChart creates an HTTPRoute for the Kubeflow central dashboard and
+// generates the kubeflow namespace.
+//
+// The Kubeflow platform manifests are pre-built by running
+// `kustomize build workloads/ai/kubeflow/` and committed alongside this HTTPRoute
+// in app/kubeflow/ on the manifests branch. ArgoCD's ApplicationSet deploys
+// app/kubeflow/ directly — no remote kustomize base fetching at sync time.
+//
+// The RequestHeaderModifier injects kubeflow-userid so the dashboard identifies
+// the current user without requiring Dex or OIDC in the data path.
+//
+// GPU notebooks in Kubeflow REQUIRE runtimeClassName: nvidia — without it the
+// nvidia container hook does not fire and CUDA is inaccessible even with the
+// nvidia.com/gpu resource request.
 func NewKubeflowChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

@@ -8,6 +8,13 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/longhorn"
 )
 
+// NewLonghornChart deploys Longhorn distributed block storage (v1.10.2) into the
+// given namespace.
+//
+// Storage layout per worker node: 120 Gi disk, ~100 Gi free.
+// overProvisioningPercentage=200 gives ~240 Gi of schedulable storage per node.
+// The namespace is labelled privileged because the Longhorn CSI driver and
+// instance manager require elevated host access (device files, kernel modules).
 func NewLonghornChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

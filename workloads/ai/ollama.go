@@ -7,6 +7,12 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/ollama"
 )
 
+// NewOllamaChart deploys Ollama LLM inference server via the official Helm chart.
+//
+// Ollama is pinned to the GPU worker node via nodeSelector nvidia.com/gpu.present=true
+// (set by Node Feature Discovery). Time-slicing is configured in the GPU operator
+// (5 virtual GPUs), so Ollama shares the RTX 5070 Ti with ComfyUI and Kubeflow workloads.
+// An HTTPRoute exposes Ollama at ollama.madhan.app through the homelab Gateway.
 func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

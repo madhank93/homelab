@@ -8,8 +8,10 @@ import (
 )
 
 const (
-	vmInsertEndpoint = "http://victoria-metrics-victoria-metrics-cluster-vminsert.victoria-metrics.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
-	// VictoriaLogs OTLP endpoint — collector appends /v1/logs automatically
+	// vmInsertEndpoint is the VictoriaMetrics single-node remote-write endpoint.
+	// VMCluster is disabled (vmcluster.enabled=false in victoria_metrics.go).
+	vmInsertEndpoint = "http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8429/api/v1/write"
+	// vlOtlpEndpoint is the VictoriaLogs OTLP/HTTP endpoint.
 	vlOtlpEndpoint = "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry"
 )
 

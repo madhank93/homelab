@@ -7,6 +7,11 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/victorialogssingle"
 )
 
+// NewVictoriaLogsChart deploys VictoriaLogs single-node into the given namespace.
+//
+// VictoriaLogs receives log records from the OTel Collector via OTLP/HTTP on port 9428.
+// The reloader.stakater.com/auto annotation ensures the pod is rolled whenever
+// its ConfigMap or Secret changes.
 func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

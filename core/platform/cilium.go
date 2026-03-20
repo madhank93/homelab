@@ -13,9 +13,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// InstallCilium installs Cilium as the cluster CNI and kube-proxy replacement.
+//
+// Configuration highlights:
+//   - kubeProxyReplacement: true — full eBPF data plane; kube-proxy is disabled in Talos
+//   - k8sServiceHost/Port: VIP 192.168.1.210:6443 — required because Cilium contacts the API server directly
+//   - devices: eth0 only — wt0 (NetBird WireGuard) is excluded; NOARP/POINTOPOINT interfaces
+//     cause Cilium TC BPF to silently drop packets without monitor events
+//   - l2Announcements + gatewayAPI: enabled for bare-metal LoadBalancer IPs and Gateway API support
+//   - Hubble relay + UI: enabled for network flow observability
+//
+// An HTTPRoute for hubble.madhan.app → hubble-ui:80 is created after the chart.
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
-
-	// Define Cilium Helm Chart
 	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
 		Chart:   pulumi.String("cilium"),
 		Version: pulumi.String("1.16.6"), // Latest Stable

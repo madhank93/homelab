@@ -6,6 +6,14 @@ import (
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 )
 
+// NewCsiDriverChart deploys the Secrets Store CSI Driver into kube-system.
+//
+// The CSI Driver manages the interface between Kubernetes volumes and external
+// secret providers (OpenBao). syncSecret.enabled=true is required so that
+// secretObjects defined in a SecretProviderClass are synced to k8s Secrets —
+// necessary for apps that reference secrets via existingSecret (Harbor, n8n,
+// Rancher, NetBird). The DaemonSet tolerates all nodes so every node can serve
+// CSI mount requests from pods scheduled on it.
 func NewCsiDriverChart(scope constructs.Construct, id string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String("kube-system"),

@@ -7,6 +7,23 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
+// NewNetbirdPeerChart deploys the NetBird routing peer (k8s-routing-peer) as a
+// StatefulSet on worker1 (192.168.1.221).
+//
+// The routing peer forms a WireGuard mesh with the Bifrost VPS and advertises the
+// 192.168.1.0/24 cluster subnet to Bifrost. Incoming traffic from Bifrost arrives
+// on wt0, is forwarded via kernel IP routing, and exits through eth0 on another node
+// where Cilium BPF handles the DNAT to the backend pod.
+//
+// Key configuration decisions:
+//   - PVC mounts at /var/lib/netbird/ for peer-key persistence across restarts.
+//   - An initContainer applies iptables MASQUERADE on the CILIUM_POST_nat chain
+//     so that forwarded traffic from wt0 appears to originate from the node IP.
+//   - NB_SKIP_SOCKET_MARK must NOT be set: the routing peer relies on socket fwmark
+//     to bypass the management-server host route added to the kernel routing table.
+//   - wt0 is excluded from Cilium devices (core/platform/cilium.go) — it is
+//     NOARP/POINTOPOINT (no Ethernet header) and would cause Cilium TC BPF to
+//     silently drop all traffic without monitor events.
 func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

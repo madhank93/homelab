@@ -8,6 +8,15 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
+// NewGrafanaChart deploys Grafana into the given namespace with OpenBao-sourced secrets
+// and pre-provisioned VictoriaMetrics and VictoriaLogs datasources.
+//
+// Secrets use Pattern B (secretObjects sync) via the CSI Driver:
+//   - ADMIN_PASSWORD: file-mounted at /mnt/secrets/ADMIN_PASSWORD, read via GF_SECURITY_ADMIN_PASSWORD__FILE.
+//   - OAUTH_CLIENT_SECRET: synced to k8s Secret "grafana-oauth-secret" for Authentik OIDC.
+//
+// Kyverno policy engine dashboards are imported via a ConfigMap with the
+// grafana_dashboard label so Grafana's sidecar picks them up automatically.
 func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

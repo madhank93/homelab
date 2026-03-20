@@ -7,6 +7,12 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
+// NewFalcoChart deploys Falco runtime security via the official Helm chart.
+//
+// Falco runs as a DaemonSet and observes Linux system calls to detect anomalous
+// container behaviour. The namespace is labelled privileged because the DaemonSet
+// pods need host-level access (hostPID, hostNetwork, /dev/falco, kernel module or eBPF probe).
+// Falco Sidekick is also deployed to forward alerts to VictoriaLogs.
 func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

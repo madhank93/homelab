@@ -8,6 +8,12 @@ import (
 	rancherimport "github.com/madhank93/homelab/workloads/imports/rancher"
 )
 
+// NewRancherChart deploys Rancher cluster management UI via the official Helm chart.
+//
+// Because the Rancher Helm chart does not support extraVolumes natively, a separate
+// secret-sync Deployment and ServiceAccount are created to pull the Rancher bootstrap
+// password from OpenBao via the CSI Driver (Pattern B) and sync it to a k8s Secret.
+// An HTTPRoute exposes Rancher at rancher.madhan.app through the homelab Gateway.
 func NewRancherChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

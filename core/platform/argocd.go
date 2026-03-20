@@ -8,9 +8,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// InstallArgoCD installs ArgoCD via Helm and configures the GitOps bootstrap.
+//
+// It creates:
+//   - ArgoCD Helm release (chart argo-cd, namespace argocd)
+//   - HTTPRoute for argocd.local (LAN access via homelab-gateway)
+//   - TLSRoute for argocd.madhan.app (passthrough TLS)
+//   - ApplicationSet "cots-applications" watching the v0.1.5-manifests branch
+//
+// The ApplicationSet drives all workload deployments via GitOps. Run
+// `just core platform up` to apply.
 func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
-
-	// Define ArgoCD Helm Chart
 	chart, err := helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 		Chart:   pulumi.String("argo-cd"),
 		Version: pulumi.String("9.4.2"),
@@ -70,8 +78,11 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			},
 		},
 	}, pulumi.Provider(k8sProvider))
+	if err != nil {
+		return err
+	}
 
-	// Define HTTPRoute for ArgoCD (Gateway API)
+	// HTTPRoute for ArgoCD (LAN access via homelab-gateway)
 	_, err = apiextensions.NewCustomResource(ctx, "argocd-httproute", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 		Kind:       pulumi.String("HTTPRoute"),

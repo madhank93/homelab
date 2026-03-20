@@ -7,6 +7,16 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/kyverno"
 )
 
+// NewKyvernoChart deploys the Kyverno policy engine in high-availability mode.
+//
+// Replica counts:
+//   - admissionController: 3 (odd number required for leader election quorum)
+//   - backgroundController: 2
+//   - cleanupController:    2
+//   - reportsController:    2
+//
+// A ServiceMonitor on port 8000 is enabled for VictoriaMetrics scraping,
+// and a Grafana dashboard ConfigMap is created for policy observability.
 func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

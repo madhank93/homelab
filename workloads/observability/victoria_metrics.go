@@ -7,6 +7,13 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
+// NewVictoriaMetricsChart deploys the VictoriaMetrics stack (vm-operator + VMSingle)
+// into the given namespace using the victoria-metrics-k8s-stack Helm chart.
+//
+// VMSingle (single-node mode) is used instead of VMCluster — vmcluster.enabled=false.
+// The node-exporter DaemonSet requires hostNetwork, hostPID, and hostPath access
+// to /proc, /sys, and /root, so the namespace is labelled privileged.
+// Metrics are accessible at vmsingle-vm-stack:8429 within the cluster.
 func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

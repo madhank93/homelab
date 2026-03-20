@@ -2,6 +2,7 @@ package platform
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -18,6 +19,13 @@ const (
 	vipIP           = "192.168.1.210"
 )
 
+// DeployTalosCluster provisions Talos Linux VMs on Proxmox and bootstraps the
+// Kubernetes cluster. It downloads the base and GPU Talos images, generates
+// machine secrets, creates all VMs defined in the nodes slice, applies per-node
+// machine configs (hostname, static IP, routes), bootstraps etcd on the first
+// controller, and writes talosconfig + kubeconfig to disk for the platform stack.
+//
+// Run `just core talos up` to apply.
 func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Initialize Provider & Config
 	provider, cfg, err := NewProxmoxProvider(ctx)
@@ -328,7 +336,14 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	return nil
 }
 
-// patchTalosConfig removes HostnameConfig, machine.install, and sets the hostname.
+// patchTalosConfig applies per-node patches to a raw Talos machine config YAML.
+//
+// It performs three transformations:
+//  1. Drops the HostnameConfig document (auto-generated; we set hostname explicitly).
+//  2. Removes machine.install (handled by cloud-init; not needed after first boot).
+//  3. Sets machine.network.hostname, converts DHCP to a static address (hostname/24),
+//     adds a default gateway route, and adds a static route for the NetBird subnet
+//     (100.109.0.0/16 via worker1) so return traffic can reach the WireGuard tunnel.
 func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
 	reader := strings.NewReader(rawConfig)
 	decoder := yaml.NewDecoder(reader)
@@ -338,7 +353,7 @@ func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
 		var doc map[string]any
 		err := decoder.Decode(&doc)
 		if err != nil {
-			if err.Error() == "EOF" {
+			if err == io.EOF {
 				break
 			}
 			return "", err

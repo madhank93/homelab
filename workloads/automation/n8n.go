@@ -7,6 +7,14 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
+// NewN8nChart deploys n8n workflow automation via the 8gears Helm chart (OCI v2.0.1).
+//
+// Secrets are sourced from OpenBao via the CSI Driver (Pattern B):
+//   - ENCRYPTION_KEY is fetched from OpenBao and synced to k8s Secret "n8n-secrets".
+//   - The PostgreSQL password is managed by CloudNativePG and stored in "n8n-pg-app".
+//
+// A CNPG Cluster CR is also created in the same namespace to provision the
+// n8n PostgreSQL database. The CSI volume mount on the n8n pod triggers secretObjects sync.
 func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
