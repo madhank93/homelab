@@ -6,21 +6,11 @@ weight = 10
 
 ## What is OpenBao?
 
-[OpenBao](https://openbao.org/) is an open-source fork of HashiCorp Vault, maintained under the MPL-2.0 license after HashiCorp changed Vault to BSL-1.1 in 2023. It provides secrets management, dynamic credentials, encryption as a service, and more — with a fully Vault-compatible API.
+[OpenBao](https://openbao.org/) is an open-source, community-maintained fork of HashiCorp Vault (MPL-2.0). It provides secrets management with a fully Vault-compatible API — all `vault` CLI knowledge and tooling applies directly using the `bao` CLI.
 
-In this homelab, OpenBao serves as the runtime secrets store for all application credentials. It replaces Infisical, which was the previous solution.
+## Why OpenBao?
 
-## Why OpenBao Over Infisical?
-
-The migration from Infisical to OpenBao happened due to several compounding issues:
-
-| Issue | Detail |
-|-------|--------|
-| Operator chart bugs | Infisical operator chart had CRD schema issues that caused `ServerSideApply=false` to be required on all `InfisicalSecret` resources |
-| SA token discovery broken | The operator's Kubernetes auth flow was broken on clusters running Kubernetes 1.24+ due to changes in SA token projection |
-| ArgoCD SSA conflict | The Infisical CRD schema omits `projectSlug` from `secretsScope`, which breaks ArgoCD's structured merge diff engine |
-| Features behind cloud plan | Key features required a paid Infisical Cloud subscription |
-| OpenBao is Vault-compatible | All existing Vault knowledge and tooling works unchanged |
+OpenBao's Kubernetes auth method allows pods to authenticate using their ServiceAccount token without any static credentials — the cluster itself is the identity provider. The Secrets Store CSI Driver integration mounts secrets directly into pods as files at startup, so no secret values appear in manifests, environment variables, or `kubectl get secret` output.
 
 ## How It's Used Here
 
@@ -123,6 +113,65 @@ Pod starts
 
 ![OpenBao UI showing KV v2 secrets and Kubernetes auth configuration](/assets/screenshots/openbao/main-ui.png)
 
+## Commands
+
+All `bao` commands run inside the `openbao-0` pod. Export `ROOT_TOKEN` first:
+
+```bash
+ROOT_TOKEN=$(kubectl get secret openbao-unseal-key -n openbao \
+  -o jsonpath='{.data.root-token}' | base64 -d)
+```
+
+### Read a secret
+
+```bash
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv get secret/grafana
+```
+
+### Read a single key
+
+```bash
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv get -field=ADMIN_PASSWORD secret/grafana
+```
+
+### Update / add a key (non-destructive patch)
+
+```bash
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv patch secret/grafana ADMIN_PASSWORD=newvalue
+```
+
+### Replace all keys in a secret (full put)
+
+```bash
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv put secret/grafana ADMIN_PASSWORD=value OAUTH_CLIENT_SECRET=value
+```
+
+### List all secrets in a path
+
+```bash
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao kv list secret/
+```
+
+### Check OpenBao status
+
+```bash
+kubectl exec -n openbao openbao-0 -- bao status
+```
+
+### Check auth roles
+
+```bash
+kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+  bao read auth/kubernetes/role/grafana
+```
+
+---
+
 ## Troubleshooting
 
 ### Sealed After Restart
@@ -187,22 +236,3 @@ kubectl describe secretproviderclass <name> -n <namespace>
 
 **Fix:** Ensure the `SecretProviderClass` exists in the same namespace as the pod. CDK8s should create it — check if ArgoCD has synced the namespace.
 
-### One-Time Setup (after fresh cluster)
-
-```bash
-# 1. Deploy OpenBao (via ArgoCD sync of openbao app)
-# 2. Initialize OpenBao
-just openbao-init        # saves root token + unseal key to /tmp/openbao-init.json
-
-# 3. Store unseal key as bootstrap secret
-just create-secrets
-
-# 4. Configure K8s auth, policies, roles
-just openbao-setup
-
-# 5. Add real secret values
-ROOT_TOKEN=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['root_token'])")
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv put secret/grafana ADMIN_PASSWORD=<real> OAUTH_CLIENT_SECRET=<real>
-# ... repeat for harbor, n8n, rancher, netbird
-```
