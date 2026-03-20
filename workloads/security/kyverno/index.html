@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="Complete step-by-step guide for deploying the homelab from scratch — from local prerequisites to a fully running cluster with all services." />
+            <meta name="description" content="Kyverno policy engine — admission control, background scanning, and Grafana dashboard integration." />
         
     
 
-    <title>Deployment Guide | Homelab</title>
+    <title>Kyverno | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="Deployment Guide | Homelab" />
-      <meta property="og:description" content="Complete step-by-step guide for deploying the homelab from scratch — from local prerequisites to a fully running cluster with all services." />
+      <meta property="og:title" content="Kyverno | Homelab" />
+      <meta property="og:description" content="Kyverno policy engine — admission control, background scanning, and Grafana dashboard integration." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Deployment Guide" />
-      <meta name="twitter:description" content="Complete step-by-step guide for deploying the homelab from scratch — from local prerequisites to a fully running cluster with all services." />
+      <meta name="twitter:title" content="Kyverno" />
+      <meta name="twitter:description" content="Kyverno policy engine — admission control, background scanning, and Grafana dashboard integration." />
       
       
       
@@ -502,354 +502,47 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            Deployment Guide
+            Kyverno
             
         </h1>
-        <p class="text-gray-500">Complete step-by-step guide for deploying the homelab from scratch — from local prerequisites to a fully running cluster with all services.</p>
+        <p class="text-gray-500">Kyverno policy engine — admission control, background scanning, and Grafana dashboard integration.</p>
     </div>
-    <p>This guide walks through the complete deployment sequence. Each phase depends on the previous one completing successfully. Most steps are fully automated — the majority of your time is spent waiting for services to come up.</p>
-<h2 id="at-a-glance">At a Glance</h2>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Phase 0  →  Local prerequisites + SOPS secrets setup        (one-time)
-</span><span>Phase 1  →  Bootstrap Kubernetes cluster                     (~15 min)
-</span><span>Phase 2  →  OpenBao init + K8s auth + write app secrets      (~10 min)
-</span><span>Phase 3  →  Bifrost VPS deploy — fully automated             (~8 min)
-</span><span>Phase 4  →  Authentik apps (Pulumi)                          (~2 min)
-</span><span>Phase 5  →  NetBird first-login + Authentik connector        (~5 min)
-</span><span>Phase 6  →  NetBird setup keys + proxy token                 (~5 min)
-</span><span>Phase 7  →  Grafana Authentik SSO setup                      (~5 min)
-</span><span>Phase 8  →  Publish CDK8s manifests                          (~2 min)
-</span><span>Phase 9  →  End-to-end verification
-</span></code></pre>
-<hr />
-<h2 id="phase-0-local-prerequisites">Phase 0 — Local Prerequisites</h2>
-<h3 id="tools">Tools</h3>
-<p>All tools are available inside the <a href="/development/devcontainer">devcontainer</a>, or install on macOS:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">brew</span><span> install pulumi talosctl kubectl just sops age go
-</span><span style="color:#ffd580;">npm</span><span> install</span><span style="color:#ffcc66;"> -g</span><span> cdk8s-cli
-</span></code></pre>
-<h3 id="age-key-one-time-back-this-up">age key (one-time — back this up!)</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">mkdir</span><span style="color:#ffcc66;"> -p </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.config/sops/age
-</span><span style="color:#ffd580;">age-keygen</span><span style="color:#ffcc66;"> -o </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.config/sops/age/keys.txt
-</span><span style="font-style:italic;color:#5c6773;"># Output: Public key: age1abc123...
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Add to shell profile — REQUIRED (sops 3.12+ doesn&#39;t auto-discover the key file)
-</span><span style="color:#f28779;">echo </span><span style="color:#bae67e;">&#39;export SOPS_AGE_KEY_FILE=&quot;$HOME/.config/sops/age/keys.txt&quot;&#39; </span><span style="color:#f29e74;">&gt;&gt; </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.zshrc
-</span><span style="color:#f28779;">source </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.zshrc
-</span></code></pre>
-<p>Register your public key in <code>.sops.yaml</code> at the repo root, under <code>creation_rules[*].age</code>.</p>
-<h3 id="populate-bootstrap-secrets">Populate bootstrap secrets</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Open the encrypted file in your editor — sops decrypts, re-encrypts on save
-</span><span style="color:#ffd580;">sops</span><span> secrets/bootstrap.sops.yaml
-</span></code></pre>
-<p>Add all of these keys. Generate values as indicated:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># ── Proxmox &amp; Hetzner ─────────────────────────────────────────────────────────
-</span><span style="color:#73d0ff;">PROXMOX_PASSWORD</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;proxmox root password&gt;
-</span><span style="color:#73d0ff;">HCLOUD_TOKEN</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;hetzner cloud API token&gt;
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># ── Cloudflare ────────────────────────────────────────────────────────────────
-</span><span style="color:#73d0ff;">CLOUDFLARE_API_TOKEN</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;zone:dns edit token&gt;     </span><span style="font-style:italic;color:#5c6773;"># used by cert-manager + Traefik ACME
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># ── Authentik (Bifrost VPS) ───────────────────────────────────────────────────
-</span><span style="color:#73d0ff;">AUTHENTIK_TOKEN</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -hex 30&gt;         </span><span style="font-style:italic;color:#5c6773;"># bootstrap token — becomes akadmin API token on first boot
-</span><span style="color:#73d0ff;">AUTHENTIK_SECRET_KEY</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -base64 48&gt; </span><span style="font-style:italic;color:#5c6773;"># Django secret key
-</span><span style="color:#73d0ff;">AUTHENTIK_POSTGRESQL_PASSWORD</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -hex 16&gt;
-</span><span style="color:#73d0ff;">AUTHENTIK_GITHUB_SECRET</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;github oauth app secret&gt;
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># ── NetBird (Bifrost VPS) ─────────────────────────────────────────────────────
-</span><span style="color:#73d0ff;">NB_DATA_STORE_KEY</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -base64 32&gt;    </span><span style="font-style:italic;color:#5c6773;"># SQLite encryption key — NEVER change after first deploy
-</span><span style="color:#73d0ff;">NB_RELAY_SECRET</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -base64 32&gt;      </span><span style="font-style:italic;color:#5c6773;"># relay auth secret
-</span><span style="color:#73d0ff;">NB_OWNER_PASSWORD</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;strong password&gt;            </span><span style="font-style:italic;color:#5c6773;"># initial NetBird local admin — used for first login only
-</span><span style="color:#73d0ff;">NETBIRD_CLIENT_SECRET</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;openssl rand -hex 32&gt;   </span><span style="font-style:italic;color:#5c6773;"># Dex→Authentik OIDC connector secret
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># ── OpenBao (K8s secrets platform) ───────────────────────────────────────────
-</span><span style="color:#73d0ff;">OPENBAO_UNSEAL_KEY</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">placeholder                 </span><span style="font-style:italic;color:#5c6773;"># replaced in Phase 2 after first init
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># NB_PROXY_TOKEN and NB_BIFROST_SETUP_KEY are added later (Phase 6)
-</span></code></pre>
-<blockquote>
-<p><strong><code>NB_DATA_STORE_KEY</code> is permanent.</strong> The NetBird SQLite database is encrypted with this value. Changing it means losing all peer registrations.</p>
-</blockquote>
-<blockquote>
-<p><strong><code>OPENBAO_UNSEAL_KEY</code></strong> starts as a placeholder. You'll replace it with the real value after <code>just openbao-init</code> in Phase 2.</p>
-</blockquote>
-<hr />
-<h2 id="phase-1-bootstrap-kubernetes-cluster">Phase 1 — Bootstrap Kubernetes Cluster</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Create bootstrap k8s Secrets (OpenBao unseal key + Cloudflare token)
-</span><span style="color:#ffd580;">just</span><span> create-secrets
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 2. Provision Proxmox VMs → bootstrap Talos → install Cilium + ArgoCD (~15 min)
-</span><span style="color:#ffd580;">just</span><span> core talos up
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 3. Apply Cilium Gateway API, IP pool, HTTPRoutes
-</span><span style="color:#ffd580;">just</span><span> core platform up
-</span></code></pre>
-<p><strong>Verify the cluster:</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">talosctl</span><span> health</span><span style="color:#ffcc66;"> --nodes</span><span> 192.168.1.211
-</span><span style="color:#ffd580;">kubectl</span><span> get nodes
-</span><span style="color:#ffd580;">kubectl</span><span> get applications</span><span style="color:#ffcc66;"> -n</span><span> argocd
-</span></code></pre>
-<p>ArgoCD starts syncing apps from the manifests branch. Most apps will show <code>Degraded</code> — that's expected. OpenBao needs to be initialised and unsealed before apps can fetch their secrets.</p>
-<hr />
-<h2 id="phase-2-openbao-init-k8s-auth-write-app-secrets">Phase 2 — OpenBao Init + K8s Auth + Write App Secrets</h2>
-<p>Wait for OpenBao to be running (but sealed) after Phase 1:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> openbao   </span><span style="font-style:italic;color:#5c6773;"># wait for Running
-</span></code></pre>
-<h3 id="2a-initialise-openbao-one-time">2a. Initialise OpenBao (one-time)</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> openbao-init
-</span></code></pre>
-<p>This generates the root token and unseal key, writes them to <code>/tmp/openbao-init.json</code>, then unseals OpenBao.</p>
-<h3 id="2b-store-the-unseal-key-in-sops">2b. Store the unseal key in SOPS</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span>UNSEAL_KEY</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">$</span><span>(</span><span style="color:#ffd580;">python3</span><span style="color:#ffcc66;"> -c </span><span style="color:#bae67e;">&quot;import json; print(json.load(open(&#39;/tmp/openbao-init.json&#39;))[&#39;keys&#39;][0])&quot;</span><span>)
-</span><span style="color:#f28779;">echo </span><span style="color:#bae67e;">&quot;OPENBAO_UNSEAL_KEY: $</span><span>UNSEAL_KEY</span><span style="color:#bae67e;">&quot;
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Add to SOPS (replaces the placeholder from Phase 0)
-</span><span style="color:#ffd580;">sops</span><span> secrets/bootstrap.sops.yaml
-</span><span style="font-style:italic;color:#5c6773;"># → update OPENBAO_UNSEAL_KEY with the value above
-</span></code></pre>
-<h3 id="2c-update-the-bootstrap-secret">2c. Update the bootstrap secret</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> create-secrets
-</span><span style="color:#ffd580;">kubectl</span><span> rollout restart statefulset/openbao</span><span style="color:#ffcc66;"> -n</span><span> openbao
-</span><span style="font-style:italic;color:#5c6773;"># The unseal sidecar reads the updated secret and unseals on startup
-</span></code></pre>
-<h3 id="2d-configure-k8s-auth-policies-roles">2d. Configure K8s auth + policies + roles</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> openbao-setup
-</span></code></pre>
-<p>This enables Kubernetes auth, creates per-app policies and roles, and writes placeholder secrets at each path.</p>
-<h3 id="2e-write-real-app-secrets">2e. Write real app secrets</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Grafana — admin password + Authentik OAuth client secret (set OAUTH_CLIENT_SECRET after Phase 7)
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/grafana </span><span style="color:#ccc9c2cc;">\
-</span><span>  ADMIN_PASSWORD=</span><span style="color:#bae67e;">&quot;&lt;strong password&gt;&quot; </span><span style="color:#ccc9c2cc;">\
-</span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#bae67e;">&quot;placeholder&quot;
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Harbor
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/harbor </span><span style="color:#ccc9c2cc;">\
-</span><span>  HARBOR_ADMIN_PASSWORD=</span><span style="color:#bae67e;">&quot;&lt;strong password&gt;&quot;
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># N8n (DB password managed by CNPG — only encryption key needed)
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/n8n </span><span style="color:#ccc9c2cc;">\
-</span><span>  N8N_ENCRYPTION_KEY=</span><span style="color:#bae67e;">&quot;&lt;32-char random — record this, required on every rebuild&gt;&quot;
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Rancher
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/rancher </span><span style="color:#ccc9c2cc;">\
-</span><span>  BOOTSTRAP_PASSWORD=</span><span style="color:#bae67e;">&quot;&lt;strong password&gt;&quot;
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># NetBird — add the setup key after Phase 6
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/netbird </span><span style="color:#ccc9c2cc;">\
-</span><span>  NETBIRD_SETUP_KEY=</span><span style="color:#bae67e;">&quot;placeholder&quot;
-</span></code></pre>
-<blockquote>
-<p>After writing secrets, ArgoCD syncs and app pods start. Apps will become <code>Healthy</code> progressively as their CSI volumes mount.</p>
-</blockquote>
-<hr />
-<h2 id="phase-3-bifrost-vps-deploy-fully-automated">Phase 3 — Bifrost VPS Deploy (Fully Automated)</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Create Cloudflare DNS records for all public hostnames
-</span><span style="color:#ffd580;">just</span><span> core cloudflare up
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Deploy/update Hetzner VPS + run bootstrap sequence
-</span><span style="color:#ffd580;">just</span><span> core hetzner up
-</span></code></pre>
-<h3 id="what-just-core-hetzner-up-does">What <code>just core hetzner up</code> does</h3>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>1. Reads SOPS secrets → writes .secrets.env and .env on laptop
-</span><span>2. Uploads entire ./cloud/bifrost/ directory to /etc/bifrost/ on VPS
-</span><span>3. Runs bootstrap.sh on the VPS, which:
-</span><span>
-</span><span>   Preflight      — validates 5 required secrets, waits for cloud-init
-</span><span>   Step 1/5  traefik            → wait healthy (60s)
-</span><span>   Step 2/5  authentik-postgres → wait healthy (120s)
-</span><span>   Step 3/5  authentik-server   → wait healthy (300s)
-</span><span>
-</span><span>   process_netbird_config():
-</span><span>     sed replaces ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}
-</span><span>     python3 bcrypt-hashes NB_OWNER_PASSWORD → ${NB_OWNER_HASH}
-</span><span>     python3 substitutes ${NB_OWNER_HASH} in netbird/config.yaml
-</span><span>
-</span><span>   Step 4/5  netbird-server + netbird-dashboard → wait healthy
-</span><span>   Step 5/5  netbird-proxy → skipped (NB_PROXY_TOKEN not set yet)
-</span></code></pre>
-<p><strong>Expected output at the end:</strong></p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>NAMES                STATUS
-</span><span>netbird-dashboard    Up X seconds
-</span><span>netbird-server       Up X seconds
-</span><span>authentik-server     Up X minutes (healthy)
-</span><span>authentik-worker     Up X minutes (healthy)
-</span><span>authentik-postgres   Up X minutes (healthy)
-</span><span>traefik              Up X minutes
-</span><span>Bootstrap complete.
-</span></code></pre>
-<p><strong>Verify Bifrost is reachable:</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -I</span><span> https://auth.madhan.app        </span><span style="font-style:italic;color:#5c6773;"># → 200 Authentik login page
-</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -I</span><span> https://netbird.madhan.app     </span><span style="font-style:italic;color:#5c6773;"># → 200 NetBird dashboard
-</span></code></pre>
-<hr />
-<h2 id="phase-4-authentik-apps-pulumi">Phase 4 — Authentik Apps (Pulumi)</h2>
-<p>Now that Authentik is running, configure it via Pulumi:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core authentik up
-</span></code></pre>
-<p>This creates in Authentik:</p>
+    <h2 id="what-is-kyverno">What is Kyverno?</h2>
+<p><a href="https://kyverno.io/">Kyverno</a> is a Kubernetes-native policy engine that validates, mutates, and generates resources using policies written as Kubernetes CRDs — no OPA/Rego required. It operates as a validating and mutating admission webhook.</p>
+<h2 id="why-kyverno">Why Kyverno?</h2>
+<p>Kyverno policies are Kubernetes resources (YAML), so they live in the same GitOps repo and follow the same ArgoCD sync workflow as everything else. The admission controller intercepts every resource creation/update, making it the right place to enforce security standards (e.g., require non-root containers, disallow <code>latest</code> tags) without custom admission webhooks.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>Kyverno runs in HA mode in its own namespace. It integrates with:</p>
 <ul>
-<li>GitHub OAuth source (for user login)</li>
-<li>GitHub source bound to the default identification stage → <strong>"Login with GitHub" button appears</strong></li>
-<li>NetBird OIDC application + confidential client secret</li>
-<li>Homelab ForwardAuth proxy provider (covers <code>*.madhan.app</code>)</li>
-<li>Embedded outpost for ForwardAuth</li>
+<li><strong>VMAgent</strong> — a ServiceMonitor scrapes Kyverno metrics on port 8000 every 30s</li>
+<li><strong>Grafana</strong> — the Helm chart creates a ConfigMap with the Kyverno dashboard JSON; Grafana's sidecar picks it up automatically</li>
 </ul>
-<hr />
-<h2 id="phase-5-netbird-first-login-authentik-connector">Phase 5 — NetBird First Login + Authentik Connector</h2>
-<p>NetBird v0.66 runs an embedded Dex OIDC provider. On first deploy, no external identity provider is connected — you must log in with the local admin account to wire up Authentik.</p>
-<h3 id="5a-log-in-with-local-admin">5a. Log in with local admin</h3>
-<p>Open <strong><code>https://netbird.madhan.app</code></strong></p>
-<p>Sign in with:</p>
-<ul>
-<li>Email: <code>admin@madhan.app</code></li>
-<li>Password: the value of <code>NB_OWNER_PASSWORD</code> from your SOPS file</li>
-</ul>
-<h3 id="5b-connect-authentik-as-the-identity-provider">5b. Connect Authentik as the identity provider</h3>
-<p><strong>Settings → Identity Providers → Add → Authentik</strong></p>
-<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
-<tr><td>Client ID</td><td><code>aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT</code></td></tr>
-<tr><td>Client Secret</td><td>value of <code>NETBIRD_CLIENT_SECRET</code> from SOPS</td></tr>
-<tr><td>Issuer</td><td><code>https://auth.madhan.app/application/o/netbird/</code></td></tr>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/security/keyverno.go"><code>workloads/security/keyverno.go</code></a></p>
+<h2 id="configuration">Configuration</h2>
+<table><thead><tr><th>Component</th><th>Replicas</th><th>CPU Limit</th><th>Memory Limit</th></tr></thead><tbody>
+<tr><td>Admission Controller</td><td>3</td><td>1000m</td><td>512Mi</td></tr>
+<tr><td>Background Controller</td><td>2</td><td>500m</td><td>256Mi</td></tr>
+<tr><td>Cleanup Controller</td><td>2</td><td>500m</td><td>256Mi</td></tr>
+<tr><td>Reports Controller</td><td>2</td><td>500m</td><td>256Mi</td></tr>
 </tbody></table>
-<p>Save. The redirect URI shown should be <code>https://netbird.madhan.app/oauth2/callback</code>.</p>
-<h3 id="5c-verify-github-login-works">5c. Verify GitHub login works</h3>
-<p>Open a private browser window → <code>https://netbird.madhan.app</code> → "Login with Authentik" → GitHub button should appear.</p>
-<hr />
-<h2 id="phase-6-netbird-setup-keys-proxy-token">Phase 6 — NetBird Setup Keys + Proxy Token</h2>
-<h3 id="6a-create-setup-keys-and-personal-access-token">6a. Create setup keys and personal access token</h3>
-<p>In <strong><code>https://netbird.madhan.app</code></strong> (logged in via GitHub):</p>
-<p><strong>Setup Keys → Add Key:</strong></p>
-<table><thead><tr><th>Key name</th><th>Type</th><th>Stored as</th></tr></thead><tbody>
-<tr><td><code>bifrost-agent</code></td><td>Reusable</td><td><code>NB_BIFROST_SETUP_KEY</code> in SOPS</td></tr>
-<tr><td><code>k8s-routing-peer</code></td><td>Reusable</td><td>written to OpenBao <code>secret/netbird</code></td></tr>
+<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
+<tr><td><code>metricsService.port</code></td><td><code>8000</code></td><td>VMAgent scrape target</td></tr>
+<tr><td><code>webhooksCleanup.enabled</code></td><td><code>true</code></td><td>Cleans up webhooks on uninstall</td></tr>
+<tr><td><code>policyExceptions.enabled</code></td><td><code>true</code></td><td>Allows per-resource policy exemptions</td></tr>
+<tr><td><code>imageVerification.enabled</code></td><td><code>false</code></td><td>Not using Cosign image signing</td></tr>
+<tr><td><code>grafana.enabled</code></td><td><code>true</code></td><td>Grafana dashboard ConfigMap</td></tr>
+<tr><td><code>podSecurityContext.runAsNonRoot</code></td><td><code>true</code></td><td>Non-root containers</td></tr>
 </tbody></table>
-<p><strong>Settings → Access Tokens → Create Personal Access Token</strong> → copy it → <code>NB_PROXY_TOKEN</code> in SOPS.</p>
-<h3 id="6b-add-tokens-to-sops-re-run-pulumi">6b. Add tokens to SOPS, re-run Pulumi</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">sops</span><span> secrets/bootstrap.sops.yaml
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="admission-webhook-timeout">Admission Webhook Timeout</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get validatingwebhookconfigurations </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> kyverno
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> kyverno</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=kyverno-admission-controller
 </span></code></pre>
-<p>Add:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">NB_PROXY_TOKEN</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;personal access token from 6a&gt;
-</span><span style="color:#73d0ff;">NB_BIFROST_SETUP_KEY</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&lt;bifrost-agent setup key from 6a&gt;
+<p>If the admission controller is down, all resource creates/updates will fail (fail-closed webhook). Restarting the pods usually resolves this.</p>
+<h3 id="policy-violation-report">Policy Violation Report</h3>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get policyreport</span><span style="color:#ffcc66;"> -A
+</span><span style="color:#ffd580;">kubectl</span><span> describe policyreport </span><span style="color:#f29e74;">&lt;</span><span>name</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>n </span><span style="color:#f29e74;">&lt;</span><span>namespace</span><span style="color:#f29e74;">&gt;
 </span></code></pre>
-<p>Then re-deploy Bifrost:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core hetzner up
-</span></code></pre>
-<p>bootstrap.sh re-runs. This time:</p>
-<ul>
-<li><code>NB_PROXY_TOKEN</code> is set → <code>netbird-proxy</code> starts</li>
-<li><code>NB_BIFROST_SETUP_KEY</code> is set → <code>netbird-agent</code> connects to the mesh</li>
-</ul>
-<h3 id="6c-write-k8s-routing-peer-setup-key-to-openbao">6c. Write K8s routing peer setup key to OpenBao</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv patch secret/netbird </span><span style="color:#ccc9c2cc;">\
-</span><span>  NETBIRD_SETUP_KEY=</span><span style="color:#bae67e;">&quot;&lt;k8s-routing-peer key from step 6a&gt;&quot;
-</span></code></pre>
-<p>The <code>netbird-peer</code> StatefulSet CSI volume mounts the secret and the pod starts.</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> netbird   </span><span style="font-style:italic;color:#5c6773;"># → netbird-peer-0 Running
-</span></code></pre>
-<h3 id="6d-configure-the-lan-route">6d. Configure the LAN route</h3>
-<p>In the NetBird dashboard, <strong>Network → Routes → Add Route</strong>:</p>
-<ul>
-<li><strong>Network:</strong> <code>192.168.1.0/24</code></li>
-<li><strong>Routing Peer:</strong> <code>k8s-routing-peer</code> (appears once pod connects)</li>
-<li><strong>Enabled:</strong> Yes</li>
-</ul>
-<p>Once active, the Bifrost <code>netbird-agent</code> can reach <code>192.168.1.220</code> through the mesh — enabling Traefik to proxy public services to the cluster gateway.</p>
-<hr />
-<h2 id="phase-7-grafana-authentik-sso-setup">Phase 7 — Grafana Authentik SSO Setup</h2>
-<p>Grafana uses Authentik as an OIDC provider. GitHub login flows through Authentik → Grafana.</p>
-<h3 id="7a-create-oauth2-oidc-provider-in-authentik">7a. Create OAuth2/OIDC provider in Authentik</h3>
-<p>Authentik UI → <strong>Applications → Providers → Create → OAuth2/OpenID Provider</strong></p>
-<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
-<tr><td>Name</td><td><code>Grafana</code></td></tr>
-<tr><td>Client type</td><td><code>Confidential</code></td></tr>
-<tr><td>Redirect URI</td><td><code>https://grafana.madhan.app/login/generic_oauth</code></td></tr>
-<tr><td>Scopes</td><td><code>openid</code>, <code>email</code>, <code>profile</code></td></tr>
-</tbody></table>
-<p>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong>.</p>
-<h3 id="7b-create-application-in-authentik">7b. Create Application in Authentik</h3>
-<p>Authentik UI → <strong>Applications → Applications → Create</strong></p>
-<ul>
-<li>Name: <code>Grafana</code>, Slug: <code>grafana</code></li>
-<li>Provider: bind to the provider from 7a</li>
-</ul>
-<h3 id="7c-create-grafana-admins-group">7c. Create grafana-admins group</h3>
-<p>Authentik UI → <strong>Directory → Groups → Create</strong> → name: <code>grafana-admins</code></p>
-<p>Add yourself to this group for Admin role in Grafana.</p>
-<h3 id="7d-update-client-id-in-code">7d. Update client_id in code</h3>
-<p>In <code>workloads/monitoring/grafana.go</code>, replace:</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>&quot;client_id&quot;: &quot;REPLACE_WITH_AUTHENTIK_CLIENT_ID&quot;,
-</span></code></pre>
-<p>with the Client ID from step 7a. Then:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">git</span><span> add</span><span style="color:#ffcc66;"> -A </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">git</span><span> commit</span><span style="color:#ffcc66;"> -m </span><span style="color:#bae67e;">&quot;feat: set Grafana Authentik client_id&quot; </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">git</span><span> push
-</span></code></pre>
-<h3 id="7e-write-client-secret-to-openbao">7e. Write client secret to OpenBao</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv patch secret/grafana </span><span style="color:#ccc9c2cc;">\
-</span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#bae67e;">&quot;&lt;client-secret-from-7a&gt;&quot;
-</span></code></pre>
-<p>Grafana pod will start and SSO will work.</p>
-<hr />
-<h2 id="phase-8-publish-cdk8s-manifests">Phase 8 — Publish CDK8s Manifests</h2>
-<p>If you haven't already, synthesize and push the manifests:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth
-</span><span style="color:#ffd580;">git</span><span> add app/
-</span><span style="color:#ffd580;">git</span><span> commit</span><span style="color:#ffcc66;"> -m </span><span style="color:#bae67e;">&quot;chore: synth manifests&quot;
-</span><span style="color:#ffd580;">git</span><span> push
-</span></code></pre>
-<p>ArgoCD auto-syncs within 3 minutes:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get applications</span><span style="color:#ffcc66;"> -n</span><span> argocd
-</span></code></pre>
-<hr />
-<h2 id="phase-9-end-to-end-verification">Phase 9 — End-to-End Verification</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># DNS split working correctly
-</span><span style="color:#ffd580;">dig</span><span> grafana.madhan.app    </span><span style="font-style:italic;color:#5c6773;"># → 178.156.199.250  (public, via Hetzner)
-</span><span style="color:#ffd580;">dig</span><span> headlamp.madhan.app   </span><span style="font-style:italic;color:#5c6773;"># → 192.168.1.220    (LAN wildcard, private)
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># OpenBao unsealed
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao status </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> Sealed
-</span><span style="font-style:italic;color:#5c6773;"># → Sealed  false
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># NetBird mesh
-</span><span style="font-style:italic;color:#5c6773;"># NetBird UI → Peers: bifrost-agent Connected, k8s-routing-peer Connected
-</span><span style="font-style:italic;color:#5c6773;"># NetBird UI → Routes: 192.168.1.0/24 Active
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Full browser flow
-</span><span style="font-style:italic;color:#5c6773;"># 1. Open https://grafana.madhan.app
-</span><span style="font-style:italic;color:#5c6773;"># 2. Redirected to Authentik → log in with GitHub
-</span><span style="font-style:italic;color:#5c6773;"># 3. Land on Grafana as Viewer (or Admin if in grafana-admins group)
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># All apps healthy
-</span><span style="color:#ffd580;">kubectl</span><span> get applications</span><span style="color:#ffcc66;"> -n</span><span> argocd
-</span></code></pre>
-<hr />
-<h2 id="quick-reference-secrets-and-where-they-live">Quick Reference: Secrets and Where They Live</h2>
-<table><thead><tr><th>Secret</th><th>Stored in</th><th>Set during</th><th>Notes</th></tr></thead><tbody>
-<tr><td><code>HCLOUD_TOKEN</code></td><td>SOPS</td><td>Phase 0</td><td>Hetzner API access</td></tr>
-<tr><td><code>PROXMOX_PASSWORD</code></td><td>SOPS</td><td>Phase 0</td><td>Proxmox API access</td></tr>
-<tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>SOPS → k8s Secret <code>cert-manager/cloudflare-api-token</code></td><td>Phase 0</td><td>cert-manager + Traefik ACME</td></tr>
-<tr><td><code>AUTHENTIK_TOKEN</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td>Authentik akadmin API token</td></tr>
-<tr><td><code>AUTHENTIK_SECRET_KEY</code></td><td>SOPS → <code>.env</code></td><td>Phase 0</td><td>Django secret key</td></tr>
-<tr><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td><td>SOPS → <code>.env</code></td><td>Phase 0</td><td>Authentik Postgres</td></tr>
-<tr><td><code>AUTHENTIK_GITHUB_SECRET</code></td><td>SOPS</td><td>Phase 0</td><td>GitHub OAuth app secret</td></tr>
-<tr><td><code>NB_DATA_STORE_KEY</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td><strong>Never rotate</strong></td></tr>
-<tr><td><code>NB_RELAY_SECRET</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td></td></tr>
-<tr><td><code>NB_OWNER_PASSWORD</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td>Local admin for first NetBird login</td></tr>
-<tr><td><code>NETBIRD_CLIENT_SECRET</code></td><td>SOPS (used by Pulumi)</td><td>Phase 0</td><td>Dex→Authentik OIDC connector</td></tr>
-<tr><td><code>OPENBAO_UNSEAL_KEY</code></td><td>SOPS → k8s Secret <code>openbao/openbao-unseal-key</code></td><td>Phase 2</td><td>Generated by <code>just openbao-init</code></td></tr>
-<tr><td><code>NB_PROXY_TOKEN</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 6</td><td></td></tr>
-<tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 6</td><td></td></tr>
-<tr><td><code>ADMIN_PASSWORD</code> (Grafana)</td><td>OpenBao <code>secret/grafana</code></td><td>Phase 2</td><td></td></tr>
-<tr><td><code>OAUTH_CLIENT_SECRET</code> (Grafana)</td><td>OpenBao <code>secret/grafana</code></td><td>Phase 7</td><td>Authentik OIDC client secret</td></tr>
-<tr><td><code>HARBOR_ADMIN_PASSWORD</code></td><td>OpenBao <code>secret/harbor</code></td><td>Phase 2</td><td></td></tr>
-<tr><td><code>N8N_ENCRYPTION_KEY</code></td><td>OpenBao <code>secret/n8n</code></td><td>Phase 2</td><td><strong>Never rotate</strong> — re-entering workflows</td></tr>
-<tr><td><code>BOOTSTRAP_PASSWORD</code> (Rancher)</td><td>OpenBao <code>secret/rancher</code></td><td>Phase 2</td><td></td></tr>
-<tr><td><code>NETBIRD_SETUP_KEY</code></td><td>OpenBao <code>secret/netbird</code></td><td>Phase 6</td><td>k8s-routing-peer setup key</td></tr>
-</tbody></table>
-<hr />
-<h2 id="lan-access-without-the-hetzner-hop">LAN Access Without the Hetzner Hop</h2>
-<p>Public services (<code>grafana.madhan.app</code>) DNS-resolve to the Hetzner VPS for all clients — including LAN users. To bypass this on your machine:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># /etc/hosts — direct LAN access, skips SSO
-</span><span style="color:#ffd580;">192.168.1.220</span><span>  grafana.madhan.app
-</span></code></pre>
-<p>For LAN-wide bypass, add overrides in your router's DNS (Pi-hole, Unbound, etc.).</p>
 
 
     <!--  Errata section  -->
@@ -862,7 +555,7 @@
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/getting-started&#x2F;deployment&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/workloads&#x2F;security&#x2F;kyverno&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -894,7 +587,7 @@
                                     
     
         
-        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/getting-started/">
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/workloads/security/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -902,7 +595,7 @@
                     </svg>
                     <span class="nav-button-label">Back to</span>
                 </div>
-                <div class="nav-button-title">Getting Started</div>
+                <div class="nav-button-title">Security</div>
             </div>
         </a>
     
@@ -911,92 +604,17 @@
                                 <div class="next-nav-item">
                                     
     
-        
-        
-        
-            
-            
-            
-                
-                    
-                
-            
-        
-            
-            
-                <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/architecture/">
-                    <div class="nav-button-content">
-                        <div class="nav-button-direction">
-                            <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                            <span class="nav-button-label">Next</span>
-                        </div>
-                        <div class="nav-button-title">Architecture</div>
-                    </div>
-                </a>
-                
-            
-            
-                
-            
-                
-            
-                
-            
-                
-            
-        
-            
-            
-            
-                
-            
-                
-            
-        
-            
-            
-            
-                
-            
-        
-            
-            
-            
-                
-            
-                
-            
-                
-            
-                
-            
-                
-            
-        
-            
-            
-            
-                
-            
-                
-            
-                
-            
-                
-            
-                
-            
-                
-            
-                
-            
-        
-            
-            
-            
-        
+        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/workloads/security/trivy/">
+            <div class="nav-button-content">
+                <div class="nav-button-direction">
+                    <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                    <span class="nav-button-label">Next</span>
+                </div>
+                <div class="nav-button-title">Trivy</div>
+            </div>
+        </a>
     
 
                                 </div>
@@ -1014,7 +632,25 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/getting-started/deployment/#at-a-glance" class="toc-link">At a Glance</a>
+                    <a href="https://homelab.madhan.app/workloads/security/kyverno/#what-is-kyverno" class="toc-link">What is Kyverno?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/workloads/security/kyverno/#why-kyverno" class="toc-link">Why Kyverno?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/workloads/security/kyverno/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/workloads/security/kyverno/#configuration" class="toc-link">Configuration</a>
                     
                 </li>
             
@@ -1022,197 +658,20 @@
                     
                     <details class="toc-details" >
                         <summary>
-                            <a href="https://homelab.madhan.app/getting-started/deployment/#phase-0-local-prerequisites" class="toc-link">Phase 0 — Local Prerequisites</a>
+                            <a href="https://homelab.madhan.app/workloads/security/kyverno/#troubleshooting" class="toc-link">Troubleshooting</a>
                         </summary>
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#tools" class="toc-link">Tools</a>
+                                    <a href="https://homelab.madhan.app/workloads/security/kyverno/#admission-webhook-timeout" class="toc-link">Admission Webhook Timeout</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#age-key-one-time-back-this-up" class="toc-link">age key (one-time — back this up!)</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#populate-bootstrap-secrets" class="toc-link">Populate bootstrap secrets</a>
+                                    <a href="https://homelab.madhan.app/workloads/security/kyverno/#policy-violation-report" class="toc-link">Policy Violation Report</a>
                                 </li>
                             
                         </ul>
                     </details>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/getting-started/deployment/#phase-1-bootstrap-kubernetes-cluster" class="toc-link">Phase 1 — Bootstrap Kubernetes Cluster</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/getting-started/deployment/#phase-2-openbao-init-k8s-auth-write-app-secrets" class="toc-link">Phase 2 — OpenBao Init + K8s Auth + Write App Secrets</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#2a-initialise-openbao-one-time" class="toc-link">2a. Initialise OpenBao (one-time)</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#2b-store-the-unseal-key-in-sops" class="toc-link">2b. Store the unseal key in SOPS</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#2c-update-the-bootstrap-secret" class="toc-link">2c. Update the bootstrap secret</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#2d-configure-k8s-auth-policies-roles" class="toc-link">2d. Configure K8s auth + policies + roles</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#2e-write-real-app-secrets" class="toc-link">2e. Write real app secrets</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
-                    
-                </li>
-            
-                <li>
-                    
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/getting-started/deployment/#phase-3-bifrost-vps-deploy-fully-automated" class="toc-link">Phase 3 — Bifrost VPS Deploy (Fully Automated)</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#what-just-core-hetzner-up-does" class="toc-link">What just core hetzner up does</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/getting-started/deployment/#phase-4-authentik-apps-pulumi" class="toc-link">Phase 4 — Authentik Apps (Pulumi)</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/getting-started/deployment/#phase-5-netbird-first-login-authentik-connector" class="toc-link">Phase 5 — NetBird First Login + Authentik Connector</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#5a-log-in-with-local-admin" class="toc-link">5a. Log in with local admin</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#5b-connect-authentik-as-the-identity-provider" class="toc-link">5b. Connect Authentik as the identity provider</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#5c-verify-github-login-works" class="toc-link">5c. Verify GitHub login works</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
-                    
-                </li>
-            
-                <li>
-                    
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/getting-started/deployment/#phase-6-netbird-setup-keys-proxy-token" class="toc-link">Phase 6 — NetBird Setup Keys + Proxy Token</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#6a-create-setup-keys-and-personal-access-token" class="toc-link">6a. Create setup keys and personal access token</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#6b-add-tokens-to-sops-re-run-pulumi" class="toc-link">6b. Add tokens to SOPS, re-run Pulumi</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#6c-write-k8s-routing-peer-setup-key-to-openbao" class="toc-link">6c. Write K8s routing peer setup key to OpenBao</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#6d-configure-the-lan-route" class="toc-link">6d. Configure the LAN route</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
-                    
-                </li>
-            
-                <li>
-                    
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/getting-started/deployment/#phase-7-grafana-authentik-sso-setup" class="toc-link">Phase 7 — Grafana Authentik SSO Setup</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#7a-create-oauth2-oidc-provider-in-authentik" class="toc-link">7a. Create OAuth2&#x2F;OIDC provider in Authentik</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#7b-create-application-in-authentik" class="toc-link">7b. Create Application in Authentik</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#7c-create-grafana-admins-group" class="toc-link">7c. Create grafana-admins group</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#7d-update-client-id-in-code" class="toc-link">7d. Update client_id in code</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#7e-write-client-secret-to-openbao" class="toc-link">7e. Write client secret to OpenBao</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/getting-started/deployment/#phase-8-publish-cdk8s-manifests" class="toc-link">Phase 8 — Publish CDK8s Manifests</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/getting-started/deployment/#phase-9-end-to-end-verification" class="toc-link">Phase 9 — End-to-End Verification</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/getting-started/deployment/#quick-reference-secrets-and-where-they-live" class="toc-link">Quick Reference: Secrets and Where They Live</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/getting-started/deployment/#lan-access-without-the-hetzner-hop" class="toc-link">LAN Access Without the Hetzner Hop</a>
                     
                 </li>
             
@@ -1332,7 +791,7 @@
                         <ul>
                             
                             
-                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/getting-started/deployment">Deployment Guide</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/getting-started/deployment">Deployment Guide</a></li>
                             
                             
                         </ul>
@@ -1519,7 +978,7 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/kyverno">Kyverno</a></li>
+                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/kyverno">Kyverno</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
                                                 

@@ -94,6 +94,9 @@
         <loc>https://homelab.madhan.app/workloads/ai/kubeflow/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/workloads/ai/notebook-gateway-controller/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator/</loc>
     </url>
     <url>
@@ -104,6 +107,12 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/automation/n8n/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/databases/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/databases/cnpg/</loc>
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/management/</loc>
@@ -122,6 +131,9 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/monitoring/alertmanager/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/monitoring/argocd-monitor/</loc>
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/monitoring/grafana/</loc>
@@ -164,6 +176,9 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/security/falco/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/workloads/security/kyverno/</loc>
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/security/trivy/</loc>
