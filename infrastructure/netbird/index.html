@@ -415,7 +415,7 @@
     
     
     <li>
-        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/apps">
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/workloads">
           
 
 
@@ -425,7 +425,7 @@
   </span>
 
 
-          Apps
+          Workloads
         </a>
     </li>
     
@@ -507,9 +507,12 @@
         </h1>
         <p class="text-gray-500">NetBird v0.66 combined server — WireGuard mesh for remote cluster access, with embedded Dex OIDC and Authentik as the upstream identity connector.</p>
     </div>
-    <h2 id="overview">Overview</h2>
-<p><a href="https://netbird.io">NetBird</a> provides a WireGuard-based overlay mesh for secure remote access to the homelab. The <strong>combined server</strong> (<code>netbirdio/netbird-server:0.66.0</code>) runs on Bifrost (Hetzner VPS) and consolidates management, signal, relay, STUN, and an <strong>embedded Dex OIDC provider</strong> into a single container.</p>
-<p>A <strong>routing peer</strong> pod runs inside Kubernetes on <strong>worker1</strong> (<code>192.168.1.221</code>) and advertises the cluster subnet <code>192.168.1.0/24</code> into the mesh — making all cluster services reachable from any connected NetBird client, and enabling Traefik on Bifrost to proxy public services through the tunnel.</p>
+    <h2 id="what-is-netbird">What is NetBird?</h2>
+<p><a href="https://netbird.io">NetBird</a> is an open-source WireGuard-based mesh VPN that automates peer discovery, NAT traversal, and route distribution. A central management server coordinates the mesh; each peer connects directly to others using WireGuard tunnels without traffic passing through the server.</p>
+<h2 id="why-netbird">Why NetBird?</h2>
+<p>NetBird eliminates the need to manage WireGuard configs manually — peers register via a setup key, routes are distributed automatically, and OIDC login replaces static keys for user authentication. A single setup key puts the k8s routing peer into the mesh and gives Traefik on Bifrost a tunnel path to all cluster services.</p>
+<h2 id="how-it-s-used-here">How It's Used Here</h2>
+<p>The NetBird combined server runs on Bifrost alongside a <code>netbird-agent</code> WireGuard peer. A <code>netbird-peer</code> StatefulSet on Kubernetes worker1 joins the mesh and advertises <code>192.168.1.0/24</code>, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.</p>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>Your laptop (NetBird client)
 </span><span>    │  WireGuard encrypted tunnel
 </span><span>    │
@@ -688,7 +691,7 @@
 <hr />
 <h2 id="k8s-routing-peer">K8s Routing Peer</h2>
 <p>The <code>netbird-peer</code> StatefulSet in the <code>netbird</code> namespace runs on <strong>worker1</strong> (<code>192.168.1.221</code>), connects to the WireGuard mesh, and advertises <code>192.168.1.0/24</code> as a route. This makes all cluster services reachable from any NetBird-connected device.</p>
-<p>See <a href="/apps/networking/netbird-peer/">NetBird Peer</a> for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium <code>wt0</code> constraint.</p>
+<p>See <a href="/workloads/networking/netbird-peer/">NetBird Peer</a> for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium <code>wt0</code> constraint.</p>
 <hr />
 <h2 id="netbird-reverse-proxy-proxy-madhan-app">NetBird Reverse Proxy (<code>*.proxy.madhan.app</code>)</h2>
 <p>The <code>netbird-proxy</code> container exposes NetBird peers as TCP endpoints via <code>*.proxy.madhan.app</code>. Traefik routes <code>*.proxy.madhan.app</code> TCP traffic to <code>netbird-proxy:8443</code> via a wildcard TCP router.</p>
@@ -890,7 +893,19 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/infrastructure/netbird/#overview" class="toc-link">Overview</a>
+                    <a href="https://homelab.madhan.app/infrastructure/netbird/#what-is-netbird" class="toc-link">What is NetBird?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/netbird/#why-netbird" class="toc-link">Why NetBird?</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/netbird/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
                     
                 </li>
             
@@ -1274,7 +1289,7 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
             <li>
                 
                     <details open>
-                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps">Apps</a></summary>
+                        <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads">Workloads</a></summary>
                         <ul>
                             
                             
@@ -1283,17 +1298,17 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai">AI</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai">AI</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/nvidia-gpu-operator">NVIDIA Device Plugin</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/ollama">Ollama</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/ollama">Ollama</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/comfyui">ComfyUI</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/comfyui">ComfyUI</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/ai/kubeflow">Kubeflow</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/ai/kubeflow">Kubeflow</a></li>
                                                 
                                                 
                                             </ul>
@@ -1305,21 +1320,21 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring">Monitoring</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring">Monitoring</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/grafana">Grafana</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-metrics">VictoriaMetrics</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/victoria-logs">VictoriaLogs</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/alertmanager">AlertManager</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/monitoring/metrics-server">Metrics Server</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/metrics-server">Metrics Server</a></li>
                                                 
                                                 
                                             </ul>
@@ -1331,13 +1346,13 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security">Security</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security">Security</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/falco">Falco</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/falco">Falco</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/security/trivy">Trivy</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/security/trivy">Trivy</a></li>
                                                 
                                                 
                                             </ul>
@@ -1349,13 +1364,13 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets">Secrets Management</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/openbao">OpenBao</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
                                                 
                                                 
                                             </ul>
@@ -1367,22 +1382,22 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management">Management</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/rancher">Rancher</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
                                                 
                                                 
                                                     
                                                     <li>
                                                         
                                                             <details >
-                                                                <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp">Headlamp</a></summary>
+                                                                <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp">Headlamp</a></summary>
                                                                 <ul>
                                                                     
                                                                     
-                                                                        <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/management/headlamp/netbird-expose">Exposing Headlamp via NetBird Reverse Proxy</a></li>
+                                                                        <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/headlamp/netbird-expose">Exposing Headlamp via NetBird Reverse Proxy</a></li>
                                                                     
                                                                     
                                                                 </ul>
@@ -1399,11 +1414,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1415,11 +1430,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1431,11 +1446,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation">Automation</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/automation/n8n">n8n</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
                                                 
                                                 
                                             </ul>
@@ -1447,11 +1462,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
@@ -1463,11 +1478,11 @@ Verify both peers appear as <strong>Connected</strong> in the NetBird dashboard<
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/apps/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
