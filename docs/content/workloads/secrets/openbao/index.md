@@ -12,6 +12,10 @@ weight = 10
 
 OpenBao's Kubernetes auth method allows pods to authenticate using their ServiceAccount token without any static credentials — the cluster itself is the identity provider. The Secrets Store CSI Driver integration mounts secrets directly into pods as files at startup, so no secret values appear in manifests, environment variables, or `kubectl get secret` output.
 
+## First-Time Setup
+
+Initial bootstrap (init, unseal, K8s auth configuration, writing app secrets) is covered in **[Deployment Guide — Phase 2](/getting-started/deployment/#phase-2--openbao-init--k8s-auth--write-app-secrets)**.
+
 ## How It's Used Here
 
 OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Pods authenticate using the Kubernetes auth method — they present their ServiceAccount JWT token, OpenBao verifies it with the Kubernetes tokenreviews API, and returns a short-lived token.
