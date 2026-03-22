@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 59bf60d9c1371732593e4788f257ed3bc67d833a418cb5eab9925714d9fc43f8
+        checksum/config: 18f8bcd261278ba0beb534e808c4616fee65d10c8b5495fc0c3e3d4eee9a42f3
         reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/instance: otel-agent
@@ -40,6 +40,10 @@ spec:
                   fieldPath: spec.nodeName
             - name: GOMEMLIMIT
               value: 409MiB
+            - name: K8S_NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
           image: otel/opentelemetry-collector-contrib:0.111.0
           imagePullPolicy: IfNotPresent
           livenessProbe:

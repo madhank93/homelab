@@ -27,7 +27,7 @@ spec:
         - group: ""
           kind: Service
           name: vmsingle-vm-stack
-          port: 8429
+          port: 8428
           weight: 1
       matches:
         - path:
