@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 18f8bcd261278ba0beb534e808c4616fee65d10c8b5495fc0c3e3d4eee9a42f3
+        checksum/config: 532c572128eaaef1b7566e0f05d315053f914ec7b03027a8ed078963042b3f64
         reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/instance: otel-agent
@@ -101,6 +101,8 @@ spec:
               mountPropagation: HostToContainer
               name: hostfs
               readOnly: true
+            - mountPath: /var/lib/otelcol
+              name: otelcol-checkpoint
       hostNetwork: false
       securityContext: {}
       serviceAccountName: otel-agent-opentelemetry-collector
@@ -122,5 +124,9 @@ spec:
         - hostPath:
             path: /
           name: hostfs
+        - hostPath:
+            path: /var/lib/otelcol
+            type: DirectoryOrCreate
+          name: otelcol-checkpoint
   updateStrategy:
     type: RollingUpdate

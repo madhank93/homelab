@@ -22,6 +22,8 @@ data:
         resource_to_telemetry_conversion:
           enabled: true
     extensions:
+      file_storage:
+        directory: /var/lib/otelcol
       health_check:
         endpoint: ${env:MY_POD_IP}:13133
     processors:
@@ -153,6 +155,7 @@ data:
     service:
       extensions:
       - health_check
+      - file_storage
       pipelines:
         logs:
           exporters:

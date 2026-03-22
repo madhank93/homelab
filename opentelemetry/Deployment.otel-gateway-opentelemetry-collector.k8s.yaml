@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8bb3a97a8d6a988c39c672d11499efd9d8e3a9a6d155e064cc7f75fd8f99170c
+        checksum/config: e1a32b5b5462da70f669ea3a48f524bab81598e31f7bf3ee6ec79f61b05cb5dc
         reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/instance: otel-gateway
