@@ -102,6 +102,14 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 			},
 		},
 		"config": map[string]any{
+			"extensions": map[string]any{
+				// file_storage persists filelog receiver read offsets (checkpoints)
+				// to the hostPath volume so that agent restarts don't re-read historical
+				// logs from the beginning, avoiding duplicates and slow recovery.
+				"file_storage": map[string]any{
+					"directory": "/var/lib/otelcol",
+				},
+			},
 			"receivers": map[string]any{
 				"kubeletstats": map[string]any{
 					"endpoint":             "https://${env:K8S_NODE_IP}:10250",
@@ -111,6 +119,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 			"exporters":  commonExporters,
 			"processors": commonProcessors,
 			"service": map[string]any{
+				"extensions": []string{"health_check", "file_storage"},
 				"pipelines": map[string]any{
 					"logs": map[string]any{
 						"receivers":  []string{"filelog"},
@@ -132,6 +141,24 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		// Run on every node including control plane
 		"tolerations": []map[string]any{
 			{"operator": "Exists"},
+		},
+		// Persist filelog receiver checkpoints on the host so that agent restarts
+		// (e.g. on config changes) do not re-read logs from the beginning,
+		// which would cause duplicate entries and slow startup.
+		"extraVolumes": []map[string]any{
+			{
+				"name": "otelcol-checkpoint",
+				"hostPath": map[string]any{
+					"path": "/var/lib/otelcol",
+					"type": "DirectoryOrCreate",
+				},
+			},
+		},
+		"extraVolumeMounts": []map[string]any{
+			{
+				"name":      "otelcol-checkpoint",
+				"mountPath": "/var/lib/otelcol",
+			},
 		},
 	}
 
@@ -163,8 +190,15 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 			},
 		},
 		"config": map[string]any{
-			"exporters":  commonExporters,
-			"processors": commonProcessors,
+			"exporters": commonExporters,
+			"processors": map[string]any{
+				"batch":          map[string]any{"timeout": "10s"},
+				"memory_limiter": commonProcessors["memory_limiter"],
+				// passthrough: true — k8sobjects log records (k8s Events) have no pod
+				// IP or UID, so the default passthrough=false silently drops them all
+				// before they reach the VictoriaLogs exporter.
+				"k8sattributes": map[string]any{"passthrough": true},
+			},
 			"service": map[string]any{
 				"pipelines": map[string]any{
 					"metrics": map[string]any{
