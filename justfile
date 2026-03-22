@@ -30,5 +30,62 @@ openbao-setup:
     SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
       sops exec-env secrets/bootstrap.sops.yaml 'bash scripts/openbao-setup.sh'
 
+# Generate a temporary OpenBao root token from the stored unseal key.
+# The token is printed to stdout — export it for subsequent bao commands.
+# Revoke it when done: just openbao-revoke <token>
+openbao-token:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    UNSEAL_KEY=$(kubectl get secret openbao-unseal-key -n openbao \
+      -o jsonpath='{.data.unseal-key}' | base64 -d)
+    kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -cancel -format=json 2>/dev/null || true
+    INIT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -init -format=json)
+    OTP=$(echo "$INIT"    | python3 -c "import sys,json; print(json.load(sys.stdin)['otp'])")
+    NONCE=$(echo "$INIT"  | python3 -c "import sys,json; print(json.load(sys.stdin)['nonce'])")
+    RESULT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -nonce="$NONCE" -format=json "$UNSEAL_KEY")
+    ENCODED=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['encoded_token'])")
+    kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -decode="$ENCODED" -otp="$OTP"
+
+# Read an OpenBao secret. Optionally pass a field name to get a single value.
+# Usage:
+#   just openbao-get secret/grafana
+#   just openbao-get secret/grafana ADMIN_PASSWORD
+openbao-get path field='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    UNSEAL_KEY=$(kubectl get secret openbao-unseal-key -n openbao \
+      -o jsonpath='{.data.unseal-key}' | base64 -d)
+    kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -cancel -format=json 2>/dev/null || true
+    INIT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -init -format=json)
+    OTP=$(echo "$INIT"    | python3 -c "import sys,json; print(json.load(sys.stdin)['otp'])")
+    NONCE=$(echo "$INIT"  | python3 -c "import sys,json; print(json.load(sys.stdin)['nonce'])")
+    RESULT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -nonce="$NONCE" -format=json "$UNSEAL_KEY")
+    ENCODED=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['encoded_token'])")
+    ROOT_TOKEN=$(kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -decode="$ENCODED" -otp="$OTP")
+    if [ -n "{{field}}" ]; then
+      kubectl exec -n openbao openbao-0 -c openbao -- \
+        env VAULT_TOKEN="$ROOT_TOKEN" bao kv get -field="{{field}}" "{{path}}"
+    else
+      kubectl exec -n openbao openbao-0 -c openbao -- \
+        env VAULT_TOKEN="$ROOT_TOKEN" bao kv get "{{path}}"
+    fi
+    kubectl exec -n openbao openbao-0 -c openbao -- \
+      env VAULT_TOKEN="$ROOT_TOKEN" bao token revoke "$ROOT_TOKEN" 2>/dev/null || true
+
+# Revoke a previously generated root token
+openbao-revoke token:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    kubectl exec -n openbao openbao-0 -c openbao -- \
+      env VAULT_TOKEN="{{token}}" bao token revoke "{{token}}"
+
 ping_scan:
     nmap -sn 192.168.1.0/24
