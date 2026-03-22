@@ -13,7 +13,7 @@ import (
 // VMSingle (single-node mode) is used instead of VMCluster — vmcluster.enabled=false.
 // The node-exporter DaemonSet requires hostNetwork, hostPID, and hostPath access
 // to /proc, /sys, and /root, so the namespace is labelled privileged.
-// Metrics are accessible at vmsingle-vm-stack:8429 within the cluster.
+// Metrics are accessible at vmsingle-vm-stack:8428 within the cluster.
 func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -78,7 +78,7 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 			"fullnameOverride": "vm-stack",
 
 			// VMSingle — single-node storage, simpler than VMCluster for homelab.
-			// Service: vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8429
+			// Service: vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428
 			"vmsingle": map[string]any{
 				"enabled": true,
 				"spec": map[string]any{
@@ -216,7 +216,7 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 		},
 	})
 
-	// Gateway API HTTPRoute — vmselect.madhan.app → vmsingle-victoria-metrics:8429
+	// Gateway API HTTPRoute — vmselect.madhan.app → vmsingle-victoria-metrics:8428
 	// VMSingle exposes /vmui/ directly (no /select/0/ prefix unlike VMCluster).
 	cdk8s.NewApiObject(chart, jsii.String("victoria-metrics-httproute"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
@@ -254,7 +254,7 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
 				},
 				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "vmsingle-vm-stack", "port": 8429, "weight": 1},
+					{"group": "", "kind": "Service", "name": "vmsingle-vm-stack", "port": 8428, "weight": 1},
 				},
 			},
 		},

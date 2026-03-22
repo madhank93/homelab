@@ -78,7 +78,10 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 				"enabled":              true,
 				"includeCollectorLogs": false,
 			},
-			// Node, pod, container, volume metrics from kubelet /stats/summary
+			// Node, pod, container, volume metrics from kubelet /stats/summary.
+			// The preset sets endpoint to "${K8S_NODE_NAME}:10250" — on Talos, node
+			// hostnames are not in cluster DNS. We override the endpoint below using
+			// K8S_NODE_IP (Downward API) so the agent connects via IP instead.
 			"kubeletMetrics": map[string]any{"enabled": true},
 			// CPU, memory, disk, network metrics from the host OS
 			"hostMetrics": map[string]any{"enabled": true},
@@ -88,7 +91,23 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 				"extractAllPodLabels": true,
 			},
 		},
+		// Override kubeletstats endpoint to use node IP — Talos node hostnames are
+		// not resolvable via cluster DNS (nodes register by hostname, not IP).
+		"extraEnvs": []map[string]any{
+			{
+				"name": "K8S_NODE_IP",
+				"valueFrom": map[string]any{
+					"fieldRef": map[string]any{"fieldPath": "status.hostIP"},
+				},
+			},
+		},
 		"config": map[string]any{
+			"receivers": map[string]any{
+				"kubeletstats": map[string]any{
+					"endpoint":             "https://${env:K8S_NODE_IP}:10250",
+					"insecure_skip_verify": true,
+				},
+			},
 			"exporters":  commonExporters,
 			"processors": commonProcessors,
 			"service": map[string]any{
