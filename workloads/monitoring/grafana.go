@@ -87,6 +87,11 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 						"type":   "loki",
 						"url":    "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select",
 						"access": "proxy",
+						// VictoriaLogs does not implement the Loki index/volume API.
+						// Disabling logsVolumeEnabled suppresses the error in Drilldown Logs.
+						"jsonData": map[string]any{
+							"logsVolumeEnabled": false,
+						},
 					},
 				},
 			},
