@@ -119,59 +119,54 @@ Pod starts
 
 ## Commands
 
-All `bao` commands run inside the `openbao-0` pod. Export `ROOT_TOKEN` first:
+The `openbao-unseal-key` bootstrap Secret stores only `unseal-key` — the root
+token is not persisted. Use the `just` recipes below to generate a temporary
+root token on demand (they handle the full `generate-root` ceremony automatically
+and revoke the token after use).
+
+### Read a secret (recommended)
 
 ```bash
-ROOT_TOKEN=$(kubectl get secret openbao-unseal-key -n openbao \
-  -o jsonpath='{.data.root-token}' | base64 -d)
+just openbao-get secret/grafana
+just openbao-get secret/grafana ADMIN_PASSWORD
 ```
 
-### Read a secret
+### Generate a root token for interactive use
 
 ```bash
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv get secret/grafana
+ROOT_TOKEN=$(just openbao-token)
 ```
 
-### Read a single key
+Revoke it when done:
 
 ```bash
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv get -field=ADMIN_PASSWORD secret/grafana
+just openbao-revoke $ROOT_TOKEN
 ```
 
-### Update / add a key (non-destructive patch)
+### Raw bao commands (after exporting ROOT_TOKEN)
 
 ```bash
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv patch secret/grafana ADMIN_PASSWORD=newvalue
-```
+# List all secrets
+kubectl exec -n openbao openbao-0 -c openbao -- \
+  env VAULT_TOKEN=$ROOT_TOKEN bao kv list secret/
 
-### Replace all keys in a secret (full put)
+# Patch a single key (non-destructive)
+kubectl exec -n openbao openbao-0 -c openbao -- \
+  env VAULT_TOKEN=$ROOT_TOKEN bao kv patch secret/grafana ADMIN_PASSWORD=newvalue
 
-```bash
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv put secret/grafana ADMIN_PASSWORD=value OAUTH_CLIENT_SECRET=value
-```
+# Replace all keys (full put)
+kubectl exec -n openbao openbao-0 -c openbao -- \
+  env VAULT_TOKEN=$ROOT_TOKEN bao kv put secret/grafana ADMIN_PASSWORD=value OAUTH_CLIENT_SECRET=value
 
-### List all secrets in a path
-
-```bash
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv list secret/
+# Check auth roles
+kubectl exec -n openbao openbao-0 -c openbao -- \
+  env VAULT_TOKEN=$ROOT_TOKEN bao read auth/kubernetes/role/grafana
 ```
 
 ### Check OpenBao status
 
 ```bash
 kubectl exec -n openbao openbao-0 -- bao status
-```
-
-### Check auth roles
-
-```bash
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao read auth/kubernetes/role/grafana
 ```
 
 ---
