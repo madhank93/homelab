@@ -219,7 +219,11 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		ConsumerKey:        pulumi.String(GithubClientId),
 		ConsumerSecret:     pulumi.String(ghSecret),
 		Pkce:               pulumi.String("S256"),
-		UserMatchingMode:   pulumi.String("email_link"),
+		// "identifier" creates a new Authentik user from the GitHub identity without
+		// trying to link to an existing user by email. "email_link" requires the user
+		// to already be authenticated in Authentik to confirm the link — which loops
+		// when the admin email matches the GitHub email but the user isn't logged in.
+		UserMatchingMode: pulumi.String("identifier"),
 	}, pulumi.Provider(provider))
 	if err != nil {
 		return err
