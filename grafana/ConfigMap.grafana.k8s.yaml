@@ -20,6 +20,8 @@ data:
       type: prometheus
       url: http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428
     - access: proxy
+      jsonData:
+        logsVolumeEnabled: false
       name: VictoriaLogs
       type: loki
       url: http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select

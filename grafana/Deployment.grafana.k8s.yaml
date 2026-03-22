@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8c6ac27d5821edee1bfac6ba87f1369d35729c7c172453a2dd35f873f1b4a514
+        checksum/config: 6eb18718b3be0dfc34e7b45df279184ee3c55aba8461e51c33d69f2de5c849cd
         checksum/sc-dashboard-provider-config: 81f722b8194d01e4a84ce12a0cbbe9b705b2d9145719c803ac264b4786c64a09
         kubectl.kubernetes.io/default-container: grafana
         reloader.stakater.com/auto: "true"
