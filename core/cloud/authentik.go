@@ -74,14 +74,15 @@ func getDefaultIdentificationStage(apiURL, token string) (*identStageInfo, error
 // AuthentikContext carries shared Authentik provider state and pre-resolved
 // flow/scope references that are reused across all application registrations.
 type AuthentikContext struct {
-	Ctx          *pulumi.Context
-	Provider     *authentik.Provider
-	FlowAuth     pulumi.StringInput // default-authentication-flow
-	FlowInvalid  pulumi.StringInput // default-provider-invalidation-flow
-	FlowImplicit pulumi.StringInput // implicit-consent authorization flow
-	FlowExplicit pulumi.StringInput // explicit-consent authorization flow
-	Scopes       pulumi.StringArrayInput
-	SigningKey    pulumi.StringInput // authentik Self-signed Certificate ID
+	Ctx            *pulumi.Context
+	Provider       *authentik.Provider
+	FlowAuth       pulumi.StringInput // default-authentication-flow
+	FlowInvalid    pulumi.StringInput // default-provider-invalidation-flow
+	FlowImplicit   pulumi.StringInput // implicit-consent authorization flow
+	FlowExplicit   pulumi.StringInput // explicit-consent authorization flow
+	FlowEnrollment pulumi.StringInput // default-source-enrollment (required for OAuth sources)
+	Scopes         pulumi.StringArrayInput
+	SigningKey      pulumi.StringInput // authentik Self-signed Certificate ID
 }
 
 // OIDCApp describes an OIDC application to register in Authentik.
@@ -124,12 +125,13 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 
 	// Global Flow Lookups
 	ac := AuthentikContext{
-		Ctx:          ctx,
-		Provider:     provider,
-		FlowAuth:     mustLookupFlow(ctx, provider, "default-authentication-flow"),
-		FlowInvalid:  mustLookupFlow(ctx, provider, "default-provider-invalidation-flow"),
-		FlowImplicit: mustLookupFlow(ctx, provider, "default-provider-authorization-implicit-consent"),
-		FlowExplicit: mustLookupFlow(ctx, provider, "default-provider-authorization-explicit-consent"),
+		Ctx:            ctx,
+		Provider:       provider,
+		FlowAuth:       mustLookupFlow(ctx, provider, "default-authentication-flow"),
+		FlowInvalid:    mustLookupFlow(ctx, provider, "default-provider-invalidation-flow"),
+		FlowImplicit:   mustLookupFlow(ctx, provider, "default-provider-authorization-implicit-consent"),
+		FlowExplicit:   mustLookupFlow(ctx, provider, "default-provider-authorization-explicit-consent"),
+		FlowEnrollment: mustLookupFlow(ctx, provider, "default-source-enrollment"),
 	}
 
 	// Signing Key (Self-signed default)
@@ -212,12 +214,12 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		Name:               pulumi.String(GithubName),
 		Slug:               pulumi.String(GithubSlug),
 		AuthenticationFlow: ac.FlowAuth,
-		// EnrollmentFlow:     enrollFlow, // Removed as requested
-		ProviderType:     pulumi.String("github"),
-		ConsumerKey:      pulumi.String(GithubClientId),
-		ConsumerSecret:   pulumi.String(ghSecret),
-		Pkce:             pulumi.String("S256"),
-		UserMatchingMode: pulumi.String("email_link"),
+		EnrollmentFlow:     ac.FlowEnrollment,
+		ProviderType:       pulumi.String("github"),
+		ConsumerKey:        pulumi.String(GithubClientId),
+		ConsumerSecret:     pulumi.String(ghSecret),
+		Pkce:               pulumi.String("S256"),
+		UserMatchingMode:   pulumi.String("email_link"),
 	}, pulumi.Provider(provider))
 	if err != nil {
 		return err
