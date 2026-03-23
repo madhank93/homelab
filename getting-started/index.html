@@ -526,7 +526,7 @@
 <hr />
 <h2 id="architecture-overview">Architecture Overview</h2>
 <p>The homelab is organized in four layers. Each layer is managed by a specific tool:</p>
-<p><img src="/images/architecture.svg" alt="Architecture Diagram" /></p>
+<p><img src="/images/architecture.png" alt="Architecture Diagram" /></p>
 <table><thead><tr><th>Layer</th><th>What's in it</th><th>Managed by</th></tr></thead><tbody>
 <tr><td><strong>Apps</strong></td><td>ComfyUI, Ollama, Grafana, Harbor, n8n, Falco, …</td><td>ArgoCD + CDK8s</td></tr>
 <tr><td><strong>Platform</strong></td><td>Talos K8s, Cilium CNI, Gateway API, ArgoCD, cert-manager</td><td>Pulumi</td></tr>
@@ -1113,6 +1113,24 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1135,24 +1153,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>

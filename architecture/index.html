@@ -522,7 +522,8 @@
         </h1>
         <p class="text-gray-500">System architecture: network topology, Kubernetes layout, GitOps pipeline, and secrets management.</p>
     </div>
-    <p>The homelab is designed around four principles: <strong>everything as code</strong>, <strong>no manual cluster changes</strong>, <strong>secrets never in git plaintext</strong>, and <strong>zero-touch automation</strong> for repetitive operational tasks.</p>
+    <p><img src="/images/architecture.png" alt="Architecture Diagram" /></p>
+<p>The homelab is designed around four principles: <strong>everything as code</strong>, <strong>no manual cluster changes</strong>, <strong>secrets never in git plaintext</strong>, and <strong>zero-touch automation</strong> for repetitive operational tasks.</p>
 <hr />
 <h2 id="four-layer-stack">Four-Layer Stack</h2>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>┌─────────────────────────────────────────────────────────────────┐
@@ -1017,6 +1018,24 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1039,24 +1058,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>

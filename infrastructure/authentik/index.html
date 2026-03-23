@@ -532,9 +532,13 @@
 </tbody></table>
 <hr />
 <h2 id="github-oauth-source">GitHub OAuth Source</h2>
-<p>Authentik's <code>default-authentication-identification</code> stage is configured to show a <strong>Login with GitHub</strong> button. Users log in with their GitHub account, which Authentik links by email (<code>email_link</code> mode).</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>User → auth.madhan.app → &quot;Login with GitHub&quot; → GitHub OAuth → Authentik (identity confirmed)
+<p>Authentik's <code>default-authentication-identification</code> stage is configured to show a <strong>Login with GitHub</strong> button. Users log in with their GitHub account — Authentik creates a new user via the <code>default-source-enrollment</code> flow (<code>identifier</code> matching mode).</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>User → auth.madhan.app → &quot;Login with GitHub&quot; → GitHub OAuth → Authentik (new user enrolled)
+</span><span>  → OIDC token issued → redirect back to app (Grafana / NetBird)
 </span></code></pre>
+<blockquote>
+<p><strong>Matching mode: <code>identifier</code></strong> — Authentik creates a separate user per GitHub identity without trying to link to existing Authentik accounts by email. This avoids an infinite redirect loop that occurs with <code>email_link</code> mode when the admin email matches a GitHub account but the user isn't already logged into Authentik.</p>
+</blockquote>
 <p>The GitHub OAuth app uses PKCE (S256) for additional security.</p>
 <hr />
 <h2 id="oidc-applications">OIDC Applications</h2>
@@ -1131,6 +1135,24 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1153,24 +1175,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>

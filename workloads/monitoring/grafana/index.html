@@ -536,11 +536,11 @@
 <h2 id="datasources">Datasources</h2>
 <p>Configured statically in Helm values:</p>
 <table><thead><tr><th>Name</th><th>Type</th><th>URL</th><th>Notes</th></tr></thead><tbody>
-<tr><td>VictoriaMetrics</td><td><code>prometheus</code> (default)</td><td><code>http://victoria-metrics-victoria-metrics-cluster-vmselect.victoria-metrics.svc.cluster.local:8481/select/0/prometheus</code></td><td><code>timeInterval: 30s</code></td></tr>
-<tr><td>VictoriaLogs</td><td><code>loki</code></td><td><code>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select</code></td><td>Grafana appends <code>/loki/api/v1/...</code> automatically</td></tr>
+<tr><td>VictoriaMetrics</td><td><code>prometheus</code> (default)</td><td><code>http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428</code></td><td><code>timeInterval: 30s</code></td></tr>
+<tr><td>VictoriaLogs</td><td><code>loki</code></td><td><code>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select</code></td><td><code>logsVolumeEnabled: false</code> (VictoriaLogs doesn't implement Loki index/volume API)</td></tr>
 </tbody></table>
 <blockquote>
-<p><strong>Important:</strong> The VictoriaLogs URL ends at <code>/select</code> — do <strong>not</strong> append <code>/loki</code> or <code>/loki/api/v1</code>. Grafana's Loki plugin appends the API path automatically, so the correct URL is just <code>/select</code>. Using <code>/select/loki</code> results in double-path errors.</p>
+<p><strong>Important:</strong> The VictoriaLogs URL ends at <code>/select</code> — Grafana's Loki plugin appends <code>/loki/api/v1/...</code> automatically. The <code>logsVolumeEnabled</code> flag is disabled to suppress the unsupported <code>/index/volume</code> endpoint error in Drilldown → Logs.</p>
 </blockquote>
 <h2 id="dashboard-provisioning">Dashboard Provisioning</h2>
 <p>Grafana's sidecar watches ConfigMaps across all namespaces with the label <code>grafana_dashboard: "1"</code>:</p>
@@ -581,30 +581,53 @@
 </span><span>  OAUTH_CLIENT_SECRET=</span><span style="color:#f29e74;">&lt;</span><span>new-secret</span><span style="color:#f29e74;">&gt;
 </span></code></pre>
 <h2 id="github-sso-via-authentik">GitHub SSO via Authentik</h2>
-<p>Grafana uses Authentik as an OIDC provider. GitHub is a social source in Authentik.</p>
-<p>OIDC configuration in <code>grafana.go</code>:</p>
+<p>Grafana uses Authentik as an OIDC provider. GitHub is a social login source in Authentik — users log in with their GitHub account.</p>
+<h3 id="login-flow-public-user">Login Flow (Public User)</h3>
+<ol>
+<li>Browse to <strong><code>https://grafana.madhan.app</code></strong> — Grafana redirects to the Authentik login page</li>
+<li>Click <strong>"Login with GitHub via Authentik"</strong></li>
+<li>GitHub OAuth consent screen appears — authorise the app</li>
+<li>GitHub redirects back to Authentik, which creates an Authentik user (using the <code>default-source-enrollment</code> flow)</li>
+<li>Authentik issues an OIDC token and redirects back to Grafana</li>
+<li>Grafana reads the <code>groups</code> claim and assigns role: <strong>Admin</strong> if in <code>grafana-admins</code>, otherwise <strong>Viewer</strong></li>
+</ol>
+<blockquote>
+<p>First-time users get the <strong>Viewer</strong> role automatically. To promote to Admin, add the user to the <code>grafana-admins</code> group in Authentik → Directory → Groups.</p>
+</blockquote>
+<h3 id="oidc-configuration">OIDC Configuration</h3>
+<p>Set in <code>workloads/monitoring/grafana.go</code>:</p>
 <pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;auth.generic_oauth&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffa759;">map</span><span>[</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>]</span><span style="color:#ffa759;">any</span><span>{
-</span><span>    </span><span style="color:#bae67e;">&quot;enabled&quot;</span><span style="color:#ccc9c2cc;">:    </span><span style="color:#ffcc66;">true</span><span style="color:#ccc9c2cc;">,
-</span><span>    </span><span style="color:#bae67e;">&quot;client_id&quot;</span><span style="color:#ccc9c2cc;">:  </span><span style="color:#bae67e;">&quot;grafana-homelab&quot;</span><span style="color:#ccc9c2cc;">,
-</span><span>    </span><span style="color:#bae67e;">&quot;auth_url&quot;</span><span style="color:#ccc9c2cc;">:   </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/grafana/authorize/&quot;</span><span style="color:#ccc9c2cc;">,
-</span><span>    </span><span style="color:#bae67e;">&quot;token_url&quot;</span><span style="color:#ccc9c2cc;">:  </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/grafana/token/&quot;</span><span style="color:#ccc9c2cc;">,
-</span><span>    </span><span style="color:#bae67e;">&quot;api_url&quot;</span><span style="color:#ccc9c2cc;">:    </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/userinfo/&quot;</span><span style="color:#ccc9c2cc;">,
-</span><span>    </span><span style="color:#bae67e;">&quot;role_attribute_path&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;contains(groups[*], &#39;grafana-admins&#39;) &amp;&amp; &#39;Admin&#39; || &#39;Viewer&#39;&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;enabled&quot;</span><span style="color:#ccc9c2cc;">:              </span><span style="color:#ffcc66;">true</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;name&quot;</span><span style="color:#ccc9c2cc;">:                 </span><span style="color:#bae67e;">&quot;GitHub via Authentik&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;client_id&quot;</span><span style="color:#ccc9c2cc;">:            </span><span style="color:#bae67e;">&quot;grafana-homelab&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;scopes&quot;</span><span style="color:#ccc9c2cc;">:               </span><span style="color:#bae67e;">&quot;openid email profile&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;auth_url&quot;</span><span style="color:#ccc9c2cc;">:             </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/authorize/&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;token_url&quot;</span><span style="color:#ccc9c2cc;">:            </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/token/&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;api_url&quot;</span><span style="color:#ccc9c2cc;">:              </span><span style="color:#bae67e;">&quot;https://auth.madhan.app/application/o/userinfo/&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;use_pkce&quot;</span><span style="color:#ccc9c2cc;">:             </span><span style="color:#ffcc66;">true</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;allow_sign_up&quot;</span><span style="color:#ccc9c2cc;">:        </span><span style="color:#ffcc66;">true</span><span style="color:#ccc9c2cc;">,
+</span><span>    </span><span style="color:#bae67e;">&quot;role_attribute_path&quot;</span><span style="color:#ccc9c2cc;">:  </span><span style="color:#bae67e;">&quot;contains(groups[*], &#39;grafana-admins&#39;) &amp;&amp; &#39;Admin&#39; || &#39;Viewer&#39;&quot;</span><span style="color:#ccc9c2cc;">,
+</span><span>}</span><span style="color:#ccc9c2cc;">,
+</span><span style="font-style:italic;color:#5c6773;">// root_url forces https:// in redirect_uri — TLS terminates at Bifrost/Traefik,
+</span><span style="font-style:italic;color:#5c6773;">// so without this Grafana would construct an http:// callback that mismatches
+</span><span style="font-style:italic;color:#5c6773;">// the https:// redirect URI registered in Authentik.
+</span><span style="color:#bae67e;">&quot;server&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffa759;">map</span><span>[</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>]</span><span style="color:#ffa759;">any</span><span>{
+</span><span>    </span><span style="color:#bae67e;">&quot;root_url&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;https://grafana.madhan.app&quot;</span><span style="color:#ccc9c2cc;">,
 </span><span>}</span><span style="color:#ccc9c2cc;">,
 </span></code></pre>
-<p>Members of the <code>grafana-admins</code> group in Authentik get Grafana Admin role. Everyone else gets Viewer.</p>
-<h3 id="one-time-sso-setup">One-Time SSO Setup</h3>
+<h3 id="one-time-sso-setup-managed-by-pulumi">One-Time SSO Setup (Managed by Pulumi)</h3>
+<p>The Authentik configuration is fully automated via <code>just core authentik up</code> (<code>core/cloud/authentik.go</code>). Manual steps are only needed to:</p>
 <ol>
-<li><strong>Authentik UI → Directory → Federation → Create → GitHub source</strong> (slug: <code>github</code>)</li>
-<li><strong>Authentik UI → Applications → Providers → Create OAuth2/OIDC provider</strong> — Name: <code>Grafana</code>, Redirect URI: <code>https://grafana.madhan.app/login/generic_oauth</code>, Scopes: <code>openid email profile</code></li>
-<li><strong>Authentik UI → Applications → Create</strong> — bind to the Grafana provider</li>
-<li><strong>Authentik UI → Directory → Groups → Create</strong> — <code>grafana-admins</code>, add yourself</li>
-<li>Store the Client Secret in OpenBao: <code>bao kv patch secret/grafana OAUTH_CLIENT_SECRET=&lt;secret&gt;</code></li>
+<li><strong>Grant Admin role</strong> — Authentik UI → Directory → Groups → <code>grafana-admins</code> → Add user</li>
+<li><strong>Store Client Secret in OpenBao</strong> — run once after creating the Grafana OIDC provider:<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> openbao-get secret/grafana   </span><span style="font-style:italic;color:#5c6773;"># verify current value
+</span><span style="color:#ffd580;">bao</span><span> kv patch secret/grafana OAUTH_CLIENT_SECRET=</span><span style="color:#f29e74;">&lt;</span><span>secret</span><span style="color:#f29e74;">&gt;
+</span></code></pre>
+</li>
 </ol>
 <h3 id="admin-login-bypass-sso">Admin Login (Bypass SSO)</h3>
 <p>The local <code>admin</code> account is always available at <code>/login</code>:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Get admin password from OpenBao
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv get -field=ADMIN_PASSWORD secret/grafana
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Get admin password
+</span><span style="color:#ffd580;">just</span><span> openbao-get secret/grafana ADMIN_PASSWORD
 </span></code></pre>
 <h2 id="how-it-connects">How It Connects</h2>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>Browser → grafana.madhan.app
@@ -777,7 +800,15 @@
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#one-time-sso-setup" class="toc-link">One-Time SSO Setup</a>
+                                    <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#login-flow-public-user" class="toc-link">Login Flow (Public User)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#oidc-configuration" class="toc-link">OIDC Configuration</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#one-time-sso-setup-managed-by-pulumi" class="toc-link">One-Time SSO Setup (Managed by Pulumi)</a>
                                 </li>
                             
                                 <li>
@@ -1163,6 +1194,24 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1185,24 +1234,6 @@
                                                             </details>
                                                         
                                                     </li>
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets">Secrets Management</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/openbao">OpenBao</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/secrets/csi-driver">Secrets Store CSI Driver</a></li>
-                                                
                                                 
                                             </ul>
                                         </details>
