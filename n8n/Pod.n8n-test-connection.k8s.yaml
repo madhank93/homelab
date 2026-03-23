@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test
+  labels:
+    app.kubernetes.io/instance: n8n
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/version: 1.122.4
+    helm.sh/chart: n8n-2.0.1
+  name: n8n-test-connection
+  namespace: n8n
+spec:
+  containers:
+    - args:
+        - |
+          echo "Testing connection to n8n:80";
+          nslookup n8n;
+          wget n8n:80;
+      command:
+        - sh
+        - -c
+      image: alpine
+      name: wget
+  restartPolicy: Never

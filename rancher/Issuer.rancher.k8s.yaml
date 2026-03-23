@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    app: rancher
+    chart: rancher-2.13.2
+    heritage: Helm
+    release: rancher
+  name: rancher
+  namespace: cattle-system
+spec:
+  ca:
+    secretName: tls-rancher

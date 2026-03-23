@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: cnpg
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cloudnative-pg
+    app.kubernetes.io/version: 1.28.1
+    helm.sh/chart: cloudnative-pg-0.27.1
+  name: cnpg-cloudnative-pg
+  namespace: cnpg-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: cnpg
+      app.kubernetes.io/name: cloudnative-pg
+  template:
+    metadata:
+      annotations:
+        checksum/config: 73c0cee20e6bbea5eb2cc74b135d9c32041e52fabad1a97e31e9f7efe5730989
+        checksum/monitoring-config: 92d7416049e3d0b7225eca85da3b52071727ecef4e4fa1784ce3c75268466cca
+        checksum/rbac: ee411932f0ddcbb5482ed751e70b4796dda03e328dabaa71a168750e0b522787
+      labels:
+        app.kubernetes.io/instance: cnpg
+        app.kubernetes.io/name: cloudnative-pg
+    spec:
+      containers:
+        - args:
+            - controller
+            - --leader-elect
+            - --max-concurrent-reconciles=10
+            - --config-map-name=cnpg-controller-manager-config
+            - --webhook-port=9443
+          command:
+            - /manager
+          env:
+            - name: OPERATOR_IMAGE_NAME
+              value: ghcr.io/cloudnative-pg/cloudnative-pg:1.28.1
+            - name: OPERATOR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MONITORING_QUERIES_CONFIGMAP
+              value: cnpg-default-monitoring
+          image: ghcr.io/cloudnative-pg/cloudnative-pg:1.28.1
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: webhook-server
+              scheme: HTTPS
+            initialDelaySeconds: 3
+          name: manager
+          ports:
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP
+            - containerPort: 9443
+              name: webhook-server
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: webhook-server
+              scheme: HTTPS
+            initialDelaySeconds: 3
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 10001
+            runAsUser: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /readyz
+              port: webhook-server
+              scheme: HTTPS
+            periodSeconds: 5
+          volumeMounts:
+            - mountPath: /controller
+              name: scratch-data
+            - mountPath: /run/secrets/cnpg.io/webhook
+              name: webhook-certificates
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: cnpg-cloudnative-pg
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - emptyDir: {}
+          name: scratch-data
+        - name: webhook-certificates
+          secret:
+            defaultMode: 420
+            optional: true
+            secretName: cnpg-webhook-cert

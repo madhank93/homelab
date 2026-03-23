@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openbao
+    helm.sh/chart: openbao-0.25.6
+  name: openbao
+  namespace: openbao
+spec:
+  ports:
+    - name: http
+      port: 8200
+      targetPort: 8200
+    - name: https-internal
+      port: 8201
+      targetPort: 8201
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/name: openbao
+    component: server

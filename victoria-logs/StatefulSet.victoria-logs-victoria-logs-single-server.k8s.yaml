@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: server
+    app.kubernetes.io/instance: victoria-logs
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-single
+    app.kubernetes.io/version: v1.45.0
+    helm.sh/chart: victoria-logs-single-0.11.26
+  name: victoria-logs-victoria-logs-single-server
+  namespace: victoria-logs
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  selector:
+    matchLabels:
+      app: server
+      app.kubernetes.io/instance: victoria-logs
+      app.kubernetes.io/name: victoria-logs-single
+  serviceName: victoria-logs-victoria-logs-single-server
+  template:
+    metadata:
+      labels:
+        app: server
+        app.kubernetes.io/instance: victoria-logs
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: victoria-logs-single
+    spec:
+      containers:
+        - args:
+            - --envflag.enable
+            - --envflag.prefix=VM_
+            - --http.shutdownDelay=15s
+            - --httpListenAddr=:9428
+            - --loggerFormat=json
+            - --retentionPeriod=1
+            - --storageDataPath=/storage
+          image: victoriametrics/victoria-logs:v1.45.0
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 10
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            tcpSocket:
+              port: http
+            timeoutSeconds: 5
+          name: vlogs
+          ports:
+            - containerPort: 9428
+              name: http
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /storage
+              name: server-volume
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 60
+  updateStrategy: {}
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: server-volume
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi

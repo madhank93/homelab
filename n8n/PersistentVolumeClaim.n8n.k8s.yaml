@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/instance: n8n
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/version: 1.122.4
+    helm.sh/chart: n8n-2.0.1
+  name: n8n
+  namespace: n8n
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi

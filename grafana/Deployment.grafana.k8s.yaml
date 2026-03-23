@@ -1,0 +1,205 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 12.3.1
+    helm.sh/chart: grafana-10.7.0
+  name: grafana
+  namespace: grafana
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: grafana
+      app.kubernetes.io/name: grafana
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: 6eb18718b3be0dfc34e7b45df279184ee3c55aba8461e51c33d69f2de5c849cd
+        checksum/sc-dashboard-provider-config: 81f722b8194d01e4a84ce12a0cbbe9b705b2d9145719c803ac264b4786c64a09
+        kubectl.kubernetes.io/default-container: grafana
+        reloader.stakater.com/auto: "true"
+      labels:
+        app.kubernetes.io/instance: grafana
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/version: 12.3.1
+        helm.sh/chart: grafana-10.7.0
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: METHOD
+              value: WATCH
+            - name: LABEL
+              value: grafana_dashboard
+            - name: LABEL_VALUE
+              value: "1"
+            - name: FOLDER
+              value: /tmp/dashboards
+            - name: RESOURCE
+              value: both
+            - name: NAMESPACE
+              value: ALL
+            - name: FOLDER_ANNOTATION
+              value: grafana_folder
+            - name: REQ_URL
+              value: http://localhost:3000/api/admin/provisioning/dashboards/reload
+            - name: REQ_METHOD
+              value: POST
+          image: quay.io/kiwigrid/k8s-sidecar:2.5.0
+          imagePullPolicy: IfNotPresent
+          name: grafana-sc-dashboard
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /tmp/dashboards
+              name: sc-dashboard-volume
+        - env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: GF_PATHS_DATA
+              value: /var/lib/grafana/
+            - name: GF_PATHS_LOGS
+              value: /var/log/grafana
+            - name: GF_PATHS_PLUGINS
+              value: /var/lib/grafana/plugins
+            - name: GF_PATHS_PROVISIONING
+              value: /etc/grafana/provisioning
+            - name: GF_UNIFIED_STORAGE_INDEX_PATH
+              value: /var/lib/grafana-search/bleve
+            - name: GOMEMLIMIT
+              valueFrom:
+                resourceFieldRef:
+                  divisor: "1"
+                  resource: limits.memory
+            - name: GF_SECURITY_ADMIN_PASSWORD__FILE
+              value: /mnt/secrets/ADMIN_PASSWORD
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+          envFrom:
+            - secretRef:
+                name: grafana-oauth-secret
+          image: docker.io/grafana/grafana:12.3.1
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /api/health
+              port: grafana
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+          name: grafana
+          ports:
+            - containerPort: 3000
+              name: grafana
+              protocol: TCP
+            - containerPort: 9094
+              name: gossip-tcp
+              protocol: TCP
+            - containerPort: 9094
+              name: gossip-udp
+              protocol: UDP
+            - containerPort: 6060
+              name: profiling
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: grafana
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /etc/grafana/grafana.ini
+              name: config
+              subPath: grafana.ini
+            - mountPath: /var/lib/grafana
+              name: storage
+            - mountPath: /var/lib/grafana-search
+              name: search
+            - mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              name: config
+              subPath: datasources.yaml
+            - mountPath: /tmp/dashboards
+              name: sc-dashboard-volume
+            - mountPath: /etc/grafana/provisioning/dashboards/sc-dashboardproviders.yaml
+              name: sc-dashboard-provider
+              subPath: provider.yaml
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
+      enableServiceLinks: true
+      initContainers:
+        - command:
+            - chown
+            - -R
+            - 472:472
+            - /var/lib/grafana
+          image: docker.io/library/busybox:1.37.0
+          imagePullPolicy: IfNotPresent
+          name: init-chown-data
+          securityContext:
+            capabilities:
+              add:
+                - CHOWN
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+            runAsUser: 0
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: storage
+      securityContext:
+        fsGroup: 472
+        runAsGroup: 472
+        runAsNonRoot: true
+        runAsUser: 472
+      serviceAccountName: grafana
+      shareProcessNamespace: false
+      volumes:
+        - configMap:
+            name: grafana
+          name: config
+        - name: storage
+          persistentVolumeClaim:
+            claimName: grafana
+        - emptyDir: {}
+          name: search
+        - emptyDir: {}
+          name: sc-dashboard-volume
+        - configMap:
+            name: grafana-config-dashboards
+          name: sc-dashboard-provider
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: grafana-secrets
+          name: openbao-secrets

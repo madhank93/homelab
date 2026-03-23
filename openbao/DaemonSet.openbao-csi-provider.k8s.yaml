@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openbao-csi-provider
+  name: openbao-csi-provider
+  namespace: openbao
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: openbao
+      app.kubernetes.io/name: openbao-csi-provider
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: openbao
+        app.kubernetes.io/name: openbao-csi-provider
+    spec:
+      containers:
+        - args:
+            - --endpoint=/provider/openbao.sock
+            - --debug=false
+            - --hmac-secret-name=openbao-csi-provider-hmac-key
+          env:
+            - name: VAULT_ADDR
+              value: unix:///var/run/vault/agent.sock
+          image: quay.io/openbao/openbao-csi-provider:2.0.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: openbao-csi-provider
+          readinessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          volumeMounts:
+            - mountPath: /provider
+              name: providervol
+            - mountPath: /var/run/vault
+              name: agent-unix-socket
+        - args:
+            - agent
+            - -config=/etc/vault/config.hcl
+          command:
+            - bao
+          env:
+            - name: BAO_LOG_LEVEL
+              value: info
+            - name: BAO_LOG_FORMAT
+              value: standard
+          image: quay.io/openbao/openbao:2.5.1
+          imagePullPolicy: IfNotPresent
+          name: openbao-agent
+          ports:
+            - containerPort: 8200
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 100
+          volumeMounts:
+            - mountPath: /etc/vault/config.hcl
+              name: agent-config
+              readOnly: true
+              subPath: config.hcl
+            - mountPath: /var/run/vault
+              name: agent-unix-socket
+      serviceAccountName: openbao-csi-provider
+      volumes:
+        - hostPath:
+            path: /etc/kubernetes/secrets-store-csi-providers
+          name: providervol
+        - configMap:
+            name: openbao-csi-provider-agent-config
+          name: agent-config
+        - emptyDir:
+            medium: Memory
+          name: agent-unix-socket
+  updateStrategy:
+    type: RollingUpdate

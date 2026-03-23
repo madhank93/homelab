@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: n8n
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/version: 1.122.4
+    helm.sh/chart: n8n-2.0.1
+  name: n8n
+  namespace: n8n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: n8n
+      app.kubernetes.io/name: n8n
+      app.kubernetes.io/type: master
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/config: cb9aca9a1980ad064e93397ed5728d6a62858083d083e80b7d5df0d33e740652
+      labels:
+        app.kubernetes.io/instance: n8n
+        app.kubernetes.io/name: n8n
+        app.kubernetes.io/type: master
+    spec:
+      containers:
+        - env:
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: n8n-pg-app
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: N8N_ENCRYPTION_KEY
+                  name: n8n-secrets
+          envFrom:
+            - configMapRef:
+                name: n8n-app-config
+          image: n8nio/n8n:1.78.0
+          imagePullPolicy: IfNotPresent
+          lifecycle: {}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          name: n8n
+          ports:
+            - containerPort: 5678
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /home/node/.n8n
+              name: data
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: n8n
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: n8n
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: n8n-secrets
+          name: openbao-secrets

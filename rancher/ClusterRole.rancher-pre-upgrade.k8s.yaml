@@ -1,0 +1,24 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "-1"
+  labels:
+    app: rancher
+    chart: rancher-2.13.2
+    heritage: Helm
+    release: rancher
+  name: rancher-pre-upgrade
+  namespace: cattle-system
+rules:
+  - apiGroups:
+      - management.cattle.io
+    resources:
+      - clusters
+      - nodetemplates
+      - clustertemplates
+    verbs:
+      - get
+      - list

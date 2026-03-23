@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openbao
+    helm.sh/chart: openbao-0.25.6
+  name: openbao-config
+  namespace: openbao
+data:
+  extraconfig-from-values.hcl: |-
+    
+    ui = true
+    listener "tcp" {
+      tls_disable     = 1
+      address         = "[::]:8200"
+      cluster_address = "[::]:8201"
+      telemetry {
+        unauthenticated_metrics_access = true
+      }
+    }
+    storage "file" {
+      path = "/openbao/data"
+    }
+    telemetry {
+      prometheus_retention_time = "30s"
+      disable_hostname          = true
+    }

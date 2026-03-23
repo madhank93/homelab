@@ -1,0 +1,23 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/instance: kyverno
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: kyverno
+    app.kubernetes.io/version: 3.7.0
+    helm.sh/chart: kyverno-3.7.0
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+  name: kyverno:rbac:view:policyreports
+  namespace: kyverno
+rules:
+  - apiGroups:
+      - wgpolicyk8s.io
+    resources:
+      - policyreports
+      - clusterpolicyreports
+    verbs:
+      - get
+      - list
+      - watch

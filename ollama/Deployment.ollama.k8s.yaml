@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: ollama
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/version: 0.15.4
+    helm.sh/chart: ollama-1.41.0
+  name: ollama
+  namespace: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: ollama
+      app.kubernetes.io/name: ollama
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: ollama
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: ollama
+        app.kubernetes.io/version: 0.15.4
+        helm.sh/chart: ollama-1.41.0
+    spec:
+      containers:
+        - env:
+            - name: OLLAMA_HOST
+              value: 0.0.0.0:11434
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+          image: ollama/ollama:0.17.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          name: ollama
+          ports:
+            - containerPort: 11434
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 4000m
+              memory: 4Gi
+              nvidia.com/gpu: 1
+            requests:
+              cpu: 1000m
+              memory: 2Gi
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /root/.ollama
+              name: ollama-data
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      runtimeClassName: nvidia
+      securityContext: {}
+      serviceAccountName: ollama
+      terminationGracePeriodSeconds: 120
+      tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai
+      volumes:
+        - emptyDir: {}
+          name: ollama-data
