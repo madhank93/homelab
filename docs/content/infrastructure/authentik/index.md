@@ -47,11 +47,14 @@ See [Hetzner Bifrost](/infrastructure/hetzner-bifrost) for the VPS setup and con
 
 ## GitHub OAuth Source
 
-Authentik's `default-authentication-identification` stage is configured to show a **Login with GitHub** button. Users log in with their GitHub account, which Authentik links by email (`email_link` mode).
+Authentik's `default-authentication-identification` stage is configured to show a **Login with GitHub** button. Users log in with their GitHub account — Authentik creates a new user via the `default-source-enrollment` flow (`identifier` matching mode).
 
 ```
-User → auth.madhan.app → "Login with GitHub" → GitHub OAuth → Authentik (identity confirmed)
+User → auth.madhan.app → "Login with GitHub" → GitHub OAuth → Authentik (new user enrolled)
+  → OIDC token issued → redirect back to app (Grafana / NetBird)
 ```
+
+> **Matching mode: `identifier`** — Authentik creates a separate user per GitHub identity without trying to link to existing Authentik accounts by email. This avoids an infinite redirect loop that occurs with `email_link` mode when the admin email matches a GitHub account but the user isn't already logged into Authentik.
 
 The GitHub OAuth app uses PKCE (S256) for additional security.
 

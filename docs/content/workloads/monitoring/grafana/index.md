@@ -43,10 +43,10 @@ Configured statically in Helm values:
 
 | Name | Type | URL | Notes |
 |------|------|-----|-------|
-| VictoriaMetrics | `prometheus` (default) | `http://victoria-metrics-victoria-metrics-cluster-vmselect.victoria-metrics.svc.cluster.local:8481/select/0/prometheus` | `timeInterval: 30s` |
-| VictoriaLogs | `loki` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select` | Grafana appends `/loki/api/v1/...` automatically |
+| VictoriaMetrics | `prometheus` (default) | `http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428` | `timeInterval: 30s` |
+| VictoriaLogs | `loki` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select` | `logsVolumeEnabled: false` (VictoriaLogs doesn't implement Loki index/volume API) |
 
-> **Important:** The VictoriaLogs URL ends at `/select` — do **not** append `/loki` or `/loki/api/v1`. Grafana's Loki plugin appends the API path automatically, so the correct URL is just `/select`. Using `/select/loki` results in double-path errors.
+> **Important:** The VictoriaLogs URL ends at `/select` — Grafana's Loki plugin appends `/loki/api/v1/...` automatically. The `logsVolumeEnabled` flag is disabled to suppress the unsupported `/index/volume` endpoint error in Drilldown → Logs.
 
 ## Dashboard Provisioning
 
@@ -101,38 +101,62 @@ kubectl exec -n openbao openbao-0 -- bao kv patch secret/grafana \
 
 ## GitHub SSO via Authentik
 
-Grafana uses Authentik as an OIDC provider. GitHub is a social source in Authentik.
+Grafana uses Authentik as an OIDC provider. GitHub is a social login source in Authentik — users log in with their GitHub account.
 
-OIDC configuration in `grafana.go`:
+### Login Flow (Public User)
+
+1. Browse to **`https://grafana.madhan.app`** — Grafana redirects to the Authentik login page
+2. Click **"Login with GitHub via Authentik"**
+3. GitHub OAuth consent screen appears — authorise the app
+4. GitHub redirects back to Authentik, which creates an Authentik user (using the `default-source-enrollment` flow)
+5. Authentik issues an OIDC token and redirects back to Grafana
+6. Grafana reads the `groups` claim and assigns role: **Admin** if in `grafana-admins`, otherwise **Viewer**
+
+> First-time users get the **Viewer** role automatically. To promote to Admin, add the user to the `grafana-admins` group in Authentik → Directory → Groups.
+
+### OIDC Configuration
+
+Set in `workloads/monitoring/grafana.go`:
 
 ```go
 "auth.generic_oauth": map[string]any{
-    "enabled":    true,
-    "client_id":  "grafana-homelab",
-    "auth_url":   "https://auth.madhan.app/application/o/grafana/authorize/",
-    "token_url":  "https://auth.madhan.app/application/o/grafana/token/",
-    "api_url":    "https://auth.madhan.app/application/o/userinfo/",
-    "role_attribute_path": "contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'",
+    "enabled":              true,
+    "name":                 "GitHub via Authentik",
+    "client_id":            "grafana-homelab",
+    "scopes":               "openid email profile",
+    "auth_url":             "https://auth.madhan.app/application/o/authorize/",
+    "token_url":            "https://auth.madhan.app/application/o/token/",
+    "api_url":              "https://auth.madhan.app/application/o/userinfo/",
+    "use_pkce":             true,
+    "allow_sign_up":        true,
+    "role_attribute_path":  "contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'",
+},
+// root_url forces https:// in redirect_uri — TLS terminates at Bifrost/Traefik,
+// so without this Grafana would construct an http:// callback that mismatches
+// the https:// redirect URI registered in Authentik.
+"server": map[string]any{
+    "root_url": "https://grafana.madhan.app",
 },
 ```
 
-Members of the `grafana-admins` group in Authentik get Grafana Admin role. Everyone else gets Viewer.
+### One-Time SSO Setup (Managed by Pulumi)
 
-### One-Time SSO Setup
+The Authentik configuration is fully automated via `just core authentik up` (`core/cloud/authentik.go`). Manual steps are only needed to:
 
-1. **Authentik UI → Directory → Federation → Create → GitHub source** (slug: `github`)
-2. **Authentik UI → Applications → Providers → Create OAuth2/OIDC provider** — Name: `Grafana`, Redirect URI: `https://grafana.madhan.app/login/generic_oauth`, Scopes: `openid email profile`
-3. **Authentik UI → Applications → Create** — bind to the Grafana provider
-4. **Authentik UI → Directory → Groups → Create** — `grafana-admins`, add yourself
-5. Store the Client Secret in OpenBao: `bao kv patch secret/grafana OAUTH_CLIENT_SECRET=<secret>`
+1. **Grant Admin role** — Authentik UI → Directory → Groups → `grafana-admins` → Add user
+2. **Store Client Secret in OpenBao** — run once after creating the Grafana OIDC provider:
+   ```bash
+   just openbao-get secret/grafana   # verify current value
+   bao kv patch secret/grafana OAUTH_CLIENT_SECRET=<secret>
+   ```
 
 ### Admin Login (Bypass SSO)
 
 The local `admin` account is always available at `/login`:
 
 ```bash
-# Get admin password from OpenBao
-kubectl exec -n openbao openbao-0 -- bao kv get -field=ADMIN_PASSWORD secret/grafana
+# Get admin password
+just openbao-get secret/grafana ADMIN_PASSWORD
 ```
 
 ## How It Connects

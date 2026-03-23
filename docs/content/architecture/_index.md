@@ -5,6 +5,8 @@ weight = 15
 sort_by = "weight"
 +++
 
+![Architecture Diagram](/images/architecture.png)
+
 The homelab is designed around four principles: **everything as code**, **no manual cluster changes**, **secrets never in git plaintext**, and **zero-touch automation** for repetitive operational tasks.
 
 ---

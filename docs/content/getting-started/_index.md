@@ -13,7 +13,7 @@ This section covers what you need before running the homelab, how the four layer
 
 The homelab is organized in four layers. Each layer is managed by a specific tool:
 
-![Architecture Diagram](/images/architecture.svg)
+![Architecture Diagram](/images/architecture.png)
 
 | Layer | What's in it | Managed by |
 |-------|-------------|------------|
