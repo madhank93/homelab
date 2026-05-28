@@ -66,6 +66,26 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 		"trivyOperator": map[string]any{
 			"scanJobTimeout": "5m",
 		},
+		// Talos has a read-only root filesystem — /etc/systemd and /lib/systemd do not exist.
+		// Strip those hostPath mounts from node-collector; keep the k8s-relevant paths only.
+		"nodeCollector": map[string]any{
+			"volumes": []map[string]any{
+				{"hostPath": map[string]any{"path": "/var/lib/etcd"}, "name": "var-lib-etcd"},
+				{"hostPath": map[string]any{"path": "/var/lib/kubelet"}, "name": "var-lib-kubelet"},
+				{"hostPath": map[string]any{"path": "/var/lib/kube-scheduler"}, "name": "var-lib-kube-scheduler"},
+				{"hostPath": map[string]any{"path": "/var/lib/kube-controller-manager"}, "name": "var-lib-kube-controller-manager"},
+				{"hostPath": map[string]any{"path": "/etc/kubernetes"}, "name": "etc-kubernetes"},
+				{"hostPath": map[string]any{"path": "/etc/cni/net.d/"}, "name": "etc-cni-netd"},
+			},
+			"volumeMounts": []map[string]any{
+				{"mountPath": "/var/lib/etcd", "name": "var-lib-etcd", "readOnly": true},
+				{"mountPath": "/var/lib/kubelet", "name": "var-lib-kubelet", "readOnly": true},
+				{"mountPath": "/var/lib/kube-scheduler", "name": "var-lib-kube-scheduler", "readOnly": true},
+				{"mountPath": "/var/lib/kube-controller-manager", "name": "var-lib-kube-controller-manager", "readOnly": true},
+				{"mountPath": "/etc/kubernetes", "name": "etc-kubernetes", "readOnly": true},
+				{"mountPath": "/etc/cni/net.d/", "name": "etc-cni-netd", "readOnly": true},
+			},
+		},
 		"compliance": map[string]any{
 			"failedChecksOnly": false,
 		},
