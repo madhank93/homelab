@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvidia-device-plugin
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nvidia-device-plugin
+    app.kubernetes.io/version: 0.19.1
+    helm.sh/chart: nvidia-device-plugin-0.19.1
+  name: nvidia-device-plugin-configs
+  namespace: nvidia-gpu-operator
+data:
+  default: |-
+    version: v1
+    flags:
+      migStrategy: none
+      deviceDiscoveryStrategy: nvml
+      plugin:
+        deviceListStrategy: envvar
+    sharing:
+      timeSlicing:
+        resources:
+        - name: nvidia.com/gpu
+          replicas: 5

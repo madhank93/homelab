@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/component: dcgm-exporter
+    app.kubernetes.io/instance: dcgm-exporter
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: dcgm-exporter
+    app.kubernetes.io/version: 4.8.2
+    helm.sh/chart: dcgm-exporter-4.8.2
+  name: dcgm-exporter-read-cm
+  namespace: nvidia-gpu-operator
+rules:
+  - apiGroups:
+      - ""
+    resourceNames:
+      - exporter-metrics-config-map
+    resources:
+      - configmaps
+    verbs:
+      - get

@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    app.kubernetes.io/component: core
+    app.kubernetes.io/instance: harbor
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+    app.kubernetes.io/version: 2.15.0
+    chart: harbor
+    component: core
+    heritage: Helm
+    release: harbor
+  name: harbor-core
+  namespace: harbor
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: core
+      release: harbor
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 0c07031277ff0a013d5026f61491aefaebe0d880faa8470f8b4fbbc32d29fd8d
+        checksum/secret: a58d70e7e2aa66fa2ba5c8abce5033a6626778f5a7ed3aefd4b12b81fa2f806e
+        checksum/secret-jobservice: d7e62b1673b49aafa491e396e5c0fc9613095015b5b6f7123b0af4847668cd11
+      labels:
+        app: harbor
+        app.kubernetes.io/component: core
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.15.0
+        chart: harbor
+        component: core
+        heritage: Helm
+        release: harbor
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: CORE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: secret
+                  name: harbor-core
+            - name: JOBSERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: JOBSERVICE_SECRET
+                  name: harbor-jobservice
+          envFrom:
+            - configMapRef:
+                name: harbor-core
+            - secretRef:
+                name: harbor-core
+          image: docker.io/goharbor/harbor-core:v2.15.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /api/v2.0/ping
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: core
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /api/v2.0/ping
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            failureThreshold: 360
+            httpGet:
+              path: /api/v2.0/ping
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /etc/core/app.conf
+              name: config
+              subPath: app.conf
+            - mountPath: /etc/core/key
+              name: secret-key
+              subPath: key
+            - mountPath: /etc/core/private_key.pem
+              name: token-service-private-key
+              subPath: tls.key
+            - mountPath: /etc/core/token
+              name: psc
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 120
+      volumes:
+        - configMap:
+            items:
+              - key: app.conf
+                path: app.conf
+            name: harbor-core
+          name: config
+        - name: secret-key
+          secret:
+            items:
+              - key: secretKey
+                path: key
+            secretName: harbor-core
+        - name: token-service-private-key
+          secret:
+            secretName: harbor-core
+        - emptyDir: {}
+          name: psc

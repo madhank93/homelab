@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: falco
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/version: 0.43.1
+    helm.sh/chart: falco-8.0.5
+  name: falco-falcoctl
+  namespace: falco
+data:
+  falcoctl.yaml: |-
+    artifact:
+      allowedTypes:
+      - rulesfile
+      - plugin
+      follow:
+        every: 168h
+        falcoversions: http://localhost:8765/versions
+        pluginsDir: /plugins
+        refs:
+        - falco-rules:5
+        rulesfilesDir: /rulesfiles
+        stateDir: /artifactstate
+      install:
+        pluginsDir: /plugins
+        refs:
+        - falco-rules:5
+        - ghcr.io/falcosecurity/plugins/plugin/container:0.6.3
+        resolveDeps: true
+        rulesfilesDir: /rulesfiles
+        stateDir: /artifactstate
+    indexes:
+    - name: falcosecurity
+      url: https://falcosecurity.github.io/falcoctl/index.yaml

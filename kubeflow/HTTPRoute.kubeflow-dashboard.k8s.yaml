@@ -1,0 +1,130 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kubeflow-dashboard
+  namespace: kubeflow
+spec:
+  hostnames:
+    - kubeflow.madhan.app
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
+      namespace: kube-system
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: jupyter-web-app-service
+          port: 80
+          weight: 1
+      filters:
+        - requestHeaderModifier:
+            set:
+              - name: kubeflow-userid
+                value: user@example.com
+          type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
+      matches:
+        - path:
+            type: PathPrefix
+            value: /jupyter/
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: volumes-web-app-service
+          port: 80
+          weight: 1
+      filters:
+        - requestHeaderModifier:
+            set:
+              - name: kubeflow-userid
+                value: user@example.com
+          type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
+      matches:
+        - path:
+            type: PathPrefix
+            value: /volumes/
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: tensorboards-web-app-service
+          port: 80
+          weight: 1
+      filters:
+        - requestHeaderModifier:
+            set:
+              - name: kubeflow-userid
+                value: user@example.com
+          type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
+      matches:
+        - path:
+            type: PathPrefix
+            value: /tensorboards/
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: katib-ui
+          port: 80
+          weight: 1
+      filters:
+        - requestHeaderModifier:
+            set:
+              - name: kubeflow-userid
+                value: user@example.com
+          type: RequestHeaderModifier
+      matches:
+        - path:
+            type: PathPrefix
+            value: /katib/
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: ml-pipeline-ui
+          port: 80
+          weight: 1
+      filters:
+        - requestHeaderModifier:
+            set:
+              - name: kubeflow-userid
+                value: user@example.com
+          type: RequestHeaderModifier
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
+      matches:
+        - path:
+            type: PathPrefix
+            value: /pipeline/
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: centraldashboard
+          port: 80
+          weight: 1
+      filters:
+        - requestHeaderModifier:
+            set:
+              - name: kubeflow-userid
+                value: user@example.com
+          type: RequestHeaderModifier
+      matches:
+        - path:
+            type: PathPrefix
+            value: /

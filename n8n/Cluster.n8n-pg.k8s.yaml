@@ -1,0 +1,21 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: n8n-pg
+  namespace: n8n
+spec:
+  bootstrap:
+    initdb:
+      database: n8n
+      owner: n8n
+  instances: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  storage:
+    size: 10Gi
+    storageClass: longhorn

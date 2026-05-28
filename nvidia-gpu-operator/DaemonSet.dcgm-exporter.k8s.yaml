@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: dcgm-exporter
+    app.kubernetes.io/instance: dcgm-exporter
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: dcgm-exporter
+    app.kubernetes.io/version: 4.8.2
+    helm.sh/chart: dcgm-exporter-4.8.2
+  name: dcgm-exporter
+  namespace: nvidia-gpu-operator
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: dcgm-exporter
+      app.kubernetes.io/instance: dcgm-exporter
+      app.kubernetes.io/name: dcgm-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: dcgm-exporter
+        app.kubernetes.io/instance: dcgm-exporter
+        app.kubernetes.io/name: dcgm-exporter
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.present
+                    operator: In
+                    values:
+                      - "true"
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - -f
+            - /etc/dcgm-exporter/default-counters.csv
+          env:
+            - name: DCGM_EXPORTER_KUBERNETES
+              value: "true"
+            - name: DCGM_EXPORTER_LISTEN
+              value: :9400
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:4.5.3-4.8.2-distroless
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9400
+              scheme: HTTP
+            initialDelaySeconds: 45
+            periodSeconds: 5
+          name: exporter
+          ports:
+            - containerPort: 9400
+              name: metrics
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9400
+              scheme: HTTP
+            initialDelaySeconds: 45
+          resources:
+            limits:
+              cpu: 200m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - SYS_ADMIN
+              drop:
+                - ALL
+            runAsNonRoot: false
+            runAsUser: 0
+          volumeMounts:
+            - mountPath: /var/lib/kubelet/pod-resources
+              name: pod-gpu-resources
+              readOnly: true
+            - mountPath: /etc/dcgm-exporter/default-counters.csv
+              name: exporter-metrics-volume
+              subPath: default-counters.csv
+      hostPID: false
+      priorityClassName: system-node-critical
+      runtimeClassName: nvidia
+      serviceAccountName: dcgm-exporter
+      tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai
+      volumes:
+        - hostPath:
+            path: /var/lib/kubelet/pod-resources
+          name: pod-gpu-resources
+        - configMap:
+            items:
+              - key: metrics
+                path: default-counters.csv
+            name: exporter-metrics-config-map
+          name: exporter-metrics-volume
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
