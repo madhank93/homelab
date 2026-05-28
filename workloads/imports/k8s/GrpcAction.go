@@ -1,6 +1,7 @@
 package k8s
 
 
+// GRPCAction specifies an action involving a GRPC service.
 type GrpcAction struct {
 	// Port number of the gRPC service.
 	//

@@ -2,6 +2,8 @@ package k8s
 
 
 // EndpointsList is a list of endpoints.
+//
+// Deprecated: This API is deprecated in v1.33+.
 type KubeEndpointsListProps struct {
 	// List of endpoints.
 	Items *[]*KubeEndpointsProps `field:"required" json:"items" yaml:"items"`

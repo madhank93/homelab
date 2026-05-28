@@ -7,10 +7,6 @@ type StatefulSetSpec struct {
 	//
 	// It must match the pod template's labels. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 	Selector *LabelSelector `field:"required" json:"selector" yaml:"selector"`
-	// serviceName is the name of the service that governs this StatefulSet.
-	//
-	// This service must exist before the StatefulSet, and is responsible for the network identity of the set. Pods get DNS/hostnames that follow the pattern: pod-specific-string.serviceName.default.svc.cluster.local where "pod-specific-string" is managed by the StatefulSet controller.
-	ServiceName *string `field:"required" json:"serviceName" yaml:"serviceName"`
 	// template is the object that describes the pod that will be created if insufficient replicas are detected.
 	//
 	// Each pod stamped out by the StatefulSet will fulfill this Template, but have a unique identity from the rest of the StatefulSet. Each pod will be named with the format <statefulsetname>-<podindex>. For example, a pod in a StatefulSet named "web" with index number "3" would be named "web-3". The only allowed template.spec.restartPolicy value is "Always".
@@ -23,11 +19,11 @@ type StatefulSetSpec struct {
 	MinReadySeconds *float64 `field:"optional" json:"minReadySeconds" yaml:"minReadySeconds"`
 	// ordinals controls the numbering of replica indices in a StatefulSet.
 	//
-	// The default ordinals behavior assigns a "0" index to the first replica and increments the index by one for each additional replica requested. Using the ordinals field requires the StatefulSetStartOrdinal feature gate to be enabled, which is beta.
+	// The default ordinals behavior assigns a "0" index to the first replica and increments the index by one for each additional replica requested.
 	Ordinals *StatefulSetOrdinals `field:"optional" json:"ordinals" yaml:"ordinals"`
 	// persistentVolumeClaimRetentionPolicy describes the lifecycle of persistent volume claims created from volumeClaimTemplates.
 	//
-	// By default, all persistent volume claims are created as needed and retained until manually deleted. This policy allows the lifecycle to be altered, for example by deleting persistent volume claims when their stateful set is deleted, or when their pod is scaled down. This requires the StatefulSetAutoDeletePVC feature gate to be enabled, which is alpha.  +optional
+	// By default, all persistent volume claims are created as needed and retained until manually deleted. This policy allows the lifecycle to be altered, for example by deleting persistent volume claims when their stateful set is deleted, or when their pod is scaled down.
 	PersistentVolumeClaimRetentionPolicy *StatefulSetPersistentVolumeClaimRetentionPolicy `field:"optional" json:"persistentVolumeClaimRetentionPolicy" yaml:"persistentVolumeClaimRetentionPolicy"`
 	// podManagementPolicy controls how pods are created during initial scale up, when replacing pods on nodes, or when scaling down.
 	//
@@ -41,6 +37,10 @@ type StatefulSetSpec struct {
 	//
 	// The revision history consists of all revisions not represented by a currently applied StatefulSetSpec version. The default value is 10.
 	RevisionHistoryLimit *float64 `field:"optional" json:"revisionHistoryLimit" yaml:"revisionHistoryLimit"`
+	// serviceName is the name of the service that governs this StatefulSet.
+	//
+	// This service must exist before the StatefulSet, and is responsible for the network identity of the set. Pods get DNS/hostnames that follow the pattern: pod-specific-string.serviceName.default.svc.cluster.local where "pod-specific-string" is managed by the StatefulSet controller.
+	ServiceName *string `field:"optional" json:"serviceName" yaml:"serviceName"`
 	// updateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.
 	UpdateStrategy *StatefulSetUpdateStrategy `field:"optional" json:"updateStrategy" yaml:"updateStrategy"`
 	// volumeClaimTemplates is a list of claims that pods are allowed to reference.

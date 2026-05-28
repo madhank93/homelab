@@ -81,7 +81,7 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 	cdk8s.NewHelm(chart, jsii.String("falco-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("falco"),
 		Repo:        jsii.String("https://falcosecurity.github.io/charts"),
-		Version:     jsii.String("8.0.0"),
+		Version:     jsii.String("8.0.5"),
 		ReleaseName: jsii.String("falco"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,

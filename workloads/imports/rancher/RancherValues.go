@@ -7,9 +7,13 @@ type RancherValues struct {
 	// agentTLSMode must be 'strict' or 'system-store' or null (defaults to system-store).
 	AgentTlsMode RancherAgentTlsMode `field:"optional" json:"agentTlsMode" yaml:"agentTlsMode"`
 	AuditLog *RancherAuditLog `field:"optional" json:"auditLog" yaml:"auditLog"`
+	// The default rancher gateway configuration.
+	Gateway *RancherGateway `field:"optional" json:"gateway" yaml:"gateway"`
 	Global *map[string]interface{} `field:"optional" json:"global" yaml:"global"`
 	// The default rancher ingress configuration.
 	Ingress *RancherIngress `field:"optional" json:"ingress" yaml:"ingress"`
+	// The default rancher network exposure configuration.
+	NetworkExposure *RancherNetworkExposure `field:"optional" json:"networkExposure" yaml:"networkExposure"`
 	// The default rancher service configuration.
 	Service *RancherService `field:"optional" json:"service" yaml:"service"`
 }

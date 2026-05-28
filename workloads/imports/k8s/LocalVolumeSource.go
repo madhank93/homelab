@@ -1,7 +1,7 @@
 package k8s
 
 
-// Local represents directly-attached storage with node affinity (Beta feature).
+// Local represents directly-attached storage with node affinity.
 type LocalVolumeSource struct {
 	// path of the full path to the volume on the node.
 	//

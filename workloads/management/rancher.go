@@ -114,7 +114,7 @@ func NewRancherChart(scope constructs.Construct, id string, namespace string) cd
 	rancherimport.NewRancher(chart, jsii.String("rancher-release"), &rancherimport.RancherProps{
 		ReleaseName: jsii.String("rancher"),
 		Namespace:   jsii.String(namespace),
-		HelmFlags:   &[]*string{jsii.String("--kube-version"), jsii.String("1.30.0")},
+		HelmFlags:   &[]*string{jsii.String("--kube-version"), jsii.String("1.35.0")},
 		Values: &rancherimport.RancherValues{
 			AdditionalValues: &map[string]interface{}{
 				"agentTLSMode": "system-store",

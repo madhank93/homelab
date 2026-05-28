@@ -21,6 +21,7 @@ volumes:
   traefik_certs:
   netbird_data:
   netbird_proxy_certs:
+  netbird_agent_data:   # persists peer key across container replacements
 
 services:
 
@@ -31,7 +32,7 @@ services:
 
   traefik:
     <<: *default
-    image: traefik:v3.3
+    image: traefik:v3.7.1
     container_name: traefik
     networks:
       bifrost_net:
@@ -55,7 +56,7 @@ services:
 
   netbird-server:
     <<: *default
-    image: netbirdio/netbird-server:0.66.2
+    image: netbirdio/netbird-server:0.71.4
     container_name: netbird-server
     networks: [bifrost_net]
     ports:
@@ -69,7 +70,7 @@ services:
 
   netbird-dashboard:
     <<: *default
-    image: netbirdio/dashboard:latest
+    image: netbirdio/dashboard:v0.71.4
     container_name: netbird-dashboard
     networks: [bifrost_net]
     env_file:
@@ -78,7 +79,7 @@ services:
   # NetBird Reverse Proxy — expose feature (proxy.madhan.app TCP passthrough)
   netbird-proxy:
     <<: *default
-    image: netbirdio/reverse-proxy:latest
+    image: netbirdio/reverse-proxy:v0.71.4
     container_name: netbird-proxy
     networks: [bifrost_net]
     env_file:
@@ -90,7 +91,7 @@ services:
   # NetBird Agent — WireGuard routing peer, advertises 192.168.1.0/24 into mesh
   netbird-agent:
     <<: *default
-    image: netbirdio/netbird:latest
+    image: netbirdio/netbird:0.71.4
     container_name: netbird-agent
     network_mode: host
     cap_add:
@@ -100,6 +101,10 @@ services:
       - NB_SETUP_KEY=${NB_BIFROST_SETUP_KEY}
       - NB_MANAGEMENT_URL=https://netbird.madhan.app
       - NB_HOSTNAME=bifrost-agent
+    volumes:
+      # Persist peer key and state so container replacements don't need to re-register.
+      # NB_SETUP_KEY is only used on first boot when /var/lib/netbird has no peer state.
+      - netbird_agent_data:/var/lib/netbird
 
   # --------------------------------------------------------------------------------
   # Authentik — GitHub OAuth broker + ForwardAuth for public K8s services
@@ -107,7 +112,7 @@ services:
 
   authentik-postgres:
     <<: *default
-    image: postgres:16.6-alpine
+    image: postgres:16.14-alpine
     container_name: authentik-postgres
     networks: [bifrost_net]
     volumes:
@@ -129,7 +134,7 @@ services:
 
   authentik-server:
     <<: *default
-    image: ghcr.io/goauthentik/server:2025.10.4
+    image: ghcr.io/goauthentik/server:2026.5.0
     container_name: authentik-server
     command: server
     networks: [bifrost_net]
@@ -160,7 +165,7 @@ services:
 
   authentik-worker:
     <<: *default
-    image: ghcr.io/goauthentik/server:2025.10.4
+    image: ghcr.io/goauthentik/server:2026.5.0
     container_name: authentik-worker
     command: worker
     networks: [bifrost_net]

@@ -5,15 +5,15 @@ package k8s
 //
 // The exclude rules take precedence over include rules (if a resource matches both, it is excluded).
 type MatchResourcesV1Alpha1 struct {
-	// ExcludeResourceRules describes what operations on what resources/subresources the ValidatingAdmissionPolicy should not care about.
+	// ExcludeResourceRules describes what operations on what resources/subresources the policy should not care about.
 	//
 	// The exclude rules take precedence over include rules (if a resource matches both, it is excluded).
 	ExcludeResourceRules *[]*NamedRuleWithOperationsV1Alpha1 `field:"optional" json:"excludeResourceRules" yaml:"excludeResourceRules"`
 	// matchPolicy defines how the "MatchResources" list is used to match incoming requests. Allowed values are "Exact" or "Equivalent".
 	//
-	// - Exact: match a request only if it exactly matches a specified rule. For example, if deployments can be modified via apps/v1, apps/v1beta1, and extensions/v1beta1, but "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`, a request to apps/v1beta1 or extensions/v1beta1 would not be sent to the ValidatingAdmissionPolicy.
+	// - Exact: match a request only if it exactly matches a specified rule. For example, if deployments can be modified via apps/v1, apps/v1beta1, and extensions/v1beta1, but "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`, the admission policy does not consider requests to apps/v1beta1 or extensions/v1beta1 API groups.
 	//
-	// - Equivalent: match a request if modifies a resource listed in rules, even via another API group or version. For example, if deployments can be modified via apps/v1, apps/v1beta1, and extensions/v1beta1, and "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`, a request to apps/v1beta1 or extensions/v1beta1 would be converted to apps/v1 and sent to the ValidatingAdmissionPolicy.
+	// - Equivalent: match a request if modifies a resource listed in rules, even via another API group or version. For example, if deployments can be modified via apps/v1, apps/v1beta1, and extensions/v1beta1, and "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`, the admission policy **does** consider requests made to apps/v1beta1 or extensions/v1beta1 API groups. The API server translates the request to a matched resource API if necessary.
 	//
 	// Defaults to "Equivalent".
 	// Default: Equivalent".
@@ -55,13 +55,13 @@ type MatchResourcesV1Alpha1 struct {
 	// Default: the empty LabelSelector, which matches everything.
 	//
 	NamespaceSelector *LabelSelector `field:"optional" json:"namespaceSelector" yaml:"namespaceSelector"`
-	// ObjectSelector decides whether to run the validation based on if the object has matching labels.
+	// ObjectSelector decides whether to run the policy based on if the object has matching labels.
 	//
-	// objectSelector is evaluated against both the oldObject and newObject that would be sent to the cel validation, and is considered to match if either object matches the selector. A null object (oldObject in the case of create, or newObject in the case of delete) or an object that cannot have labels (like a DeploymentRollback or a PodProxyOptions object) is not considered to match. Use the object selector only if the webhook is opt-in, because end users may skip the admission webhook by setting the labels. Default to the empty LabelSelector, which matches everything.
+	// objectSelector is evaluated against both the oldObject and newObject that would be sent to the policy's expression (CEL), and is considered to match if either object matches the selector. A null object (oldObject in the case of create, or newObject in the case of delete) or an object that cannot have labels (like a DeploymentRollback or a PodProxyOptions object) is not considered to match. Use the object selector only if the webhook is opt-in, because end users may skip the admission webhook by setting the labels. Default to the empty LabelSelector, which matches everything.
 	// Default: the empty LabelSelector, which matches everything.
 	//
 	ObjectSelector *LabelSelector `field:"optional" json:"objectSelector" yaml:"objectSelector"`
-	// ResourceRules describes what operations on what resources/subresources the ValidatingAdmissionPolicy matches.
+	// ResourceRules describes what operations on what resources/subresources the admission policy matches.
 	//
 	// The policy cares about an operation if it matches _any_ Rule.
 	ResourceRules *[]*NamedRuleWithOperationsV1Alpha1 `field:"optional" json:"resourceRules" yaml:"resourceRules"`

@@ -44,7 +44,7 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 	cdk8s.NewHelm(chart, jsii.String("nvidia-device-plugin-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("nvidia-device-plugin"),
 		Repo:        jsii.String("https://nvidia.github.io/k8s-device-plugin"),
-		Version:     jsii.String("0.18.2"),
+		Version:     jsii.String("0.19.1"),
 		ReleaseName: jsii.String("nvidia-device-plugin"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{
@@ -96,7 +96,7 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 	cdk8s.NewHelm(chart, jsii.String("dcgm-exporter-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("dcgm-exporter"),
 		Repo:        jsii.String("https://nvidia.github.io/dcgm-exporter/helm-charts"),
-		Version:     jsii.String("3.4.2"),
+		Version:     jsii.String("4.8.2"),
 		ReleaseName: jsii.String("dcgm-exporter"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{

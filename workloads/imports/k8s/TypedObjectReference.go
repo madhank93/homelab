@@ -1,6 +1,7 @@
 package k8s
 
 
+// TypedObjectReference contains enough information to let you locate the typed referenced object.
 type TypedObjectReference struct {
 	// Kind is the type of resource being referenced.
 	Kind *string `field:"required" json:"kind" yaml:"kind"`

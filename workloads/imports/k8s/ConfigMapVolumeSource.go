@@ -17,7 +17,7 @@ type ConfigMapVolumeSource struct {
 	Items *[]*KeyToPath `field:"optional" json:"items" yaml:"items"`
 	// Name of the referent.
 	//
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	// This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 	Name *string `field:"optional" json:"name" yaml:"name"`
 	// optional specify whether the ConfigMap or its keys must be defined.
 	Optional *bool `field:"optional" json:"optional" yaml:"optional"`

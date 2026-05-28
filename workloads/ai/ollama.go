@@ -30,7 +30,7 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 			"replicaCount": 1,
 			"image": map[string]any{
 				"repository": "ollama/ollama",
-				"tag":        "0.17.0",
+				"tag":        "0.24.0",
 			},
 			"resources": map[string]any{
 				"limits": map[string]any{

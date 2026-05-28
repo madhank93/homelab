@@ -47,6 +47,10 @@ func init() {
 		reflect.TypeOf((*HelmValuesCainjectorImage)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"cert-manager.HelmValuesCainjectorNetworkPolicy",
+		reflect.TypeOf((*HelmValuesCainjectorNetworkPolicy)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"cert-manager.HelmValuesCainjectorPodDisruptionBudget",
 		reflect.TypeOf((*HelmValuesCainjectorPodDisruptionBudget)(nil)).Elem(),
 	)
@@ -81,6 +85,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"cert-manager.HelmValuesIngressShim",
 		reflect.TypeOf((*HelmValuesIngressShim)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"cert-manager.HelmValuesNetworkPolicy",
+		reflect.TypeOf((*HelmValuesNetworkPolicy)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"cert-manager.HelmValuesPodDisruptionBudget",

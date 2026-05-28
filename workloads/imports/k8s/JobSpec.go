@@ -13,13 +13,13 @@ type JobSpec struct {
 	ActiveDeadlineSeconds *float64 `field:"optional" json:"activeDeadlineSeconds" yaml:"activeDeadlineSeconds"`
 	// Specifies the number of retries before marking this job failed.
 	//
-	// Defaults to 6.
-	// Default: 6.
+	// Defaults to 6, unless backoffLimitPerIndex (only Indexed Job) is specified. When backoffLimitPerIndex is specified, backoffLimit defaults to 2147483647.
+	// Default: 6, unless backoffLimitPerIndex (only Indexed Job) is specified. When backoffLimitPerIndex is specified, backoffLimit defaults to 2147483647.
 	//
 	BackoffLimit *float64 `field:"optional" json:"backoffLimit" yaml:"backoffLimit"`
 	// Specifies the limit for the number of retries within an index before marking this index as failed.
 	//
-	// When enabled the number of failures per index is kept in the pod's batch.kubernetes.io/job-index-failure-count annotation. It can only be set when Job's completionMode=Indexed, and the Pod's restart policy is Never. The field is immutable. This field is beta-level. It can be used when the `JobBackoffLimitPerIndex` feature gate is enabled (enabled by default).
+	// When enabled the number of failures per index is kept in the pod's batch.kubernetes.io/job-index-failure-count annotation. It can only be set when Job's completionMode=Indexed, and the Pod's restart policy is Never. The field is immutable.
 	BackoffLimitPerIndex *float64 `field:"optional" json:"backoffLimitPerIndex" yaml:"backoffLimitPerIndex"`
 	// completionMode specifies how Pod completions are tracked. It can be `NonIndexed` (default) or `Indexed`.
 	//
@@ -35,9 +35,7 @@ type JobSpec struct {
 	Completions *float64 `field:"optional" json:"completions" yaml:"completions"`
 	// ManagedBy field indicates the controller that manages a Job.
 	//
-	// The k8s Job controller reconciles jobs which don't have this field at all or the field value is the reserved string `kubernetes.io/job-controller`, but skips reconciling Jobs with a custom value for this field. The value must be a valid domain-prefixed path (e.g. acme.io/foo) - all characters before the first "/" must be a valid subdomain as defined by RFC 1123. All characters trailing the first "/" must be valid HTTP Path characters as defined by RFC 3986. The value cannot exceed 64 characters.
-	//
-	// This field is alpha-level. The job controller accepts setting the field when the feature gate JobManagedBy is enabled (disabled by default).
+	// The k8s Job controller reconciles jobs which don't have this field at all or the field value is the reserved string `kubernetes.io/job-controller`, but skips reconciling Jobs with a custom value for this field. The value must be a valid domain-prefixed path (e.g. acme.io/foo) - all characters before the first "/" must be a valid subdomain as defined by RFC 1123. All characters trailing the first "/" must be valid HTTP Path characters as defined by RFC 3986. The value cannot exceed 63 characters. This field is immutable.
 	ManagedBy *string `field:"optional" json:"managedBy" yaml:"managedBy"`
 	// manualSelector controls generation of pod labels and pod selectors.
 	//
@@ -45,7 +43,7 @@ type JobSpec struct {
 	ManualSelector *bool `field:"optional" json:"manualSelector" yaml:"manualSelector"`
 	// Specifies the maximal number of failed indexes before marking the Job as failed, when backoffLimitPerIndex is set.
 	//
-	// Once the number of failed indexes exceeds this number the entire Job is marked as Failed and its execution is terminated. When left as null the job continues execution of all of its indexes and is marked with the `Complete` Job condition. It can only be specified when backoffLimitPerIndex is set. It can be null or up to completions. It is required and must be less than or equal to 10^4 when is completions greater than 10^5. This field is beta-level. It can be used when the `JobBackoffLimitPerIndex` feature gate is enabled (enabled by default).
+	// Once the number of failed indexes exceeds this number the entire Job is marked as Failed and its execution is terminated. When left as null the job continues execution of all of its indexes and is marked with the `Complete` Job condition. It can only be specified when backoffLimitPerIndex is set. It can be null or up to completions. It is required and must be less than or equal to 10^4 when is completions greater than 10^5.
 	MaxFailedIndexes *float64 `field:"optional" json:"maxFailedIndexes" yaml:"maxFailedIndexes"`
 	// Specifies the maximum desired number of pods the job should run at any given time.
 	//
@@ -54,8 +52,6 @@ type JobSpec struct {
 	// Specifies the policy of handling failed pods.
 	//
 	// In particular, it allows to specify the set of actions and conditions which need to be satisfied to take the associated action. If empty, the default behaviour applies - the counter of failed pods, represented by the jobs's .status.failed field, is incremented and it is checked against the backoffLimit. This field cannot be used in combination with restartPolicy=OnFailure.
-	//
-	// This field is beta-level. It can be used when the `JobPodFailurePolicy` feature gate is enabled (enabled by default).
 	PodFailurePolicy *PodFailurePolicy `field:"optional" json:"podFailurePolicy" yaml:"podFailurePolicy"`
 	// podReplacementPolicy specifies when to create replacement Pods.
 	//
@@ -64,7 +60,7 @@ type JobSpec struct {
 	// - Failed means to wait until a previously created Pod is fully terminated (has phase
 	// Failed or Succeeded) before creating a replacement Pod.
 	//
-	// When using podFailurePolicy, Failed is the the only allowed value. TerminatingOrFailed and Failed are allowed values when podFailurePolicy is not in use. This is an beta field. To use this, enable the JobPodReplacementPolicy feature toggle. This is on by default.
+	// When using podFailurePolicy, Failed is the the only allowed value. TerminatingOrFailed and Failed are allowed values when podFailurePolicy is not in use.
 	PodReplacementPolicy *string `field:"optional" json:"podReplacementPolicy" yaml:"podReplacementPolicy"`
 	// A label query over pods that should match the pod count.
 	//
@@ -73,8 +69,6 @@ type JobSpec struct {
 	// successPolicy specifies the policy when the Job can be declared as succeeded.
 	//
 	// If empty, the default behavior applies - the Job is declared as succeeded only when the number of succeeded pods equals to the completions. When the field is specified, it must be immutable and works only for the Indexed Jobs. Once the Job meets the SuccessPolicy, the lingering pods are terminated.
-	//
-	// This field  is alpha-level. To use this field, you must enable the `JobSuccessPolicy` feature gate (disabled by default).
 	SuccessPolicy *SuccessPolicy `field:"optional" json:"successPolicy" yaml:"successPolicy"`
 	// suspend specifies whether the Job controller should create Pods or not.
 	//

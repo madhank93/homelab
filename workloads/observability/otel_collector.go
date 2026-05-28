@@ -165,7 +165,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 	cdk8s.NewHelm(chart, jsii.String("otel-agent"), &cdk8s.HelmProps{
 		Chart:       jsii.String("opentelemetry-collector"),
 		Repo:        jsii.String("https://open-telemetry.github.io/opentelemetry-helm-charts"),
-		Version:     jsii.String("0.108.0"),
+		Version:     jsii.String("0.156.2"),
 		ReleaseName: jsii.String("otel-agent"),
 		Namespace:   jsii.String(namespace),
 		Values:      &agentValues,
@@ -224,7 +224,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 	cdk8s.NewHelm(chart, jsii.String("otel-gateway"), &cdk8s.HelmProps{
 		Chart:       jsii.String("opentelemetry-collector"),
 		Repo:        jsii.String("https://open-telemetry.github.io/opentelemetry-helm-charts"),
-		Version:     jsii.String("0.108.0"),
+		Version:     jsii.String("0.156.2"),
 		ReleaseName: jsii.String("otel-gateway"),
 		Namespace:   jsii.String(namespace),
 		Values:      &gatewayValues,

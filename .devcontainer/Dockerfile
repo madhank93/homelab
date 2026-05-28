@@ -14,6 +14,7 @@ ARG GOFUMPT_VERSION=0.9.2
 ARG GOLANGCI_LINT_VERSION=2.8.0
 ARG KUBESEAL_VERSION=0.34.0
 ARG TALOSCTL_VERSION=1.9.3
+ARG BUN_VERSION=1.3.14
 
 USER root
 
@@ -95,8 +96,15 @@ RUN ARCH=$(dpkg --print-architecture) && \
     "https://github.com/siderolabs/talos/releases/download/v${TALOSCTL_VERSION}/talosctl-linux-${KUBECTL_ARCH}" && \
     chmod +x /usr/local/bin/talosctl
 
-# Install cdk8s CLI
-RUN npm install -g cdk8s-cli@${CDK8S_VERSION}
+# Install Bun into shared path (not root home) so all users can access it
+ENV BUN_INSTALL=/usr/local/bun
+ENV PATH="${BUN_INSTALL}/bin:${PATH}"
+RUN curl -fsSL https://bun.sh/install | bash -s -- "bun-v${BUN_VERSION}" \
+    && ln -sf /usr/local/bun/bin/bun /usr/local/bin/bun
+
+# Install cdk8s CLI and Claude Code CLI
+RUN npm install -g cdk8s-cli@${CDK8S_VERSION} \
+    && npm install -g @anthropic-ai/claude-code
 
 # Setup auto completions
 RUN just --completions bash > /etc/bash_completion.d/just \
@@ -118,7 +126,7 @@ RUN mkdir -p /home/vscode/.ssh && chmod 700 /home/vscode/.ssh \
 USER vscode
 
 # ENV
-ENV PATH="/home/vscode/go/bin:/usr/local/bin:/usr/local/share/nvm/versions/node/v${NODE_VERSION}/bin:${PATH}"
+ENV PATH="/home/vscode/go/bin:/usr/local/bin:/usr/local/bun/bin:/usr/local/share/nvm/versions/node/v${NODE_VERSION}/bin:${PATH}"
 
 # Install Go tools (as vscode user)
 RUN go install github.com/go-delve/delve/cmd/dlv@v${DELVE_VERSION} \

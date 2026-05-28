@@ -5,7 +5,7 @@ package k8s
 type KubeReplicaSetListProps struct {
 	// List of ReplicaSets.
 	//
-	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller
+	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset
 	Items *[]*KubeReplicaSetProps `field:"required" json:"items" yaml:"items"`
 	// Standard list metadata.
 	//

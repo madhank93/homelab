@@ -13,8 +13,8 @@ type Toleration struct {
 	Key *string `field:"optional" json:"key" yaml:"key"`
 	// Operator represents a key's relationship to the value.
 	//
-	// Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
-	// Default: Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+	// Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
+	// Default: Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
 	//
 	Operator *string `field:"optional" json:"operator" yaml:"operator"`
 	// TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint.

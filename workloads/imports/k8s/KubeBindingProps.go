@@ -3,7 +3,7 @@ package k8s
 
 // Binding ties one object to another;
 //
-// for example, a pod is bound to a node by a scheduler. Deprecated in 1.7, please use the bindings subresource of pods instead.
+// for example, a pod is bound to a node by a scheduler.
 type KubeBindingProps struct {
 	// The target object that you want to bind to the standard object.
 	Target *ObjectReference `field:"required" json:"target" yaml:"target"`

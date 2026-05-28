@@ -27,7 +27,7 @@ type SecurityContext struct {
 	Privileged *bool `field:"optional" json:"privileged" yaml:"privileged"`
 	// procMount denotes the type of proc mount to use for the containers.
 	//
-	// The default is DefaultProcMount which uses the container runtime defaults for readonly paths and masked paths. This requires the ProcMountType feature flag to be enabled. Note that this field cannot be set when spec.os.name is windows.
+	// The default value is Default which uses the container runtime defaults for readonly paths and masked paths. This requires the ProcMountType feature flag to be enabled. Note that this field cannot be set when spec.os.name is windows.
 	ProcMount *string `field:"optional" json:"procMount" yaml:"procMount"`
 	// Whether this container has a read-only root filesystem.
 	//

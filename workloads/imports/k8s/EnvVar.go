@@ -5,7 +5,7 @@ package k8s
 type EnvVar struct {
 	// Name of the environment variable.
 	//
-	// Must be a C_IDENTIFIER.
+	// May consist of any printable ASCII characters except '='.
 	Name *string `field:"required" json:"name" yaml:"name"`
 	// Variable references $(VAR_NAME) are expanded using the previously defined environment variables in the container and any service environment variables.
 	//

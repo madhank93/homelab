@@ -13,15 +13,15 @@ type ReplicaSetSpec struct {
 	// Default: 0 (pod will be considered available as soon as it is ready).
 	//
 	MinReadySeconds *float64 `field:"optional" json:"minReadySeconds" yaml:"minReadySeconds"`
-	// Replicas is the number of desired replicas.
+	// Replicas is the number of desired pods.
 	//
-	// This is a pointer to distinguish between explicit zero and unspecified. Defaults to 1. More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/#what-is-a-replicationcontroller
-	// Default: 1. More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/#what-is-a-replicationcontroller
+	// This is a pointer to distinguish between explicit zero and unspecified. Defaults to 1. More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset
+	// Default: 1. More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset
 	//
 	Replicas *float64 `field:"optional" json:"replicas" yaml:"replicas"`
 	// Template is the object that describes the pod that will be created if insufficient replicas are detected.
 	//
-	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#pod-template
+	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#pod-template
 	Template *PodTemplateSpec `field:"optional" json:"template" yaml:"template"`
 }
 

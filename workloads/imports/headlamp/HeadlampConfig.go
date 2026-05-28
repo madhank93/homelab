@@ -13,6 +13,8 @@ type HeadlampConfig struct {
 	Oidc *HeadlampConfigOidc `field:"optional" json:"oidc" yaml:"oidc"`
 	// Directory to load plugins from.
 	PluginsDir *string `field:"optional" json:"pluginsDir" yaml:"pluginsDir"`
+	// The time in seconds for the session to be valid.
+	SessionTtl *float64 `field:"optional" json:"sessionTtl" yaml:"sessionTtl"`
 	// Path of certificate file for TLS.
 	TlsCertPath *string `field:"optional" json:"tlsCertPath" yaml:"tlsCertPath"`
 	// Path of private key file for TLS.

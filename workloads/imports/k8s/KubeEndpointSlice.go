@@ -9,9 +9,9 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s/internal"
 )
 
-// EndpointSlice represents a subset of the endpoints that implement a service.
+// EndpointSlice represents a set of service endpoints.
 //
-// For a given service there may be multiple EndpointSlice objects, selected by labels, which must be joined to produce the full set of endpoints.
+// Most EndpointSlices are created by the EndpointSlice controller to represent the Pods selected by Service objects. For a given service there may be multiple EndpointSlice objects which must be joined to produce the full set of endpoints; you can find all of the slices for a given service by listing EndpointSlices in the service's namespace whose `kubernetes.io/service-name` label contains the service's name.
 type KubeEndpointSlice interface {
 	cdk8s.ApiObject
 	// The group portion of the API version (e.g. `authorization.k8s.io`).

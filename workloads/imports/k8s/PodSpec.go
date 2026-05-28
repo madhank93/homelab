@@ -45,9 +45,15 @@ type PodSpec struct {
 	HostIpc *bool `field:"optional" json:"hostIpc" yaml:"hostIpc"`
 	// Specifies the hostname of the Pod If not specified, the pod's hostname will be set to a system-defined value.
 	Hostname *string `field:"optional" json:"hostname" yaml:"hostname"`
+	// HostnameOverride specifies an explicit override for the pod's hostname as perceived by the pod.
+	//
+	// This field only specifies the pod's hostname and does not affect its DNS records. When this field is set to a non-empty string: - It takes precedence over the values set in `hostname` and `subdomain`. - The Pod's hostname will be set to this value. - `setHostnameAsFQDN` must be nil or set to false. - `hostNetwork` must be set to false.
+	//
+	// This field must be a valid DNS subdomain as defined in RFC 1123 and contain at most 64 characters. Requires the HostnameOverride feature gate to be enabled.
+	HostnameOverride *string `field:"optional" json:"hostnameOverride" yaml:"hostnameOverride"`
 	// Host networking requested for this pod.
 	//
-	// Use the host's network namespace. If this option is set, the ports that will be used must be specified. Default to false.
+	// Use the host's network namespace. When using HostNetwork you should specify ports so the scheduler is aware. When `hostNetwork` is true, specified `hostPort` fields in port definitions must match `containerPort`, and unspecified `hostPort` fields in port definitions are defaulted to match `containerPort`. Default to false.
 	// Default: false.
 	//
 	HostNetwork *bool `field:"optional" json:"hostNetwork" yaml:"hostNetwork"`
@@ -69,11 +75,11 @@ type PodSpec struct {
 	ImagePullSecrets *[]*LocalObjectReference `field:"optional" json:"imagePullSecrets" yaml:"imagePullSecrets"`
 	// List of initialization containers belonging to the pod.
 	//
-	// Init containers are executed in order prior to containers being started. If any init container fails, the pod is considered to have failed and is handled according to its restartPolicy. The name for an init container or normal container must be unique among all containers. Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes. The resourceRequirements of an init container are taken into account during scheduling by finding the highest request/limit for each resource type, and then using the max of of that value or the sum of the normal containers. Limits are applied to init containers in a similar fashion. Init containers cannot currently be added or removed. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	// Init containers are executed in order prior to containers being started. If any init container fails, the pod is considered to have failed and is handled according to its restartPolicy. The name for an init container or normal container must be unique among all containers. Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes. The resourceRequirements of an init container are taken into account during scheduling by finding the highest request/limit for each resource type, and then using the max of that value or the sum of the normal containers. Limits are applied to init containers in a similar fashion. Init containers cannot currently be added or removed. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 	InitContainers *[]*Container `field:"optional" json:"initContainers" yaml:"initContainers"`
-	// NodeName is a request to schedule this pod onto a specific node.
+	// NodeName indicates in which node this pod is scheduled.
 	//
-	// If it is non-empty, the scheduler simply schedules this pod onto that node, assuming that it fits resource requirements.
+	// If empty, this pod is a candidate for scheduling by the scheduler defined in schedulerName. Once this field is set, the kubelet for this node becomes responsible for the lifecycle of this pod. This field should not be used to express a desire for the pod to be scheduled on a specific node. https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename
 	NodeName *string `field:"optional" json:"nodeName" yaml:"nodeName"`
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	//
@@ -85,7 +91,7 @@ type PodSpec struct {
 	//
 	// If the OS field is set to linux, the following fields must be unset: -securityContext.windowsOptions
 	//
-	// If the OS field is set to windows, following fields must be unset: - spec.hostPID - spec.hostIPC - spec.hostUsers - spec.securityContext.appArmorProfile - spec.securityContext.seLinuxOptions - spec.securityContext.seccompProfile - spec.securityContext.fsGroup - spec.securityContext.fsGroupChangePolicy - spec.securityContext.sysctls - spec.shareProcessNamespace - spec.securityContext.runAsUser - spec.securityContext.runAsGroup - spec.securityContext.supplementalGroups - spec.containers[*].securityContext.appArmorProfile - spec.containers[*].securityContext.seLinuxOptions - spec.containers[*].securityContext.seccompProfile - spec.containers[*].securityContext.capabilities - spec.containers[*].securityContext.readOnlyRootFilesystem - spec.containers[*].securityContext.privileged - spec.containers[*].securityContext.allowPrivilegeEscalation - spec.containers[*].securityContext.procMount - spec.containers[*].securityContext.runAsUser - spec.containers[*].securityContext.runAsGroup
+	// If the OS field is set to windows, following fields must be unset: - spec.hostPID - spec.hostIPC - spec.hostUsers - spec.resources - spec.securityContext.appArmorProfile - spec.securityContext.seLinuxOptions - spec.securityContext.seccompProfile - spec.securityContext.fsGroup - spec.securityContext.fsGroupChangePolicy - spec.securityContext.sysctls - spec.shareProcessNamespace - spec.securityContext.runAsUser - spec.securityContext.runAsGroup - spec.securityContext.supplementalGroups - spec.securityContext.supplementalGroupsPolicy - spec.containers[*].securityContext.appArmorProfile - spec.containers[*].securityContext.seLinuxOptions - spec.containers[*].securityContext.seccompProfile - spec.containers[*].securityContext.capabilities - spec.containers[*].securityContext.readOnlyRootFilesystem - spec.containers[*].securityContext.privileged - spec.containers[*].securityContext.allowPrivilegeEscalation - spec.containers[*].securityContext.procMount - spec.containers[*].securityContext.runAsUser - spec.containers[*].securityContext.runAsGroup
 	Os *PodOs `field:"optional" json:"os" yaml:"os"`
 	// Overhead represents the resource overhead associated with running a pod for a given RuntimeClass.
 	//
@@ -113,10 +119,18 @@ type PodSpec struct {
 	//
 	// The resources will be made available to those containers which consume them by name.
 	//
-	// This is an alpha field and requires enabling the DynamicResourceAllocation feature gate.
+	// This is a stable field but requires that the DynamicResourceAllocation feature gate is enabled.
 	//
 	// This field is immutable.
 	ResourceClaims *[]*PodResourceClaim `field:"optional" json:"resourceClaims" yaml:"resourceClaims"`
+	// Resources is the total amount of CPU and Memory resources required by all containers in the pod.
+	//
+	// It supports specifying Requests and Limits for "cpu", "memory" and "hugepages-" resource names only. ResourceClaims are not supported.
+	//
+	// This field enables fine-grained control over resource allocation for the entire pod, allowing resource sharing among containers in a pod.
+	//
+	// This is an alpha field and requires enabling the PodLevelResources feature gate.
+	Resources *ResourceRequirements `field:"optional" json:"resources" yaml:"resources"`
 	// Restart policy for all containers within the pod.
 	//
 	// One of Always, OnFailure, Never. In some contexts, only a subset of those values may be permitted. Default to Always. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
@@ -151,7 +165,7 @@ type PodSpec struct {
 	ServiceAccountName *string `field:"optional" json:"serviceAccountName" yaml:"serviceAccountName"`
 	// If true the pod's hostname will be configured as the pod's FQDN, rather than the leaf name (the default).
 	//
-	// In Linux containers, this means setting the FQDN in the hostname field of the kernel (the nodename field of struct utsname). In Windows containers, this means setting the registry value of hostname for the registry key HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters to FQDN. If a pod does not have FQDN, this has no effect. Default to false.
+	// In Linux containers, this means setting the FQDN in the hostname field of the kernel (the nodename field of struct utsname). In Windows containers, this means setting the registry value of hostname for the registry key HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters to FQDN. If a pod does not have FQDN, this has no effect. Default to false.
 	// Default: false.
 	//
 	SetHostnameAsFqdn *bool `field:"optional" json:"setHostnameAsFqdn" yaml:"setHostnameAsFqdn"`
@@ -179,5 +193,9 @@ type PodSpec struct {
 	//
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes
 	Volumes *[]*Volume `field:"optional" json:"volumes" yaml:"volumes"`
+	// WorkloadRef provides a reference to the Workload object that this Pod belongs to.
+	//
+	// This field is used by the scheduler to identify the PodGroup and apply the correct group scheduling policies. The Workload object referenced by this field may not exist at the time the Pod is created. This field is immutable, but a Workload object with the same name may be recreated with different policies. Doing this during pod scheduling may result in the placement not conforming to the expected policies.
+	WorkloadRef *WorkloadReference `field:"optional" json:"workloadRef" yaml:"workloadRef"`
 }
 

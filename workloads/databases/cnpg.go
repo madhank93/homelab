@@ -7,7 +7,7 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
-// NewCnpgOperatorChart deploys the CloudNativePG operator (chart cloudnative-pg v0.27.1)
+// NewCnpgOperatorChart deploys the CloudNativePG operator (chart cloudnative-pg v0.28.2)
 // into the cnpg-system namespace.
 //
 // CloudNativePG manages PostgreSQL cluster lifecycles including automated failover,
@@ -28,7 +28,7 @@ func NewCnpgOperatorChart(scope constructs.Construct, id string) cdk8s.Chart {
 	cdk8s.NewHelm(chart, jsii.String("cnpg-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("cloudnative-pg"),
 		Repo:        jsii.String("https://cloudnative-pg.github.io/charts"),
-		Version:     jsii.String("0.27.1"),
+		Version:     jsii.String("0.28.2"),
 		ReleaseName: jsii.String("cnpg"),
 		Namespace:   jsii.String(namespace),
 	})

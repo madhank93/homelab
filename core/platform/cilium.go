@@ -27,7 +27,7 @@ import (
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
 		Chart:   pulumi.String("cilium"),
-		Version: pulumi.String("1.16.6"), // Latest Stable
+		Version: pulumi.String("1.19.4"), // Latest Stable — deploy in steps: 1.16→1.17→1.18→1.19
 		RepositoryOpts: &helm.RepositoryOptsArgs{
 			Repo: pulumi.String("https://helm.cilium.io/"),
 		},

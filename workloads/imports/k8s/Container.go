@@ -21,7 +21,7 @@ type Container struct {
 	Env *[]*EnvVar `field:"optional" json:"env" yaml:"env"`
 	// List of sources to populate environment variables in the container.
 	//
-	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.
+	// The keys defined within a source may consist of any printable ASCII characters except '='. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.
 	EnvFrom *[]*EnvFromSource `field:"optional" json:"envFrom" yaml:"envFrom"`
 	// Container image name.
 	//
@@ -50,6 +50,8 @@ type Container struct {
 	// Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	ReadinessProbe *Probe `field:"optional" json:"readinessProbe" yaml:"readinessProbe"`
 	// Resources resize policy for the container.
+	//
+	// This field cannot be set on ephemeral containers.
 	ResizePolicy *[]*ContainerResizePolicy `field:"optional" json:"resizePolicy" yaml:"resizePolicy"`
 	// Compute Resources required by this container.
 	//
@@ -57,8 +59,12 @@ type Container struct {
 	Resources *ResourceRequirements `field:"optional" json:"resources" yaml:"resources"`
 	// RestartPolicy defines the restart behavior of individual containers in a pod.
 	//
-	// This field may only be set for init containers, and the only allowed value is "Always". For non-init containers or when this field is not specified, the restart behavior is defined by the Pod's restart policy and the container type. Setting the RestartPolicy as "Always" for the init container will have the following effect: this init container will be continually restarted on exit until all regular containers have terminated. Once all regular containers have completed, all init containers with restartPolicy "Always" will be shut down. This lifecycle differs from normal init containers and is often referred to as a "sidecar" container. Although this init container still starts in the init container sequence, it does not wait for the container to complete before proceeding to the next init container. Instead, the next init container starts immediately after this init container is started, or after any startupProbe has successfully completed.
+	// This overrides the pod-level restart policy. When this field is not specified, the restart behavior is defined by the Pod's restart policy and the container type. Additionally, setting the RestartPolicy as "Always" for the init container will have the following effect: this init container will be continually restarted on exit until all regular containers have terminated. Once all regular containers have completed, all init containers with restartPolicy "Always" will be shut down. This lifecycle differs from normal init containers and is often referred to as a "sidecar" container. Although this init container still starts in the init container sequence, it does not wait for the container to complete before proceeding to the next init container. Instead, the next init container starts immediately after this init container is started, or after any startupProbe has successfully completed.
 	RestartPolicy *string `field:"optional" json:"restartPolicy" yaml:"restartPolicy"`
+	// Represents a list of rules to be checked to determine if the container should be restarted on exit.
+	//
+	// The rules are evaluated in order. Once a rule matches a container exit condition, the remaining rules are ignored. If no rule matches the container exit condition, the Container-level restart policy determines the whether the container is restarted or not. Constraints on the rules: - At most 20 rules are allowed. - Rules can have the same action. - Identical rules are not forbidden in validations. When rules are specified, container MUST set RestartPolicy explicitly even it if matches the Pod's RestartPolicy.
+	RestartPolicyRules *[]*ContainerRestartRule `field:"optional" json:"restartPolicyRules" yaml:"restartPolicyRules"`
 	// SecurityContext defines the security options the container should be run with.
 	//
 	// If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/

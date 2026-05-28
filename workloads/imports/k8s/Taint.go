@@ -15,8 +15,6 @@ type Taint struct {
 	// The taint key to be applied to a node.
 	Key *string `field:"required" json:"key" yaml:"key"`
 	// TimeAdded represents the time at which the taint was added.
-	//
-	// It is only written for NoExecute taints.
 	TimeAdded *time.Time `field:"optional" json:"timeAdded" yaml:"timeAdded"`
 	// The taint value corresponding to the taint key.
 	Value *string `field:"optional" json:"value" yaml:"value"`

@@ -20,6 +20,7 @@ type HelmValues struct {
 	Enabled *bool `field:"optional" json:"enabled" yaml:"enabled"`
 	EnableServiceLinks *bool `field:"optional" json:"enableServiceLinks" yaml:"enableServiceLinks"`
 	ExtraArgs *[]interface{} `field:"optional" json:"extraArgs" yaml:"extraArgs"`
+	ExtraContainers *[]interface{} `field:"optional" json:"extraContainers" yaml:"extraContainers"`
 	ExtraEnv *[]interface{} `field:"optional" json:"extraEnv" yaml:"extraEnv"`
 	ExtraObjects *[]interface{} `field:"optional" json:"extraObjects" yaml:"extraObjects"`
 	FeatureGates *string `field:"optional" json:"featureGates" yaml:"featureGates"`
@@ -29,12 +30,15 @@ type HelmValues struct {
 	HttpProxy *string `field:"optional" json:"httpProxy" yaml:"httpProxy"`
 	HttpsProxy *string `field:"optional" json:"httpsProxy" yaml:"httpsProxy"`
 	Image *HelmValuesImage `field:"optional" json:"image" yaml:"image"`
+	ImageNamespace *string `field:"optional" json:"imageNamespace" yaml:"imageNamespace"`
+	ImageRegistry *string `field:"optional" json:"imageRegistry" yaml:"imageRegistry"`
 	IngressShim *HelmValuesIngressShim `field:"optional" json:"ingressShim" yaml:"ingressShim"`
 	InstallCrDs *bool `field:"optional" json:"installCrDs" yaml:"installCrDs"`
 	LivenessProbe interface{} `field:"optional" json:"livenessProbe" yaml:"livenessProbe"`
 	MaxConcurrentChallenges *float64 `field:"optional" json:"maxConcurrentChallenges" yaml:"maxConcurrentChallenges"`
 	NameOverride *string `field:"optional" json:"nameOverride" yaml:"nameOverride"`
 	Namespace *string `field:"optional" json:"namespace" yaml:"namespace"`
+	NetworkPolicy *HelmValuesNetworkPolicy `field:"optional" json:"networkPolicy" yaml:"networkPolicy"`
 	NodeSelector interface{} `field:"optional" json:"nodeSelector" yaml:"nodeSelector"`
 	NoProxy *string `field:"optional" json:"noProxy" yaml:"noProxy"`
 	PodAnnotations interface{} `field:"optional" json:"podAnnotations" yaml:"podAnnotations"`

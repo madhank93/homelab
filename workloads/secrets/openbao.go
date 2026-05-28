@@ -39,7 +39,7 @@ func NewOpenBaoChart(scope constructs.Construct, id string, namespace string) cd
 	cdk8s.NewHelm(chart, jsii.String("openbao-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("openbao"),
 		Repo:        jsii.String("https://openbao.github.io/openbao-helm"),
-		Version:     jsii.String("0.25.6"),
+		Version:     jsii.String("0.28.3"),
 		ReleaseName: jsii.String("openbao"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{
@@ -95,7 +95,7 @@ telemetry {
 				"extraContainers": []map[string]any{
 					{
 						"name":  "unseal",
-						"image": "openbao/openbao:2.5.1",
+						"image": "openbao/openbao:2.5.4",
 						"command": []string{
 							"sh", "-c",
 							// Poll until OpenBao is reachable and sealed, then unseal.

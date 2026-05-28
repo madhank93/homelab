@@ -80,6 +80,22 @@ func init() {
 		reflect.TypeOf((*HeadlampIngressHosts)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"headlamp.HeadlampIngressHostsPaths",
+		reflect.TypeOf((*HeadlampIngressHostsPaths)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampIngressHostsPathsBackend",
+		reflect.TypeOf((*HeadlampIngressHostsPathsBackend)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampIngressHostsPathsBackendService",
+		reflect.TypeOf((*HeadlampIngressHostsPathsBackendService)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampIngressHostsPathsBackendServicePort",
+		reflect.TypeOf((*HeadlampIngressHostsPathsBackendServicePort)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"headlamp.HeadlampIngressTls",
 		reflect.TypeOf((*HeadlampIngressTls)(nil)).Elem(),
 	)
@@ -143,6 +159,19 @@ func init() {
 	_jsii_.RegisterStruct(
 		"headlamp.HeadlampServiceAccount",
 		reflect.TypeOf((*HeadlampServiceAccount)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampServiceExtraServicePorts",
+		reflect.TypeOf((*HeadlampServiceExtraServicePorts)(nil)).Elem(),
+	)
+	_jsii_.RegisterEnum(
+		"headlamp.HeadlampServiceExtraServicePortsProtocol",
+		reflect.TypeOf((*HeadlampServiceExtraServicePortsProtocol)(nil)).Elem(),
+		map[string]interface{}{
+			"TCP": HeadlampServiceExtraServicePortsProtocol_TCP,
+			"UDP": HeadlampServiceExtraServicePortsProtocol_UDP,
+			"SCTP": HeadlampServiceExtraServicePortsProtocol_SCTP,
+		},
 	)
 	_jsii_.RegisterEnum(
 		"headlamp.HeadlampServiceType",

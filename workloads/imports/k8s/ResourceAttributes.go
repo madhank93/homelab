@@ -3,10 +3,18 @@ package k8s
 
 // ResourceAttributes includes the authorization attributes available for resource requests to the Authorizer interface.
 type ResourceAttributes struct {
+	// fieldSelector describes the limitation on access based on field.
+	//
+	// It can only limit access, not broaden it.
+	FieldSelector *FieldSelectorAttributes `field:"optional" json:"fieldSelector" yaml:"fieldSelector"`
 	// Group is the API Group of the Resource.
 	//
 	// "*" means all.
 	Group *string `field:"optional" json:"group" yaml:"group"`
+	// labelSelector describes the limitation on access based on labels.
+	//
+	// It can only limit access, not broaden it.
+	LabelSelector *LabelSelectorAttributes `field:"optional" json:"labelSelector" yaml:"labelSelector"`
 	// Name is the name of the resource being requested for a "get" or deleted for a "delete".
 	//
 	// "" (empty) means all.

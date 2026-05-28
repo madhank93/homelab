@@ -6,6 +6,8 @@ type HeadlampService struct {
 	AdditionalValues *map[string]interface{} `field:"optional" json:"additionalValues" yaml:"additionalValues"`
 	// Kubernetes Service clusterIP.
 	ClusterIp *string `field:"optional" json:"clusterIp" yaml:"clusterIp"`
+	// Additional ports to expose on the Service in addition to the default http port.
+	ExtraServicePorts *[]*HeadlampServiceExtraServicePorts `field:"optional" json:"extraServicePorts" yaml:"extraServicePorts"`
 	// Kubernetes Service loadBalancerIP.
 	LoadBalancerIp *string `field:"optional" json:"loadBalancerIp" yaml:"loadBalancerIp"`
 	// Kubernetes Service loadBalancerSourceRanges.

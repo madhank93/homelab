@@ -53,6 +53,61 @@ func init() {
 		},
 	)
 	_jsii_.RegisterStruct(
+		"rancher.RancherGateway",
+		reflect.TypeOf((*RancherGateway)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"rancher.RancherGatewayGatewayClass",
+		reflect.TypeOf((*RancherGatewayGatewayClass)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"rancher.RancherGatewayGatewayClassAdditionalListeners",
+		reflect.TypeOf((*RancherGatewayGatewayClassAdditionalListeners)(nil)).Elem(),
+	)
+	_jsii_.RegisterEnum(
+		"rancher.RancherGatewayGatewayClassAdditionalListenersProtocol",
+		reflect.TypeOf((*RancherGatewayGatewayClassAdditionalListenersProtocol)(nil)).Elem(),
+		map[string]interface{}{
+			"HTTP": RancherGatewayGatewayClassAdditionalListenersProtocol_HTTP,
+			"HTTPS": RancherGatewayGatewayClassAdditionalListenersProtocol_HTTPS,
+			"TCP": RancherGatewayGatewayClassAdditionalListenersProtocol_TCP,
+			"UDP": RancherGatewayGatewayClassAdditionalListenersProtocol_UDP,
+		},
+	)
+	_jsii_.RegisterStruct(
+		"rancher.RancherGatewayGatewayClassAdditionalListenersTls",
+		reflect.TypeOf((*RancherGatewayGatewayClassAdditionalListenersTls)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"rancher.RancherGatewayGatewayClassAdditionalListenersTlsCertificateRefs",
+		reflect.TypeOf((*RancherGatewayGatewayClassAdditionalListenersTlsCertificateRefs)(nil)).Elem(),
+	)
+	_jsii_.RegisterEnum(
+		"rancher.RancherGatewayGatewayClassAdditionalListenersTlsMode",
+		reflect.TypeOf((*RancherGatewayGatewayClassAdditionalListenersTlsMode)(nil)).Elem(),
+		map[string]interface{}{
+			"TERMINATE": RancherGatewayGatewayClassAdditionalListenersTlsMode_TERMINATE,
+			"PASSTHROUGH": RancherGatewayGatewayClassAdditionalListenersTlsMode_PASSTHROUGH,
+		},
+	)
+	_jsii_.RegisterStruct(
+		"rancher.RancherGatewayGatewayClassPorts",
+		reflect.TypeOf((*RancherGatewayGatewayClassPorts)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"rancher.RancherGatewayGatewayClassTls",
+		reflect.TypeOf((*RancherGatewayGatewayClassTls)(nil)).Elem(),
+	)
+	_jsii_.RegisterEnum(
+		"rancher.RancherGatewayGatewayClassTlsSource",
+		reflect.TypeOf((*RancherGatewayGatewayClassTlsSource)(nil)).Elem(),
+		map[string]interface{}{
+			"RANCHER": RancherGatewayGatewayClassTlsSource_RANCHER,
+			"LETS_ENCRYPT": RancherGatewayGatewayClassTlsSource_LETS_ENCRYPT,
+			"SECRET": RancherGatewayGatewayClassTlsSource_SECRET,
+		},
+	)
+	_jsii_.RegisterStruct(
 		"rancher.RancherIngress",
 		reflect.TypeOf((*RancherIngress)(nil)).Elem(),
 	)
@@ -62,6 +117,19 @@ func init() {
 		map[string]interface{}{
 			"VALUE_443": RancherIngressServicePort_VALUE_443,
 			"VALUE_80": RancherIngressServicePort_VALUE_80,
+		},
+	)
+	_jsii_.RegisterStruct(
+		"rancher.RancherNetworkExposure",
+		reflect.TypeOf((*RancherNetworkExposure)(nil)).Elem(),
+	)
+	_jsii_.RegisterEnum(
+		"rancher.RancherNetworkExposureType",
+		reflect.TypeOf((*RancherNetworkExposureType)(nil)).Elem(),
+		map[string]interface{}{
+			"INGRESS": RancherNetworkExposureType_INGRESS,
+			"GATEWAY": RancherNetworkExposureType_GATEWAY,
+			"NONE": RancherNetworkExposureType_NONE,
 		},
 	)
 	_jsii_.RegisterStruct(

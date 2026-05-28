@@ -13,6 +13,7 @@ type HelmValuesCainjector struct {
 	ExtraEnv *[]interface{} `field:"optional" json:"extraEnv" yaml:"extraEnv"`
 	FeatureGates *string `field:"optional" json:"featureGates" yaml:"featureGates"`
 	Image *HelmValuesCainjectorImage `field:"optional" json:"image" yaml:"image"`
+	NetworkPolicy *HelmValuesCainjectorNetworkPolicy `field:"optional" json:"networkPolicy" yaml:"networkPolicy"`
 	NodeSelector interface{} `field:"optional" json:"nodeSelector" yaml:"nodeSelector"`
 	PodAnnotations interface{} `field:"optional" json:"podAnnotations" yaml:"podAnnotations"`
 	PodDisruptionBudget *HelmValuesCainjectorPodDisruptionBudget `field:"optional" json:"podDisruptionBudget" yaml:"podDisruptionBudget"`

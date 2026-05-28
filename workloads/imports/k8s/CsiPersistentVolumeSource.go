@@ -1,7 +1,7 @@
 package k8s
 
 
-// Represents storage that is managed by an external CSI volume driver (Beta feature).
+// Represents storage that is managed by an external CSI volume driver.
 type CsiPersistentVolumeSource struct {
 	// driver is the name of the driver to use for this volume.
 	//

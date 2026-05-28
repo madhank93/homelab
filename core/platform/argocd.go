@@ -21,7 +21,7 @@ import (
 func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	chart, err := helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 		Chart:   pulumi.String("argo-cd"),
-		Version: pulumi.String("9.4.2"),
+		Version: pulumi.String("9.5.15"),
 		RepositoryOpts: &helm.RepositoryOptsArgs{
 			Repo: pulumi.String("https://argoproj.github.io/argo-helm"),
 		},

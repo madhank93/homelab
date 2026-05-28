@@ -136,7 +136,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 					InitContainers: &[]*k8s.Container{
 						{
 							Name:    jsii.String("setup-iptables"),
-							Image:   jsii.String("netbirdio/netbird:0.66.2"),
+							Image:   jsii.String("netbirdio/netbird:0.71.4"),
 							Command: &[]*string{jsii.String("/bin/sh")},
 							Args: &[]*string{
 								jsii.String("-c"),
@@ -155,7 +155,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 							Name: jsii.String("netbird"),
 							// Pinned to match Bifrost server version. Default entrypoint starts
 							// the service daemon then calls 'netbird up' — do not override Command.
-							Image: jsii.String("netbirdio/netbird:0.66.2"),
+							Image: jsii.String("netbirdio/netbird:0.71.4"),
 							Env: &[]*k8s.EnvVar{
 								{
 									// Setup key only used on first registration.

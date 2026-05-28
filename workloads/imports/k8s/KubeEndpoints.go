@@ -21,7 +21,11 @@ import (
 //    Addresses: [{"ip": "10.10.3.3"}],
 //    Ports: [{"name": "a", "port": 93}, {"name": "b", "port": 76}]
 //  },
-// ].
+// ]
+//
+// Endpoints is a legacy API and does not contain information about all Service features. Use discoveryv1.EndpointSlice for complete information about Service endpoints.
+//
+// Deprecated: This API is deprecated in v1.33+. Use discoveryv1.EndpointSlice.
 type KubeEndpoints interface {
 	cdk8s.ApiObject
 	// The group portion of the API version (e.g. `authorization.k8s.io`).

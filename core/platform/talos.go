@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	talosVersion    = "v1.12.4"
+	talosVersion    = "v1.13.3"
 	clusterEndpoint = "https://192.168.1.210:6443" // VIP
 	vipIP           = "192.168.1.210"
 )

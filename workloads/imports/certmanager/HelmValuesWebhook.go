@@ -3,10 +3,13 @@ package certmanager
 
 type HelmValuesWebhook struct {
 	Affinity interface{} `field:"optional" json:"affinity" yaml:"affinity"`
+	ApiserverClientCertSubjects *string `field:"optional" json:"apiserverClientCertSubjects" yaml:"apiserverClientCertSubjects"`
 	AutomountServiceAccountToken *bool `field:"optional" json:"automountServiceAccountToken" yaml:"automountServiceAccountToken"`
+	ClientCaFile *string `field:"optional" json:"clientCaFile" yaml:"clientCaFile"`
 	Config interface{} `field:"optional" json:"config" yaml:"config"`
 	ContainerSecurityContext interface{} `field:"optional" json:"containerSecurityContext" yaml:"containerSecurityContext"`
 	DeploymentAnnotations interface{} `field:"optional" json:"deploymentAnnotations" yaml:"deploymentAnnotations"`
+	EnableClientVerification *bool `field:"optional" json:"enableClientVerification" yaml:"enableClientVerification"`
 	EnableServiceLinks *bool `field:"optional" json:"enableServiceLinks" yaml:"enableServiceLinks"`
 	ExtraArgs *[]interface{} `field:"optional" json:"extraArgs" yaml:"extraArgs"`
 	ExtraEnv *[]interface{} `field:"optional" json:"extraEnv" yaml:"extraEnv"`

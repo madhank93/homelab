@@ -2,6 +2,8 @@ package k8s
 
 
 // EndpointAddress is a tuple that describes single IP address.
+//
+// Deprecated: This API is deprecated in v1.33+.
 type EndpointAddress struct {
 	// The IP of this endpoint.
 	//

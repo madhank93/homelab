@@ -17,7 +17,7 @@ func NewReloaderChart(scope constructs.Construct, id string, namespace string) c
 	cdk8s.NewHelm(chart, jsii.String("reloader"), &cdk8s.HelmProps{
 		Chart:       jsii.String("reloader"),
 		Repo:        jsii.String("https://stakater.github.io/stakater-charts"),
-		Version:     jsii.String("2.2.8"),
+		Version:     jsii.String("2.2.12"),
 		ReleaseName: jsii.String("reloader"),
 		Namespace:   jsii.String(namespace),
 	})

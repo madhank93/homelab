@@ -5,15 +5,15 @@ package k8s
 //
 // One and only one of the fields, except TCPSocket must be specified.
 type LifecycleHandler struct {
-	// Exec specifies the action to take.
+	// Exec specifies a command to execute in the container.
 	Exec *ExecAction `field:"optional" json:"exec" yaml:"exec"`
-	// HTTPGet specifies the http request to perform.
+	// HTTPGet specifies an HTTP GET request to perform.
 	HttpGet *HttpGetAction `field:"optional" json:"httpGet" yaml:"httpGet"`
-	// Sleep represents the duration that the container should sleep before being terminated.
+	// Sleep represents a duration that the container should sleep.
 	Sleep *SleepAction `field:"optional" json:"sleep" yaml:"sleep"`
 	// Deprecated.
 	//
-	// TCPSocket is NOT supported as a LifecycleHandler and kept for the backward compatibility. There are no validation of this field and lifecycle hooks will fail in runtime when tcp handler is specified.
+	// TCPSocket is NOT supported as a LifecycleHandler and kept for backward compatibility. There is no validation of this field and lifecycle hooks will fail at runtime when it is specified.
 	TcpSocket *TcpSocketAction `field:"optional" json:"tcpSocket" yaml:"tcpSocket"`
 }
 

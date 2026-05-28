@@ -2,6 +2,8 @@ package k8s
 
 
 // EndpointPort is a tuple that describes a single port.
+//
+// Deprecated: This API is deprecated in v1.33+.
 type EndpointPort struct {
 	// The port number of the endpoint.
 	Port *float64 `field:"required" json:"port" yaml:"port"`

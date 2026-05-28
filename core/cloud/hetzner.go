@@ -318,6 +318,11 @@ func generateBifrostDotEnv() error {
 
 		// Authentik Postgres password — generate: openssl rand -hex 16
 		{"AUTHENTIK_POSTGRESQL_PASSWORD", "AUTHENTIK_POSTGRESQL_PASSWORD", true},
+
+		// NetBird agent setup key — used by docker-compose ${VAR} interpolation in
+		// netbird-agent's environment section. Must be in .env (not .secrets.env)
+		// because Docker Compose only reads .env for compose-file variable substitution.
+		{"NB_BIFROST_SETUP_KEY", "NB_BIFROST_SETUP_KEY", true},
 	}
 
 	log.Printf("[hetzner] generating .env")
