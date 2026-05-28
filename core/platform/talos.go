@@ -37,7 +37,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Schematic ID: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b
 	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent
 	baseTalosImage, err := DownloadImage(ctx, provider, "talos-base-image", cfg.NodeName,
-		"https://factory.talos.dev/image/88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b/v1.12.4/nocloud-amd64.raw.gz",
+		"https://factory.talos.dev/image/88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b/v1.13.3/nocloud-amd64.raw.gz",
 		"talos-nocloud-amd64-base.img",
 		"gz",
 	)
@@ -49,7 +49,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Schematic ID: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829
 	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent, nvidia-container-toolkit, nvidia-open-gpu-kernel-modules
 	gpuTalosImage, err := DownloadImage(ctx, provider, "talos-gpu-image", cfg.NodeName,
-		"https://factory.talos.dev/image/901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829/v1.12.4/nocloud-amd64.raw.gz",
+		"https://factory.talos.dev/image/901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829/v1.13.3/nocloud-amd64.raw.gz",
 		"talos-nocloud-amd64-gpu.img",
 		"gz",
 	)
