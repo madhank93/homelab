@@ -91,16 +91,6 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 				"extractAllPodLabels": true,
 			},
 		},
-		// Override kubeletstats endpoint to use node IP — Talos node hostnames are
-		// not resolvable via cluster DNS (nodes register by hostname, not IP).
-		"extraEnvs": []map[string]any{
-			{
-				"name": "K8S_NODE_IP",
-				"valueFrom": map[string]any{
-					"fieldRef": map[string]any{"fieldPath": "status.hostIP"},
-				},
-			},
-		},
 		"config": map[string]any{
 			"extensions": map[string]any{
 				// file_storage persists filelog receiver read offsets (checkpoints)
