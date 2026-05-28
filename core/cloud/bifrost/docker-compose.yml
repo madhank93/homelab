@@ -134,7 +134,7 @@ services:
 
   authentik-server:
     <<: *default
-    image: ghcr.io/goauthentik/server:2026.5.0
+    image: ghcr.io/goauthentik/server:2026.5.2
     container_name: authentik-server
     command: server
     networks: [bifrost_net]
@@ -165,7 +165,7 @@ services:
 
   authentik-worker:
     <<: *default
-    image: ghcr.io/goauthentik/server:2026.5.0
+    image: ghcr.io/goauthentik/server:2026.5.2
     container_name: authentik-worker
     command: worker
     networks: [bifrost_net]
