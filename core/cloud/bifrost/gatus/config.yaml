@@ -121,13 +121,6 @@ endpoints:
     conditions:
       - "[STATUS] < 400"
 
-  - name: Rancher
-    group: Management
-    url: https://rancher.madhan.app/healthz
-    interval: 1m
-    conditions:
-      - "[STATUS] == 200"
-
   # ── Network ───────────────────────────────────────────────────────────────────
 
   - name: Hubble UI
@@ -143,5 +136,33 @@ endpoints:
     group: Applications
     url: https://n8n.madhan.app
     interval: 1m
+    conditions:
+      - "[STATUS] < 400"
+
+  - name: Ollama
+    group: Applications
+    url: https://ollama.madhan.app/api/version
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: ComfyUI
+    group: Applications
+    url: https://comfyui.madhan.app
+    interval: 2m
+    conditions:
+      - "[STATUS] < 400"
+
+  - name: Falco UI
+    group: Applications
+    url: https://falco.madhan.app
+    interval: 2m
+    conditions:
+      - "[STATUS] < 400"
+
+  - name: Kubeflow
+    group: Applications
+    url: https://kubeflow.madhan.app
+    interval: 2m
     conditions:
       - "[STATUS] < 400"

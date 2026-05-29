@@ -14,7 +14,6 @@ imports:
   - helm:https://openbao.github.io/openbao-helm/openbao@0.28.3
   - helm:https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts/secrets-store-csi-driver@1.6.0
   - "https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/main/config/crd/bases/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml"
-  - helm:https://releases.rancher.com/server-charts/stable/rancher@2.14.1
   - helm:https://kubernetes-sigs.github.io/headlamp/headlamp@0.42.0
   - helm:https://kyverno.github.io/kyverno/kyverno@3.8.1
   - helm:https://charts.longhorn.io/longhorn@1.11.2

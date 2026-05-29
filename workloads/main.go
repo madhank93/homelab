@@ -179,13 +179,6 @@ func main() {
 	management.NewHeadlampChart(headlampApp, "headlamp-app", "headlamp")
 	headlampApp.Synth()
 
-	rancherApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/rancher", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	management.NewRancherChart(rancherApp, "rancher-app", "cattle-system")
-	rancherApp.Synth()
-
 	// Stakater Reloader
 	reloaderApp := cdk8s.NewApp(&cdk8s.AppProps{
 		Outdir:         jsii.String(fmt.Sprintf("%s/reloader", rootFolder)),
