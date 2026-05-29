@@ -6,7 +6,7 @@ weight = 10
 
 ## What is the NetBird Peer?
 
-The NetBird peer is an in-cluster WireGuard client that connects to the NetBird VPN mesh and acts as a **routing peer** for the cluster's LAN subnet (`192.168.1.0/24`). It runs on **worker1** (`192.168.1.221`) with `hostNetwork: true` and enables the Hetzner VPS (Bifrost) to reach cluster services via WireGuard, making public service routing through Traefik possible.
+The NetBird peer is an in-cluster WireGuard client that connects to the NetBird VPN mesh and acts as a **routing peer** for the cluster's LAN subnet (`192.168.1.0/24`). It runs with `hostNetwork: true` on any available worker (no nodeSelector — floats for resilience) and enables the Hetzner VPS (Bifrost) to reach cluster services via WireGuard, making public service routing through Traefik possible.
 
 ```
 Bifrost Traefik
@@ -15,17 +15,17 @@ Bifrost Traefik
 netbird-agent (Bifrost · wt0: 100.109.47.211)
     │  WireGuard tunnel via relay
     ↓
-netbird-peer-0 (worker1 · wt0: 100.109.244.71)
-    │  kernel IP forward: wt0 → eth0
-    │  CILIUM_POST_nat MASQUERADE: src → 192.168.1.221
+netbird-peer-0 (any worker · wt0: 100.109.244.71)
+    │  kernel IP forward: wt0 → ens18
+    │  CILIUM_POST_nat MASQUERADE: src → <worker node IP>
     ↓
-192.168.1.220 (Cilium Gateway · another node's eth0)
+192.168.1.220 (Cilium Gateway · another node's ens18)
     │  Cilium BPF L7LB DNAT → Envoy :13507
     ↓
 Grafana / other cluster pod
 ```
 
-Source: [`workloads/networking/netbird_peer.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/networking/netbird_peer.go)
+Source: [`workloads/networking/netbird_peer.go`](https://github.com/madhank93/homelab/blob/v0.1.6/workloads/networking/netbird_peer.go)
 
 ---
 
@@ -46,7 +46,7 @@ A simple Deployment would create a new peer registration on every restart (e.g.,
 | Setting | Value | Why |
 |---------|-------|-----|
 | Namespace | `netbird` | Privileged PSA (needs NET_ADMIN, SYS_MODULE) |
-| Image | `netbirdio/netbird:0.66.2` | Pinned to match Bifrost server version |
+| Image | `netbirdio/netbird:0.71.4` | Pinned to match Bifrost server version |
 | Kind | `StatefulSet` | Persistent identity across restarts |
 | `hostNetwork: true` | true | WireGuard must manipulate host routing table |
 | `dnsPolicy` | `ClusterFirstWithHostNet` | DNS works with hostNetwork |
@@ -77,7 +77,7 @@ iptables -t nat -C POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE
   || iptables -t nat -A POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE
 ```
 
-The `-C` check prevents duplicate rules on pod restart. This rule ensures that traffic from Bifrost's WireGuard IP range (`100.109.x.x`) destined for the cluster LAN gets source-NAT'd to `192.168.1.221` (worker1's eth0 IP), allowing cluster nodes to send replies back via normal LAN routing.
+The `-C` check prevents duplicate rules on pod restart. This rule ensures that traffic from Bifrost's WireGuard IP range (`100.109.x.x`) destined for the cluster LAN gets source-NAT'd to the worker node's IP, allowing cluster nodes to send replies back via normal LAN routing.
 
 In practice the actual NAT is performed by Cilium's `CILIUM_POST_nat` BPF chain, not the raw iptables rule. Both coexist without conflict.
 
@@ -87,7 +87,7 @@ In practice the actual NAT is performed by Cilium's `CILIUM_POST_nat` BPF chain,
 
 Do **not** add `wt0` to Cilium's `devices` list in `core/platform/cilium.go`. WireGuard interfaces are `NOARP/POINTOPOINT` with no Ethernet header — Cilium's `cil_from_netdev` TC BPF silently drops all packets without monitor events, breaking all traffic from Bifrost.
 
-`devices` must list only `eth0`. Traffic from `wt0` reaches Cilium BPF via another node's `eth0` after kernel IP forwarding and MASQUERADE on worker1. See [Network Flow — Why wt0 is NOT in Cilium Devices](/architecture/network-flow/#why-wt0-is-not-in-cilium-devices).
+`wt0` must never appear in Cilium `devices`. Traffic from `wt0` reaches Cilium BPF via the node's `ens18` after kernel IP forwarding and MASQUERADE. See [Network Flow — Why wt0 is NOT in Cilium Devices](/architecture/network-flow/#why-wt0-is-not-in-cilium-devices).
 
 ---
 
@@ -148,11 +148,12 @@ ssh root@178.156.199.250 'docker exec netbird-agent netbird routes list'
 The route is connected but traffic doesn't reach the cluster backend. Check the Cilium device configuration first:
 
 ```bash
-# Confirm wt0 is NOT in Cilium's device list on worker1
+# Confirm wt0 is NOT in Cilium's device list on the routing peer's node
+NODE=$(kubectl get pod -n netbird netbird-peer-0 -o jsonpath='{.spec.nodeName}')
 CILIUM_POD=$(kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium-agent \
-  -o wide | grep k8s-worker1 | awk '{print $1}')
-kubectl exec -n kube-system $CILIUM_POD -c cilium-agent -- cilium-dbg status | grep KubeProxy
-# Must show only: [eth0  192.168.1.221 ...]
+  -o wide | grep "$NODE" | awk '{print $1}')
+kubectl exec -n kube-system $CILIUM_POD -c cilium-agent -- cilium-dbg status | grep Devices
+# Must show ens18 only — wt0 must not appear
 # If wt0 appears: update core/platform/cilium.go and run just core platform up
 
 # Test connectivity to the Cilium LB from Bifrost
