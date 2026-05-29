@@ -22,6 +22,7 @@ volumes:
   netbird_data:
   netbird_proxy_certs:
   netbird_agent_data:   # persists peer key across container replacements
+  gatus_data:           # SQLite DB for uptime history
 
 services:
 
@@ -105,6 +106,27 @@ services:
       # Persist peer key and state so container replacements don't need to re-register.
       # NB_SETUP_KEY is only used on first boot when /var/lib/netbird has no peer state.
       - netbird_agent_data:/var/lib/netbird
+
+  # --------------------------------------------------------------------------------
+  # Gatus — uptime monitoring, exposed at uptime.madhan.app (no auth — public)
+  # grafana.madhan.app resolves to Bifrost public IP; extra_hosts maps it to
+  # Traefik's internal IP so Gatus avoids hairpin NAT and tests the full Traefik path.
+  # All other K8s services resolve to 192.168.1.220 (wildcard DNS → LAN) and are
+  # reachable via the WireGuard-routed path that Traefik already uses.
+  # --------------------------------------------------------------------------------
+
+  gatus:
+    <<: *default
+    image: ghcr.io/twin/gatus:v5
+    container_name: gatus
+    networks:
+      bifrost_net:
+        ipv4_address: 172.30.0.12
+    volumes:
+      - ./gatus/config.yaml:/config/config.yaml:ro
+      - gatus_data:/data
+    extra_hosts:
+      - "grafana.madhan.app:172.30.0.10"   # Traefik internal — avoids hairpin NAT
 
   # --------------------------------------------------------------------------------
   # Authentik — GitHub OAuth broker + ForwardAuth for public K8s services

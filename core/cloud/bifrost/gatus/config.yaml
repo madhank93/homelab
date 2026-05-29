@@ -1,0 +1,147 @@
+storage:
+  type: sqlite
+  path: /data/gatus.db
+
+endpoints:
+
+  # ── Bifrost (Hetzner VPS — Docker services) ─────────────────────────────────
+  # Checked via internal Docker container names — no network round-trip.
+
+  - name: Authentik
+    group: Bifrost
+    url: http://authentik-server:9000/-/health/ready/
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: NetBird Dashboard
+    group: Bifrost
+    url: http://netbird-dashboard:80
+    interval: 1m
+    conditions:
+      - "[STATUS] < 400"
+
+  - name: NetBird Server
+    group: Bifrost
+    url: http://netbird-server:80
+    interval: 1m
+    conditions:
+      - "[STATUS] < 400"
+
+  # ── Platform ─────────────────────────────────────────────────────────────────
+
+  - name: Kubernetes API
+    group: Platform
+    url: https://192.168.1.210:6443/livez
+    interval: 30s
+    client:
+      insecure: true
+    conditions:
+      - "[STATUS] < 500"
+
+  - name: ArgoCD
+    group: Platform
+    url: https://argocd.madhan.app/-/health
+    interval: 1m
+    # TLSRoute uses ArgoCD's own TLS cert (may be self-signed)
+    client:
+      insecure: true
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Observability ─────────────────────────────────────────────────────────────
+  # grafana.madhan.app resolves to Bifrost public IP — extra_hosts in docker-compose
+  # maps it to Traefik's internal IP (172.30.0.10) to avoid hairpin NAT.
+
+  - name: Grafana
+    group: Observability
+    url: https://grafana.madhan.app/api/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].database == ok"
+
+  - name: VictoriaMetrics
+    group: Observability
+    url: https://vmselect.madhan.app/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: VictoriaLogs
+    group: Observability
+    url: https://victorialogs.madhan.app/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Alertmanager
+    group: Observability
+    url: https://alertmanager.madhan.app/-/healthy
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Storage ───────────────────────────────────────────────────────────────────
+
+  - name: Longhorn
+    group: Storage
+    url: https://longhorn.madhan.app
+    interval: 2m
+    conditions:
+      - "[STATUS] < 400"
+
+  # ── Registry ──────────────────────────────────────────────────────────────────
+
+  - name: Harbor
+    group: Registry
+    url: https://harbor.madhan.app/api/v2.0/ping
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY] == Pong"
+
+  # ── Secrets ───────────────────────────────────────────────────────────────────
+  # /v1/sys/health: 200 = active, 429 = standby, 472 = sealed, 503 = uninitialised.
+  # Strict == 200 catches sealed state as a failure.
+
+  - name: OpenBao
+    group: Secrets
+    url: https://openbao.madhan.app/v1/sys/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Management ────────────────────────────────────────────────────────────────
+
+  - name: Headlamp
+    group: Management
+    url: https://headlamp.madhan.app
+    interval: 1m
+    conditions:
+      - "[STATUS] < 400"
+
+  - name: Rancher
+    group: Management
+    url: https://rancher.madhan.app/healthz
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Network ───────────────────────────────────────────────────────────────────
+
+  - name: Hubble UI
+    group: Network
+    url: https://hubble.madhan.app
+    interval: 1m
+    conditions:
+      - "[STATUS] < 400"
+
+  # ── Applications ─────────────────────────────────────────────────────────────
+
+  - name: n8n
+    group: Applications
+    url: https://n8n.madhan.app
+    interval: 1m
+    conditions:
+      - "[STATUS] < 400"

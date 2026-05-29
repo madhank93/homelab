@@ -1,5 +1,13 @@
 http:
   routers:
+    # Gatus — public uptime status page (no ForwardAuth)
+    gatus:
+      rule: "Host(`uptime.madhan.app`)"
+      entrypoints: [websecure]
+      tls:
+        certResolver: cloudflare-dns
+      service: gatus-svc
+
     # Authentik SSO
     authentik:
       rule: "Host(`auth.madhan.app`)"
@@ -36,6 +44,11 @@ http:
       priority: 1
 
   services:
+    gatus-svc:
+      loadBalancer:
+        servers:
+          - url: "http://gatus:8080"
+
     authentik-svc:
       loadBalancer:
         servers:

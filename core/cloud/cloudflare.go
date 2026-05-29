@@ -75,8 +75,8 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Always-public: Authentik, NetBird, NetBird expose base
-	for _, svc := range []string{"auth", "netbird", "proxy"} {
+	// Always-public: Authentik, NetBird, NetBird expose base, Gatus uptime page
+	for _, svc := range []string{"auth", "netbird", "proxy", "uptime"} {
 		if err := newRecord(svc+".madhan.app", "always-public-"+svc, hetznerIP, "Bifrost VPS - always public"); err != nil {
 			return err
 		}
