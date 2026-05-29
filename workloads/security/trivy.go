@@ -68,7 +68,15 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 		},
 		// Talos has a read-only root filesystem — /etc/systemd and /lib/systemd do not exist.
 		// Strip those hostPath mounts from node-collector; keep the k8s-relevant paths only.
+		// Toleration required so node-collector can scan control-plane nodes (NoSchedule taint).
 		"nodeCollector": map[string]any{
+			"tolerations": []map[string]any{
+				{
+					"key":      "node-role.kubernetes.io/control-plane",
+					"operator": "Exists",
+					"effect":   "NoSchedule",
+				},
+			},
 			"volumes": []map[string]any{
 				{"hostPath": map[string]any{"path": "/var/lib/etcd"}, "name": "var-lib-etcd"},
 				{"hostPath": map[string]any{"path": "/var/lib/kubelet"}, "name": "var-lib-kubelet"},
