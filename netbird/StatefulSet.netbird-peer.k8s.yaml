@@ -56,8 +56,6 @@ spec:
               add:
                 - NET_ADMIN
             privileged: true
-      nodeSelector:
-        kubernetes.io/hostname: k8s-worker1
       volumes:
         - csi:
             driver: secrets-store.csi.k8s.io
