@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c16efb816c77213902a9788815d281312c1948c6055040e589026b6c9ef42b1f
+        checksum/config: 77800324ef43431c86b9500e7ea1acd58f10c006160b93b2672a54de5828fbfd
         reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/instance: otel-agent

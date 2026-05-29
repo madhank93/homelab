@@ -15,7 +15,7 @@ data:
   relay: |
     exporters:
       debug: {}
-      otlphttp/logs:
+      otlp_http/logs:
         endpoint: http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry
         tls:
           insecure: true
@@ -110,7 +110,7 @@ data:
       pipelines:
         logs:
           exporters:
-          - otlphttp/logs
+          - otlp_http/logs
           processors:
           - k8sattributes
           - memory_limiter
