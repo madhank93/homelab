@@ -217,7 +217,7 @@ log_step "3/7  authentik — DB migrations"
 # columns (e.g. authentik_tenants.0007) must exist before core.0058_setup.py
 # queries the tenant model, otherwise both server and worker crash-loop.
 log "  running migrations (isolated, before server start) ..."
-$COMPOSE run --rm --no-deps authentik-server ak migrate
+$COMPOSE run --rm --no-deps authentik-server migrate
 log "  migrations complete ✓"
 
 log_step "4/7  authentik-server + authentik-worker — SSO"

@@ -71,7 +71,7 @@ services:
 
   netbird-dashboard:
     <<: *default
-    image: netbirdio/dashboard:v0.71.4
+    image: netbirdio/dashboard:v2.38.1
     container_name: netbird-dashboard
     networks: [bifrost_net]
     env_file:
@@ -80,7 +80,7 @@ services:
   # NetBird Reverse Proxy — expose feature (proxy.madhan.app TCP passthrough)
   netbird-proxy:
     <<: *default
-    image: netbirdio/reverse-proxy:v0.71.4
+    image: netbirdio/reverse-proxy:0.71.4
     container_name: netbird-proxy
     networks: [bifrost_net]
     env_file:
