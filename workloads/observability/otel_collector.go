@@ -47,7 +47,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 			// Converts resource attributes (k8s.pod.name etc.) to Prometheus labels
 			"resource_to_telemetry_conversion": map[string]any{"enabled": true},
 		},
-		"otlphttp/logs": map[string]any{
+		"otlp_http/logs": map[string]any{
 			"endpoint": vlOtlpEndpoint,
 			"tls":      map[string]any{"insecure": true},
 		},
@@ -114,7 +114,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 					"logs": map[string]any{
 						"receivers":  []string{"filelog"},
 						"processors": []string{"memory_limiter", "k8sattributes", "batch"},
-						"exporters":  []string{"otlphttp/logs"},
+						"exporters":  []string{"otlp_http/logs"},
 					},
 					"metrics": map[string]any{
 						"receivers":  []string{"kubeletstats", "hostmetrics"},
@@ -199,7 +199,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 					"logs": map[string]any{
 						"receivers":  []string{"k8sobjects"},
 						"processors": []string{"memory_limiter", "batch"},
-						"exporters":  []string{"otlphttp/logs"},
+						"exporters":  []string{"otlp_http/logs"},
 					},
 				},
 			},
