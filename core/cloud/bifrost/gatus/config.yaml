@@ -41,7 +41,7 @@ endpoints:
 
   - name: ArgoCD
     group: Platform
-    url: https://argocd.madhan.app/-/health
+    url: https://argocd.madhan.app/healthz
     interval: 1m
     # TLSRoute uses ArgoCD's own TLS cert (may be self-signed)
     client:
