@@ -30,40 +30,81 @@ Three Talos control-plane nodes sit behind a KubeVIP virtual IP. Four worker nod
 
 {% mermaid() %}
 flowchart TB
-    subgraph CP["Control Plane · 3 nodes"]
-        VIP["KubeVIP<br/>192.168.1.210:6443"]
-        CP1["k8s-controller1<br/>.211"]
-        CP2["k8s-controller2<br/>.212"]
-        CP3["k8s-controller3<br/>.213"]
-        VIP --- CP1 & CP2 & CP3
+    subgraph INTERNET["Internet"]
+        USER["Browser / Client"]
+        GH["GitHub\nrepo: madhank93/homelab"]
+        CF["Cloudflare DNS\n*.madhan.app"]
     end
 
-    subgraph WRK["Workers"]
-        W1["k8s-worker1<br/>.221"]
-        W2["k8s-worker2<br/>.222"]
-        W3["k8s-worker3<br/>.223"]
-        W4["k8s-worker4<br/>.224<br/>RTX 5070 Ti"]
+    subgraph BIFROST["Bifrost VPS · Hetzner · 178.156.199.250"]
+        TRF["Traefik v3.7.1\nTLS termination + ForwardAuth"]
+        AUTH["Authentik 2026.5.2\nOIDC / SSO broker"]
+        NBS["NetBird 0.71.4\nManagement + Signal + Relay"]
+        NBA["netbird-agent\nWireGuard routing peer\n→ advertises 192.168.1.0/24"]
     end
 
-    subgraph PLT["Platform Services"]
-        CIL["Cilium L2 LB<br/>192.168.1.220"]
-        ARGO["ArgoCD<br/>ApplicationSet"]
-        LONG["Longhorn<br/>distributed storage"]
-        OB["OpenBao<br/>CSI Driver + KV secrets"]
-        CERT["cert-manager<br/>wildcard TLS"]
+    subgraph LAN["On-Prem LAN · 192.168.1.0/24"]
+        subgraph CP["Control Plane · Talos v1.13.3"]
+            VIP["KubeVIP\n192.168.1.210:6443"]
+            CP1["controller1\n.211"]
+            CP2["controller2\n.212"]
+            CP3["controller3\n.213"]
+            VIP --- CP1 & CP2 & CP3
+        end
+
+        subgraph PLT["Platform Layer"]
+            CIL["Cilium 1.19.4\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API"]
+            CERT["cert-manager v1.20.2\nCloudflare DNS-01\nwildcard TLS"]
+            ARGO["ArgoCD 9.5.15\nApplicationSet → v0.1.6-manifests"]
+        end
+
+        subgraph SECRETS["Secrets Layer"]
+            OB["OpenBao 0.28.3\nVault-compatible KV"]
+            CSI["CSI Secrets Store\nfile mounts + k8s Secrets"]
+        end
+
+        subgraph STORAGE["Storage"]
+            LONG["Longhorn 1.11.2\nReplicated block storage"]
+            CNPG["CloudNativePG 0.28.2\nPostgreSQL operator"]
+        end
+
+        subgraph WORKERS["Workers · k8s-worker1–3"]
+            OBS["Observability\nVictoriaMetrics · VictoriaLogs\nGrafana · OTel 0.156.2"]
+            SEC["Security\nFalco · Kyverno · Trivy"]
+            APPS["Applications\nn8n · Harbor · Headlamp\nOpenBao · Rancher · NetBird peer"]
+        end
+
+        subgraph GPU["k8s-worker4 · RTX 5070 Ti"]
+            AI["AI Workloads\nOllama 0.24.0 · ComfyUI\nKubeflow"]
+            NVIDIA["NVIDIA Device Plugin 0.19.1\nDCGM Exporter 4.8.2"]
+        end
     end
 
-    subgraph BIFROST["Bifrost VPS · Hetzner"]
-        WG["NetBird routing peer<br/>WireGuard mesh"]
+    subgraph GITOPS["GitOps · GitHub"]
+        SRC["v0.1.6 branch\nPulumi + CDK8s source"]
+        MFST["v0.1.6-manifests branch\nSynthesized YAML"]
+        GHA["GitHub Actions\ncdk8s synth + publish"]
     end
 
+    USER -->|"HTTPS"| CF
+    CF -->|"public services\nauth/netbird/grafana"| TRF
+    CF -->|"LAN services via VPN\nharbor/headlamp/etc"| CIL
+    TRF -->|"ForwardAuth"| AUTH
+    TRF -->|"proxy via NetBird\nWireGuard tunnel"| CIL
+    NBA <-->|"WireGuard mesh"| APPS
+    NBS --- NBA
+    GH --- SRC
+    SRC -->|"push triggers"| GHA
+    GHA -->|"publishes"| MFST
+    MFST -->|"ArgoCD watches"| ARGO
+    ARGO -->|"syncs"| WORKERS & GPU & SECRETS & STORAGE
     VIP --> CIL
-    CIL --> W1 & W2 & W3 & W4
-    ARGO -->|"syncs workloads<br/>from manifests branch"| W1 & W2 & W3 & W4
-    LONG --> W1 & W2 & W3 & W4
-    OB -->|"CSI volume mounts"| W1 & W2 & W3 & W4
-    CERT -->|"cert-manager ACME"| CIL
-    WG <-->|"WireGuard<br/>192.168.1.0/24"| CIL
+    CIL --> WORKERS & GPU
+    CERT -->|"ACME DNS-01"| CF
+    OB --> CSI
+    CSI -->|"volume mounts"| WORKERS & GPU & APPS
+    LONG --> WORKERS & GPU
+    CNPG --> WORKERS
 {% end %}
 
 ---
