@@ -16,9 +16,9 @@ Version upgrades follow a strict layer order — each layer depends on the one b
 
 | Component | v0.1.6 Target | Live | File |
 |-----------|--------------|------|------|
-| Talos | `v1.13.3` | v1.12.4 (pending `just core talos up`) | `core/platform/talos.go:17` |
-| Cilium | `1.19.4` | 1.16.6 (step upgrade required) | `core/platform/cilium.go:30` |
-| ArgoCD chart | `9.5.15` | 9.4.2 (pending `just core platform up`) | `core/platform/argocd.go:24` |
+| Talos | `v1.13.3` | v1.13.3 ✓ | `core/platform/talos.go:17` |
+| Cilium | `1.19.4` | 1.19.4 ✓ | `core/platform/cilium.go:30` |
+| ArgoCD chart | `9.5.15` | 9.5.15 ✓ | `core/platform/argocd.go:24` |
 | ArgoCD manifests branch | `v0.1.6-manifests` | patched live | `core/platform/argocd.go:175,190` |
 | cert-manager | `v1.20.2` | v1.19.3 ✓ | `workloads/cdk8s.yaml` |
 | k8s API target | `1.35.0` | 1.35.0 ✓ | `workloads/cdk8s.yaml` |
@@ -34,6 +34,7 @@ Version upgrades follow a strict layer order — each layer depends on the one b
 | NetBird agent (Bifrost) | `0.71.4` | `docker-compose.yml:94` |
 | Authentik | `2026.5.2` | `docker-compose.yml:137,168` |
 | PostgreSQL (Authentik) | `16.14-alpine` | `docker-compose.yml:115` |
+| Gatus | `v5.36.0` | `docker-compose.yml` — uptime monitoring at `uptime.madhan.app` |
 
 ### Secrets & Storage
 
@@ -62,9 +63,7 @@ Version upgrades follow a strict layer order — each layer depends on the one b
 | Ollama chart | `1.57.0` | `workloads/cdk8s.yaml` |
 | Ollama image | `0.24.0` | `workloads/ai/ollama.go:33` |
 | ComfyUI image | `cu128-megapak-20260223` | `workloads/ai/comfyui.go:73` |
-| Rancher | `2.14.1` | `workloads/cdk8s.yaml` |
 | Headlamp | `0.42.0` | `workloads/cdk8s.yaml` |
-| Fleet | removed | Managed by Rancher — do not add to cdk8s.yaml |
 | Kyverno | `3.8.1` | `workloads/cdk8s.yaml` |
 | Trivy Operator | `0.32.1` | `workloads/security/trivy.go:22` + `cdk8s.yaml` |
 | Falco | `8.0.5` | `workloads/security/falco.go:84` |
@@ -109,7 +108,6 @@ helm repo add grafana     https://grafana-community.github.io/helm-charts
 helm repo add harbor      https://helm.goharbor.io
 helm repo add openbao     https://openbao.github.io/openbao-helm
 helm repo add csi-driver  https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-helm repo add rancher     https://releases.rancher.com/server-charts/stable
 helm repo add headlamp    https://kubernetes-sigs.github.io/headlamp
 helm repo add kyverno     https://kyverno.github.io/kyverno
 helm repo add trivy       https://aquasecurity.github.io/helm-charts
@@ -123,7 +121,7 @@ helm repo update
 for chart in longhorn/longhorn \
   vm/victoria-metrics-k8s-stack vm/victoria-logs-single \
   grafana/grafana harbor/harbor openbao/openbao \
-  csi-driver/secrets-store-csi-driver rancher/rancher \
+  csi-driver/secrets-store-csi-driver \
   headlamp/headlamp kyverno/kyverno trivy/trivy-operator \
   otel/opentelemetry-collector ollama/ollama reloader/reloader \
   cnpg/cloudnative-pg metrics-server/metrics-server; do

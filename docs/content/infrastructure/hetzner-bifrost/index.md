@@ -50,14 +50,15 @@ All services run via `docker compose` from `/etc/bifrost/`:
 
 | Container | Image | Role |
 |-----------|-------|------|
-| `traefik` | `traefik:v3.3` | TLS termination, ForwardAuth, routing |
-| `authentik-server` | `ghcr.io/goauthentik/server:2025.10.4` | GitHub OAuth, OIDC, ForwardAuth provider |
-| `authentik-worker` | `ghcr.io/goauthentik/server:2025.10.4` | Background tasks, email, jobs |
-| `authentik-postgres` | `postgres:16.6-alpine` | Authentik database |
-| `netbird-server` | `netbirdio/netbird-server:0.66.0` | Combined: management + signal + relay + STUN + embedded Dex OIDC |
-| `netbird-dashboard` | `netbirdio/dashboard:latest` | NetBird web UI |
-| `netbird-proxy` | `netbirdio/reverse-proxy:latest` | `*.proxy.madhan.app` TCP passthrough |
-| `netbird-agent` | `netbirdio/netbird:latest` | WireGuard peer, advertises `192.168.1.0/24` |
+| `traefik` | `traefik:v3.7.1` | TLS termination, ForwardAuth, routing |
+| `authentik-server` | `ghcr.io/goauthentik/server:2026.5.2` | GitHub OAuth, OIDC, ForwardAuth provider |
+| `authentik-worker` | `ghcr.io/goauthentik/server:2026.5.2` | Background tasks, email, jobs |
+| `authentik-postgres` | `postgres:16.14-alpine` | Authentik database |
+| `netbird-server` | `netbirdio/netbird-server:0.71.4` | Combined: management + signal + relay + STUN + embedded Dex OIDC |
+| `netbird-dashboard` | `netbirdio/dashboard:v2.38.1` | NetBird web UI |
+| `netbird-proxy` | `netbirdio/reverse-proxy:0.71.4` | `*.proxy.madhan.app` TCP passthrough |
+| `netbird-agent` | `netbirdio/netbird:0.71.4` | WireGuard peer, advertises `192.168.1.0/24` |
+| `gatus` | `ghcr.io/twin/gatus:v5.36.0` | Uptime monitoring at `uptime.madhan.app` |
 
 All containers share `bifrost_net` (172.30.0.0/24). Traefik is the only container with public ports 80/443.
 

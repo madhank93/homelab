@@ -76,6 +76,9 @@
   <rect x="272" y="118" width="114" height="26" rx="13" fill="#bbf7d0" stroke="#16a34a" stroke-width="1"/>
   <text x="329" y="135" class="chip-text" fill="#14532d" text-anchor="middle">OpenTelemetry</text>
 
+  <rect x="394" y="118" width="60" height="26" rx="13" fill="#bbf7d0" stroke="#16a34a" stroke-width="1"/>
+  <text x="424" y="135" class="chip-text" fill="#14532d" text-anchor="middle">Gatus</text>
+
   <!-- ── Security & Compliance group ── -->
   <rect x="573" y="24" width="210" height="148" rx="10"
         fill="#fef2f2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="6,3"/>
@@ -91,21 +94,12 @@
   <text x="613" y="101" class="chip-text" fill="#7f1d1d" text-anchor="middle">Kyverno</text>
 
   <!-- ── Management group ── -->
-  <rect x="64" y="182" width="235" height="116" rx="10"
+  <rect x="64" y="182" width="235" height="48" rx="10"
         fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="6,3"/>
   <text x="74" y="200" class="group-label" fill="#4c1d95">Management</text>
 
-  <rect x="69" y="208" width="72" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
-  <text x="105" y="225" class="chip-text" fill="#4c1d95" text-anchor="middle">Rancher</text>
-
-  <rect x="149" y="208" width="82" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
-  <text x="190" y="225" class="chip-text" fill="#4c1d95" text-anchor="middle">Headlamp</text>
-
-  <rect x="69" y="242" width="74" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
-  <text x="106" y="259" class="chip-text" fill="#4c1d95" text-anchor="middle">Infisical</text>
-
-  <rect x="151" y="242" width="52" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
-  <text x="177" y="259" class="chip-text" fill="#4c1d95" text-anchor="middle">Fleet</text>
+  <rect x="69" y="208" width="82" height="26" rx="13" fill="#ddd6fe" stroke="#7c3aed" stroke-width="1"/>
+  <text x="110" y="225" class="chip-text" fill="#4c1d95" text-anchor="middle">Headlamp</text>
 
   <!-- ── Registry group ── -->
   <rect x="307" y="182" width="128" height="80" rx="10"
@@ -133,7 +127,7 @@
 
   <!-- ── CDK8s flow note ── -->
   <text x="64" y="318" class="tool-sub" fill="#6b7280">
-    CDK8s (Go) → synthesizes YAML → v0.1.5-manifests branch → ArgoCD applies to cluster
+    CDK8s (Go) → synthesizes YAML → v0.1.6-manifests branch → ArgoCD applies to cluster
   </text>
 
   <!-- ── Managed by: ArgoCD + CDK8s ── -->
