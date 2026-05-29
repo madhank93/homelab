@@ -204,15 +204,15 @@ PYEOF
 
 preflight
 
-log_step "1/6  traefik — TLS termination + routing"
+log_step "1/8  traefik — TLS termination + routing"
 $COMPOSE up -d traefik
 wait_healthy traefik 60
 
-log_step "2/6  authentik-postgres — database"
+log_step "2/8  authentik-postgres — database"
 $COMPOSE up -d authentik-postgres
 wait_healthy authentik-postgres 120
 
-log_step "3/7  authentik — DB migrations"
+log_step "3/8  authentik — DB migrations"
 # Run migrations before starting server to avoid a race: on upgrades, new
 # columns (e.g. authentik_tenants.0007) must exist before core.0058_setup.py
 # queries the tenant model, otherwise both server and worker crash-loop.
@@ -220,7 +220,7 @@ log "  running migrations (isolated, before server start) ..."
 $COMPOSE run --rm --no-deps authentik-server migrate
 log "  migrations complete ✓"
 
-log_step "4/7  authentik-server + authentik-worker — SSO"
+log_step "4/8  authentik-server + authentik-worker — SSO"
 $COMPOSE up -d authentik-server authentik-worker
 log "  containers started — waiting for Authentik to be healthy ..."
 wait_healthy authentik-server 300
@@ -228,7 +228,7 @@ wait_healthy authentik-server 300
 # Process netbird config before starting netbird-server
 process_netbird_config
 
-log_step "5/7  netbird-server + netbird-dashboard — NetBird"
+log_step "5/8  netbird-server + netbird-dashboard — NetBird"
 $COMPOSE up -d netbird-server netbird-dashboard
 wait_healthy netbird-server 120
 wait_healthy netbird-dashboard 60
@@ -243,7 +243,7 @@ log "  │     Client Secret: (from sops: NETBIRD_CLIENT_SECRET)            │"
 log "  │     Issuer:        https://auth.madhan.app/application/o/netbird/│"
 log "  └─────────────────────────────────────────────────────────────────┘"
 
-log_step "6/7  netbird-agent — WireGuard routing peer (Bifrost → homelab LAN)"
+log_step "6/8  netbird-agent — WireGuard routing peer (Bifrost → homelab LAN)"
 if has_secret "NB_BIFROST_SETUP_KEY"; then
   log "  NB_BIFROST_SETUP_KEY present ($(secret_len NB_BIFROST_SETUP_KEY) chars)"
   NB_BIFROST_SETUP_KEY=$(read_secret NB_BIFROST_SETUP_KEY) $COMPOSE up -d netbird-agent
@@ -262,7 +262,7 @@ else
   log "  └────────────────────────────────────────────────────────────────────┘"
 fi
 
-log_step "7/7  netbird-proxy — TCP expose feature"
+log_step "7/8  netbird-proxy — TCP expose feature"
 if has_secret "NB_PROXY_TOKEN"; then
   log "  NB_PROXY_TOKEN present ($(secret_len NB_PROXY_TOKEN) chars)"
   $COMPOSE up -d --force-recreate netbird-proxy
@@ -279,9 +279,13 @@ else
   log "  └──────────────────────────────────────────────────────────────┘"
 fi
 
+log_step "8/8  gatus — uptime monitoring"
+$COMPOSE up -d gatus
+wait_healthy gatus 60
+
 log_step "Container status"
 docker ps --format 'table {{.Names}}\t{{.Status}}' \
-  | grep -E '(NAMES|traefik|netbird|authentik)' \
+  | grep -E '(NAMES|traefik|netbird|authentik|gatus)' \
   || docker ps --format 'table {{.Names}}\t{{.Status}}'
 
 log "Bootstrap complete."
