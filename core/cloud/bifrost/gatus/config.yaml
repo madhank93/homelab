@@ -38,8 +38,6 @@ endpoints:
     group: Platform
     url: https://argocd.madhan.app/healthz
     interval: 1m
-    client:
-      insecure: true
     conditions:
       - "[STATUS] == 200"
 
