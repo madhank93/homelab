@@ -14,6 +14,7 @@ import (
 //   - ArgoCD Helm release (chart argo-cd, namespace argocd)
 //   - HTTPRoute for argocd.local (LAN access via homelab-gateway)
 //   - TLSRoute for argocd.madhan.app (passthrough TLS)
+//   - Certificate "argocd-server-tls" (letsencrypt-prod DNS01) — replaces ArgoCD's self-signed cert
 //   - ApplicationSet "cots-applications" watching the v0.1.6-manifests branch
 //
 // The ApplicationSet drives all workload deployments via GitOps. Run
@@ -232,6 +233,31 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						},
 					},
 				},
+			},
+		},
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{chart}))
+	if err != nil {
+		return err
+	}
+
+	// Certificate for argocd.madhan.app — issued by letsencrypt-prod via DNS01 (Cloudflare).
+	// ArgoCD auto-detects a secret named "argocd-server-tls" in its namespace and uses it
+	// for TLS, replacing the default self-signed cert. The TLSRoute passthrough is unchanged.
+	_, err = apiextensions.NewCustomResource(ctx, "argocd-server-tls-cert", &apiextensions.CustomResourceArgs{
+		ApiVersion: pulumi.String("cert-manager.io/v1"),
+		Kind:       pulumi.String("Certificate"),
+		Metadata: &metav1.ObjectMetaArgs{
+			Name:      pulumi.String("argocd-server-tls"),
+			Namespace: pulumi.String("argocd"),
+		},
+		OtherFields: map[string]any{
+			"spec": map[string]any{
+				"secretName": "argocd-server-tls",
+				"issuerRef": map[string]any{
+					"name": "letsencrypt-prod",
+					"kind": "ClusterIssuer",
+				},
+				"dnsNames": []string{"argocd.madhan.app"},
 			},
 		},
 	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{chart}))
