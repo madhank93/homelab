@@ -8,7 +8,7 @@ import (
 )
 
 // NewNetbirdPeerChart deploys the NetBird routing peer (k8s-routing-peer) as a
-// StatefulSet on worker1 (192.168.1.221).
+// StatefulSet on any available worker (no nodeSelector — floats for resilience).
 //
 // The routing peer forms a WireGuard mesh with the Bifrost VPS and advertises the
 // 192.168.1.0/24 cluster subnet to Bifrost. Incoming traffic from Bifrost arrives
@@ -113,10 +113,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 				Spec: &k8s.PodSpec{
 					HostNetwork: jsii.Bool(true),
 					DnsPolicy:   jsii.String("ClusterFirstWithHostNet"),
-					NodeSelector: &map[string]*string{
-						"kubernetes.io/hostname": jsii.String("k8s-worker1"),
-					},
-					Volumes: &[]*k8s.Volume{
+						Volumes: &[]*k8s.Volume{
 						{
 							Name: jsii.String("openbao-secrets"),
 							Csi: &k8s.CsiVolumeSource{
