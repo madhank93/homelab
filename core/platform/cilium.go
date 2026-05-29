@@ -82,13 +82,13 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			"gatewayAPI": pulumi.Map{
 				"enabled": pulumi.Bool(true),
 			},
-			// Only eth0 in devices. wt0 (NetBird WireGuard) is NOARP/POINTOPOINT -
-			// Cilium TC BPF silently misparses non-Ethernet frames and drops all wt0
-			// packets without monitor events. Traffic from wt0 flows via kernel IP
-			// forwarding + iptables MASQUERADE, hitting another node's eth0 where
-			// Cilium BPF works correctly.
+			// Both eth0 (Talos ≤v1.12) and ens18 (Talos v1.13+ predictable naming on
+			// VirtIO) listed so Cilium works on any node during rolling Talos upgrades.
+			// wt0 (NetBird WireGuard) excluded — NOARP/POINTOPOINT; TC BPF drops
+			// non-Ethernet frames. wt0 traffic flows via kernel + iptables MASQUERADE.
 			"devices": pulumi.StringArray{
 				pulumi.String("eth0"),
+				pulumi.String("ens18"),
 			},
 		},
 	}, pulumi.Provider(k8sProvider))
