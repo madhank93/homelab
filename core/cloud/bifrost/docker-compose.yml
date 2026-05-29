@@ -127,6 +127,9 @@ services:
       - gatus_data:/data
     extra_hosts:
       - "grafana.madhan.app:172.30.0.10"   # Traefik internal — avoids hairpin NAT
+      - "auth.madhan.app:172.30.0.10"
+      - "netbird.madhan.app:172.30.0.10"
+      - "uptime.madhan.app:172.30.0.10"
 
   # --------------------------------------------------------------------------------
   # Authentik — GitHub OAuth broker + ForwardAuth for public K8s services

@@ -5,28 +5,22 @@ storage:
 endpoints:
 
   # ── Bifrost (Hetzner VPS — Docker services) ─────────────────────────────────
-  # Checked via internal Docker container names — no network round-trip.
+  # extra_hosts in docker-compose maps *.madhan.app → Traefik (172.30.0.10) to
+  # avoid hairpin NAT (Gatus lives on the same host as Traefik).
 
   - name: Authentik
     group: Bifrost
-    url: http://authentik-server:9000/-/health/ready/
+    url: https://auth.madhan.app/-/health/ready/
     interval: 1m
     conditions:
       - "[STATUS] == 200"
 
-  - name: NetBird Dashboard
+  - name: NetBird
     group: Bifrost
-    url: http://netbird-dashboard:80
+    url: https://netbird.madhan.app
     interval: 1m
     conditions:
-      - "[STATUS] < 400"
-
-  - name: NetBird Server
-    group: Bifrost
-    url: http://netbird-server:80
-    interval: 1m
-    conditions:
-      - "[STATUS] < 400"
+      - "[STATUS] == 200"
 
   # ── Platform ─────────────────────────────────────────────────────────────────
 
@@ -36,6 +30,7 @@ endpoints:
     interval: 30s
     client:
       insecure: true
+    # Talos disables anonymous auth — 401 means API server is up and responding.
     conditions:
       - "[STATUS] < 500"
 
@@ -43,7 +38,6 @@ endpoints:
     group: Platform
     url: https://argocd.madhan.app/healthz
     interval: 1m
-    # TLSRoute uses ArgoCD's own TLS cert (may be self-signed)
     client:
       insecure: true
     conditions:
@@ -89,7 +83,7 @@ endpoints:
     url: https://longhorn.madhan.app
     interval: 2m
     conditions:
-      - "[STATUS] < 400"
+      - "[STATUS] == 200"
 
   # ── Registry ──────────────────────────────────────────────────────────────────
 
@@ -119,7 +113,7 @@ endpoints:
     url: https://headlamp.madhan.app
     interval: 1m
     conditions:
-      - "[STATUS] < 400"
+      - "[STATUS] == 200"
 
   # ── Network ───────────────────────────────────────────────────────────────────
 
@@ -128,7 +122,7 @@ endpoints:
     url: https://hubble.madhan.app
     interval: 1m
     conditions:
-      - "[STATUS] < 400"
+      - "[STATUS] == 200"
 
   # ── Applications ─────────────────────────────────────────────────────────────
 
@@ -137,7 +131,7 @@ endpoints:
     url: https://n8n.madhan.app
     interval: 1m
     conditions:
-      - "[STATUS] < 400"
+      - "[STATUS] == 200"
 
   - name: Ollama
     group: Applications
@@ -151,18 +145,18 @@ endpoints:
     url: https://comfyui.madhan.app
     interval: 2m
     conditions:
-      - "[STATUS] < 400"
+      - "[STATUS] == 200"
 
   - name: Falco UI
     group: Applications
     url: https://falco.madhan.app
     interval: 2m
     conditions:
-      - "[STATUS] < 400"
+      - "[STATUS] == 200"
 
   - name: Kubeflow
     group: Applications
     url: https://kubeflow.madhan.app
     interval: 2m
     conditions:
-      - "[STATUS] < 400"
+      - "[STATUS] == 200"
