@@ -73,5 +73,24 @@ func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 		}))
 	}
 
+	// Certificate for argocd.madhan.app — letsencrypt-prod DNS01 via Cloudflare.
+	// ArgoCD auto-detects a secret named "argocd-server-tls" and replaces its
+	// self-signed cert, fixing browser TLS warnings without public exposure.
+	cdk8s.NewApiObject(chart, jsii.String("argocd-server-tls-cert"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("cert-manager.io/v1"),
+		Kind:       jsii.String("Certificate"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("argocd-server-tls"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"secretName": "argocd-server-tls",
+		"issuerRef": map[string]any{
+			"name": "letsencrypt-prod",
+			"kind": "ClusterIssuer",
+		},
+		"dnsNames": []string{"argocd.madhan.app"},
+	}))
+
 	return chart
 }
