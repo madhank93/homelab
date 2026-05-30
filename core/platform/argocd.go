@@ -84,9 +84,19 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return err
 	}
 
+	// Derive the ArgoCD server service name from the Helm release name output.
+	// Pulumi appends a hash to the release name (e.g. argo-cd → argo-cd-36ddc8c6);
+	// chart.Name is StringPtrOutput of the actual Helm release name on the cluster.
+	serverSvcName := chart.Name.ApplyT(func(name *string) string {
+		if name == nil {
+			return "argocd-server"
+		}
+		return *name + "-argocd-server"
+	}).(pulumi.StringOutput)
+
 	// HTTPRoute for ArgoCD — both LAN hostname and public hostname.
 	// ArgoCD runs in insecure mode (HTTP on :80); TLS for argocd.madhan.app is
-	// terminated at the Cilium gateway using the argocd-server-tls cert (LE via cert-manager).
+	// terminated at the Cilium gateway via the wildcard-madhan-app-tls cert.
 	// The old TLSRoute (passthrough) is removed — gateway has no TLS listener on :443.
 	_, err = apiextensions.NewCustomResource(ctx, "argocd-httproute", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
@@ -116,7 +126,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						},
 						"backendRefs": []map[string]any{
 							{
-								"name": "argocd-server",
+								"name": serverSvcName,
 								"port": 80,
 							},
 						},
