@@ -11,13 +11,12 @@ import (
 // InstallArgoCD installs ArgoCD via Helm and configures the GitOps bootstrap.
 //
 // It creates:
-//   - ArgoCD Helm release (chart argo-cd, namespace argocd)
-//   - HTTPRoute for argocd.local (LAN access via homelab-gateway)
-//   - TLSRoute for argocd.madhan.app (passthrough TLS)
+//   - ArgoCD Helm release (chart argo-cd, namespace argocd) in insecure mode (HTTP :80)
+//   - HTTPRoute for argocd.local + argocd.madhan.app (homelab-gateway, port 80)
 //   - ApplicationSet "cots-applications" watching the v0.1.6-manifests branch
 //
-// The TLS cert for argocd.madhan.app is managed via CDK8s (workloads/observability/argocd_monitor.go)
-// so ArgoCD can self-manage it via GitOps without a Pulumi run.
+// TLS cert for argocd.madhan.app is managed via CDK8s (workloads/observability/argocd_monitor.go).
+// The gateway HTTPS listener terminates TLS using that cert before proxying to ArgoCD :80.
 //
 // The ApplicationSet drives all workload deployments via GitOps. Run
 // `just core platform up` to apply.
@@ -50,7 +49,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			},
 			"configs": pulumi.Map{
 				"params": pulumi.Map{
-					"server.insecure": pulumi.Bool(false),
+					"server.insecure": pulumi.Bool(true), // serve HTTP on :80; TLS terminated at Cilium gateway
 					// Kubeflow manifests repo is ~400MB; default 90s is too short for git fetch from cluster.
 					"reposerver.exec.timeout": pulumi.String("180s"),
 				},
@@ -85,7 +84,10 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return err
 	}
 
-	// HTTPRoute for ArgoCD (LAN access via homelab-gateway)
+	// HTTPRoute for ArgoCD — both LAN hostname and public hostname.
+	// ArgoCD runs in insecure mode (HTTP on :80); TLS for argocd.madhan.app is
+	// terminated at the Cilium gateway using the argocd-server-tls cert (LE via cert-manager).
+	// The old TLSRoute (passthrough) is removed — gateway has no TLS listener on :443.
 	_, err = apiextensions.NewCustomResource(ctx, "argocd-httproute", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 		Kind:       pulumi.String("HTTPRoute"),
@@ -101,7 +103,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						"namespace": "kube-system",
 					},
 				},
-				"hostnames": []string{"argocd.local"},
+				"hostnames": []string{"argocd.local", "argocd.madhan.app"},
 				"rules": []map[string]any{
 					{
 						"matches": []map[string]any{
@@ -116,40 +118,6 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 							{
 								"name": "argocd-server",
 								"port": 80,
-							},
-						},
-					},
-				},
-			},
-		},
-	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{chart}))
-	if err != nil {
-		return err
-	}
-
-	// Create TLSRoute for ArgoCD
-	_, err = apiextensions.NewCustomResource(ctx, "argocd-tlsmetadata", &apiextensions.CustomResourceArgs{
-		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1alpha2"),
-		Kind:       pulumi.String("TLSRoute"),
-		Metadata: &metav1.ObjectMetaArgs{
-			Name:      pulumi.String("argocd-route"),
-			Namespace: pulumi.String("argocd"),
-		},
-		OtherFields: map[string]any{
-			"spec": map[string]any{
-				"parentRefs": []map[string]any{
-					{
-						"name":      "homelab-gateway",
-						"namespace": "kube-system",
-					},
-				},
-				"hostnames": []string{"argocd.madhan.app"},
-				"rules": []map[string]any{
-					{
-						"backendRefs": []map[string]any{
-							{
-								"name": "argo-cd-964152f1-argocd-server",
-								"port": 443,
 							},
 						},
 					},
