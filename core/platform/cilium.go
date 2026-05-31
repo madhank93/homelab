@@ -17,17 +17,17 @@ import (
 //
 // Configuration highlights:
 //   - kubeProxyReplacement: true — full eBPF data plane; kube-proxy is disabled in Talos
-//   - k8sServiceHost/Port: VIP 192.168.1.210:6443 — required because Cilium contacts the API server directly
-//   - devices: eth0 only — wt0 (NetBird WireGuard) is excluded; NOARP/POINTOPOINT interfaces
-//     cause Cilium TC BPF to silently drop packets without monitor events
-//   - l2Announcements + gatewayAPI: enabled for bare-metal LoadBalancer IPs and Gateway API support
-//   - Hubble relay + UI: enabled for network flow observability
+//   - k8sServiceHost/Port: VIP 192.168.1.210:6443 — Cilium contacts API server directly
+//   - devices: [ens18, eth0] — covers Talos ≤v1.12 (ens18) and v1.13+ (eth0); wt0 excluded
+//     (NOARP/POINTOPOINT — TC BPF silently drops non-Ethernet frames)
+//   - l2Announcements + gatewayAPI: bare-metal LoadBalancer IPs and Gateway API support
+//   - Hubble relay + UI: network flow observability
 //
 // An HTTPRoute for hubble.madhan.app → hubble-ui:80 is created after the chart.
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
 		Chart:   pulumi.String("cilium"),
-		Version: pulumi.String("1.19.4"), // Latest Stable — deploy in steps: 1.16→1.17→1.18→1.19
+		Version: pulumi.String("1.18.10"), // Pinned: 1.19.x regression blocks host TCP on eth0 nodes (cilium/cilium#44430)
 		RepositoryOpts: &helm.RepositoryOptsArgs{
 			Repo: pulumi.String("https://helm.cilium.io/"),
 		},
@@ -82,14 +82,36 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			"gatewayAPI": pulumi.Map{
 				"enabled": pulumi.Bool(true),
 			},
-			// Both eth0 (Talos ≤v1.12) and ens18 (Talos v1.13+ predictable naming on
-			// VirtIO) listed so Cilium works on any node during rolling Talos upgrades.
-			// wt0 (NetBird WireGuard) excluded — NOARP/POINTOPOINT; TC BPF drops
-			// non-Ethernet frames. wt0 traffic flows via kernel + iptables MASQUERADE.
+			// Both ens18 (existing VMs, Talos ≤v1.12 predictable naming) and eth0
+			// (fresh VMs from Talos v1.13+ nocloud image, classic naming) listed so
+			// Cilium works across both. Cilium skips non-existent interfaces gracefully
+			// and auto-detects the direct routing device from whichever one has the
+			// node IP. wt0 (NetBird WireGuard) excluded — NOARP/POINTOPOINT; TC BPF
+			// silently drops non-Ethernet frames.
 			"devices": pulumi.StringArray{
-				pulumi.String("eth0"),
 				pulumi.String("ens18"),
+				pulumi.String("eth0"),
 			},
+			// Talos enables forwardKubeDNSToHost by default; Cilium's eBPF host-routing
+			// conflicts with this — host-namespace DNS queries get misrouted. Legacy
+			// routing uses the kernel routing table for host-namespace traffic instead,
+			// which is also required for kubelet (10250) and Talos apid (50000) to be
+			// reachable: without it, TC ingress BPF routes packets via cilium_host before
+			// the BPF forwarding path is fully initialised, dropping them.
+			"bpf": pulumi.Map{
+				"hostLegacyRouting": pulumi.Bool(true),
+			},
+			// Cilium's socket-level LB hooks (cil_sock4_post_bind) intercept bind()
+			// calls and interfere with kubelet and Talos apid binding to their ports
+			// (10250, 50000) after Cilium starts. Disabling prevents this.
+			"hostServices": pulumi.Map{
+				"enabled": pulumi.Bool(false),
+			},
+			// Cilium's NOTRACK iptables rules bypass conntrack for all traffic.
+			// Combined with DROP-INVALID rules this blocks all NEW TCP to host ports
+			// (10250, 50000) while allowing ESTABLISHED. Disabling lets the kernel
+			// track host connections normally.
+			"installNoConntrackIptablesRules": pulumi.Bool(false),
 		},
 	}, pulumi.Provider(k8sProvider))
 	if err != nil {

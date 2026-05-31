@@ -12,6 +12,16 @@ core stack action:
 synth:
     go run .
 
+# Build and push a custom image to Harbor
+# Usage: just build-push <image-name> <tag>
+# Example: just build-push notebook-gateway-controller v1
+build-push image tag:
+    docker buildx build \
+      --platform linux/amd64 \
+      --push \
+      -t harbor.madhan.app/library/{{image}}:{{tag}} \
+      images/{{image}}
+
 # Bootstrap secrets (creates k8s Secrets from sops-encrypted values)
 create-secrets:
     SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
@@ -33,6 +43,7 @@ openbao-setup:
 # Generate a temporary OpenBao root token from the stored unseal key.
 # The token is printed to stdout — export it for subsequent bao commands.
 # Revoke it when done: just openbao-revoke <token>
+# OpenBao 2.x: client must generate OTP first, then pass it to -init.
 openbao-token:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -40,10 +51,11 @@ openbao-token:
       -o jsonpath='{.data.unseal-key}' | base64 -d)
     kubectl exec -n openbao openbao-0 -c openbao -- \
       bao operator generate-root -cancel -format=json 2>/dev/null || true
+    OTP=$(kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -generate-otp)
     INIT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -init -format=json)
-    OTP=$(echo "$INIT"    | python3 -c "import sys,json; print(json.load(sys.stdin)['otp'])")
-    NONCE=$(echo "$INIT"  | python3 -c "import sys,json; print(json.load(sys.stdin)['nonce'])")
+      bao operator generate-root -init -otp="$OTP" -format=json)
+    NONCE=$(echo "$INIT" | python3 -c "import sys,json; print(json.load(sys.stdin)['nonce'])")
     RESULT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
       bao operator generate-root -nonce="$NONCE" -format=json "$UNSEAL_KEY")
     ENCODED=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['encoded_token'])")
@@ -61,10 +73,11 @@ openbao-get path field='':
       -o jsonpath='{.data.unseal-key}' | base64 -d)
     kubectl exec -n openbao openbao-0 -c openbao -- \
       bao operator generate-root -cancel -format=json 2>/dev/null || true
+    OTP=$(kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao operator generate-root -generate-otp)
     INIT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -init -format=json)
-    OTP=$(echo "$INIT"    | python3 -c "import sys,json; print(json.load(sys.stdin)['otp'])")
-    NONCE=$(echo "$INIT"  | python3 -c "import sys,json; print(json.load(sys.stdin)['nonce'])")
+      bao operator generate-root -init -otp="$OTP" -format=json)
+    NONCE=$(echo "$INIT" | python3 -c "import sys,json; print(json.load(sys.stdin)['nonce'])")
     RESULT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
       bao operator generate-root -nonce="$NONCE" -format=json "$UNSEAL_KEY")
     ENCODED=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['encoded_token'])")
@@ -86,6 +99,51 @@ openbao-revoke token:
     set -euo pipefail
     kubectl exec -n openbao openbao-0 -c openbao -- \
       env VAULT_TOKEN="{{token}}" bao token revoke "{{token}}"
+
+# Get a short-lived OpenBao token via Kubernetes auth using a service account.
+# The service account must be bound to an OpenBao role (see scripts/openbao-setup.sh).
+# Usage:
+#   just openbao-sa-token <serviceaccount> <namespace> <role>
+# Examples:
+#   just openbao-sa-token secret-sync harbor harbor     → harbor-policy token
+#   just openbao-sa-token grafana     grafana grafana   → grafana-policy token
+openbao-sa-token sa ns role:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SA_TOKEN=$(kubectl create token {{sa}} -n {{ns}} --duration=10m)
+    kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao write -field=token auth/kubernetes/login role={{role}} jwt="$SA_TOKEN"
+
+# Read a secret from OpenBao using a Kubernetes service account.
+# Usage:
+#   just openbao-sa-get <serviceaccount> <namespace> <role> <secret-path> [field]
+# Examples:
+#   just openbao-sa-get secret-sync harbor harbor secret/harbor
+#   just openbao-sa-get secret-sync harbor harbor secret/harbor HARBOR_ADMIN_PASSWORD
+openbao-sa-get sa ns role path field='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SA_TOKEN=$(kubectl create token {{sa}} -n {{ns}} --duration=10m)
+    VAULT_TOKEN=$(kubectl exec -n openbao openbao-0 -c openbao -- \
+      bao write -field=token auth/kubernetes/login role={{role}} jwt="$SA_TOKEN")
+    if [ -n "{{field}}" ]; then
+      kubectl exec -n openbao openbao-0 -c openbao -- \
+        env VAULT_TOKEN="$VAULT_TOKEN" bao kv get -field={{field}} {{path}}
+    else
+      kubectl exec -n openbao openbao-0 -c openbao -- \
+        env VAULT_TOKEN="$VAULT_TOKEN" bao kv get {{path}}
+    fi
+
+# Decrypt and view a SOPS-encrypted file (opens in $EDITOR by default)
+# Usage:
+#   just sops-view secrets/bootstrap.sops.yaml
+# To print to stdout instead:
+#   just sops-decrypt secrets/bootstrap.sops.yaml
+sops-view file:
+    SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" sops {{file}}
+
+sops-decrypt file:
+    SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" sops -d {{file}}
 
 ping_scan:
     nmap -sn 192.168.1.0/24

@@ -317,10 +317,9 @@ if __name__ == "__main__":
 				"containers": []map[string]any{
 					{
 						"name":  "controller",
-						"image": "python:3.11-slim",
+						"image": "harbor.madhan.app/library/notebook-gateway-controller:v1",
 						"command": []string{
-							"sh", "-c",
-							"pip install kubernetes --quiet --no-cache-dir && python /app/controller.py",
+							"python", "/app/controller.py",
 						},
 						"env": []map[string]any{
 							{"name": "HOME", "value": "/tmp"},
@@ -337,7 +336,7 @@ if __name__ == "__main__":
 						},
 						"resources": map[string]any{
 							"requests": map[string]any{"cpu": "10m", "memory": "64Mi"},
-							"limits":   map[string]any{"cpu": "100m", "memory": "128Mi"},
+							"limits":   map[string]any{"cpu": "200m", "memory": "256Mi"},
 						},
 					},
 				},
