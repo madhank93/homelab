@@ -125,17 +125,16 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 							},
 						},
 					},
-					// Init container: MASQUERADE forwarded WireGuard traffic so it exits
-					// ens18 with this node's LAN IP, enabling Cilium's cil_from_netdev
-					// TC BPF on the L2 winner to set the TPROXY mark and redirect to Envoy.
+					// Init container: MASQUERADE wt0-forwarded traffic so it exits ens18
+					// with this node's LAN IP, enabling Cilium's cil_from_netdev TC BPF
+					// on the L2 winner to set the TPROXY mark and redirect to Envoy.
 					//
 					// Key constraint: kernel WireGuard delivers decapsulated inner packets
 					// DIRECTLY to the FORWARD hook, bypassing PREROUTING entirely. So
-					// -i wt0 in PREROUTING always sees 0 packets and can't be used to mark
-					// traffic. Instead, match by output interface (-o ens18) in POSTROUTING,
-					// which fires correctly after FORWARD for all wt0-forwarded egress.
-					// Source exclusions prevent double-masquerading pod (10.244.0.0/16) and
-					// LAN-to-LAN (192.168.1.0/24) traffic that Cilium already handles.
+					// -i wt0 in PREROUTING always sees 0 packets — match by output interface
+					// (-o ens18) in POSTROUTING instead. Pod traffic is already handled by
+					// CILIUM_POST_nat (runs first) so iptables deduplicates the NAT entry
+					// and our rule is a safe no-op for already-masqueraded packets.
 					// The -C check prevents duplicate rules on pod restart.
 					InitContainers: &[]*k8s.Container{
 						{
@@ -144,7 +143,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 							Command: &[]*string{jsii.String("/bin/sh")},
 							Args: &[]*string{
 								jsii.String("-c"),
-								jsii.String("iptables -t nat -C POSTROUTING -o ens18 -d 192.168.1.0/24 ! -s 10.244.0.0/16 ! -s 192.168.1.0/24 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o ens18 -d 192.168.1.0/24 ! -s 10.244.0.0/16 ! -s 192.168.1.0/24 -j MASQUERADE"),
+								jsii.String("iptables -t nat -C POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE"),
 							},
 							SecurityContext: &k8s.SecurityContext{
 								Privileged: jsii.Bool(true),
