@@ -348,6 +348,22 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/architecture/software-inventory">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/list-check.svg'); mask-image: url('https://homelab.madhan.app/icons/list-check.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Software Inventory
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/architecture">
           
 
@@ -508,23 +524,23 @@
         <p class="text-gray-500">In-cluster WireGuard routing peer that advertises 192.168.1.0&#x2F;24 into the NetBird mesh and forwards traffic to the Cilium Gateway.</p>
     </div>
     <h2 id="what-is-the-netbird-peer">What is the NetBird Peer?</h2>
-<p>The NetBird peer is an in-cluster WireGuard client that connects to the NetBird VPN mesh and acts as a <strong>routing peer</strong> for the cluster's LAN subnet (<code>192.168.1.0/24</code>). It runs on <strong>worker1</strong> (<code>192.168.1.221</code>) with <code>hostNetwork: true</code> and enables the Hetzner VPS (Bifrost) to reach cluster services via WireGuard, making public service routing through Traefik possible.</p>
+<p>The NetBird peer is an in-cluster WireGuard client that connects to the NetBird VPN mesh and acts as a <strong>routing peer</strong> for the cluster's LAN subnet (<code>192.168.1.0/24</code>). It runs with <code>hostNetwork: true</code> on any available worker (no nodeSelector — floats for resilience) and enables the Hetzner VPS (Bifrost) to reach cluster services via WireGuard, making public service routing through Traefik possible.</p>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>Bifrost Traefik
 </span><span>    │  proxy to 192.168.1.220:80
 </span><span>    ↓
 </span><span>netbird-agent (Bifrost · wt0: 100.109.47.211)
 </span><span>    │  WireGuard tunnel via relay
 </span><span>    ↓
-</span><span>netbird-peer-0 (worker1 · wt0: 100.109.244.71)
-</span><span>    │  kernel IP forward: wt0 → eth0
-</span><span>    │  CILIUM_POST_nat MASQUERADE: src → 192.168.1.221
+</span><span>netbird-peer-0 (any worker · wt0: 100.109.244.71)
+</span><span>    │  kernel IP forward: wt0 → ens18
+</span><span>    │  CILIUM_POST_nat MASQUERADE: src → &lt;worker node IP&gt;
 </span><span>    ↓
-</span><span>192.168.1.220 (Cilium Gateway · another node&#39;s eth0)
+</span><span>192.168.1.220 (Cilium Gateway · another node&#39;s ens18)
 </span><span>    │  Cilium BPF L7LB DNAT → Envoy :13507
 </span><span>    ↓
 </span><span>Grafana / other cluster pod
 </span></code></pre>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/networking/netbird_peer.go"><code>workloads/networking/netbird_peer.go</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.6/workloads/networking/netbird_peer.go"><code>workloads/networking/netbird_peer.go</code></a></p>
 <hr />
 <h2 id="why-a-kubernetes-statefulset">Why a Kubernetes StatefulSet?</h2>
 <p>The in-cluster NetBird peer is deployed as a <strong>StatefulSet</strong> (not a Deployment) with a persistent PVC for <code>/var/lib/netbird/</code>:</p>
@@ -538,7 +554,7 @@
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>netbird</code></td><td>Privileged PSA (needs NET_ADMIN, SYS_MODULE)</td></tr>
-<tr><td>Image</td><td><code>netbirdio/netbird:0.66.2</code></td><td>Pinned to match Bifrost server version</td></tr>
+<tr><td>Image</td><td><code>netbirdio/netbird:0.71.4</code></td><td>Pinned to match Bifrost server version</td></tr>
 <tr><td>Kind</td><td><code>StatefulSet</code></td><td>Persistent identity across restarts</td></tr>
 <tr><td><code>hostNetwork: true</code></td><td>true</td><td>WireGuard must manipulate host routing table</td></tr>
 <tr><td><code>dnsPolicy</code></td><td><code>ClusterFirstWithHostNet</code></td><td>DNS works with hostNetwork</td></tr>
@@ -561,12 +577,12 @@
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">iptables</span><span style="color:#ffcc66;"> -t</span><span> nat</span><span style="color:#ffcc66;"> -C</span><span> POSTROUTING</span><span style="color:#ffcc66;"> -s</span><span> 100.109.0.0/16</span><span style="color:#ffcc66;"> -d</span><span> 192.168.1.0/24</span><span style="color:#ffcc66;"> -j</span><span> MASQUERADE </span><span style="color:#ffcc66;">2</span><span style="color:#f29e74;">&gt;</span><span>/dev/null </span><span style="color:#ccc9c2cc;">\
 </span><span>  </span><span style="color:#f29e74;">|| </span><span style="color:#ffd580;">iptables</span><span style="color:#ffcc66;"> -t</span><span> nat</span><span style="color:#ffcc66;"> -A</span><span> POSTROUTING</span><span style="color:#ffcc66;"> -s</span><span> 100.109.0.0/16</span><span style="color:#ffcc66;"> -d</span><span> 192.168.1.0/24</span><span style="color:#ffcc66;"> -j</span><span> MASQUERADE
 </span></code></pre>
-<p>The <code>-C</code> check prevents duplicate rules on pod restart. This rule ensures that traffic from Bifrost's WireGuard IP range (<code>100.109.x.x</code>) destined for the cluster LAN gets source-NAT'd to <code>192.168.1.221</code> (worker1's eth0 IP), allowing cluster nodes to send replies back via normal LAN routing.</p>
+<p>The <code>-C</code> check prevents duplicate rules on pod restart. This rule ensures that traffic from Bifrost's WireGuard IP range (<code>100.109.x.x</code>) destined for the cluster LAN gets source-NAT'd to the worker node's IP, allowing cluster nodes to send replies back via normal LAN routing.</p>
 <p>In practice the actual NAT is performed by Cilium's <code>CILIUM_POST_nat</code> BPF chain, not the raw iptables rule. Both coexist without conflict.</p>
 <hr />
 <h2 id="cilium-constraint-wt0-must-not-be-in-devices">Cilium Constraint — wt0 Must NOT Be in Devices</h2>
 <p>Do <strong>not</strong> add <code>wt0</code> to Cilium's <code>devices</code> list in <code>core/platform/cilium.go</code>. WireGuard interfaces are <code>NOARP/POINTOPOINT</code> with no Ethernet header — Cilium's <code>cil_from_netdev</code> TC BPF silently drops all packets without monitor events, breaking all traffic from Bifrost.</p>
-<p><code>devices</code> must list only <code>eth0</code>. Traffic from <code>wt0</code> reaches Cilium BPF via another node's <code>eth0</code> after kernel IP forwarding and MASQUERADE on worker1. See <a href="/architecture/network-flow/#why-wt0-is-not-in-cilium-devices">Network Flow — Why wt0 is NOT in Cilium Devices</a>.</p>
+<p><code>wt0</code> must never appear in Cilium <code>devices</code>. Traffic from <code>wt0</code> reaches Cilium BPF via the node's <code>ens18</code> after kernel IP forwarding and MASQUERADE. See <a href="/architecture/network-flow/#why-wt0-is-not-in-cilium-devices">Network Flow — Why wt0 is NOT in Cilium Devices</a>.</p>
 <hr />
 <h2 id="route-configuration">Route Configuration</h2>
 <p>The peer registers in NetBird but does <strong>not</strong> automatically advertise routes. Routes must be configured in the NetBird Management UI:</p>
@@ -610,11 +626,12 @@
 </span></code></pre>
 <h3 id="504-from-public-services-but-tunnel-is-up">504 from public services but tunnel is up</h3>
 <p>The route is connected but traffic doesn't reach the cluster backend. Check the Cilium device configuration first:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Confirm wt0 is NOT in Cilium&#39;s device list on worker1
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Confirm wt0 is NOT in Cilium&#39;s device list on the routing peer&#39;s node
+</span><span>NODE</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">$</span><span>(</span><span style="color:#ffd580;">kubectl</span><span style="color:#bae67e;"> get pod</span><span style="color:#ffcc66;"> -n</span><span style="color:#bae67e;"> netbird netbird-peer-0</span><span style="color:#ffcc66;"> -o</span><span style="color:#bae67e;"> jsonpath=&#39;{.spec.nodeName}&#39;</span><span>)
 </span><span>CILIUM_POD</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">$</span><span>(</span><span style="color:#ffd580;">kubectl</span><span style="color:#bae67e;"> get pods</span><span style="color:#ffcc66;"> -n</span><span style="color:#bae67e;"> kube-system</span><span style="color:#ffcc66;"> -l</span><span style="color:#bae67e;"> app.kubernetes.io/name=cilium-agent </span><span style="color:#ccc9c2cc;">\
-</span><span style="color:#ffcc66;">  -o</span><span style="color:#bae67e;"> wide </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#bae67e;"> k8s-worker1 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">awk </span><span style="color:#bae67e;">&#39;{print $1}&#39;</span><span>)
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> kube-system $CILIUM_POD</span><span style="color:#ffcc66;"> -c</span><span> cilium-agent</span><span style="color:#f29e74;"> --</span><span> cilium-dbg status </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> KubeProxy
-</span><span style="font-style:italic;color:#5c6773;"># Must show only: [eth0  192.168.1.221 ...]
+</span><span style="color:#ffcc66;">  -o</span><span style="color:#bae67e;"> wide </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep </span><span style="color:#bae67e;">&quot;$</span><span>NODE</span><span style="color:#bae67e;">&quot; </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">awk </span><span style="color:#bae67e;">&#39;{print $1}&#39;</span><span>)
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> kube-system $CILIUM_POD</span><span style="color:#ffcc66;"> -c</span><span> cilium-agent</span><span style="color:#f29e74;"> --</span><span> cilium-dbg status </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> Devices
+</span><span style="font-style:italic;color:#5c6773;"># Must show ens18 only — wt0 must not appear
 </span><span style="font-style:italic;color:#5c6773;"># If wt0 appears: update core/platform/cilium.go and run just core platform up
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># Test connectivity to the Cilium LB from Bifrost
@@ -705,6 +722,8 @@
         
             
             
+            
+                
             
                 
             
@@ -958,6 +977,12 @@
         
         
         
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
         
             
             <li>
@@ -990,6 +1015,8 @@
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/gitops-flow">GitOps Flow</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/secrets-flow">Secrets Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/software-inventory">Software Inventory</a></li>
                             
                             
                         </ul>
@@ -1234,11 +1261,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1250,11 +1277,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>

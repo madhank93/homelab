@@ -19,6 +19,9 @@
         <loc>https://homelab.madhan.app/architecture/secrets-flow/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/architecture/software-inventory/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/development/</loc>
     </url>
     <url>
@@ -80,6 +83,9 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/platform/secrets/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/upgrade-guide/</loc>
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/</loc>

@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="SOPS&#x2F;age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git." />
+            <meta name="description" content="End-to-end procedure for upgrading all homelab components: Talos, platform tools, cloud services, and workloads." />
         
     
 
-    <title>Secrets | Homelab</title>
+    <title>Version Upgrade Guide | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="Secrets | Homelab" />
-      <meta property="og:description" content="SOPS&#x2F;age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git." />
+      <meta property="og:title" content="Version Upgrade Guide | Homelab" />
+      <meta property="og:description" content="End-to-end procedure for upgrading all homelab components: Talos, platform tools, cloud services, and workloads." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Secrets" />
-      <meta name="twitter:description" content="SOPS&#x2F;age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git." />
+      <meta name="twitter:title" content="Version Upgrade Guide" />
+      <meta name="twitter:description" content="End-to-end procedure for upgrading all homelab components: Talos, platform tools, cloud services, and workloads." />
       
       
       
@@ -518,122 +518,365 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            Secrets
+            Version Upgrade Guide
             
         </h1>
-        <p class="text-gray-500">SOPS&#x2F;age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git.</p>
+        <p class="text-gray-500">End-to-end procedure for upgrading all homelab components: Talos, platform tools, cloud services, and workloads.</p>
     </div>
-    <h2 id="what-is-sops-openbao">What is SOPS + OpenBao?</h2>
-<p><a href="https://github.com/getsops/sops">SOPS</a> (Secrets OPerationS) is a tool for encrypting secret files using age, PGP, or cloud KMS keys — allowing encrypted secrets to be safely committed to a public git repository. <a href="https://openbao.org/">OpenBao</a> (a community fork of HashiCorp Vault) is a secrets management server that stores runtime credentials and serves them to pods via the Secrets Store CSI Driver.</p>
-<h2 id="why-this-approach">Why This Approach?</h2>
-<p>SOPS with age encryption keeps bootstrap secrets version-controlled and reproducible without any external service dependency. OpenBao handles runtime secrets at pod startup — no credentials ever appear in Kubernetes manifests, git history, or CDK8s-generated YAML.</p>
-<h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Bootstrap secrets (OpenBao unseal key, Cloudflare API token) are age-encrypted in <code>secrets/bootstrap.sops.yaml</code> and applied once with <code>just create-secrets</code>. All other app credentials live in OpenBao's KV store and are mounted into pods as files via the CSI driver at runtime, keeping CDK8s manifests completely secret-free.</p>
-<h2 id="architecture">Architecture</h2>
-<p>Secrets management uses a two-tier approach:</p>
-<ol>
-<li><strong>Bootstrap secrets</strong> — encrypted with SOPS/age, committed safely to git, applied once with <code>just create-secrets</code></li>
-<li><strong>Runtime secrets</strong> — stored in OpenBao (Vault fork, MPL-2.0), mounted into pods as files via the Secrets Store CSI Driver</li>
-</ol>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>secrets/bootstrap.sops.yaml  (age-encrypted, safe in git)
-</span><span>  └── just create-secrets
-</span><span>        ├── openbao/openbao-unseal-key    (Prune=false)
-</span><span>        └── cert-manager/cloudflare-api-token  (Prune=false)
-</span><span>
-</span><span>OpenBao (ns: openbao, port 8200)
-</span><span>  ├── KV v2 at secret/
-</span><span>  │     ├── secret/data/grafana   ADMIN_PASSWORD
-</span><span>  │     ├── secret/data/harbor    HARBOR_ADMIN_PASSWORD
-</span><span>  │     ├── secret/data/n8n       ENCRYPTION_KEY
-</span><span>  │     ├── secret/data/rancher   BOOTSTRAP_PASSWORD
-</span><span>  │     └── secret/data/netbird   NETBIRD_SETUP_KEY
-</span><span>  └── Kubernetes Auth method
-</span><span>        └── per-app roles → bound to app ServiceAccount + namespace
-</span><span>
-</span><span>Secrets Store CSI Driver (ns: kube-system)
-</span><span>  └── SecretProviderClass (per app ns)
-</span><span>        └── CSI volume in pod → mounts secrets as files
-</span><span>              └── secretObjects → syncs to k8s Secret (Pattern B only)
-</span></code></pre>
-<h2 id="pattern-a-file-only-no-k8s-secret">Pattern A — File-only (no k8s Secret)</h2>
-<p>Used by: <strong>Grafana</strong></p>
-<p>Secret is mounted as a file at <code>/mnt/secrets/&lt;KEY&gt;</code>. The app reads it via an env var pointing to the file path (e.g. <code>GF_SECURITY_ADMIN_PASSWORD__FILE</code>).</p>
-<p>No k8s Secret is created. The secret value never appears in <code>kubectl get secret</code> output.</p>
-<h2 id="pattern-b-secretobjects-sync-k8s-secret-created">Pattern B — secretObjects sync (k8s Secret created)</h2>
-<p>Used by: <strong>Harbor</strong>, <strong>n8n</strong>, <strong>Rancher</strong>, <strong>NetBird</strong></p>
-<p>The CSI volume mount triggers the SecretProviderClass <code>secretObjects</code> block, which creates a k8s Secret in the app's namespace. This is required for Helm charts that only accept <code>existingSecret</code> references.</p>
+    <p>Version upgrades follow a strict layer order — each layer depends on the one below it being stable first.</p>
+<hr />
+<h2 id="current-version-inventory">Current Version Inventory</h2>
 <blockquote>
-<p>The CSI volume mount is <strong>required</strong> to trigger the sync — if no pod mounts the volume, the k8s Secret is never created.</p>
+<p><strong>Branch:</strong> <code>v0.1.6</code> — code targets below. Some require Pulumi/kubectl apply to take effect on the live cluster.</p>
 </blockquote>
-<h2 id="bootstrap-secrets">Bootstrap Secrets</h2>
-<p>Only two Secrets are created by the bootstrap script and never managed by ArgoCD:</p>
-<table><thead><tr><th>Secret</th><th>Namespace</th><th>Keys</th><th>Purpose</th></tr></thead><tbody>
-<tr><td><code>openbao-unseal-key</code></td><td><code>openbao</code></td><td><code>unseal-key</code></td><td>Unseals OpenBao on pod startup via sidecar</td></tr>
-<tr><td><code>cloudflare-api-token</code></td><td><code>cert-manager</code></td><td><code>CLOUDFLARE_API_TOKEN</code></td><td>DNS-01 ACME challenge for wildcard cert</td></tr>
+<h3 id="infrastructure-platform">Infrastructure &amp; Platform</h3>
+<table><thead><tr><th>Component</th><th>v0.1.6 Target</th><th>Live</th><th>File</th></tr></thead><tbody>
+<tr><td>Talos</td><td><code>v1.13.3</code></td><td>v1.13.3 ✓</td><td><code>core/platform/talos.go:17</code></td></tr>
+<tr><td>Cilium</td><td><code>1.19.4</code></td><td>1.19.4 ✓</td><td><code>core/platform/cilium.go:30</code></td></tr>
+<tr><td>ArgoCD chart</td><td><code>9.5.15</code></td><td>9.5.15 ✓</td><td><code>core/platform/argocd.go:24</code></td></tr>
+<tr><td>ArgoCD manifests branch</td><td><code>v0.1.6-manifests</code></td><td>patched live</td><td><code>core/platform/argocd.go:175,190</code></td></tr>
+<tr><td>cert-manager</td><td><code>v1.20.2</code></td><td>v1.19.3 ✓</td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>k8s API target</td><td><code>1.35.0</code></td><td>1.35.0 ✓</td><td><code>workloads/cdk8s.yaml</code></td></tr>
 </tbody></table>
-<p>Both carry <code>argocd.argoproj.io/sync-options: Prune=false</code> so ArgoCD never deletes them.</p>
-<h2 id="sops-age-setup">SOPS + age Setup</h2>
-<h3 id="first-time-setup">First-Time Setup</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Install tools
-</span><span style="color:#ffd580;">brew</span><span> install age sops
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 2. Generate age key pair (back up this file!)
-</span><span style="color:#ffd580;">mkdir</span><span style="color:#ffcc66;"> -p </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.config/sops/age
-</span><span style="color:#ffd580;">age-keygen</span><span style="color:#ffcc66;"> -o </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.config/sops/age/keys.txt
-</span><span style="font-style:italic;color:#5c6773;"># Output: Public key: age1abc123...
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 3. Add to shell profile (REQUIRED — sops 3.12+ does not auto-discover)
-</span><span style="color:#f28779;">echo </span><span style="color:#bae67e;">&#39;export SOPS_AGE_KEY_FILE=&quot;$HOME/.config/sops/age/keys.txt&quot;&#39; </span><span style="color:#f29e74;">&gt;&gt; </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.zshrc
-</span><span style="color:#f28779;">source </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.zshrc
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 4. Register public key in .sops.yaml at repo root
-</span><span style="font-style:italic;color:#5c6773;"># creation_rules:
-</span><span style="font-style:italic;color:#5c6773;">#   - path_regex: secrets/.*\.sops$
-</span><span style="font-style:italic;color:#5c6773;">#     age: age1abc123...
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 5. Populate the bootstrap secrets file
-</span><span style="color:#ffd580;">sops</span><span> secrets/bootstrap.sops.yaml   </span><span style="font-style:italic;color:#5c6773;"># opens $EDITOR, re-encrypts on save
-</span></code></pre>
-<h3 id="day-to-day-commands">Day-to-Day Commands</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Edit encrypted file in-place
-</span><span style="color:#ffd580;">sops</span><span> secrets/bootstrap.sops.yaml
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Create/update bootstrap k8s Secrets
-</span><span style="color:#ffd580;">just</span><span> create-secrets
-</span></code></pre>
-<h2 id="openbao-setup-one-time">OpenBao Setup (one-time)</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Deploy OpenBao + unseal it
-</span><span style="color:#ffd580;">just</span><span> openbao-init        </span><span style="font-style:italic;color:#5c6773;"># initialises, saves root token to /tmp/openbao-init.json
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 2. Configure K8s auth, policies, roles, placeholder secrets
-</span><span style="color:#ffd580;">just</span><span> openbao-setup       </span><span style="font-style:italic;color:#5c6773;"># runs scripts/openbao-setup.sh
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 3. Replace placeholder secrets with real values
-</span><span>ROOT_TOKEN</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">$</span><span>(</span><span style="color:#ffd580;">python3</span><span style="color:#ffcc66;"> -c </span><span style="color:#bae67e;">&quot;import json; print(json.load(open(&#39;/tmp/openbao-init.json&#39;))[&#39;root_token&#39;])&quot;</span><span>)
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret grafana  ADMIN_PASSWORD=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret n8n      ENCRYPTION_KEY=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret rancher  BOOTSTRAP_PASSWORD=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span></code></pre>
-<h2 id="apps-and-their-secret-paths">Apps and Their Secret Paths</h2>
-<table><thead><tr><th>App</th><th>OpenBao Path</th><th>Secret keys fetched</th><th>k8s Secret created</th><th>Pattern</th></tr></thead><tbody>
-<tr><td>Grafana</td><td><code>secret/data/grafana</code></td><td><code>ADMIN_PASSWORD</code></td><td>none</td><td>A (file)</td></tr>
-<tr><td>Harbor</td><td><code>secret/data/harbor</code></td><td><code>HARBOR_ADMIN_PASSWORD</code></td><td><code>harbor-admin</code></td><td>B</td></tr>
-<tr><td>n8n</td><td><code>secret/data/n8n</code></td><td><code>ENCRYPTION_KEY</code></td><td><code>n8n-secrets</code></td><td>B</td></tr>
-<tr><td>Rancher</td><td><code>secret/data/rancher</code></td><td><code>BOOTSTRAP_PASSWORD</code></td><td><code>rancher-bootstrap</code></td><td>B</td></tr>
-<tr><td>NetBird</td><td><code>secret/data/netbird</code></td><td><code>NETBIRD_SETUP_KEY</code></td><td><code>netbird-setup-key</code></td><td>B</td></tr>
+<h3 id="cloud-bifrost-docker-compose">Cloud (Bifrost Docker Compose)</h3>
+<table><thead><tr><th>Component</th><th>v0.1.6 Target</th><th>File</th></tr></thead><tbody>
+<tr><td>Traefik</td><td><code>v3.7.1</code></td><td><code>core/cloud/bifrost/docker-compose.yml:35</code></td></tr>
+<tr><td>NetBird server</td><td><code>0.71.4</code></td><td><code>docker-compose.yml:59</code></td></tr>
+<tr><td>NetBird dashboard</td><td><code>v0.71.4</code></td><td><code>docker-compose.yml:73</code></td></tr>
+<tr><td>NetBird reverse-proxy</td><td><code>v0.71.4</code></td><td><code>docker-compose.yml:82</code></td></tr>
+<tr><td>NetBird agent (Bifrost)</td><td><code>0.71.4</code></td><td><code>docker-compose.yml:94</code></td></tr>
+<tr><td>Authentik</td><td><code>2026.5.2</code></td><td><code>docker-compose.yml:137,168</code></td></tr>
+<tr><td>PostgreSQL (Authentik)</td><td><code>16.14-alpine</code></td><td><code>docker-compose.yml:115</code></td></tr>
+<tr><td>Gatus</td><td><code>v5.36.0</code></td><td><code>docker-compose.yml</code> — uptime monitoring at <code>uptime.madhan.app</code></td></tr>
 </tbody></table>
-<blockquote>
-<p>n8n DB password is <strong>not</strong> in OpenBao — it is auto-managed by the CloudNativePG operator (<code>n8n-pg-app</code> Secret).</p>
-</blockquote>
-<h2 id="cdk8s-generates-zero-secrets">CDK8s Generates Zero Secrets</h2>
-<p>The CI pipeline synthesizes CDK8s manifests to the <code>v0.1.5-manifests</code> branch. It requires <strong>zero GitHub Actions secrets</strong> — CDK8s never generates any <code>Secret</code> resources. All runtime secrets are pulled by the in-cluster CSI driver at mount time.</p>
+<h3 id="secrets-storage">Secrets &amp; Storage</h3>
+<table><thead><tr><th>Component</th><th>v0.1.6 Target</th><th>File</th></tr></thead><tbody>
+<tr><td>OpenBao helm</td><td><code>0.28.3</code></td><td><code>workloads/secrets/openbao.go:42</code></td></tr>
+<tr><td>OpenBao image</td><td><code>2.5.4</code></td><td><code>workloads/secrets/openbao.go:98</code></td></tr>
+<tr><td>CSI Driver</td><td><code>1.6.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>Longhorn</td><td><code>1.11.2</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>CNPG operator</td><td><code>0.28.2</code></td><td><code>workloads/databases/cnpg.go:31</code></td></tr>
+</tbody></table>
+<h3 id="workloads">Workloads</h3>
+<table><thead><tr><th>Component</th><th>v0.1.6 Target</th><th>File</th></tr></thead><tbody>
+<tr><td>VictoriaMetrics k8s-stack</td><td><code>0.80.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>VictoriaLogs</td><td><code>0.12.5</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>Grafana</td><td><code>12.4.1</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>Metrics Server</td><td><code>3.13.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>OTel Collector</td><td><code>0.156.2</code></td><td><code>workloads/observability/otel_collector.go:155,213</code></td></tr>
+<tr><td>Harbor</td><td><code>1.19.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>NVIDIA GPU Operator (import)</td><td><code>v26.3.1</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>NVIDIA Device Plugin</td><td><code>0.19.1</code></td><td><code>workloads/hardware/nvidia_gpu_operator.go:47</code></td></tr>
+<tr><td>DCGM Exporter</td><td><code>4.8.2</code></td><td><code>workloads/hardware/nvidia_gpu_operator.go:99</code></td></tr>
+<tr><td>n8n (8gears OCI)</td><td><code>2.0.1</code></td><td><code>workloads/automation/n8n.go:184</code></td></tr>
+<tr><td>Ollama chart</td><td><code>1.57.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>Ollama image</td><td><code>0.24.0</code></td><td><code>workloads/ai/ollama.go:33</code></td></tr>
+<tr><td>ComfyUI image</td><td><code>cu128-megapak-20260223</code></td><td><code>workloads/ai/comfyui.go:73</code></td></tr>
+<tr><td>Headlamp</td><td><code>0.42.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>Kyverno</td><td><code>3.8.1</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
+<tr><td>Trivy Operator</td><td><code>0.32.1</code></td><td><code>workloads/security/trivy.go:22</code> + <code>cdk8s.yaml</code></td></tr>
+<tr><td>Falco</td><td><code>8.0.5</code></td><td><code>workloads/security/falco.go:84</code></td></tr>
+<tr><td>Reloader</td><td><code>2.2.12</code></td><td><code>workloads/support/reloader.go:20</code></td></tr>
+<tr><td>NetBird peer (k8s)</td><td><code>0.71.4</code></td><td><code>workloads/networking/netbird_peer.go:139,158</code></td></tr>
+</tbody></table>
+<hr />
+<h2 id="upgrade-order">Upgrade Order</h2>
+<p>Components must be upgraded in layer order. Never skip layers.</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Talos
+</span><span>  └─► Cilium  (CNI must be compatible with Talos k8s version)
+</span><span>        └─► Gateway API CRDs  (bundled with Cilium chart)
+</span><span>              └─► ArgoCD  (GitOps engine)
+</span><span>                    └─► cert-manager
+</span><span>                          └─► OpenBao + CSI Driver  (secrets layer; all apps depend on this)
+</span><span>                                └─► Longhorn + CNPG  (storage; stateful apps depend on this)
+</span><span>                                      └─► Workloads  (batched by risk)
+</span><span>
+</span><span>Bifrost docker-compose  (independent — upgrade anytime)
+</span></code></pre>
+<hr />
+<h2 id="phase-0-research-latest-versions">Phase 0 — Research Latest Versions</h2>
+<p>Run before touching anything. Record results and substitute into the phases below.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Infrastructure
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -s</span><span> https://api.github.com/repos/siderolabs/talos/releases/latest </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span style="color:#ffcc66;"> -r</span><span> .tag_name
+</span><span style="color:#ffd580;">helm</span><span> repo add cilium https://helm.cilium.io </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">helm</span><span> search repo cilium/cilium</span><span style="color:#ffcc66;"> --versions </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">head</span><span style="color:#ffcc66;"> -3
+</span><span style="color:#ffd580;">helm</span><span> repo add argo https://argoproj.github.io/argo-helm </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">helm</span><span> search repo argo/argo-cd</span><span style="color:#ffcc66;"> --versions </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">head</span><span style="color:#ffcc66;"> -3
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Add all workload chart repos
+</span><span style="color:#ffd580;">helm</span><span> repo add longhorn    https://charts.longhorn.io
+</span><span style="color:#ffd580;">helm</span><span> repo add vm          https://victoriametrics.github.io/helm-charts
+</span><span style="color:#ffd580;">helm</span><span> repo add grafana     https://grafana-community.github.io/helm-charts
+</span><span style="color:#ffd580;">helm</span><span> repo add harbor      https://helm.goharbor.io
+</span><span style="color:#ffd580;">helm</span><span> repo add openbao     https://openbao.github.io/openbao-helm
+</span><span style="color:#ffd580;">helm</span><span> repo add csi-driver  https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
+</span><span style="color:#ffd580;">helm</span><span> repo add headlamp    https://kubernetes-sigs.github.io/headlamp
+</span><span style="color:#ffd580;">helm</span><span> repo add kyverno     https://kyverno.github.io/kyverno
+</span><span style="color:#ffd580;">helm</span><span> repo add trivy       https://aquasecurity.github.io/helm-charts
+</span><span style="color:#ffd580;">helm</span><span> repo add otel        https://open-telemetry.github.io/opentelemetry-helm-charts
+</span><span style="color:#ffd580;">helm</span><span> repo add ollama      https://otwld.github.io/ollama-helm
+</span><span style="color:#ffd580;">helm</span><span> repo add reloader    https://stakater.github.io/stakater-charts
+</span><span style="color:#ffd580;">helm</span><span> repo add cnpg        https://cloudnative-pg.github.io/charts
+</span><span style="color:#ffd580;">helm</span><span> repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
+</span><span style="color:#ffd580;">helm</span><span> repo update
+</span><span>
+</span><span style="color:#ffa759;">for</span><span> chart </span><span style="color:#ffa759;">in</span><span> longhorn/longhorn </span><span style="color:#ccc9c2cc;">\
+</span><span>  vm/victoria-metrics-k8s-stack vm/victoria-logs-single </span><span style="color:#ccc9c2cc;">\
+</span><span>  grafana/grafana harbor/harbor openbao/openbao </span><span style="color:#ccc9c2cc;">\
+</span><span>  csi-driver/secrets-store-csi-driver </span><span style="color:#ccc9c2cc;">\
+</span><span>  headlamp/headlamp kyverno/kyverno trivy/trivy-operator </span><span style="color:#ccc9c2cc;">\
+</span><span>  otel/opentelemetry-collector ollama/ollama reloader/reloader </span><span style="color:#ccc9c2cc;">\
+</span><span>  cnpg/cloudnative-pg metrics-server/metrics-server</span><span style="color:#f29e74;">; </span><span style="color:#ffa759;">do
+</span><span>  </span><span style="color:#f28779;">echo </span><span style="color:#bae67e;">&quot;=== $</span><span>chart</span><span style="color:#bae67e;"> ===&quot; </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">helm</span><span> search repo </span><span style="color:#bae67e;">&quot;$</span><span>chart</span><span style="color:#bae67e;">&quot;</span><span style="color:#ffcc66;"> --versions </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">head</span><span style="color:#ffcc66;"> -2
+</span><span style="color:#ffa759;">done
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Container images
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -s</span><span> https://api.github.com/repos/netbirdio/netbird/releases/latest </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span style="color:#ffcc66;"> -r</span><span> .tag_name
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -s</span><span> https://api.github.com/repos/goauthentik/authentik/releases/latest </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span style="color:#ffcc66;"> -r</span><span> .tag_name
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -s</span><span> https://api.github.com/repos/traefik/traefik/releases/latest </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span style="color:#ffcc66;"> -r</span><span> .tag_name
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -s</span><span> https://hub.docker.com/v2/repositories/ollama/ollama/tags</span><span style="color:#f29e74;">?</span><span>page_size=3 </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span style="color:#ffcc66;"> -r </span><span style="color:#bae67e;">&#39;.results[].name&#39;
+</span></code></pre>
+<hr />
+<h2 id="phase-1-talos">Phase 1 — Talos</h2>
+<p><strong>Risk:</strong> High — rolling node restart.</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// core/platform/talos.go:17
+</span><span>talosVersion </span><span style="color:#f29e74;">= </span><span style="color:#bae67e;">&quot;vX.Y.Z&quot;
+</span></code></pre>
+<p><strong>Rules:</strong></p>
+<ul>
+<li>Upgrade one minor version at a time (1.12 → 1.13, not 1.12 → 1.15)</li>
+<li>Control planes upgrade first, workers after all CPs are healthy</li>
+<li>Check k8s version embedded in the new Talos release — if it bumps (e.g., 1.30 → 1.31), update <code>k8s@1.30.0</code> in <code>workloads/cdk8s.yaml</code> and re-run <code>cdk8s import</code></li>
+</ul>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core talos up
+</span><span style="color:#ffd580;">talosctl</span><span style="color:#ffcc66;"> --talosconfig </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.talos/config health</span><span style="color:#ffcc66;"> --nodes</span><span> 192.168.1.210
+</span></code></pre>
+<hr />
+<h2 id="phase-2-cilium">Phase 2 — Cilium</h2>
+<p><strong>Risk:</strong> High — CNI restart interrupts pod networking briefly.</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// core/platform/cilium.go:30
+</span><span>Version</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;1.X.Y&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p><strong>Rules:</strong></p>
+<ul>
+<li>Verify compatibility with new Talos k8s version: https://docs.cilium.io/en/stable/network/kubernetes/compatibility/</li>
+<li><code>wt0</code> must <strong>not</strong> be added to Cilium devices — keep only <code>eth0</code> in <code>cilium.go</code>. See <a href="../infrastructure/#netbird">NetBird routing notes</a>.</li>
+<li>After upgrade check <code>CiliumLoadBalancerIPPool</code> and <code>BGPCiliumPeeringPolicy</code> CR specs in <code>cilium.go:208,225</code> for field renames</li>
+</ul>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core platform up
+</span><span style="color:#ffd580;">kubectl</span><span style="color:#ffcc66;"> -n</span><span> kube-system rollout status daemonset/cilium
+</span><span style="color:#ffd580;">kubectl</span><span> get gateway</span><span style="color:#ffcc66;"> -n</span><span> kube-system homelab-gateway
+</span></code></pre>
+<hr />
+<h2 id="phase-3-argocd">Phase 3 — ArgoCD</h2>
+<p><strong>Risk:</strong> Medium — GitOps engine downtime during pod restart.</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// core/platform/argocd.go:24
+</span><span>Version</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;9.X.Y&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p><strong>TLSRoute service name — critical:</strong> The TLSRoute backend at <code>argocd.go:148</code> hardcodes a Helm-generated service name <code>argo-cd-964152f1-argocd-server</code>. The hash suffix may change on chart upgrade. After <code>just core platform up</code>, verify and update if needed:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get svc</span><span style="color:#ffcc66;"> -n</span><span> argocd </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span> argocd-server
+</span><span style="font-style:italic;color:#5c6773;"># Update argocd.go:148 if the name changed, then re-run just core platform up
+</span></code></pre>
+<p><strong>ApplicationSet UI:</strong> Already enabled. ArgoCD chart 9.x (ArgoCD 2.14.x) shows ApplicationSets under the top-level <strong>ApplicationSets</strong> tab in the UI. No config changes needed.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core platform up
+</span><span style="color:#ffd580;">kubectl</span><span> rollout status deployment argocd-server</span><span style="color:#ffcc66;"> -n</span><span> argocd
+</span></code></pre>
+<hr />
+<h2 id="phase-4-cert-manager">Phase 4 — cert-manager</h2>
+<p><strong>Risk:</strong> Low — but high blast radius if broken (TLS for all services).</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
+</span><span>- </span><span style="color:#bae67e;">helm:https://charts.jetstack.io/cert-manager@1.X.Y
+</span></code></pre>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">git</span><span> push
+</span><span style="color:#ffd580;">kubectl</span><span> get certificaterequests</span><span style="color:#ffcc66;"> -A  </span><span style="font-style:italic;color:#5c6773;"># must all show Ready=True
+</span></code></pre>
+<hr />
+<h2 id="phase-5-openbao-csi-driver">Phase 5 — OpenBao + CSI Driver</h2>
+<p><strong>Risk:</strong> Medium — all running apps read secrets through this layer.</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// workloads/secrets/openbao.go:42
+</span><span>Version</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;0.X.Y&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span style="font-style:italic;color:#5c6773;">// workloads/secrets/openbao.go:98
+</span><span style="color:#bae67e;">&quot;image&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;openbao/openbao:2.X.Y&quot;</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
+</span><span>- </span><span style="color:#bae67e;">helm:https://openbao.github.io/openbao-helm/openbao@0.X.Y
+</span><span>- </span><span style="color:#bae67e;">helm:https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts/secrets-store-csi-driver@1.X.Y
+</span></code></pre>
+<p>Helm chart version and image tag must be compatible — check OpenBao <a href="https://github.com/openbao/openbao/releases">release notes</a>.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">git</span><span> push
+</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> openbao</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=openbao</span><span style="color:#ffcc66;"> -c</span><span> unseal
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao status  </span><span style="font-style:italic;color:#5c6773;"># sealed: false
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> grafana deploy/grafana</span><span style="color:#f29e74;"> --</span><span> cat /mnt/secrets/ADMIN_PASSWORD  </span><span style="font-style:italic;color:#5c6773;"># smoke test
+</span></code></pre>
+<hr />
+<h2 id="phase-6-longhorn-cnpg">Phase 6 — Longhorn + CNPG</h2>
+<p><strong>Risk:</strong> Medium — storage disruption possible.</p>
+<h3 id="longhorn">Longhorn</h3>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
+</span><span>- </span><span style="color:#bae67e;">helm:https://charts.longhorn.io/longhorn@1.X.Y
+</span></code></pre>
+<p>One minor version at a time only (e.g., 1.10 → 1.11, not 1.10 → 1.12 directly).</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">git</span><span> push
+</span><span style="color:#ffd580;">kubectl</span><span> get nodes.longhorn.io</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system
+</span><span style="color:#ffd580;">kubectl</span><span> get volume.longhorn.io</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system  </span><span style="font-style:italic;color:#5c6773;"># all must be healthy
+</span></code></pre>
+<h3 id="cnpg">CNPG</h3>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// workloads/databases/cnpg.go:31
+</span><span>Version</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;0.X.Y&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p>CNPG operator upgrades are backwards-compatible with existing <code>Cluster</code> CRs.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> get cluster</span><span style="color:#ffcc66;"> -A  </span><span style="font-style:italic;color:#5c6773;"># all clusters healthy
+</span></code></pre>
+<hr />
+<h2 id="phase-7-bifrost-docker-compose">Phase 7 — Bifrost Docker Compose</h2>
+<p><strong>Risk:</strong> Low — independent of k8s cluster.</p>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># core/cloud/bifrost/docker-compose.yml
+</span><span style="color:#bae67e;">traefik:vX.Y                               </span><span style="font-style:italic;color:#5c6773;"># line 35
+</span><span style="color:#bae67e;">netbirdio/netbird-server:0.X.Y             </span><span style="font-style:italic;color:#5c6773;"># line 59
+</span><span style="color:#bae67e;">netbirdio/dashboard:0.X.Y                  </span><span style="font-style:italic;color:#5c6773;"># line 73  (was: latest)
+</span><span style="color:#bae67e;">netbirdio/reverse-proxy:0.X.Y             </span><span style="font-style:italic;color:#5c6773;"># line 82  (was: latest)
+</span><span style="color:#bae67e;">netbirdio/netbird:0.X.Y                    </span><span style="font-style:italic;color:#5c6773;"># line 94
+</span><span style="color:#bae67e;">ghcr.io/goauthentik/server:20XX.X.X        </span><span style="font-style:italic;color:#5c6773;"># lines 137, 168
+</span><span style="color:#bae67e;">postgres:16.X-alpine                       </span><span style="font-style:italic;color:#5c6773;"># line 115  (minor bumps only)
+</span></code></pre>
+<p><strong>NetBird rule:</strong> All four NetBird components (<code>server</code>, <code>dashboard</code>, <code>reverse-proxy</code>, agent on Bifrost) <strong>must be on the same version</strong>. Also update <code>workloads/networking/netbird_peer.go:139,158</code> to match.</p>
+<p><strong>Authentik migration race (fixed in bootstrap.sh):</strong> On Authentik upgrades, <code>bootstrap.sh</code> now runs <code>ak migrate</code> explicitly (via a one-off server container) before starting <code>authentik-server</code> and <code>authentik-worker</code>. This prevents a crash-loop where the server queries new ORM columns that haven't been added yet. If <code>just core hetzner up</code> fails at the Authentik health check step, SSH in and run:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">docker</span><span> exec authentik-server ak migrate
+</span><span style="color:#ffd580;">docker</span><span> restart authentik-server authentik-worker
+</span></code></pre>
+<p><strong>NetBird ip rules lost on container restart:</strong> After restarting <code>netbird-agent</code>, verify ip rules are restored — <code>ip rule show</code> must show rules for table <code>7120</code>. If missing, restart the container again: <code>docker restart netbird-agent</code>. This restores the <code>192.168.1.0/24</code> policy route needed for Traefik → k8s traffic.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core hetzner up
+</span><span style="font-style:italic;color:#5c6773;"># Verify NetBird mesh:
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -sk</span><span> https://netbird.madhan.app/api/v1/peers</span><span style="color:#ffcc66;"> -H </span><span style="color:#bae67e;">&quot;Authorization: Bearer $</span><span>NB_TOKEN</span><span style="color:#bae67e;">&quot;
+</span><span style="font-style:italic;color:#5c6773;"># Verify ip rules on bifrost host:
+</span><span style="color:#ffd580;">ssh</span><span> root@178.156.199.250 </span><span style="color:#bae67e;">&quot;ip rule show | grep 7120&quot;
+</span></code></pre>
+<hr />
+<h2 id="phase-8-workloads-low-risk">Phase 8 — Workloads: Low Risk</h2>
+<p>No inter-dependencies. Update all in one commit, run <code>just synth</code>, push.</p>
+<table><thead><tr><th>Component</th><th>Change</th></tr></thead><tbody>
+<tr><td>Kyverno</td><td><code>cdk8s.yaml</code></td></tr>
+<tr><td>Falco</td><td><code>security/falco.go:84</code></td></tr>
+<tr><td>Metrics Server</td><td><code>cdk8s.yaml</code></td></tr>
+<tr><td>Reloader</td><td><code>support/reloader.go:20</code></td></tr>
+<tr><td>Fleet</td><td><code>cdk8s.yaml</code></td></tr>
+<tr><td>OTel Collector</td><td><code>observability/otel_collector.go:168,227</code> — both agent + gateway releases</td></tr>
+<tr><td>Headlamp</td><td><code>cdk8s.yaml</code></td></tr>
+<tr><td>Trivy</td><td><code>cdk8s.yaml</code> <strong>and</strong> <code>security/trivy.go:22</code> — both must match; CRD fetch URL is built from this version</td></tr>
+</tbody></table>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">git</span><span> push
+</span><span style="color:#ffd580;">kubectl</span><span> get applications</span><span style="color:#ffcc66;"> -n</span><span> argocd  </span><span style="font-style:italic;color:#5c6773;"># all Synced + Healthy
+</span></code></pre>
+<hr />
+<h2 id="phase-9-workloads-medium-risk">Phase 9 — Workloads: Medium Risk</h2>
+<h3 id="victoriametrics-victorialogs">VictoriaMetrics + VictoriaLogs</h3>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
+</span><span>- </span><span style="color:#bae67e;">helm:https://victoriametrics.github.io/helm-charts/victoria-metrics-k8s-stack@0.X.Y
+</span><span>- </span><span style="color:#bae67e;">helm:https://victoriametrics.github.io/helm-charts/victoria-logs-single@0.X.Y
+</span></code></pre>
+<p>Also update <code>workloads/observability/victoria_metrics.go:69</code>. Run <code>helm diff upgrade</code> first — the values schema changes frequently between minor versions.</p>
+<h3 id="grafana">Grafana</h3>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
+</span><span>- </span><span style="color:#bae67e;">helm:https://grafana-community.github.io/helm-charts/grafana@X.Y.Z
+</span></code></pre>
+<p><strong>Grafana 10 → 11 warning:</strong> Major version break. Angular plugin support removed. Datasource plugin API changed. Read the <a href="https://grafana.com/docs/grafana/latest/upgrade-guide/">migration guide</a> before upgrading past 11.0. Verify all dashboards load after upgrade.</p>
+<h3 id="harbor">Harbor</h3>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
+</span><span>- </span><span style="color:#bae67e;">helm:https://helm.goharbor.io/harbor@1.X.Y
+</span></code></pre>
+<p>Minor bumps only. After upgrade verify <code>harbor:80</code> routing still works (Harbor nginx proxy quirk — route must target <code>harbor:80</code>, not <code>harbor-core:80</code>).</p>
+<h3 id="nvidia-gpu-operator">NVIDIA GPU Operator</h3>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
+</span><span>- </span><span style="color:#bae67e;">helm:https://helm.ngc.nvidia.com/nvidia/gpu-operator@X.Y.Z
+</span></code></pre>
+<p>Also update device plugin and DCGM exporter versions in <code>workloads/hardware/nvidia_gpu_operator.go:47,99</code>. Verify RTX 5070 Ti (sm_120, Blackwell) still supported in the new operator release — Blackwell support was added in 570.x driver series.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> ollama deploy/ollama</span><span style="color:#f29e74;"> --</span><span> nvidia-smi
+</span></code></pre>
+<hr />
+<h2 id="phase-10-workloads-complex">Phase 10 — Workloads: Complex</h2>
+<h3 id="rancher">Rancher</h3>
+<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
+</span><span>- </span><span style="color:#bae67e;">helm:https://releases.rancher.com/server-charts/stable/rancher@2.X.Y
+</span></code></pre>
+<p>Update <code>--kube-version</code> flag in <code>workloads/management/rancher.go:117</code> to match the actual cluster k8s version after the Talos upgrade:</p>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span>HelmFlags</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>[]</span><span style="color:#f29e74;">*</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;--kube-version&quot;</span><span>)</span><span style="color:#ccc9c2cc;">, </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;1.3X.0&quot;</span><span>)}</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<h3 id="n8n">n8n</h3>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// workloads/automation/n8n.go:184
+</span><span>Version</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;2.X.Y&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p>Check latest: <code>helm show chart oci://8gears.container-registry.com/library/n8n</code>. DB schema migrations run automatically on pod start via CNPG. Verify n8n healthy after upgrade:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> rollout status deployment n8n</span><span style="color:#ffcc66;"> -n</span><span> n8n
+</span></code></pre>
+<h3 id="ollama">Ollama</h3>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// workloads/ai/ollama.go:33
+</span><span style="color:#bae67e;">&quot;tag&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;0.X.Y&quot;</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p>Also update chart in <code>cdk8s.yaml</code>. Downloaded models stay in the PVC — no re-pull needed.</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> ollama deploy/ollama</span><span style="color:#f29e74;"> --</span><span> ollama list
+</span></code></pre>
+<h3 id="comfyui">ComfyUI</h3>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// workloads/ai/comfyui.go:73
+</span><span>Image</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;yanwk/comfyui-boot:cu128-megapak-YYYYMMDD&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p>Check <a href="https://hub.docker.com/r/yanwk/comfyui-boot/tags">yanwk/comfyui-boot tags</a> — use <code>cu128-megapak-*</code> variants only (CUDA 12.8 required for RTX 5070 Ti / sm_120). Do <strong>not</strong> use <code>latest-cu128</code> — that tag does not exist.</p>
+<h3 id="netbird-peer-k8s">NetBird Peer (k8s)</h3>
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// workloads/networking/netbird_peer.go:139,158  (both init + main containers)
+</span><span>Image</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;netbirdio/netbird:0.X.Y&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span></code></pre>
+<p>Must match Bifrost docker-compose NetBird version exactly. Upgrade Bifrost and k8s peer in the same commit.</p>
+<h3 id="kubeflow">Kubeflow</h3>
+<p>Kubeflow is deployed via Kustomize from <code>kubeflow/manifests</code>, not a Helm chart. Upgrade by updating <code>targetRevision</code> in the ApplicationSet at <code>core/platform/argocd.go:175</code>. Check the <a href="https://github.com/kubeflow/manifests/releases">kubeflow/manifests releases</a> for the version compatible with the current k8s version.</p>
+<hr />
+<h2 id="cdk8s-import-regeneration">cdk8s Import Regeneration</h2>
+<p>After changing any chart version in <code>cdk8s.yaml</code>, regenerate typed Go bindings:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#f28779;">cd</span><span> workloads
+</span><span style="color:#ffd580;">cdk8s</span><span> import        </span><span style="font-style:italic;color:#5c6773;"># regenerates workloads/imports/*
+</span><span style="color:#ffd580;">go</span><span> mod tidy
+</span><span style="color:#ffd580;">just</span><span> synth          </span><span style="font-style:italic;color:#5c6773;"># verify no compile errors before pushing
+</span></code></pre>
+<p>If Talos upgrades the embedded k8s version, also update the <code>k8s@1.30.0</code> import at the top of <code>cdk8s.yaml</code>.</p>
+<hr />
+<h2 id="post-upgrade-verification">Post-Upgrade Verification</h2>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Cluster health
+</span><span style="color:#ffd580;">talosctl</span><span style="color:#ffcc66;"> --talosconfig </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.talos/config health</span><span style="color:#ffcc66;"> --nodes</span><span> 192.168.1.210
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># All ArgoCD apps synced
+</span><span style="color:#ffd580;">kubectl</span><span> get applications</span><span style="color:#ffcc66;"> -n</span><span> argocd
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Secrets layer
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao status
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> grafana deploy/grafana</span><span style="color:#f29e74;"> --</span><span> cat /mnt/secrets/ADMIN_PASSWORD
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> harbor deploy/harbor-secret-sync</span><span style="color:#f29e74;"> --</span><span> ls /mnt/secrets/
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Storage
+</span><span style="color:#ffd580;">kubectl</span><span> get nodes.longhorn.io</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system
+</span><span style="color:#ffd580;">kubectl</span><span> get volume.longhorn.io</span><span style="color:#ffcc66;"> -n</span><span> longhorn-system
+</span><span style="color:#ffd580;">kubectl</span><span> get cluster</span><span style="color:#ffcc66;"> -A
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># GPU
+</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> ollama deploy/ollama</span><span style="color:#f29e74;"> --</span><span> nvidia-smi
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Bifrost routing
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -I</span><span> https://auth.madhan.app
+</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -I</span><span> https://grafana.madhan.app
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># NetBird tunnel (from Bifrost VPS)
+</span><span style="color:#ffd580;">docker</span><span> exec netbird-agent netbird status
+</span></code></pre>
+<hr />
+<h2 id="breaking-change-reference">Breaking Change Reference</h2>
+<table><thead><tr><th>Upgrade</th><th>Breaking change</th></tr></thead><tbody>
+<tr><td>Talos minor bump</td><td>k8s version embedded — check <code>cdk8s.yaml</code> <code>k8s@</code> version</td></tr>
+<tr><td>Cilium any</td><td><code>CiliumLoadBalancerIPPool</code> / <code>BGPCiliumPeeringPolicy</code> field renames — check <code>cilium.go:208,225</code></td></tr>
+<tr><td>ArgoCD chart major</td><td>TLSRoute backend service name hash changes — check <code>argocd.go:148</code></td></tr>
+<tr><td>Grafana 10 → 11</td><td>Angular plugins removed; datasource API changed</td></tr>
+<tr><td>Longhorn minor</td><td>Upgrade one minor at a time only</td></tr>
+<tr><td>Rancher any</td><td><code>--kube-version</code> flag must match cluster k8s version</td></tr>
+<tr><td>NetBird any</td><td>All components (server/dashboard/proxy/agent/peer) must be on identical version</td></tr>
+<tr><td>Authentik any</td><td>Migration race: <code>bootstrap.sh</code> runs <code>ak migrate</code> first; if health check times out SSH + force-migrate (see Phase 7)</td></tr>
+<tr><td>Authentik any</td><td>After <code>netbird-agent</code> restart, verify <code>ip rule show | grep 7120</code> — missing rules = restart agent again</td></tr>
+<tr><td>Trivy any</td><td><code>trivyVersion</code> const in <code>trivy.go:22</code> and <code>cdk8s.yaml</code> import must match</td></tr>
+<tr><td>ComfyUI any</td><td>Only <code>cu128-megapak-*</code> tags work on RTX 5070 Ti — do not use <code>latest-cu128</code></td></tr>
+</tbody></table>
 
 
     <!--  Errata section  -->
@@ -646,7 +889,7 @@
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/platform&#x2F;secrets&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/upgrade-guide&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -678,7 +921,7 @@
                                     
     
         
-        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/platform/">
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -686,7 +929,7 @@
                     </svg>
                     <span class="nav-button-label">Back to</span>
                 </div>
-                <div class="nav-button-title">Platform</div>
+                <div class="nav-button-title">Homelab</div>
             </div>
         </a>
     
@@ -762,24 +1005,9 @@
                 
             
                 
-                    
-                
             
         
             
-            
-                <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/workloads/">
-                    <div class="nav-button-content">
-                        <div class="nav-button-direction">
-                            <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                            <span class="nav-button-label">Next</span>
-                        </div>
-                        <div class="nav-button-title">Workloads</div>
-                    </div>
-                </a>
-                
             
             
         
@@ -800,60 +1028,26 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/secrets/#what-is-sops-openbao" class="toc-link">What is SOPS + OpenBao?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#why-this-approach" class="toc-link">Why This Approach?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#architecture" class="toc-link">Architecture</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#pattern-a-file-only-no-k8s-secret" class="toc-link">Pattern A — File-only (no k8s Secret)</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#pattern-b-secretobjects-sync-k8s-secret-created" class="toc-link">Pattern B — secretObjects sync (k8s Secret created)</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#bootstrap-secrets" class="toc-link">Bootstrap Secrets</a>
-                    
-                </li>
-            
-                <li>
-                    
                     <details class="toc-details" >
                         <summary>
-                            <a href="https://homelab.madhan.app/platform/secrets/#sops-age-setup" class="toc-link">SOPS + age Setup</a>
+                            <a href="https://homelab.madhan.app/upgrade-guide/#current-version-inventory" class="toc-link">Current Version Inventory</a>
                         </summary>
                         <ul>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/platform/secrets/#first-time-setup" class="toc-link">First-Time Setup</a>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#infrastructure-platform" class="toc-link">Infrastructure &amp; Platform</a>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/platform/secrets/#day-to-day-commands" class="toc-link">Day-to-Day Commands</a>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#cloud-bifrost-docker-compose" class="toc-link">Cloud (Bifrost Docker Compose)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#secrets-storage" class="toc-link">Secrets &amp; Storage</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#workloads" class="toc-link">Workloads</a>
                                 </li>
                             
                         </ul>
@@ -863,19 +1057,160 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/secrets/#openbao-setup-one-time" class="toc-link">OpenBao Setup (one-time)</a>
+                    <a href="https://homelab.madhan.app/upgrade-guide/#upgrade-order" class="toc-link">Upgrade Order</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/secrets/#apps-and-their-secret-paths" class="toc-link">Apps and Their Secret Paths</a>
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-0-research-latest-versions" class="toc-link">Phase 0 — Research Latest Versions</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/secrets/#cdk8s-generates-zero-secrets" class="toc-link">CDK8s Generates Zero Secrets</a>
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-1-talos" class="toc-link">Phase 1 — Talos</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-2-cilium" class="toc-link">Phase 2 — Cilium</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-3-argocd" class="toc-link">Phase 3 — ArgoCD</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-4-cert-manager" class="toc-link">Phase 4 — cert-manager</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-5-openbao-csi-driver" class="toc-link">Phase 5 — OpenBao + CSI Driver</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/upgrade-guide/#phase-6-longhorn-cnpg" class="toc-link">Phase 6 — Longhorn + CNPG</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#longhorn" class="toc-link">Longhorn</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#cnpg" class="toc-link">CNPG</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-7-bifrost-docker-compose" class="toc-link">Phase 7 — Bifrost Docker Compose</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-8-workloads-low-risk" class="toc-link">Phase 8 — Workloads: Low Risk</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/upgrade-guide/#phase-9-workloads-medium-risk" class="toc-link">Phase 9 — Workloads: Medium Risk</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#victoriametrics-victorialogs" class="toc-link">VictoriaMetrics + VictoriaLogs</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#grafana" class="toc-link">Grafana</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#harbor" class="toc-link">Harbor</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#nvidia-gpu-operator" class="toc-link">NVIDIA GPU Operator</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/upgrade-guide/#phase-10-workloads-complex" class="toc-link">Phase 10 — Workloads: Complex</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#rancher" class="toc-link">Rancher</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#n8n" class="toc-link">n8n</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#ollama" class="toc-link">Ollama</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#comfyui" class="toc-link">ComfyUI</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#netbird-peer-k8s" class="toc-link">NetBird Peer (k8s)</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#kubeflow" class="toc-link">Kubeflow</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#cdk8s-import-regeneration" class="toc-link">cdk8s Import Regeneration</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#post-upgrade-verification" class="toc-link">Post-Upgrade Verification</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/upgrade-guide/#breaking-change-reference" class="toc-link">Breaking Change Reference</a>
                     
                 </li>
             
@@ -990,7 +1325,7 @@
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+            <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
         
             
@@ -1111,7 +1446,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cert-manager">cert-manager</a></li>
                             
-                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
                             
                             
                         </ul>

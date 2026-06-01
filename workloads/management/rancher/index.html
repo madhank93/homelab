@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Multi-cluster Kubernetes management UI with OpenBao secrets integration." />
+            <meta name="description" content="Removed in v0.1.6." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Rancher | Homelab" />
-      <meta property="og:description" content="Multi-cluster Kubernetes management UI with OpenBao secrets integration." />
+      <meta property="og:description" content="Removed in v0.1.6." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Rancher" />
-      <meta name="twitter:description" content="Multi-cluster Kubernetes management UI with OpenBao secrets integration." />
+      <meta name="twitter:description" content="Removed in v0.1.6." />
       
       
       
@@ -348,6 +348,22 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/architecture/software-inventory">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/list-check.svg'); mask-image: url('https://homelab.madhan.app/icons/list-check.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Software Inventory
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/architecture">
           
 
@@ -505,67 +521,20 @@
             Rancher
             
         </h1>
-        <p class="text-gray-500">Multi-cluster Kubernetes management UI with OpenBao secrets integration.</p>
+        <p class="text-gray-500">Removed in v0.1.6.</p>
     </div>
-    <h2 id="what-is-rancher">What is Rancher?</h2>
-<p><a href="https://rancher.com/">Rancher</a> is an open-source Kubernetes management platform that provides a web UI for managing multiple clusters, workloads, nodes, storage, and networking. It includes Fleet for GitOps-based multi-cluster management and a Helm app catalog.</p>
-<h2 id="why-rancher">Why Rancher?</h2>
-<p>Rancher provides deeper cluster management capabilities than Headlamp — including node management, cluster import/creation, Helm app deployment, and the Fleet GitOps system. Both Rancher and Headlamp run in this homelab; Headlamp for quick Kubernetes API browsing, Rancher for cluster administration and fleet management.</p>
-<h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Rancher runs in the <code>cattle-system</code> namespace with 3 replicas (for HA within the cluster). Bootstrap password is managed by OpenBao via a dedicated <code>secret-sync</code> Deployment (Pattern B).</p>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/management/rancher.go"><code>workloads/management/rancher.go</code></a></p>
-<h2 id="configuration">Configuration</h2>
-<table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
-<tr><td>Namespace</td><td><code>cattle-system</code></td><td>Rancher convention</td></tr>
-<tr><td>HTTPRoute</td><td><code>rancher.madhan.app</code> → <code>rancher:80</code></td><td>Gateway API</td></tr>
-<tr><td><code>hostname</code></td><td><code>rancher.madhan.app</code></td><td>Used for redirect URLs</td></tr>
-<tr><td>Replicas</td><td><code>3</code></td><td>HA within cluster</td></tr>
-<tr><td><code>agentTLSMode</code></td><td><code>system-store</code></td><td>Use system CA store for agent TLS</td></tr>
-<tr><td><code>auditLog.level</code></td><td><code>0</code></td><td>Audit logging disabled (set to 1+ for production)</td></tr>
-<tr><td><code>ingress.enabled</code></td><td><code>false</code></td><td>Routing via Gateway API</td></tr>
-<tr><td><code>existingBootstrapPassword</code></td><td><code>rancher-bootstrap</code></td><td>CSI-synced Secret from OpenBao</td></tr>
-<tr><td>Resources (limits)</td><td><code>1000m</code> / <code>2Gi</code></td><td>3 replicas each</td></tr>
-<tr><td><code>--kube-version</code></td><td><code>1.30.0</code></td><td>Required for chart compatibility with this k8s version</td></tr>
-</tbody></table>
-<h2 id="secrets-openbao">Secrets (OpenBao)</h2>
-<p>Pattern B (secretObjects sync). <code>BOOTSTRAP_PASSWORD</code> is fetched from OpenBao (<code>secret/data/rancher</code>) and synced into the <code>rancher-bootstrap</code> k8s Secret.</p>
-<p><strong>Why a dedicated secret-sync Deployment?</strong> Rancher's Helm chart does not support <code>extraVolumes</code>. A <code>secret-sync</code> Deployment with a <code>pause</code> container mounts the CSI volume to trigger secretObjects sync.</p>
-<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="color:#bae67e;">&quot;existingBootstrapPassword&quot;</span><span style="color:#ccc9c2cc;">:  </span><span style="color:#bae67e;">&quot;rancher-bootstrap&quot;</span><span style="color:#ccc9c2cc;">,
-</span><span style="color:#bae67e;">&quot;bootstrapPasswordSecretKey&quot;</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;BOOTSTRAP_PASSWORD&quot;</span><span style="color:#ccc9c2cc;">,
-</span></code></pre>
-<h2 id="how-it-connects">How It Connects</h2>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Browser → rancher.madhan.app
-</span><span>  → homelab-gateway → rancher:80
-</span><span>  → Rancher pod(s) in cattle-system
-</span><span>  → Kubernetes API (reads all cluster resources)
-</span><span>  → OpenBao CSI → secret-sync pod → rancher-bootstrap k8s Secret
-</span></code></pre>
-<h2 id="screenshots">Screenshots</h2>
-<p><img src="/assets/screenshots/rancher/cluster-dashboard.png" alt="Rancher cluster dashboard showing workload health, node status, and resource usage" /></p>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="bootstrap-password-not-working">Bootstrap Password Not Working</h3>
-<p><strong>Symptoms:</strong> Rancher login shows "Invalid credentials" for the bootstrap admin user.</p>
-<p><strong>Diagnosis:</strong></p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check secret-sync pod is running
-</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> cattle-system</span><span style="color:#ffcc66;"> -l</span><span> app=secret-sync
-</span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> cattle-system</span><span style="color:#ffcc66;"> -l</span><span> app=secret-sync
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Verify bootstrap secret is populated
-</span><span style="color:#ffd580;">kubectl</span><span> get secret rancher-bootstrap</span><span style="color:#ffcc66;"> -n</span><span> cattle-system</span><span style="color:#ffcc66;"> -o</span><span> yaml
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Verify OpenBao has the password
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv get secret/rancher
-</span></code></pre>
-<h3 id="rancher-agent-connectivity">Rancher Agent Connectivity</h3>
-<p>If Rancher reports cluster agents as disconnected after a restart:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Check Rancher pods
-</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> cattle-system
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Check cattle-cluster-agent
-</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> cattle-system</span><span style="color:#ffcc66;"> -l</span><span> app=cattle-cluster-agent
-</span></code></pre>
-<h3 id="helm-flag-kube-version">Helm Flag <code>--kube-version</code></h3>
-<p>Rancher's Helm chart requires explicit <code>--kube-version</code> for chart validation when the Kubernetes version is newer than what the chart explicitly supports. This is set in the CDK8s Helm properties via <code>HelmFlags</code>.</p>
+    <blockquote>
+<p><strong>Removed in v0.1.6.</strong> Rancher was removed from CDK8s workloads. See <a href="/releases/v0.1.6/">v0.1.6 Release Notes</a> for details.</p>
+</blockquote>
+<h2 id="why-it-was-removed">Why It Was Removed</h2>
+<p>Rancher added ~1000m CPU overhead per replica and caused double-reconciliation conflicts with ArgoCD for Fleet-managed apps. ArgoCD + Headlamp cover all cluster management needs for this homelab without the overhead.</p>
+<p><strong>Removed files:</strong></p>
+<ul>
+<li><code>workloads/management/rancher.go</code></li>
+<li><code>workloads/imports/rancher/</code></li>
+<li><code>workloads/imports/fleet/</code></li>
+</ul>
+<p>Use <a href="/workloads/management/headlamp/">Headlamp</a> for Kubernetes UI and <a href="/infrastructure/argocd/">ArgoCD</a> for GitOps.</p>
 
 
     <!--  Errata section  -->
@@ -647,6 +616,8 @@
             
                 
             
+                
+            
         
             
             
@@ -715,68 +686,7 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/management/rancher/#what-is-rancher" class="toc-link">What is Rancher?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/management/rancher/#why-rancher" class="toc-link">Why Rancher?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/management/rancher/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/management/rancher/#configuration" class="toc-link">Configuration</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/management/rancher/#secrets-openbao" class="toc-link">Secrets (OpenBao)</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/management/rancher/#how-it-connects" class="toc-link">How It Connects</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/management/rancher/#screenshots" class="toc-link">Screenshots</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/workloads/management/rancher/#troubleshooting" class="toc-link">Troubleshooting</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/workloads/management/rancher/#bootstrap-password-not-working" class="toc-link">Bootstrap Password Not Working</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/workloads/management/rancher/#rancher-agent-connectivity" class="toc-link">Rancher Agent Connectivity</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/workloads/management/rancher/#helm-flag-kube-version" class="toc-link">Helm Flag --kube-version</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
+                    <a href="https://homelab.madhan.app/workloads/management/rancher/#why-it-was-removed" class="toc-link">Why It Was Removed</a>
                     
                 </li>
             
@@ -887,6 +797,12 @@
         
         
         
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
         
             
             <li>
@@ -919,6 +835,8 @@
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/gitops-flow">GitOps Flow</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/secrets-flow">Secrets Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/software-inventory">Software Inventory</a></li>
                             
                             
                         </ul>
@@ -1163,11 +1081,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1179,11 +1097,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>

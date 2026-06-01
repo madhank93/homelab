@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="SOPS&#x2F;age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git." />
+            <meta name="description" content="All software and services in the homelab, their versions, and where they are defined in code." />
         
     
 
-    <title>Secrets | Homelab</title>
+    <title>Software Inventory | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="Secrets | Homelab" />
-      <meta property="og:description" content="SOPS&#x2F;age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git." />
+      <meta property="og:title" content="Software Inventory | Homelab" />
+      <meta property="og:description" content="All software and services in the homelab, their versions, and where they are defined in code." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Secrets" />
-      <meta name="twitter:description" content="SOPS&#x2F;age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git." />
+      <meta name="twitter:title" content="Software Inventory" />
+      <meta name="twitter:description" content="All software and services in the homelab, their versions, and where they are defined in code." />
       
       
       
@@ -518,122 +518,179 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            Secrets
+            Software Inventory
             
         </h1>
-        <p class="text-gray-500">SOPS&#x2F;age for bootstrap secrets. OpenBao + Secrets Store CSI Driver for runtime secrets — zero credentials stored in git.</p>
+        <p class="text-gray-500">All software and services in the homelab, their versions, and where they are defined in code.</p>
     </div>
-    <h2 id="what-is-sops-openbao">What is SOPS + OpenBao?</h2>
-<p><a href="https://github.com/getsops/sops">SOPS</a> (Secrets OPerationS) is a tool for encrypting secret files using age, PGP, or cloud KMS keys — allowing encrypted secrets to be safely committed to a public git repository. <a href="https://openbao.org/">OpenBao</a> (a community fork of HashiCorp Vault) is a secrets management server that stores runtime credentials and serves them to pods via the Secrets Store CSI Driver.</p>
-<h2 id="why-this-approach">Why This Approach?</h2>
-<p>SOPS with age encryption keeps bootstrap secrets version-controlled and reproducible without any external service dependency. OpenBao handles runtime secrets at pod startup — no credentials ever appear in Kubernetes manifests, git history, or CDK8s-generated YAML.</p>
-<h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Bootstrap secrets (OpenBao unseal key, Cloudflare API token) are age-encrypted in <code>secrets/bootstrap.sops.yaml</code> and applied once with <code>just create-secrets</code>. All other app credentials live in OpenBao's KV store and are mounted into pods as files via the CSI driver at runtime, keeping CDK8s manifests completely secret-free.</p>
-<h2 id="architecture">Architecture</h2>
-<p>Secrets management uses a two-tier approach:</p>
-<ol>
-<li><strong>Bootstrap secrets</strong> — encrypted with SOPS/age, committed safely to git, applied once with <code>just create-secrets</code></li>
-<li><strong>Runtime secrets</strong> — stored in OpenBao (Vault fork, MPL-2.0), mounted into pods as files via the Secrets Store CSI Driver</li>
-</ol>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>secrets/bootstrap.sops.yaml  (age-encrypted, safe in git)
-</span><span>  └── just create-secrets
-</span><span>        ├── openbao/openbao-unseal-key    (Prune=false)
-</span><span>        └── cert-manager/cloudflare-api-token  (Prune=false)
-</span><span>
-</span><span>OpenBao (ns: openbao, port 8200)
-</span><span>  ├── KV v2 at secret/
-</span><span>  │     ├── secret/data/grafana   ADMIN_PASSWORD
-</span><span>  │     ├── secret/data/harbor    HARBOR_ADMIN_PASSWORD
-</span><span>  │     ├── secret/data/n8n       ENCRYPTION_KEY
-</span><span>  │     ├── secret/data/rancher   BOOTSTRAP_PASSWORD
-</span><span>  │     └── secret/data/netbird   NETBIRD_SETUP_KEY
-</span><span>  └── Kubernetes Auth method
-</span><span>        └── per-app roles → bound to app ServiceAccount + namespace
-</span><span>
-</span><span>Secrets Store CSI Driver (ns: kube-system)
-</span><span>  └── SecretProviderClass (per app ns)
-</span><span>        └── CSI volume in pod → mounts secrets as files
-</span><span>              └── secretObjects → syncs to k8s Secret (Pattern B only)
-</span></code></pre>
-<h2 id="pattern-a-file-only-no-k8s-secret">Pattern A — File-only (no k8s Secret)</h2>
-<p>Used by: <strong>Grafana</strong></p>
-<p>Secret is mounted as a file at <code>/mnt/secrets/&lt;KEY&gt;</code>. The app reads it via an env var pointing to the file path (e.g. <code>GF_SECURITY_ADMIN_PASSWORD__FILE</code>).</p>
-<p>No k8s Secret is created. The secret value never appears in <code>kubectl get secret</code> output.</p>
-<h2 id="pattern-b-secretobjects-sync-k8s-secret-created">Pattern B — secretObjects sync (k8s Secret created)</h2>
-<p>Used by: <strong>Harbor</strong>, <strong>n8n</strong>, <strong>Rancher</strong>, <strong>NetBird</strong></p>
-<p>The CSI volume mount triggers the SecretProviderClass <code>secretObjects</code> block, which creates a k8s Secret in the app's namespace. This is required for Helm charts that only accept <code>existingSecret</code> references.</p>
-<blockquote>
-<p>The CSI volume mount is <strong>required</strong> to trigger the sync — if no pod mounts the volume, the k8s Secret is never created.</p>
-</blockquote>
-<h2 id="bootstrap-secrets">Bootstrap Secrets</h2>
-<p>Only two Secrets are created by the bootstrap script and never managed by ArgoCD:</p>
-<table><thead><tr><th>Secret</th><th>Namespace</th><th>Keys</th><th>Purpose</th></tr></thead><tbody>
-<tr><td><code>openbao-unseal-key</code></td><td><code>openbao</code></td><td><code>unseal-key</code></td><td>Unseals OpenBao on pod startup via sidecar</td></tr>
-<tr><td><code>cloudflare-api-token</code></td><td><code>cert-manager</code></td><td><code>CLOUDFLARE_API_TOKEN</code></td><td>DNS-01 ACME challenge for wildcard cert</td></tr>
-</tbody></table>
-<p>Both carry <code>argocd.argoproj.io/sync-options: Prune=false</code> so ArgoCD never deletes them.</p>
-<h2 id="sops-age-setup">SOPS + age Setup</h2>
-<h3 id="first-time-setup">First-Time Setup</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Install tools
-</span><span style="color:#ffd580;">brew</span><span> install age sops
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 2. Generate age key pair (back up this file!)
-</span><span style="color:#ffd580;">mkdir</span><span style="color:#ffcc66;"> -p </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.config/sops/age
-</span><span style="color:#ffd580;">age-keygen</span><span style="color:#ffcc66;"> -o </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.config/sops/age/keys.txt
-</span><span style="font-style:italic;color:#5c6773;"># Output: Public key: age1abc123...
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 3. Add to shell profile (REQUIRED — sops 3.12+ does not auto-discover)
-</span><span style="color:#f28779;">echo </span><span style="color:#bae67e;">&#39;export SOPS_AGE_KEY_FILE=&quot;$HOME/.config/sops/age/keys.txt&quot;&#39; </span><span style="color:#f29e74;">&gt;&gt; </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.zshrc
-</span><span style="color:#f28779;">source </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.zshrc
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 4. Register public key in .sops.yaml at repo root
-</span><span style="font-style:italic;color:#5c6773;"># creation_rules:
-</span><span style="font-style:italic;color:#5c6773;">#   - path_regex: secrets/.*\.sops$
-</span><span style="font-style:italic;color:#5c6773;">#     age: age1abc123...
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 5. Populate the bootstrap secrets file
-</span><span style="color:#ffd580;">sops</span><span> secrets/bootstrap.sops.yaml   </span><span style="font-style:italic;color:#5c6773;"># opens $EDITOR, re-encrypts on save
-</span></code></pre>
-<h3 id="day-to-day-commands">Day-to-Day Commands</h3>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Edit encrypted file in-place
-</span><span style="color:#ffd580;">sops</span><span> secrets/bootstrap.sops.yaml
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Create/update bootstrap k8s Secrets
-</span><span style="color:#ffd580;">just</span><span> create-secrets
-</span></code></pre>
-<h2 id="openbao-setup-one-time">OpenBao Setup (one-time)</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># 1. Deploy OpenBao + unseal it
-</span><span style="color:#ffd580;">just</span><span> openbao-init        </span><span style="font-style:italic;color:#5c6773;"># initialises, saves root token to /tmp/openbao-init.json
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 2. Configure K8s auth, policies, roles, placeholder secrets
-</span><span style="color:#ffd580;">just</span><span> openbao-setup       </span><span style="font-style:italic;color:#5c6773;"># runs scripts/openbao-setup.sh
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># 3. Replace placeholder secrets with real values
-</span><span>ROOT_TOKEN</span><span style="color:#f29e74;">=</span><span style="color:#bae67e;">$</span><span>(</span><span style="color:#ffd580;">python3</span><span style="color:#ffcc66;"> -c </span><span style="color:#bae67e;">&quot;import json; print(json.load(open(&#39;/tmp/openbao-init.json&#39;))[&#39;root_token&#39;])&quot;</span><span>)
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret grafana  ADMIN_PASSWORD=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret n8n      ENCRYPTION_KEY=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret rancher  BOOTSTRAP_PASSWORD=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> env BAO_TOKEN=$ROOT_TOKEN </span><span style="color:#ccc9c2cc;">\
-</span><span>  bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=</span><span style="color:#f29e74;">&lt;</span><span>real</span><span style="color:#f29e74;">&gt;
-</span></code></pre>
-<h2 id="apps-and-their-secret-paths">Apps and Their Secret Paths</h2>
-<table><thead><tr><th>App</th><th>OpenBao Path</th><th>Secret keys fetched</th><th>k8s Secret created</th><th>Pattern</th></tr></thead><tbody>
-<tr><td>Grafana</td><td><code>secret/data/grafana</code></td><td><code>ADMIN_PASSWORD</code></td><td>none</td><td>A (file)</td></tr>
-<tr><td>Harbor</td><td><code>secret/data/harbor</code></td><td><code>HARBOR_ADMIN_PASSWORD</code></td><td><code>harbor-admin</code></td><td>B</td></tr>
-<tr><td>n8n</td><td><code>secret/data/n8n</code></td><td><code>ENCRYPTION_KEY</code></td><td><code>n8n-secrets</code></td><td>B</td></tr>
-<tr><td>Rancher</td><td><code>secret/data/rancher</code></td><td><code>BOOTSTRAP_PASSWORD</code></td><td><code>rancher-bootstrap</code></td><td>B</td></tr>
-<tr><td>NetBird</td><td><code>secret/data/netbird</code></td><td><code>NETBIRD_SETUP_KEY</code></td><td><code>netbird-setup-key</code></td><td>B</td></tr>
-</tbody></table>
-<blockquote>
-<p>n8n DB password is <strong>not</strong> in OpenBao — it is auto-managed by the CloudNativePG operator (<code>n8n-pg-app</code> Secret).</p>
-</blockquote>
-<h2 id="cdk8s-generates-zero-secrets">CDK8s Generates Zero Secrets</h2>
-<p>The CI pipeline synthesizes CDK8s manifests to the <code>v0.1.5-manifests</code> branch. It requires <strong>zero GitHub Actions secrets</strong> — CDK8s never generates any <code>Secret</code> resources. All runtime secrets are pulled by the in-cluster CSI driver at mount time.</p>
+    <p>Versions sourced directly from code — Helm chart versions, Docker image tags, or binary version constants.</p>
+<table style="width:100%; table-layout:fixed; word-break:break-word;">
+<thead>
+<tr>
+  <th style="width:12%">Hosted</th>
+  <th style="width:12%">Category</th>
+  <th style="width:20%">Software</th>
+  <th style="width:11%">Version</th>
+  <th style="width:14%">Managed by</th>
+  <th>Code link</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Proxmox</td>
+  <td></td>
+  <td>Talos Linux</td>
+  <td>v1.13.3</td>
+  <td>Pulumi</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/platform/talos.go">core/platform/talos.go</a></td>
+</tr>
+<tr>
+  <td rowspan="6">Cloud<br><small>(Hetzner VPS)</small></td>
+  <td rowspan="6"></td>
+  <td>Traefik</td><td>v3.7.1</td>
+  <td rowspan="6">Pulumi</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/cloud/bifrost/docker-compose.yml">bifrost/docker-compose.yml</a></td>
+</tr>
+<tr>
+  <td>NetBird (server + agent)</td><td>0.71.4</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/cloud/bifrost/docker-compose.yml">bifrost/docker-compose.yml</a></td>
+</tr>
+<tr>
+  <td>Authentik</td><td>2026.5.2</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/cloud/bifrost/docker-compose.yml">bifrost/docker-compose.yml</a></td>
+</tr>
+<tr>
+  <td>Gatus</td><td>v5.36.0</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/cloud/bifrost/docker-compose.yml">bifrost/docker-compose.yml</a></td>
+</tr>
+<tr>
+  <td>Cloudflare DNS</td><td>—</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/cloud/cloudflare.go">core/cloud/cloudflare.go</a></td>
+</tr>
+<tr>
+  <td>Hetzner VPS</td><td>—</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/cloud/hetzner.go">core/cloud/hetzner.go</a></td>
+</tr>
+<!-- Kubernetes: 26 data rows total -->
+<tr>
+  <td rowspan="26">Kubernetes</td>
+  <td rowspan="4">Core</td>
+  <td>Cilium CNI</td><td>1.18.10</td>
+  <td rowspan="4">Pulumi</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/platform/cilium.go">core/platform/cilium.go</a></td>
+</tr>
+<tr>
+  <td>Gateway API CRDs</td><td>v1.2.1</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/platform/cilium.go">core/platform/cilium.go</a></td>
+</tr>
+<tr>
+  <td>ArgoCD</td><td>9.5.15</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/platform/argocd.go">core/platform/argocd.go</a></td>
+</tr>
+<tr>
+  <td>cert-manager</td><td>v1.19.3</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/core/platform/cert_manager.go">core/platform/cert_manager.go</a></td>
+</tr>
+<tr>
+  <td>Networking</td>
+  <td>NetBird routing peer</td><td>0.71.4</td>
+  <td rowspan="22">CDK8s + ArgoCD</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/networking/netbird_peer.go">workloads/networking/netbird_peer.go</a></td>
+</tr>
+<tr>
+  <td rowspan="2">Storage</td>
+  <td>Longhorn</td><td>1.11.2</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/storage/longhorn.go">workloads/storage/longhorn.go</a></td>
+</tr>
+<tr>
+  <td>CloudNativePG</td><td>0.28.2</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/databases/cnpg.go">workloads/databases/cnpg.go</a></td>
+</tr>
+<tr>
+  <td rowspan="2">Secrets</td>
+  <td>OpenBao</td><td>0.28.3</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/secrets/openbao.go">workloads/secrets/openbao.go</a></td>
+</tr>
+<tr>
+  <td>Secrets Store CSI Driver</td><td>1.5.6</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/secrets/csi_driver.go">workloads/secrets/csi_driver.go</a></td>
+</tr>
+<tr>
+  <td rowspan="5">Observability</td>
+  <td>VictoriaMetrics k8s-stack</td><td>0.72.4</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/observability/victoria_metrics.go">workloads/observability/victoria_metrics.go</a></td>
+</tr>
+<tr>
+  <td>VictoriaLogs</td><td>0.12.5</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/observability/victoria_logs.go">workloads/observability/victoria_logs.go</a></td>
+</tr>
+<tr>
+  <td>Grafana</td><td>12.4.1</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/monitoring/grafana.go">workloads/monitoring/grafana.go</a></td>
+</tr>
+<tr>
+  <td>OpenTelemetry Collector</td><td>0.156.2</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/observability/otel_collector.go">workloads/observability/otel_collector.go</a></td>
+</tr>
+<tr>
+  <td>Metrics Server</td><td>3.13.0</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/monitoring/metrics_server.go">workloads/monitoring/metrics_server.go</a></td>
+</tr>
+<tr>
+  <td rowspan="3">Security</td>
+  <td>Falco</td><td>8.0.5</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/security/falco.go">workloads/security/falco.go</a></td>
+</tr>
+<tr>
+  <td>Trivy Operator</td><td>0.32.0</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/security/trivy.go">workloads/security/trivy.go</a></td>
+</tr>
+<tr>
+  <td>Kyverno</td><td>3.8.1</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/security/kyverno.go">workloads/security/kyverno.go</a></td>
+</tr>
+<tr>
+  <td rowspan="3">Management</td>
+  <td>Headlamp</td><td>0.42.0</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/management/headlamp.go">workloads/management/headlamp.go</a></td>
+</tr>
+<tr>
+  <td>Harbor</td><td>1.19.0</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/registry/harbor.go">workloads/registry/harbor.go</a></td>
+</tr>
+<tr>
+  <td>Reloader</td><td>2.2.12</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/support/reloader.go">workloads/support/reloader.go</a></td>
+</tr>
+<tr>
+  <td rowspan="5">AI / ML</td>
+  <td>Ollama</td><td>1.57.0</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/ai/ollama.go">workloads/ai/ollama.go</a></td>
+</tr>
+<tr>
+  <td>ComfyUI</td><td>cu128-megapak-20260223</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/ai/comfyui.go">workloads/ai/comfyui.go</a></td>
+</tr>
+<tr>
+  <td>Kubeflow</td><td>v1.11.0</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/ai/kubeflow/kustomization.yaml">workloads/ai/kubeflow/kustomization.yaml</a></td>
+</tr>
+<tr>
+  <td>NVIDIA Device Plugin</td><td>0.19.1</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/hardware/nvidia_gpu_operator.go">workloads/hardware/nvidia_gpu_operator.go</a></td>
+</tr>
+<tr>
+  <td>NVIDIA DCGM Exporter</td><td>4.8.2</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/hardware/nvidia_gpu_operator.go">workloads/hardware/nvidia_gpu_operator.go</a></td>
+</tr>
+<tr>
+  <td>Automation</td>
+  <td>n8n</td><td>2.0.1</td>
+  <td><a href="https://github.com/madhank93/homelab/blob/main/workloads/automation/n8n.go">workloads/automation/n8n.go</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Notes:</strong> Cloudflare and Hetzner have no version — provider/account configs. ComfyUI uses a build tag, not semver. All Kubernetes chart versions are Helm chart versions.</p>
 
 
     <!--  Errata section  -->
@@ -646,7 +703,7 @@
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/platform&#x2F;secrets&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/architecture&#x2F;software-inventory.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -678,7 +735,7 @@
                                     
     
         
-        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/platform/">
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/architecture/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -686,7 +743,7 @@
                     </svg>
                     <span class="nav-button-label">Back to</span>
                 </div>
-                <div class="nav-button-title">Platform</div>
+                <div class="nav-button-title">Architecture</div>
             </div>
         </a>
     
@@ -716,59 +773,13 @@
                 
             
                 
-            
-        
-            
-            
-            
-                
-            
-                
-            
-        
-            
-            
-            
-                
-            
-        
-            
-            
-            
-                
-            
-                
-            
-                
-            
-                
-            
-                
-            
-        
-            
-            
-            
-                
-            
-                
-            
-                
-            
-                
-            
-                
-            
-                
-            
-                
                     
                 
             
         
             
             
-                <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/workloads/">
+                <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/hardware/">
                     <div class="nav-button-content">
                         <div class="nav-button-direction">
                             <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -776,10 +787,56 @@
                             </svg>
                             <span class="nav-button-label">Next</span>
                         </div>
-                        <div class="nav-button-title">Workloads</div>
+                        <div class="nav-button-title">Hardware</div>
                     </div>
                 </a>
                 
+            
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
             
             
         
@@ -792,96 +849,6 @@
 
                     
                         
-
-<div class="hidden lg:block" >
-    <div class="sticky top-20 px-4 py-2 border-l border-gray-500/15">
-        <h4 class="text-lg font-bold mb-1">ON THIS PAGE</h4>
-            <ul class="menu menu-sm toc-menu">
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#what-is-sops-openbao" class="toc-link">What is SOPS + OpenBao?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#why-this-approach" class="toc-link">Why This Approach?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#architecture" class="toc-link">Architecture</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#pattern-a-file-only-no-k8s-secret" class="toc-link">Pattern A — File-only (no k8s Secret)</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#pattern-b-secretobjects-sync-k8s-secret-created" class="toc-link">Pattern B — secretObjects sync (k8s Secret created)</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#bootstrap-secrets" class="toc-link">Bootstrap Secrets</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/platform/secrets/#sops-age-setup" class="toc-link">SOPS + age Setup</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/platform/secrets/#first-time-setup" class="toc-link">First-Time Setup</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/platform/secrets/#day-to-day-commands" class="toc-link">Day-to-Day Commands</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#openbao-setup-one-time" class="toc-link">OpenBao Setup (one-time)</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#apps-and-their-secret-paths" class="toc-link">Apps and Their Secret Paths</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/secrets/#cdk8s-generates-zero-secrets" class="toc-link">CDK8s Generates Zero Secrets</a>
-                    
-                </li>
-            
-            </ul>
-    </div>
-</div>
 
 
                     
@@ -1025,7 +992,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/secrets-flow">Secrets Flow</a></li>
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/software-inventory">Software Inventory</a></li>
+                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/software-inventory">Software Inventory</a></li>
                             
                             
                         </ul>
@@ -1111,7 +1078,7 @@
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cert-manager">cert-manager</a></li>
                             
-                                <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/secrets">Secrets</a></li>
                             
                             
                         </ul>

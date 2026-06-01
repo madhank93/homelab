@@ -348,6 +348,22 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/architecture/software-inventory">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/list-check.svg'); mask-image: url('https://homelab.madhan.app/icons/list-check.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Software Inventory
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/architecture">
           
 
@@ -526,40 +542,81 @@
 <h2 id="cluster-diagram">Cluster Diagram</h2>
 <pre class="mermaid border border-gray-500/15">
  flowchart TB
-    subgraph CP[&quot;Control Plane · 3 nodes&quot;]
-        VIP[&quot;KubeVIP&lt;br&#x2F;&gt;192.168.1.210:6443&quot;]
-        CP1[&quot;k8s-controller1&lt;br&#x2F;&gt;.211&quot;]
-        CP2[&quot;k8s-controller2&lt;br&#x2F;&gt;.212&quot;]
-        CP3[&quot;k8s-controller3&lt;br&#x2F;&gt;.213&quot;]
-        VIP --- CP1 &amp; CP2 &amp; CP3
+    subgraph INTERNET[&quot;Internet&quot;]
+        USER[&quot;Browser &#x2F; Client&quot;]
+        GH[&quot;GitHub\nrepo: madhank93&#x2F;homelab&quot;]
+        CF[&quot;Cloudflare DNS\n*.madhan.app&quot;]
     end
 
-    subgraph WRK[&quot;Workers&quot;]
-        W1[&quot;k8s-worker1&lt;br&#x2F;&gt;.221&quot;]
-        W2[&quot;k8s-worker2&lt;br&#x2F;&gt;.222&quot;]
-        W3[&quot;k8s-worker3&lt;br&#x2F;&gt;.223&quot;]
-        W4[&quot;k8s-worker4&lt;br&#x2F;&gt;.224&lt;br&#x2F;&gt;RTX 5070 Ti&quot;]
+    subgraph BIFROST[&quot;Bifrost VPS · Hetzner · 178.156.199.250&quot;]
+        TRF[&quot;Traefik v3.7.1\nTLS termination + ForwardAuth&quot;]
+        AUTH[&quot;Authentik 2026.5.2\nOIDC &#x2F; SSO broker&quot;]
+        NBS[&quot;NetBird 0.71.4\nManagement + Signal + Relay&quot;]
+        NBA[&quot;netbird-agent\nWireGuard routing peer\n→ advertises 192.168.1.0&#x2F;24&quot;]
     end
 
-    subgraph PLT[&quot;Platform Services&quot;]
-        CIL[&quot;Cilium L2 LB&lt;br&#x2F;&gt;192.168.1.220&quot;]
-        ARGO[&quot;ArgoCD&lt;br&#x2F;&gt;ApplicationSet&quot;]
-        LONG[&quot;Longhorn&lt;br&#x2F;&gt;distributed storage&quot;]
-        OB[&quot;OpenBao&lt;br&#x2F;&gt;CSI Driver + KV secrets&quot;]
-        CERT[&quot;cert-manager&lt;br&#x2F;&gt;wildcard TLS&quot;]
+    subgraph LAN[&quot;On-Prem LAN · 192.168.1.0&#x2F;24&quot;]
+        subgraph CP[&quot;Control Plane · Talos v1.13.3&quot;]
+            VIP[&quot;KubeVIP\n192.168.1.210:6443&quot;]
+            CP1[&quot;controller1\n.211&quot;]
+            CP2[&quot;controller2\n.212&quot;]
+            CP3[&quot;controller3\n.213&quot;]
+            VIP --- CP1 &amp; CP2 &amp; CP3
+        end
+
+        subgraph PLT[&quot;Platform Layer&quot;]
+            CIL[&quot;Cilium 1.19.4\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API&quot;]
+            CERT[&quot;cert-manager v1.20.2\nCloudflare DNS-01\nwildcard TLS&quot;]
+            ARGO[&quot;ArgoCD 9.5.15\nApplicationSet → v0.1.6-manifests&quot;]
+        end
+
+        subgraph SECRETS[&quot;Secrets Layer&quot;]
+            OB[&quot;OpenBao 0.28.3\nVault-compatible KV&quot;]
+            CSI[&quot;CSI Secrets Store\nfile mounts + k8s Secrets&quot;]
+        end
+
+        subgraph STORAGE[&quot;Storage&quot;]
+            LONG[&quot;Longhorn 1.11.2\nReplicated block storage&quot;]
+            CNPG[&quot;CloudNativePG 0.28.2\nPostgreSQL operator&quot;]
+        end
+
+        subgraph WORKERS[&quot;Workers · k8s-worker1–3&quot;]
+            OBS[&quot;Observability\nVictoriaMetrics · VictoriaLogs\nGrafana · OTel 0.156.2&quot;]
+            SEC[&quot;Security\nFalco · Kyverno · Trivy&quot;]
+            APPS[&quot;Applications\nn8n · Harbor · Headlamp\nOpenBao · Rancher · NetBird peer&quot;]
+        end
+
+        subgraph GPU[&quot;k8s-worker4 · RTX 5070 Ti&quot;]
+            AI[&quot;AI Workloads\nOllama 0.24.0 · ComfyUI\nKubeflow&quot;]
+            NVIDIA[&quot;NVIDIA Device Plugin 0.19.1\nDCGM Exporter 4.8.2&quot;]
+        end
     end
 
-    subgraph BIFROST[&quot;Bifrost VPS · Hetzner&quot;]
-        WG[&quot;NetBird routing peer&lt;br&#x2F;&gt;WireGuard mesh&quot;]
+    subgraph GITOPS[&quot;GitOps · GitHub&quot;]
+        SRC[&quot;v0.1.6 branch\nPulumi + CDK8s source&quot;]
+        MFST[&quot;v0.1.6-manifests branch\nSynthesized YAML&quot;]
+        GHA[&quot;GitHub Actions\ncdk8s synth + publish&quot;]
     end
 
+    USER --&gt;|&quot;HTTPS&quot;| CF
+    CF --&gt;|&quot;public services\nauth&#x2F;netbird&#x2F;grafana&quot;| TRF
+    CF --&gt;|&quot;LAN services via VPN\nharbor&#x2F;headlamp&#x2F;etc&quot;| CIL
+    TRF --&gt;|&quot;ForwardAuth&quot;| AUTH
+    TRF --&gt;|&quot;proxy via NetBird\nWireGuard tunnel&quot;| CIL
+    NBA &lt;--&gt;|&quot;WireGuard mesh&quot;| APPS
+    NBS --- NBA
+    GH --- SRC
+    SRC --&gt;|&quot;push triggers&quot;| GHA
+    GHA --&gt;|&quot;publishes&quot;| MFST
+    MFST --&gt;|&quot;ArgoCD watches&quot;| ARGO
+    ARGO --&gt;|&quot;syncs&quot;| WORKERS &amp; GPU &amp; SECRETS &amp; STORAGE
     VIP --&gt; CIL
-    CIL --&gt; W1 &amp; W2 &amp; W3 &amp; W4
-    ARGO --&gt;|&quot;syncs workloads&lt;br&#x2F;&gt;from manifests branch&quot;| W1 &amp; W2 &amp; W3 &amp; W4
-    LONG --&gt; W1 &amp; W2 &amp; W3 &amp; W4
-    OB --&gt;|&quot;CSI volume mounts&quot;| W1 &amp; W2 &amp; W3 &amp; W4
-    CERT --&gt;|&quot;cert-manager ACME&quot;| CIL
-    WG &lt;--&gt;|&quot;WireGuard&lt;br&#x2F;&gt;192.168.1.0&#x2F;24&quot;| CIL
+    CIL --&gt; WORKERS &amp; GPU
+    CERT --&gt;|&quot;ACME DNS-01&quot;| CF
+    OB --&gt; CSI
+    CSI --&gt;|&quot;volume mounts&quot;| WORKERS &amp; GPU &amp; APPS
+    LONG --&gt; WORKERS &amp; GPU
+    CNPG --&gt; WORKERS
 </pre>
 <hr />
 <h2 id="talos-configuration">Talos Configuration</h2>
@@ -849,6 +906,12 @@
         
         
         
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
         
             
             <li>
@@ -881,6 +944,8 @@
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/gitops-flow">GitOps Flow</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/secrets-flow">Secrets Flow</a></li>
+                            
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/architecture/software-inventory">Software Inventory</a></li>
                             
                             
                         </ul>
@@ -1125,11 +1190,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1141,11 +1206,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
