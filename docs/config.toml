@@ -19,6 +19,7 @@ edit_url = "https://github.com/madhank93/homelab/edit/main/docs"
 
 nav = [
     { name = "Getting Started", url = "/getting-started", type = "url", icon = "rocket" },
+    { name = "Software Inventory", url = "/architecture/software-inventory", type = "url", icon = "list-check" },
     { name = "Architecture", url = "/architecture", type = "url", icon = "diagram-project" },
     { name = "Hardware", url = "/hardware", type = "url", icon = "server" },
     { name = "Cloud", url = "/infrastructure", type = "url", icon = "cloud" },
