@@ -107,6 +107,27 @@ services:
       # NB_SETUP_KEY is only used on first boot when /var/lib/netbird has no peer state.
       - netbird_agent_data:/var/lib/netbird
 
+  # Workaround: NetBird 0.71.4 distributes the 192.168.1.0/24 network route to this peer
+  # but never installs it in the kernel routing table (confirmed reproducible on every restart).
+  # Waits for wt0 to come UP then installs the route via k8s-routing-peer (100.109.244.71).
+  netbird-route-installer:
+    <<: *default
+    image: alpine:3.21
+    container_name: netbird-route-installer
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - netbird-agent
+    command: >
+      sh -c "
+        until ip link show wt0 2>/dev/null | grep -q UP; do sleep 2; done;
+        while true; do
+          ip route replace 192.168.1.0/24 via 100.109.244.71 dev wt0 2>/dev/null || true;
+          sleep 30;
+        done
+      "
+
   # --------------------------------------------------------------------------------
   # Gatus — uptime monitoring, exposed at uptime.madhan.app (no auth — public)
   # grafana.madhan.app resolves to Bifrost public IP; extra_hosts maps it to
