@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: nvidia-device-plugin
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: nvidia-device-plugin
-    app.kubernetes.io/version: 0.18.2
-    helm.sh/chart: nvidia-device-plugin-0.18.2
+    app.kubernetes.io/version: 0.19.1
+    helm.sh/chart: nvidia-device-plugin-0.19.1
   name: nvidia-device-plugin-mps-control-daemon
   namespace: nvidia-gpu-operator
 spec:
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 211ff157da5c81775d136343858fdd78304bec96e074bd39a2b02c65cff3e991
+        checksum/config: 9ab357b27cd8258f626a172451de8e54001ec9129cfbc5de97f35e69284208d9
       labels:
         app.kubernetes.io/instance: nvidia-device-plugin
         app.kubernetes.io/name: nvidia-device-plugin
@@ -69,7 +69,7 @@ spec:
               value: "1"
             - name: PROCESS_TO_SIGNAL
               value: /usr/bin/mps-control-daemon
-          image: nvcr.io/nvidia/k8s-device-plugin:v0.18.2
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.1
           name: mps-control-daemon-sidecar
           volumeMounts:
             - mountPath: /available-configs
@@ -92,7 +92,7 @@ spec:
               value: all
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: compute,utility
-          image: nvcr.io/nvidia/k8s-device-plugin:v0.18.2
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.1
           imagePullPolicy: IfNotPresent
           name: mps-control-daemon-ctr
           securityContext:
@@ -111,7 +111,7 @@ spec:
         - command:
             - mps-control-daemon
             - mount-shm
-          image: nvcr.io/nvidia/k8s-device-plugin:v0.18.2
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.1
           name: mps-control-daemon-mounts
           securityContext:
             privileged: true
@@ -146,7 +146,7 @@ spec:
               value: ""
             - name: PROCESS_TO_SIGNAL
               value: ""
-          image: nvcr.io/nvidia/k8s-device-plugin:v0.18.2
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.1
           name: mps-control-daemon-init
           volumeMounts:
             - mountPath: /available-configs

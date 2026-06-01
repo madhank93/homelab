@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: metrics-server
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: metrics-server
-    app.kubernetes.io/version: 0.7.2
-    helm.sh/chart: metrics-server-3.12.2
+    app.kubernetes.io/version: 0.8.0
+    helm.sh/chart: metrics-server-3.13.0
   name: system:metrics-server
   namespace: kube-system
 rules:

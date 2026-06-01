@@ -5,9 +5,10 @@ metadata:
     app.kubernetes.io/component: cleanup-controller
     app.kubernetes.io/instance: kyverno
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kyverno-cleanup-controller
     app.kubernetes.io/part-of: kyverno
-    app.kubernetes.io/version: 3.7.0
-    helm.sh/chart: kyverno-3.7.0
+    app.kubernetes.io/version: 3.8.1
+    helm.sh/chart: kyverno-3.8.1
   name: kyverno-cleanup-controller
   namespace: kyverno
 spec:
@@ -29,9 +30,10 @@ spec:
         app.kubernetes.io/component: cleanup-controller
         app.kubernetes.io/instance: kyverno
         app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: kyverno-cleanup-controller
         app.kubernetes.io/part-of: kyverno
-        app.kubernetes.io/version: 3.7.0
-        helm.sh/chart: kyverno-3.7.0
+        app.kubernetes.io/version: 3.8.1
+        helm.sh/chart: kyverno-3.8.1
     spec:
       affinity:
         podAntiAffinity:
@@ -60,6 +62,7 @@ spec:
             - --enableDeferredLoading=true
             - --dumpPayload=false
             - --maxAPICallResponseLength=2000000
+            - --apiCallTimeout=30s
             - --loggingFormat=text
             - --v=2
             - --protectManagedResources=false
@@ -85,7 +88,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: KYVERNO_SVC
               value: kyverno-cleanup-controller
-          image: reg.kyverno.io/kyverno/cleanup-controller:v1.17.0
+          image: reg.kyverno.io/kyverno/cleanup-controller:v1.18.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 2
@@ -129,7 +132,9 @@ spec:
                 - ALL
             privileged: false
             readOnlyRootFilesystem: true
+            runAsGroup: 65534
             runAsNonRoot: true
+            runAsUser: 65534
             seccompProfile:
               type: RuntimeDefault
           startupProbe:
@@ -140,7 +145,20 @@ spec:
               scheme: HTTPS
             initialDelaySeconds: 2
             periodSeconds: 6
+          volumeMounts:
+            - mountPath: /var/run/secrets/kyverno/apicall
+              name: apicall-token
+              readOnly: true
       dnsPolicy: ClusterFirst
       nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: kyverno-cleanup-controller
+      volumes:
+        - name: apicall-token
+          projected:
+            defaultMode: 292
+            sources:
+              - serviceAccountToken:
+                  audience: kyverno-svc.kyverno.io
+                  expirationSeconds: 3600
+                  path: token

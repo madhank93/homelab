@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: dcgm-exporter
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: dcgm-exporter
-    app.kubernetes.io/version: 3.4.2
-    helm.sh/chart: dcgm-exporter-3.4.2
+    app.kubernetes.io/version: 4.8.2
+    helm.sh/chart: dcgm-exporter-4.8.2
   name: dcgm-exporter
   namespace: nvidia-gpu-operator
 spec:
@@ -32,10 +32,11 @@ spec:
                     operator: In
                     values:
                       - "true"
+      automountServiceAccountToken: false
       containers:
         - args:
             - -f
-            - /etc/dcgm-exporter/dcp-metrics-included.csv
+            - /etc/dcgm-exporter/default-counters.csv
           env:
             - name: DCGM_EXPORTER_KUBERNETES
               value: "true"
@@ -45,12 +46,13 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.6-3.4.2-ubuntu22.04
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:4.5.3-4.8.2-distroless
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
               path: /health
               port: 9400
+              scheme: HTTP
             initialDelaySeconds: 45
             periodSeconds: 5
           name: exporter
@@ -61,17 +63,32 @@ spec:
             httpGet:
               path: /health
               port: 9400
+              scheme: HTTP
             initialDelaySeconds: 45
+          resources:
+            limits:
+              cpu: 200m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
           securityContext:
+            allowPrivilegeEscalation: false
             capabilities:
               add:
                 - SYS_ADMIN
+              drop:
+                - ALL
             runAsNonRoot: false
             runAsUser: 0
           volumeMounts:
             - mountPath: /var/lib/kubelet/pod-resources
               name: pod-gpu-resources
               readOnly: true
+            - mountPath: /etc/dcgm-exporter/default-counters.csv
+              name: exporter-metrics-volume
+              subPath: default-counters.csv
+      hostPID: false
       priorityClassName: system-node-critical
       runtimeClassName: nvidia
       serviceAccountName: dcgm-exporter
@@ -84,6 +101,12 @@ spec:
         - hostPath:
             path: /var/lib/kubelet/pod-resources
           name: pod-gpu-resources
+        - configMap:
+            items:
+              - key: metrics
+                path: default-counters.csv
+            name: exporter-metrics-config-map
+          name: exporter-metrics-volume
   updateStrategy:
     rollingUpdate:
       maxSurge: 0

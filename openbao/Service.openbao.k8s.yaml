@@ -5,12 +5,13 @@ metadata:
     app.kubernetes.io/instance: openbao
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: openbao
-    helm.sh/chart: openbao-0.25.6
+    helm.sh/chart: openbao-0.28.3
   name: openbao
   namespace: openbao
 spec:
   ports:
-    - name: http
+    - appProtocol: HTTP
+      name: http
       port: 8200
       targetPort: 8200
     - name: https-internal

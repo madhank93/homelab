@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.2
+    app.kubernetes.io/version: 2.15.0
     chart: harbor
     component: registry
     heritage: Helm
@@ -28,10 +28,10 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: 99cd8e88533e7632c94ee7344dc6d765bfa578232d8b242c8cb6756fe441556f
-        checksum/secret: 8e94510642e59415b334c4e520fe74e4e188aea50a02f9791dc2183ddcdd9e3f
-        checksum/secret-core: d271cf0be78204daea95362027de532283b0d1ee2b322941eb3d9837b34865dd
-        checksum/secret-jobservice: bb5ad3bb88be704953b1a7247dc19dbe31936f78735694d3c35f534d742af4db
+        checksum/configmap: bd4a5182536a63eb6132005a908963bf14f1c4ab632d16f7768fd6f9caa11dda
+        checksum/secret: 6d16b5a331e9633b7dac54e143350f5bb0c184cfc23a89999269c49f82180cc7
+        checksum/secret-core: 2aa87e369c92c972661fbe10605414372b12e74168e0412a590b5dbe6a873eea
+        checksum/secret-jobservice: 02de0cf2931a46e4bb7270b776c3ebf4f61696fc9eb5ccdeda3048ad4b6d704f
       labels:
         app: harbor
         app.kubernetes.io/component: registry
@@ -39,7 +39,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.2
+        app.kubernetes.io/version: 2.15.0
         chart: harbor
         component: registry
         heritage: Helm
@@ -50,26 +50,32 @@ spec:
         - envFrom:
             - secretRef:
                 name: harbor-registry
-          image: goharbor/registry-photon:v2.14.2
+          image: docker.io/goharbor/registry-photon:v2.15.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 3
             httpGet:
               path: /
               port: 5000
               scheme: HTTP
             initialDelaySeconds: 300
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: registry
           ports:
             - containerPort: 5000
             - containerPort: 5001
           readinessProbe:
+            failureThreshold: 3
             httpGet:
               path: /
               port: 5000
               scheme: HTTP
             initialDelaySeconds: 1
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -106,25 +112,31 @@ spec:
                 name: harbor-registry
             - secretRef:
                 name: harbor-registryctl
-          image: goharbor/harbor-registryctl:v2.14.2
+          image: docker.io/goharbor/harbor-registryctl:v2.15.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 3
             httpGet:
               path: /api/health
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 300
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: registryctl
           ports:
             - containerPort: 8080
           readinessProbe:
+            failureThreshold: 3
             httpGet:
               path: /api/health
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 1
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

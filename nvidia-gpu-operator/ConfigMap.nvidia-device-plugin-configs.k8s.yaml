@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: nvidia-device-plugin
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: nvidia-device-plugin
-    app.kubernetes.io/version: 0.18.2
-    helm.sh/chart: nvidia-device-plugin-0.18.2
+    app.kubernetes.io/version: 0.19.1
+    helm.sh/chart: nvidia-device-plugin-0.19.1
   name: nvidia-device-plugin-configs
   namespace: nvidia-gpu-operator
 data:

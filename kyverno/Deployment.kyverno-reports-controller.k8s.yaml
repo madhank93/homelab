@@ -5,9 +5,10 @@ metadata:
     app.kubernetes.io/component: reports-controller
     app.kubernetes.io/instance: kyverno
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kyverno-reports-controller
     app.kubernetes.io/part-of: kyverno
-    app.kubernetes.io/version: 3.7.0
-    helm.sh/chart: kyverno-3.7.0
+    app.kubernetes.io/version: 3.8.1
+    helm.sh/chart: kyverno-3.8.1
   name: kyverno-reports-controller
   namespace: kyverno
 spec:
@@ -29,9 +30,10 @@ spec:
         app.kubernetes.io/component: reports-controller
         app.kubernetes.io/instance: kyverno
         app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: kyverno-reports-controller
         app.kubernetes.io/part-of: kyverno
-        app.kubernetes.io/version: 3.7.0
-        helm.sh/chart: kyverno-3.7.0
+        app.kubernetes.io/version: 3.8.1
+        helm.sh/chart: kyverno-3.8.1
     spec:
       affinity:
         podAntiAffinity:
@@ -65,6 +67,7 @@ spec:
             - --enableConfigMapCaching=true
             - --enableDeferredLoading=true
             - --maxAPICallResponseLength=2000000
+            - --apiCallTimeout=30s
             - --loggingFormat=text
             - --v=2
             - --omitEvents=PolicyApplied,PolicySkipped
@@ -91,7 +94,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: TUF_ROOT
               value: /.sigstore
-          image: reg.kyverno.io/kyverno/reports-controller:v1.17.0
+          image: reg.kyverno.io/kyverno/reports-controller:v1.18.1
           imagePullPolicy: IfNotPresent
           name: controller
           ports:
@@ -115,12 +118,17 @@ spec:
                 - ALL
             privileged: false
             readOnlyRootFilesystem: true
+            runAsGroup: 65534
             runAsNonRoot: true
+            runAsUser: 65534
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
             - mountPath: /.sigstore
               name: sigstore
+            - mountPath: /var/run/secrets/kyverno/apicall
+              name: apicall-token
+              readOnly: true
       dnsPolicy: ClusterFirst
       nodeSelector:
         kubernetes.io/os: linux
@@ -128,3 +136,11 @@ spec:
       volumes:
         - emptyDir: {}
           name: sigstore
+        - name: apicall-token
+          projected:
+            defaultMode: 292
+            sources:
+              - serviceAccountToken:
+                  audience: kyverno-svc.kyverno.io
+                  expirationSeconds: 3600
+                  path: token

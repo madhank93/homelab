@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: trivy-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: trivy-operator
-    app.kubernetes.io/version: 0.30.0
-    helm.sh/chart: trivy-operator-0.32.0
+    app.kubernetes.io/version: 0.30.1
+    helm.sh/chart: trivy-operator-0.32.1
   name: trivy-operator
   namespace: trivy
 spec:
@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 22ce4f5ec6142ab6663d5b9a3b7e09026570455db15d0e471e302f2ff64bdbe3
+        checksum/config: cab714ca0fd3d4970fa26cfe95319ccf8f1e21f582156d509c78a9703582f9db
       labels:
         app.kubernetes.io/instance: trivy-operator
         app.kubernetes.io/name: trivy-operator
@@ -41,7 +41,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: trivy-operator-config
-          image: mirror.gcr.io/aquasec/trivy-operator:0.30.0
+          image: mirror.gcr.io/aquasec/trivy-operator:0.30.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10

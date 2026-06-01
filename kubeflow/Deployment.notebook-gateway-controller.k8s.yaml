@@ -17,18 +17,17 @@ spec:
     spec:
       containers:
         - command:
-            - sh
-            - -c
-            - pip install kubernetes --quiet --no-cache-dir && python /app/controller.py
+            - python
+            - /app/controller.py
           env:
             - name: HOME
               value: /tmp
-          image: python:3.11-slim
+          image: harbor.madhan.app/library/notebook-gateway-controller:v1
           name: controller
           resources:
             limits:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 200m
+              memory: 256Mi
             requests:
               cpu: 10m
               memory: 64Mi

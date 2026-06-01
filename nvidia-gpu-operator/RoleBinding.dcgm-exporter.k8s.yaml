@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: dcgm-exporter
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: dcgm-exporter
-    app.kubernetes.io/version: 3.4.2
-    helm.sh/chart: dcgm-exporter-3.4.2
+    app.kubernetes.io/version: 4.8.2
+    helm.sh/chart: dcgm-exporter-4.8.2
   name: dcgm-exporter
   namespace: nvidia-gpu-operator
 roleRef:

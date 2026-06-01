@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.2
+    app.kubernetes.io/version: 2.15.0
     chart: harbor
     component: nginx
     heritage: Helm
@@ -26,7 +26,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: 002f96767b3f203be4c31d35874966a9db6acfb52454e1e23ece89c9b0bb3cbc
+        checksum/configmap: a7529e5a8f28abeb385ea9f67a946d08051da549950433219ca6f9c026d28463
       labels:
         app: harbor
         app.kubernetes.io/component: nginx
@@ -34,7 +34,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.2
+        app.kubernetes.io/version: 2.15.0
         chart: harbor
         component: nginx
         heritage: Helm
@@ -42,25 +42,31 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: goharbor/nginx-photon:v2.14.2
+        - image: docker.io/goharbor/nginx-photon:v2.15.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 3
             httpGet:
               path: /
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 300
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: nginx
           ports:
             - containerPort: 8080
           readinessProbe:
+            failureThreshold: 3
             httpGet:
               path: /
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 1
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

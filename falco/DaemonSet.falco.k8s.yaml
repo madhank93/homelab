@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: falco
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: falco
-    app.kubernetes.io/version: 0.43.0
-    helm.sh/chart: falco-8.0.0
+    app.kubernetes.io/version: 0.43.1
+    helm.sh/chart: falco-8.0.5
   name: falco
   namespace: falco
 spec:
@@ -18,7 +18,7 @@ spec:
     metadata:
       annotations:
         checksum/certs: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-        checksum/config: f9c62a298b05f0b8653303f6dd2815622d7ea83534a3834324f86dfc4f404014
+        checksum/config: 5144c102cde80ba62e6ca685c775d474b9485a7f1a0c3f90b26d35e496ad3d1c
         checksum/rules: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         reloader.stakater.com/auto: "true"
       labels:
@@ -40,7 +40,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          image: docker.io/falcosecurity/falco:0.43.0
+          image: docker.io/falcosecurity/falco:0.43.1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
