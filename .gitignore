@@ -1,3 +1,44 @@
-*credentials
-*DS_Store
+# ── OS ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Secrets & credentials ─────────────────────────────────────────────
+# Decrypted SOPS output (plaintext — never commit)
+secrets/bootstrap.yaml
+# Runtime secrets files
 *.env
+*credentials*
+*.pem
+core/cloud/bifrost/.secrets.env
+core/cloud/bifrost/netbird/.secrets.env
+
+# ── Kubernetes / Talos cluster access files ───────────────────────────
+kubeconfig.yaml
+kubeconfig.json
+talosconfig.yaml
+talosconfig.json
+core/kubeconfig
+core/talosconfig
+scripts/kubeconfig
+scripts/talosconfig
+
+
+# ── Pulumi ────────────────────────────────────────────────────────────
+# Generated Pulumi provider SDKs
+core/sdks/
+.pulumi/
+
+# ── Generated / build outputs ─────────────────────────────────────────
+# CDK8s synthesis output (published to *-manifests branch by CI)
+app/
+# Zola static site build
+docs/public/
+
+# ── Infra generated files ─────────────────────────────────────────────
+# Written by infra/cloud/hetzner.go at deploy time
+core/cloud/bifrost/traefik/dynamic/public-services.yml
+
+# ── Backups ───────────────────────────────────────────────────────────
+backups/
+
+node_modules

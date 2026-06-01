@@ -1,0 +1,364 @@
++++
+title = "NetBird VPN"
+description = "NetBird v0.66 combined server — WireGuard mesh for remote cluster access, with embedded Dex OIDC and Authentik as the upstream identity connector."
+weight = 30
++++
+
+## What is NetBird?
+
+[NetBird](https://netbird.io) is an open-source WireGuard-based mesh VPN that automates peer discovery, NAT traversal, and route distribution. A central management server coordinates the mesh; each peer connects directly to others using WireGuard tunnels without traffic passing through the server.
+
+## Why NetBird?
+
+NetBird eliminates the need to manage WireGuard configs manually — peers register via a setup key, routes are distributed automatically, and OIDC login replaces static keys for user authentication. A single setup key puts the k8s routing peer into the mesh and gives Traefik on Bifrost a tunnel path to all cluster services.
+
+## How It's Used Here
+
+The NetBird combined server runs on Bifrost alongside a `netbird-agent` WireGuard peer. A `netbird-peer` StatefulSet on Kubernetes worker1 joins the mesh and advertises `192.168.1.0/24`, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.
+
+```
+Your laptop (NetBird client)
+    │  WireGuard encrypted tunnel
+    │
+    ▼  netbird.madhan.app:443
+Bifrost VPS
+    ├─ Traefik  →  netbird-server:80  (management + signal + relay + embedded Dex)
+    │
+    └─ WireGuard mesh ──────────────────────────────────┐
+                                                         ▼
+                                          K8s: netbird-peer pod (worker1)
+                                               hostNetwork · wt0: 100.109.244.71
+                                               routes 192.168.1.0/24
+                                                         │  IP forward + MASQUERADE
+                                                         ▼
+                                          Cilium Gateway  192.168.1.220
+                                                         │
+                                                         ▼
+                                          Cluster services  192.168.1.220–230
+```
+
+---
+
+## Architecture Diagram
+
+{% mermaid() %}
+flowchart LR
+    subgraph CLIENTS["NetBird Clients"]
+        LAP["Laptop / Phone<br/>NetBird client app"]
+    end
+
+    subgraph VPS["Bifrost VPS · 178.156.199.250"]
+        TR["Traefik :443"]
+        NBS["netbird-server<br/>management · signal · relay<br/>+ embedded Dex OIDC<br/>:80 inside bifrost_net"]
+        NBD["netbird-dashboard<br/>web UI"]
+        NBP["netbird-proxy<br/>*.proxy.madhan.app"]
+        NBP2["netbird-agent<br/>network_mode: host<br/>wt0: 100.109.47.211"]
+        AUT["Authentik<br/>GitHub SSO"]
+    end
+
+    subgraph RELAY["WireGuard Relay"]
+        RE["NetBird TURN/STUN<br/>via netbird-server<br/>UDP 3478 / TCP 5349"]
+    end
+
+    subgraph K8S["Kubernetes · worker1 · 192.168.1.221"]
+        NBPEER["netbird-peer-0<br/>hostNetwork · wt0: 100.109.244.71<br/>routes 192.168.1.0/24"]
+        MASQ["CILIUM_POST_nat<br/>MASQUERADE<br/>100.109.x → 192.168.1.221"]
+        CILBPF["Cilium BPF (other node eth0)<br/>L7LB DNAT → Envoy :13507"]
+    end
+
+    subgraph GW["Cilium Gateway · 192.168.1.220"]
+        ENV["Envoy proxy<br/>HTTPRoute"]
+        PODS["Service Pods"]
+    end
+
+    LAP -->|"WireGuard tunnel<br/>netbird.madhan.app:443"| TR
+    TR -->|"gRPC /signalexchange /management"| NBS
+    TR -->|"dashboard paths"| NBD
+    NBD -->|"authenticate via<br/>embedded Dex"| NBS
+    NBS -->|"Dex connector:<br/>OIDC upstream"| AUT
+    AUT -->|"GitHub OAuth"| LAP
+    NBS <-->|"mesh coordination"| NBPEER
+    NBS <-->|"mesh coordination"| NBP2
+    NBP2 <-->|"WireGuard via relay"| RE
+    RE <-->| | NBPEER
+    NBPEER -->|"IP forward + MASQUERADE"| MASQ
+    MASQ --> CILBPF
+    CILBPF --> ENV
+    ENV --> PODS
+    LAP -->|"192.168.1.x via mesh"| NBPEER
+{% end %}
+
+---
+
+## Embedded Dex OIDC — Key Design Constraint
+
+NetBird v0.66 combined server **always** runs an embedded [Dex](https://dexidp.io/) OIDC provider. This is hardcoded in the Go source (`Enabled: true` in `ToManagementConfig()`) and cannot be disabled via configuration.
+
+**Consequence:** all JWT tokens that NetBird validates are issued by embedded Dex — not by Authentik directly. Pointing `auth.issuer` to Authentik's URL would cause Dex to claim to be Authentik while signing tokens with its own SQLite-stored keys, producing a JWKS mismatch and `unable to find appropriate key` errors.
+
+### Correct OIDC flow
+
+```
+User browser
+    │  1. login request
+    ▼
+Embedded Dex  (issuer: https://netbird.madhan.app/oauth2)
+    │  2. redirect to upstream connector
+    ▼
+Authentik  (https://auth.madhan.app/application/o/netbird/)
+    │  3. GitHub OAuth → authenticate user
+    ▼
+Embedded Dex  (receives callback at /oauth2/callback)
+    │  4. issues JWT signed with Dex's own keys
+    ▼
+NetBird management  (validates JWT against Dex JWKS)
+```
+
+Authentik is a **connector inside Dex**, not the token issuer. JWTs are always issued and validated by Dex.
+
+---
+
+## Authentik OIDC App
+
+`core/cloud/authentik.go` creates a confidential OIDC application in Authentik for the Dex→Authentik connector:
+
+| Field | Value |
+|-------|-------|
+| Client ID | `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT` |
+| Client Type | `confidential` |
+| Redirect URI | `https://netbird.madhan.app/oauth2/callback` (Dex's callback) |
+| Launch URL | `https://netbird.madhan.app/` |
+| Client Secret | `NETBIRD_CLIENT_SECRET` from SOPS |
+
+This connector is registered in NetBird via the UI after first login (see [First-Time Setup](#first-time-setup-checklist)).
+
+---
+
+## Server Configuration
+
+`core/cloud/bifrost/netbird/config.yaml` is a **template** — `bootstrap.sh` substitutes `${VAR}` placeholders before starting `netbird-server`.
+
+| Config field | Template value | Final value |
+|---|---|---|
+| `server.authSecret` | `${NB_RELAY_SECRET}` | base64 secret from `.secrets.env` |
+| `store.encryptionKey` | `${NB_DATA_STORE_KEY}` | base64 key from `.secrets.env` |
+| `auth.owner.password` | `${NB_OWNER_HASH}` | bcrypt hash generated from `NB_OWNER_PASSWORD` |
+| `auth.issuer` | `https://netbird.madhan.app/oauth2` | embedded Dex's own issuer URL |
+| `server.exposedAddress` | `https://netbird.madhan.app:443` | static |
+| `reverseProxy.trustedHTTPProxies` | `172.30.0.10/32` | Traefik IP in bifrost_net (static) |
+| `store.engine` | `sqlite` | static |
+
+> **Note:** The `auth.audience` field and `server.idp` section are silently ignored by NetBird v0.66's combined server config parser — the audience is hardcoded to `"netbird-dashboard"` in Go, and the idp section is not part of `ServerConfig`.
+
+---
+
+## Required Secrets
+
+All secrets come from `secrets/bootstrap.sops.yaml` via `generateBifrostSecretsEnv()`:
+
+| Variable | Purpose | Generate with | Rotate? |
+|----------|---------|--------------|---------|
+| `NB_DATA_STORE_KEY` | SQLite encryption key | `openssl rand -base64 32` | **No** — DB encrypted with it |
+| `NB_RELAY_SECRET` | Relay auth shared secret | `openssl rand -base64 32` | Yes (all peers reconnect) |
+| `NB_OWNER_PASSWORD` | Initial admin password for embedded Dex owner account | Any strong password | After Authentik connector confirmed |
+| `NETBIRD_CLIENT_SECRET` | Dex→Authentik OIDC connector secret | Authentik UI or `openssl rand -hex 32` | Yes |
+| `NB_PROXY_TOKEN` | Personal access token for netbird-proxy | NetBird UI → Settings → Access Tokens | Yes |
+| `NB_BIFROST_SETUP_KEY` | Setup key for netbird-agent on Bifrost | NetBird UI → Setup Keys | Yes |
+
+`NB_OWNER_PASSWORD` is only written to `.secrets.env` (and bcrypt-hashed at runtime). It enables the initial local admin login before an external identity provider is connected.
+
+---
+
+## Traefik Routing
+
+NetBird traffic on `netbird.madhan.app` is split across three Traefik routers (defined in `core/cloud/bifrost/traefik/dynamic/services.yml`):
+
+| Router | Rule | Backend | Protocol |
+|--------|------|---------|----------|
+| `netbird-grpc` | `/signalexchange*/`, `/management*/` (gRPC) | `netbird-server:80` | HTTP/2 cleartext (h2c) |
+| `netbird-backend` | `/relay`, `/api`, `/oauth2`, `/ws-proxy/` | `netbird-server:80` | HTTP |
+| `netbird-dashboard` | all other `netbird.madhan.app` paths | `netbird-dashboard:80` | HTTP |
+
+The `/oauth2` prefix in `netbird-backend` routes embedded Dex's OIDC endpoints (discovery, token, keys, callback) to `netbird-server`. STUN (UDP/3478) bypasses Traefik entirely — port-forwarded directly to the host.
+
+---
+
+## NetBird Dashboard Environment
+
+`core/cloud/bifrost/netbird/dashboard.env` configures the dashboard container to authenticate against **embedded Dex** (not Authentik directly):
+
+| Variable | Value |
+|----------|-------|
+| `NETBIRD_MGMT_API_ENDPOINT` | `https://netbird.madhan.app` |
+| `AUTH_AUTHORITY` | `https://netbird.madhan.app/oauth2` (embedded Dex) |
+| `AUTH_CLIENT_ID` | `netbird-dashboard` (hardcoded static client in Dex) |
+| `AUTH_CLIENT_SECRET` | _(empty — public client, no secret)_ |
+| `AUTH_AUDIENCE` | `netbird-dashboard` |
+| `USE_AUTH0` | `false` |
+| `AUTH_SUPPORTED_SCOPES` | `openid profile email groups` |
+
+The dashboard client `netbird-dashboard` is a public OIDC client registered statically inside embedded Dex. No secret is required.
+
+---
+
+## NetBird Agent on Bifrost (`netbird-agent`)
+
+The Bifrost VPS runs both the NetBird **server** and a NetBird **agent**. These are distinct roles:
+
+| Container | Role | Creates WireGuard interface? |
+|-----------|------|------------------------------|
+| `netbird-server` | Coordination plane — assigns keys, distributes routes, relays traffic | No |
+| `netbird-agent` | WireGuard peer — joins the mesh, receives routes, routes traffic | **Yes** |
+
+Without `netbird-agent`, Traefik has no route to `192.168.1.0/24`. Every proxy request to the cluster returns **504 Gateway Timeout**. The agent receives the `192.168.1.0/24` route advertised by `k8s-routing-peer` and sets up a WireGuard tunnel:
+
+```
+External user
+    ↓ HTTPS
+Traefik (Bifrost)
+    ↓ http://192.168.1.220
+netbird-agent (Bifrost) ←── WireGuard ───→ k8s-routing-peer (worker1 · 192.168.1.221)
+                                                    ↓ kernel IP forward
+                                              CILIUM_POST_nat MASQUERADE
+                                                    ↓
+                                            192.168.1.220 (Cilium gateway)
+                                                    ↓
+                                              cluster pods
+```
+
+`netbird-agent` uses `network_mode: host` so WireGuard routes are created on the Bifrost host directly, making them reachable from all Docker containers (including Traefik in `bifrost_net`).
+
+### Setup Key Storage
+
+Two peers, two setup keys, two storage locations — matching where each consumer reads secrets:
+
+| Peer | Setup key stored in | Key name | Reason |
+|------|-------------------|----------|--------|
+| `k8s-routing-peer` (k8s pod) | **OpenBao** `secret/data/netbird` | `NETBIRD_SETUP_KEY` | Read by k8s workload via CSI driver |
+| `netbird-agent` (Bifrost Docker) | **SOPS** `bootstrap.sops.yaml` | `NB_BIFROST_SETUP_KEY` | Read by Pulumi → `.secrets.env` → Docker |
+
+Both keys can share the same **Reusable** setup key value from the NetBird UI — they just live in different stores because each consumer has different access patterns.
+
+---
+
+## K8s Routing Peer
+
+The `netbird-peer` StatefulSet in the `netbird` namespace runs on **worker1** (`192.168.1.221`), connects to the WireGuard mesh, and advertises `192.168.1.0/24` as a route. This makes all cluster services reachable from any NetBird-connected device.
+
+See [NetBird Peer](/workloads/networking/netbird-peer/) for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium `wt0` constraint.
+
+---
+
+## NetBird Reverse Proxy (`*.proxy.madhan.app`)
+
+The `netbird-proxy` container exposes NetBird peers as TCP endpoints via `*.proxy.madhan.app`. Traefik routes `*.proxy.madhan.app` TCP traffic to `netbird-proxy:8443` via a wildcard TCP router.
+
+`core/cloud/bifrost/netbird/proxy.env`:
+```bash
+NB_PROXY_MANAGEMENT_ADDRESS=netbird-server:80
+NB_PROXY_DOMAIN=proxy.madhan.app
+NB_PROXY_ACME_CERTIFICATES=true
+```
+
+`NB_PROXY_TOKEN` is injected from `.secrets.env`. The proxy container is only started by `bootstrap.sh` if `NB_PROXY_TOKEN` is present. If missing, bootstrap prints setup instructions and skips it.
+
+---
+
+## First-Time Setup Checklist
+
+After the initial `just core hetzner up` succeeds and all containers are running:
+
+### Step 1 — Log in with local admin
+
+- [ ] Open `https://netbird.madhan.app`
+- [ ] Sign in with the local owner account:
+  - Email: `admin@madhan.app`
+  - Password: value of `NB_OWNER_PASSWORD` in `secrets/bootstrap.sops.yaml`
+- This bypasses SSO and uses the embedded Dex owner account directly
+
+### Step 2 — Connect Authentik as the identity provider
+
+- [ ] Settings → Identity Providers → Add → **Authentik**
+  - Client ID: `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT`
+  - Client Secret: value of `NETBIRD_CLIENT_SECRET` from SOPS
+  - Issuer: `https://auth.madhan.app/application/o/netbird/`
+- [ ] Verify redirect URI shown is `https://netbird.madhan.app/oauth2/callback` (pre-configured in Authentik)
+- [ ] Test login via GitHub to confirm the connector works
+
+### Step 3 — Create tokens and keys
+
+- [ ] Settings → Access Tokens → Create Personal Access Token — copy it → used as `NB_PROXY_TOKEN`
+- [ ] Setup Keys → Add key `bifrost-agent` (Reusable) → copy key value → used as `NB_BIFROST_SETUP_KEY`
+- [ ] Setup Keys → Add key `k8s-routing-peer` (Reusable) → copy key value → used as `NETBIRD_SETUP_KEY` in OpenBao (Step 5)
+
+### Step 4 — Store tokens and re-deploy
+
+```bash
+sops edit secrets/bootstrap.sops.yaml
+# Add:
+#   NB_PROXY_TOKEN: <personal access token>
+#   NB_BIFROST_SETUP_KEY: <bifrost-agent setup key>
+
+just core hetzner up
+```
+
+Bootstrap.sh picks up the new tokens and starts `netbird-proxy` and `netbird-agent`.
+
+### Step 5 — Configure K8s routing peer
+
+- [ ] Add the setup key to OpenBao:
+  ```bash
+  kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
+    bao kv patch secret/netbird NETBIRD_SETUP_KEY=<value from Step 3>
+  ```
+  - This is the key the `netbird-peer` pod uses to join the mesh at startup
+- [ ] Wait for `netbird-peer-0` to show `Running` and check it connected:
+  ```bash
+  kubectl exec -n netbird netbird-peer-0 -- netbird status
+  # Should show: Management: Connected, Peers count: N/N Connected
+  ```
+- [ ] **Peers** → verify only ONE "k8s-routing-peer" entry exists (delete any stale/disconnected duplicates from previous registrations)
+- [ ] **Network Routes** → Add Route: network `192.168.1.0/24`, routing peer: `k8s-routing-peer`, Distribution Groups: `All`
+  - `All` distribution group ensures `bifrost-agent` receives the route automatically
+- [ ] Verify both peers appear as **Connected** in the NetBird dashboard
+
+> **Important:** The Network Route must reference the **currently active** k8s-routing-peer. If the pod was restarted before the route was configured, stale peer entries may exist — delete them from Peers page first.
+
+### Step 6 — Verify traffic flows
+
+After the route is configured, Traefik on Bifrost should be able to reach `192.168.1.220`:
+
+```bash
+# Verify bifrost-agent sees the route
+ssh root@178.156.199.250 'docker exec netbird-agent netbird routes list'
+# Should show: 192.168.1.0/24  Status: Selected
+
+# Test HTTP reachability from Bifrost VPS
+ssh root@178.156.199.250 'curl -sv -H "Host: grafana.madhan.app" --connect-timeout 5 http://192.168.1.220/'
+# Expect: HTTP/1.1 302 Found
+```
+
+---
+
+## Troubleshooting
+
+### 504 from public URL — netbird-agent not running
+
+```bash
+ssh root@178.156.199.250 'docker ps | grep netbird-agent'
+# If not running:
+ssh root@178.156.199.250 'NB_BIFROST_SETUP_KEY=$(grep NB_BIFROST_SETUP_KEY /etc/bifrost/.secrets.env | cut -d= -f2) docker compose -f /etc/bifrost/docker-compose.yml up -d netbird-agent'
+```
+
+### Routes not distributed to bifrost-agent
+
+```bash
+# On Bifrost
+docker exec netbird-agent netbird routes list
+# If "Networks: -" or route missing:
+# Check it's in the "All" distribution group in NetBird UI → Network Routes
+```
+
+### Tunnel dead — wt0: 0 bytes
+
+`NB_SKIP_SOCKET_MARK` must not be set on the `netbird-peer` StatefulSet — it disables the socket fwmark, causing management traffic to loop through the WireGuard tunnel and breaking the relay connection.

@@ -1,0 +1,5 @@
+config:
+  services.hetzner.enabled: "false"
+  services.talos.enabled: "false"
+  services.authentik.enabled: "false"
+  services.cloudflare.enabled: "true"

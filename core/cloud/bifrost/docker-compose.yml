@@ -1,0 +1,232 @@
+x-default: &default
+  restart: 'unless-stopped'
+  logging:
+    driver: 'json-file'
+    options:
+      max-size: '500m'
+      max-file: '2'
+
+networks:
+  bifrost_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
+
+volumes:
+  authentik_postgres_data:
+  authentik_media:
+  authentik_certs:
+  traefik_certs:
+  netbird_data:
+  netbird_proxy_certs:
+  netbird_agent_data:   # persists peer key across container replacements
+  gatus_data:           # SQLite DB for uptime history
+
+services:
+
+  # --------------------------------------------------------------------------------
+  # Traefik — TLS termination, ForwardAuth, K8s gateway routing
+  # All routes defined in traefik/dynamic/ (file provider only, no Docker provider)
+  # --------------------------------------------------------------------------------
+
+  traefik:
+    <<: *default
+    image: traefik:v3.7.1
+    container_name: traefik
+    networks:
+      bifrost_net:
+        ipv4_address: 172.30.0.10
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - traefik_certs:/certs
+    env_file:
+      - .env
+      - .secrets.env
+    security_opt:
+      - no-new-privileges:true
+
+  # --------------------------------------------------------------------------------
+  # NetBird v0.66.2 — Combined server (Management + Signal + Relay + STUN)
+  # --------------------------------------------------------------------------------
+
+  netbird-server:
+    <<: *default
+    image: netbirdio/netbird-server:0.71.4
+    container_name: netbird-server
+    networks: [bifrost_net]
+    ports:
+      - "3478:3478/udp"   # STUN (UDP bypasses Traefik)
+    env_file:
+      - .secrets.env   # injects NB_RELAY_SECRET, NB_DATA_STORE_KEY, NB_IDP_MGMT_TOKEN
+    volumes:
+      - netbird_data:/var/lib/netbird
+      - ./netbird/config.yaml:/etc/netbird/config.yaml:ro
+    command: ["--config", "/etc/netbird/config.yaml"]
+
+  netbird-dashboard:
+    <<: *default
+    image: netbirdio/dashboard:v2.38.1
+    container_name: netbird-dashboard
+    networks: [bifrost_net]
+    env_file:
+      - ./netbird/dashboard.env
+
+  # NetBird Reverse Proxy — expose feature (proxy.madhan.app TCP passthrough)
+  netbird-proxy:
+    <<: *default
+    image: netbirdio/reverse-proxy:0.71.4
+    container_name: netbird-proxy
+    networks: [bifrost_net]
+    env_file:
+      - .secrets.env            # expands ${NB_PROXY_TOKEN}
+      - ./netbird/proxy.env
+    volumes:
+      - netbird_proxy_certs:/certs
+
+  # NetBird Agent — WireGuard routing peer, advertises 192.168.1.0/24 into mesh
+  netbird-agent:
+    <<: *default
+    image: netbirdio/netbird:0.71.4
+    container_name: netbird-agent
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - NB_SETUP_KEY=${NB_BIFROST_SETUP_KEY}
+      - NB_MANAGEMENT_URL=https://netbird.madhan.app
+      - NB_HOSTNAME=bifrost-agent
+    volumes:
+      # Persist peer key and state so container replacements don't need to re-register.
+      # NB_SETUP_KEY is only used on first boot when /var/lib/netbird has no peer state.
+      - netbird_agent_data:/var/lib/netbird
+
+  # Workaround: NetBird 0.71.4 distributes the 192.168.1.0/24 network route to this peer
+  # but never installs it in the kernel routing table (confirmed reproducible on every restart).
+  # Waits for wt0 to come UP then installs the route via k8s-routing-peer (100.109.244.71).
+  netbird-route-installer:
+    <<: *default
+    image: alpine:3.21
+    container_name: netbird-route-installer
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - netbird-agent
+    command: >
+      sh -c "
+        until ip link show wt0 2>/dev/null | grep -q UP; do sleep 2; done;
+        while true; do
+          ip route replace 192.168.1.0/24 via 100.109.244.71 dev wt0 2>/dev/null || true;
+          sleep 30;
+        done
+      "
+
+  # --------------------------------------------------------------------------------
+  # Gatus — uptime monitoring, exposed at uptime.madhan.app (no auth — public)
+  # grafana.madhan.app resolves to Bifrost public IP; extra_hosts maps it to
+  # Traefik's internal IP so Gatus avoids hairpin NAT and tests the full Traefik path.
+  # All other K8s services resolve to 192.168.1.220 (wildcard DNS → LAN) and are
+  # reachable via the WireGuard-routed path that Traefik already uses.
+  # --------------------------------------------------------------------------------
+
+  gatus:
+    <<: *default
+    image: ghcr.io/twin/gatus:v5.36.0
+    container_name: gatus
+    networks:
+      bifrost_net:
+        ipv4_address: 172.30.0.12
+    volumes:
+      - ./gatus/config.yaml:/config/config.yaml:ro
+      - gatus_data:/data
+    extra_hosts:
+      - "grafana.madhan.app:172.30.0.10"   # Traefik internal — avoids hairpin NAT
+      - "auth.madhan.app:172.30.0.10"
+      - "netbird.madhan.app:172.30.0.10"
+      - "uptime.madhan.app:172.30.0.10"
+
+  # --------------------------------------------------------------------------------
+  # Authentik — GitHub OAuth broker + ForwardAuth for public K8s services
+  # --------------------------------------------------------------------------------
+
+  authentik-postgres:
+    <<: *default
+    image: postgres:16.14-alpine
+    container_name: authentik-postgres
+    networks: [bifrost_net]
+    volumes:
+      - authentik_postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
+      - POSTGRES_USER=authentik
+      - POSTGRES_DB=authentik
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  authentik-server:
+    <<: *default
+    image: ghcr.io/goauthentik/server:2026.5.2
+    container_name: authentik-server
+    command: server
+    networks: [bifrost_net]
+    ports:
+      - "127.0.0.1:9000:9000"   # localhost only — used by bootstrap.sh curl health polling
+    env_file:
+      - .env
+      - .secrets.env             # injects AUTHENTIK_BOOTSTRAP_TOKEN (auto-creates akadmin API token on first boot)
+    environment:
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-postgres
+      - AUTHENTIK_POSTGRESQL__USER=authentik
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
+    volumes:
+      - authentik_media:/media
+      - authentik_certs:/certs
+    depends_on:
+      authentik-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ak healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+
+  authentik-worker:
+    <<: *default
+    image: ghcr.io/goauthentik/server:2026.5.2
+    container_name: authentik-worker
+    command: worker
+    networks: [bifrost_net]
+    env_file:
+      - .env
+    environment:
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-postgres
+      - AUTHENTIK_POSTGRESQL__USER=authentik
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
+    volumes:
+      - authentik_media:/media
+      - authentik_certs:/certs
+    depends_on:
+      authentik-postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true

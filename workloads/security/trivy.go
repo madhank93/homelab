@@ -1,0 +1,194 @@
+package security
+
+import (
+	"archive/tar"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/aws/constructs-go/constructs/v10"
+	"github.com/aws/jsii-runtime-go"
+	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/imports/trivyoperator"
+)
+
+const (
+	trivyChartName = "trivy-operator"
+	trivyVersion   = "0.32.0"
+
+	// Adjust if Aqua ever changes the release/tag naming.
+	trivyHelmReleasesBase = "https://github.com/aquasecurity/helm-charts/releases/download"
+)
+
+// NewTrivyChart deploys the Trivy Operator for continuous vulnerability and
+// misconfiguration scanning of workloads and container images.
+//
+// CRDs are included inline (downloaded from the Aqua Helm releases) unless the
+// environment variable TRIVY_OPERATOR_SKIP_CRDS=true is set. Set this variable
+// when upgrading an existing installation to avoid CRD conflicts.
+// A ServiceMonitor is enabled so VictoriaMetrics scrapes vulnerability metrics.
+func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
+	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
+		Namespace: jsii.String(namespace),
+	})
+
+	k8s.NewKubeNamespace(chart, jsii.String("namespace"), &k8s.KubeNamespaceProps{
+		Metadata: &k8s.ObjectMeta{
+			Name: jsii.String(namespace),
+			Labels: &map[string]*string{
+				// node-collector Jobs require hostPID and hostPath volumes — needs privileged.
+				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
+			},
+		},
+	})
+
+	values := map[string]any{
+		"trivy-operator": map[string]any{
+			"enabled": true,
+			"serviceMonitor": map[string]any{
+				"enabled": true,
+			},
+		},
+		"operator": map[string]any{
+			"replicas":                1,
+			"scanJobsConcurrentLimit": 3,
+			"scanJobsRetryDelay":      "30s",
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+			},
+		},
+		"trivyOperator": map[string]any{
+			"scanJobTimeout": "5m",
+		},
+		// Talos has a read-only root filesystem — /etc/systemd and /lib/systemd do not exist.
+		// Strip those hostPath mounts from node-collector; keep the k8s-relevant paths only.
+		// Toleration required so node-collector can scan control-plane nodes (NoSchedule taint).
+		"nodeCollector": map[string]any{
+			"tolerations": []map[string]any{
+				{
+					"key":      "node-role.kubernetes.io/control-plane",
+					"operator": "Exists",
+					"effect":   "NoSchedule",
+				},
+			},
+			"volumes": []map[string]any{
+				{"hostPath": map[string]any{"path": "/var/lib/etcd"}, "name": "var-lib-etcd"},
+				{"hostPath": map[string]any{"path": "/var/lib/kubelet"}, "name": "var-lib-kubelet"},
+				{"hostPath": map[string]any{"path": "/var/lib/kube-scheduler"}, "name": "var-lib-kube-scheduler"},
+				{"hostPath": map[string]any{"path": "/var/lib/kube-controller-manager"}, "name": "var-lib-kube-controller-manager"},
+				{"hostPath": map[string]any{"path": "/etc/kubernetes"}, "name": "etc-kubernetes"},
+				{"hostPath": map[string]any{"path": "/etc/cni/net.d/"}, "name": "etc-cni-netd"},
+			},
+			"volumeMounts": []map[string]any{
+				{"mountPath": "/var/lib/etcd", "name": "var-lib-etcd", "readOnly": true},
+				{"mountPath": "/var/lib/kubelet", "name": "var-lib-kubelet", "readOnly": true},
+				{"mountPath": "/var/lib/kube-scheduler", "name": "var-lib-kube-scheduler", "readOnly": true},
+				{"mountPath": "/var/lib/kube-controller-manager", "name": "var-lib-kube-controller-manager", "readOnly": true},
+				{"mountPath": "/etc/kubernetes", "name": "etc-kubernetes", "readOnly": true},
+				{"mountPath": "/etc/cni/net.d/", "name": "etc-cni-netd", "readOnly": true},
+			},
+		},
+		"compliance": map[string]any{
+			"failedChecksOnly": false,
+		},
+		"rbac": map[string]any{
+			"create": true,
+		},
+		"serviceAccount": map[string]any{
+			"create": true,
+			"name":   "trivy-operator",
+		},
+	}
+
+	if os.Getenv("TRIVY_OPERATOR_SKIP_CRDS") != "true" {
+		includeTrivyCRDs(chart)
+	}
+
+	trivyoperator.NewTrivyoperator(chart, jsii.String("trivy-release"), &trivyoperator.TrivyoperatorProps{
+		ReleaseName: jsii.String("trivy-operator"),
+		Namespace:   jsii.String(namespace),
+		Values:      &values,
+	})
+
+	return chart
+}
+
+// includeTrivyCRDs downloads the Trivy Operator CRD bundle from the Aqua Helm
+// release tarball, extracts the CRD YAML files, and adds each as an ApiObject
+// to the chart. This ensures CRDs are always in sync with the operator version
+// without needing a separate CRD install step.
+func includeTrivyCRDs(chart cdk8s.Chart) {
+	tempDir, err := os.MkdirTemp("", "trivy-crds")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create temp dir for trivy CRDs: %v", err))
+	}
+	defer os.RemoveAll(tempDir)
+
+	chartURL := fmt.Sprintf(
+		"%s/%s-%s/%s-%s.tgz",
+		trivyHelmReleasesBase,
+		trivyChartName, trivyVersion,
+		trivyChartName, trivyVersion,
+	)
+
+	resp, err := http.Get(chartURL)
+	if err != nil {
+		panic(fmt.Sprintf("failed to download trivy chart from %s: %v", chartURL, err))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("failed to download trivy chart from %s: status %s", chartURL, resp.Status))
+	}
+
+	gzReader, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create gzip reader for trivy chart: %v", err))
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			panic(fmt.Sprintf("failed to read tar header from trivy chart: %v", err))
+		}
+
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		// Match CRDs inside the chart's crds/ directory
+		if !strings.Contains(header.Name, "crds/") || !strings.HasSuffix(header.Name, ".yaml") {
+			continue
+		}
+
+		targetPath := filepath.Join(tempDir, filepath.Base(header.Name))
+		outFile, err := os.Create(targetPath)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create CRD file %s: %v", targetPath, err))
+		}
+
+		if _, err := io.Copy(outFile, tarReader); err != nil {
+			outFile.Close()
+			panic(fmt.Sprintf("failed to write CRD file %s: %v", targetPath, err))
+		}
+		outFile.Close()
+
+		id := fmt.Sprintf("crd-%s", strings.TrimSuffix(filepath.Base(header.Name), ".yaml"))
+
+		cdk8s.NewInclude(chart, jsii.String(id), &cdk8s.IncludeProps{
+			Url: jsii.String(targetPath),
+		})
+	}
+}

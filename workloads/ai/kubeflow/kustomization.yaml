@@ -1,0 +1,149 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+sortOptions:
+  order: legacy
+  legacySortOptions:
+    orderFirst:
+    - Namespace
+    - ResourceQuota
+    - StorageClass
+    - CustomResourceDefinition
+    - MutatingWebhookConfiguration
+    - ServiceAccount
+    - PodSecurityPolicy
+    - NetworkPolicy
+    - Role
+    - ClusterRole
+    - RoleBinding
+    - ClusterRoleBinding
+    - ConfigMap
+    - Secret
+    - Endpoints
+    - Service
+    - LimitRange
+    - PriorityClass
+    - PersistentVolume
+    - PersistentVolumeClaim
+    - Deployment
+    - StatefulSet
+    - CronJob
+    - PodDisruptionBudget
+    orderLast:
+    - ValidatingWebhookConfiguration
+
+resources:
+# Stub Istio CRDs — profiles-controller watches AuthorizationPolicy unconditionally at startup.
+# Without the CRD, cache sync fails and the controller crashes. These stubs satisfy the watch.
+- stub-istio-crds.yaml
+# cert-manager kubeflow issuer only — cert-manager itself is already installed in the cluster
+- github.com/kubeflow/manifests//common/cert-manager/kubeflow-issuer/base?ref=v1.11.0
+# Kubeflow namespace + roles
+- github.com/kubeflow/manifests//common/kubeflow-namespace/base?ref=v1.11.0
+- github.com/kubeflow/manifests//common/kubeflow-roles/base?ref=v1.11.0
+# NetworkPolicies intentionally excluded — they are Istio-specific (restrict ingress to
+# same-namespace or istio-system). Without Istio, they block cilium-envoy (hostNetwork)
+# from reaching kubeflow pods. Remove entirely to allow all ingress.
+# Kubeflow Pipelines — SeaweedFS + MySQL + cert-manager TLS, platform-agnostic multi-user
+- github.com/kubeflow/manifests//applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user?ref=v1.11.0
+# Katib — hyperparameter tuning with Kubeflow integration (includes MySQL)
+- github.com/kubeflow/manifests//applications/katib/upstream/installs/katib-with-kubeflow?ref=v1.11.0
+# Central Dashboard (upstream/base — no oauth2-proxy/Istio overlay)
+- github.com/kubeflow/manifests//applications/centraldashboard/upstream/base?ref=v1.11.0
+# Admission Webhook — PodDefaults (GPU node injection per-notebook)
+- github.com/kubeflow/manifests//applications/admission-webhook/upstream/overlays/cert-manager?ref=v1.11.0
+# Jupyter Web App (base — no Istio VirtualService)
+- github.com/kubeflow/manifests//applications/jupyter/jupyter-web-app/upstream/base?ref=v1.11.0
+# Notebook Controller
+- github.com/kubeflow/manifests//applications/jupyter/notebook-controller/upstream/overlays/kubeflow?ref=v1.11.0
+# Profiles + KFAM (PSS version — no Istio dependency)
+- github.com/kubeflow/manifests//applications/profiles/pss?ref=v1.11.0
+# PVC Viewer Controller
+- github.com/kubeflow/manifests//applications/pvcviewer-controller/upstream/base?ref=v1.11.0
+# Volumes Web App (base — no Istio VirtualService)
+- github.com/kubeflow/manifests//applications/volumes-web-app/upstream/base?ref=v1.11.0
+# Tensorboard Controller
+- github.com/kubeflow/manifests//applications/tensorboard/tensorboard-controller/upstream/overlays/kubeflow?ref=v1.11.0
+# Tensorboards Web App (base — no Istio VirtualService)
+- github.com/kubeflow/manifests//applications/tensorboard/tensorboards-web-app/upstream/base?ref=v1.11.0
+# Trainer (Training Operator v2) — TFJob, PyTorchJob, MPIJob, etc. (v1 is deprecated in v1.11.0)
+- github.com/kubeflow/manifests//applications/trainer/overlays?ref=v1.11.0
+# Spark Operator
+- github.com/kubeflow/manifests//applications/spark/spark-operator/overlays/kubeflow?ref=v1.11.0
+# Default user profile (creates kubeflow-user-example-com namespace)
+- github.com/kubeflow/manifests//common/user-namespace/base?ref=v1.11.0
+
+components:
+# Pod Security Standards — enforce baseline PSS on dynamic namespaces (requires K8s 1.33+)
+- github.com/kubeflow/manifests//common/security/PSS/dynamic/baseline?ref=v1.11.0
+
+patches:
+# Fix Profile name — user-namespace/base uses $(profile-name) vars substitution which
+# is broken in kustomize 5.8.0 (replacements selector itself contains the var reference).
+# Explicitly rename the Profile to the correct value from params.env.
+- patch: |-
+    - op: replace
+      path: /metadata/name
+      value: kubeflow-user-example-com
+    - op: replace
+      path: /spec/owner/name
+      value: user@example.com
+  target:
+    group: kubeflow.org
+    kind: Profile
+# Strip all Istio resources — pipeline and katib overlays embed DestinationRules,
+# VirtualServices, and AuthorizationPolicies even in "platform-agnostic" variants.
+# These CRDs do not exist without Istio installed.
+# Delete centraldashboard NetworkPolicy entirely.
+# Cilium-envoy uses hostNetwork so its source IP is the node IP, not a pod IP.
+# Kubernetes NetworkPolicy pod selectors (namespaceSelector/podSelector) don't
+# match hostNetwork traffic — Cilium envoy gets cx_connect_fail connecting to the pod.
+# No Istio in this cluster, so the NetworkPolicy provides no value anyway.
+- patch: |-
+    $patch: delete
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: centraldashboard
+  target:
+    kind: NetworkPolicy
+    name: centraldashboard
+# SeaweedFS NetworkPolicy allows all ports from istio-system but restricts port 8111 (IAM/STS API)
+# from the kubeflow-pipelines-profile-controller. Without Istio, the policy blocks the profile
+# controller from initialising user namespaces (mlpipeline-minio-artifact secret never created).
+- patch: |-
+    $patch: delete
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: seaweedfs
+  target:
+    kind: NetworkPolicy
+    name: seaweedfs
+- patch: |-
+    $patch: delete
+    apiVersion: networking.istio.io/v1alpha3
+    kind: DestinationRule
+    metadata:
+      name: unused
+  target:
+    group: networking.istio.io
+    kind: DestinationRule
+- patch: |-
+    $patch: delete
+    apiVersion: networking.istio.io/v1alpha3
+    kind: VirtualService
+    metadata:
+      name: unused
+  target:
+    group: networking.istio.io
+    kind: VirtualService
+- patch: |-
+    $patch: delete
+    apiVersion: security.istio.io/v1beta1
+    kind: AuthorizationPolicy
+    metadata:
+      name: unused
+  target:
+    group: security.istio.io
+    kind: AuthorizationPolicy

@@ -1,0 +1,13 @@
+proxmox:
+  username: root@pam
+  endpoint: https://192.168.1.235:8006/
+  nodename: proxmox
+  image_url: https://github.com/madhank93/ubuntu-cloud-image/releases/download/v22.04-34/ubuntu-main.qcow2
+
+hetzner:
+  server_name: bifrost-public-vps1
+  image: ubuntu-24.04
+  server_type: cpx21
+  location: ash
+  ssh_key: mac-ssh
+  vps_ip: "178.156.199.250"

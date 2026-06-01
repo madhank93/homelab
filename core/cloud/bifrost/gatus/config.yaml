@@ -1,0 +1,160 @@
+storage:
+  type: sqlite
+  path: /data/gatus.db
+
+endpoints:
+
+  # ── Bifrost (Hetzner VPS — Docker services) ─────────────────────────────────
+  # extra_hosts in docker-compose maps *.madhan.app → Traefik (172.30.0.10) to
+  # avoid hairpin NAT (Gatus lives on the same host as Traefik).
+
+  - name: Authentik
+    group: Bifrost
+    url: https://auth.madhan.app/-/health/ready/
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: NetBird
+    group: Bifrost
+    url: https://netbird.madhan.app
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Platform ─────────────────────────────────────────────────────────────────
+
+  - name: Kubernetes API
+    group: Platform
+    url: https://192.168.1.210:6443/livez
+    interval: 30s
+    client:
+      insecure: true
+    # Talos disables anonymous auth — 401 means API server is up and responding.
+    conditions:
+      - "[STATUS] < 500"
+
+  - name: ArgoCD
+    group: Platform
+    url: https://argocd.madhan.app/healthz
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Observability ─────────────────────────────────────────────────────────────
+  # grafana.madhan.app resolves to Bifrost public IP — extra_hosts in docker-compose
+  # maps it to Traefik's internal IP (172.30.0.10) to avoid hairpin NAT.
+
+  - name: Grafana
+    group: Observability
+    url: https://grafana.madhan.app/api/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].database == ok"
+
+  - name: VictoriaMetrics
+    group: Observability
+    url: https://vmselect.madhan.app/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: VictoriaLogs
+    group: Observability
+    url: https://victorialogs.madhan.app/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Alertmanager
+    group: Observability
+    url: https://alertmanager.madhan.app/-/healthy
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Storage ───────────────────────────────────────────────────────────────────
+
+  - name: Longhorn
+    group: Storage
+    url: https://longhorn.madhan.app
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Registry ──────────────────────────────────────────────────────────────────
+
+  - name: Harbor
+    group: Registry
+    url: https://harbor.madhan.app/api/v2.0/ping
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY] == Pong"
+
+  # ── Secrets ───────────────────────────────────────────────────────────────────
+  # /v1/sys/health: 200 = active, 429 = standby, 472 = sealed, 503 = uninitialised.
+  # Strict == 200 catches sealed state as a failure.
+
+  - name: OpenBao
+    group: Secrets
+    url: https://openbao.madhan.app/v1/sys/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Management ────────────────────────────────────────────────────────────────
+
+  - name: Headlamp
+    group: Management
+    url: https://headlamp.madhan.app
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Network ───────────────────────────────────────────────────────────────────
+
+  - name: Hubble UI
+    group: Network
+    url: https://hubble.madhan.app
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  # ── Applications ─────────────────────────────────────────────────────────────
+
+  - name: n8n
+    group: Applications
+    url: https://n8n.madhan.app
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Ollama
+    group: Applications
+    url: https://ollama.madhan.app/api/version
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: ComfyUI
+    group: Applications
+    url: https://comfyui.madhan.app
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Falco UI
+    group: Applications
+    url: https://falco.madhan.app
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Kubeflow
+    group: Applications
+    url: https://kubeflow.madhan.app
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
