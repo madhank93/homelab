@@ -111,9 +111,7 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 		return err
 	}
 
-	// Wildcard certificate for *.madhan.app
-	// Stored in kube-system so the Gateway can reference it across namespaces.
-	// The HTTPS listener in cilium.go can be re-enabled once this Secret exists.
+	// Wildcard certificate for *.madhan.app — stored in kube-system for Gateway reference.
 	_, err = apiextensions.NewCustomResource(ctx, "wildcard-certificate", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("cert-manager.io/v1"),
 		Kind:       pulumi.String("Certificate"),
@@ -124,6 +122,33 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 		OtherFields: map[string]any{
 			"spec": map[string]any{
 				"secretName": "wildcard-madhan-app-tls",
+				"issuerRef": map[string]any{
+					"name": "letsencrypt-prod",
+					"kind": "ClusterIssuer",
+				},
+				"dnsNames": []string{"madhan.app", "*.madhan.app"},
+			},
+		},
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{chart}))
+	if err != nil {
+		return err
+	}
+
+	// Cilium's Envoy SDS server fetches TLS certs from cilium-secrets under the name
+	// "<source-namespace>-<secret-name>". cert-manager owns this secret directly so it
+	// survives node failures without depending on Cilium's secretsNamespace.sync
+	// (which does not re-run after simultaneous node failures — observed Jun 2026).
+	// Cilium sync is disabled in cilium.go: gatewayAPI.secretsNamespace.sync=false.
+	_, err = apiextensions.NewCustomResource(ctx, "wildcard-certificate-cilium-sds", &apiextensions.CustomResourceArgs{
+		ApiVersion: pulumi.String("cert-manager.io/v1"),
+		Kind:       pulumi.String("Certificate"),
+		Metadata: &metav1.ObjectMetaArgs{
+			Name:      pulumi.String("wildcard-madhan-app-cilium-sds"),
+			Namespace: pulumi.String("cilium-secrets"),
+		},
+		OtherFields: map[string]any{
+			"spec": map[string]any{
+				"secretName": "kube-system-wildcard-madhan-app-tls",
 				"issuerRef": map[string]any{
 					"name": "letsencrypt-prod",
 					"kind": "ClusterIssuer",

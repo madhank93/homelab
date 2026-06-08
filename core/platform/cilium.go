@@ -81,6 +81,12 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			},
 			"gatewayAPI": pulumi.Map{
 				"enabled": pulumi.Bool(true),
+				"secretsNamespace": pulumi.Map{
+					// cert-manager writes kube-system-wildcard-madhan-app-tls directly into
+					// cilium-secrets (see cert_manager.go). Disable sync so Cilium does not
+					// race with cert-manager over ownership of that secret.
+					"sync": pulumi.Bool(false),
+				},
 			},
 			// Both ens18 (existing VMs, Talos ≤v1.12 predictable naming) and eth0
 			// (fresh VMs from Talos v1.13+ nocloud image, classic naming) listed so
