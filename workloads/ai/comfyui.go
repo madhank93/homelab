@@ -42,7 +42,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	})
 
-	replicas := float64(1)
+	replicas := float64(0)
 	k8s.NewKubeDeployment(chart, jsii.String("comfyui"), &k8s.KubeDeploymentProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("comfyui"),
