@@ -37,12 +37,12 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 					"nvidia.com/gpu": 1,
 					// memory here is host RAM (cgroup limit), NOT GPU VRAM.
 					// GPU VRAM (16GB) is fully available via nvidia.com/gpu: 1.
-					// Worker4 has 6GB host RAM total; keep limit below that.
-					"memory": "4Gi",
+					// host RAM cgroup limit (worker4 ~15.6Gi); 8Gi headroom for 14b model load.
+					"memory": "8Gi",
 					"cpu":    "4000m",
 				},
 				"requests": map[string]any{
-					"memory": "2Gi",
+					"memory": "4Gi",
 					"cpu":    "1000m",
 				},
 			},
@@ -51,7 +51,7 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 				"size":    "100Gi",
 			},
 			"service": map[string]any{
-				"type": "ClusterIP",
+				"type": "LoadBalancer",
 				"port": 11434,
 			},
 			"nodeSelector": gpuNodeSelector,
@@ -63,6 +63,13 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 			"runtimeClassName": "nvidia",
 			"extraEnv": []map[string]any{
 				{"name": "NVIDIA_VISIBLE_DEVICES", "value": "all"},
+			},
+			// Declarative model pull (otwld chart): pulled on boot into the 100Gi
+			// PVC, idempotent, survives pod/PVC recreation.
+			"ollama": map[string]any{
+				"models": map[string]any{
+					"pull": []string{"qwen2.5-coder:14b"},
+				},
 			},
 		},
 	})
