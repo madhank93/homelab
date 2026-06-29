@@ -18,4 +18,4 @@ spec:
   selector:
     app.kubernetes.io/instance: ollama
     app.kubernetes.io/name: ollama
-  type: ClusterIP
+  type: LoadBalancer

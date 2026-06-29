@@ -34,6 +34,18 @@ spec:
               value: all
           image: ollama/ollama:0.24.0
           imagePullPolicy: IfNotPresent
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    while ! /bin/ollama ps > /dev/null 2>&1; do
+                      sleep 5
+                    done
+
+                    /bin/ollama pull  qwen2.5-coder:14b
           livenessProbe:
             failureThreshold: 6
             httpGet:
@@ -60,11 +72,11 @@ spec:
           resources:
             limits:
               cpu: 4000m
-              memory: 4Gi
+              memory: 8Gi
               nvidia.com/gpu: 1
             requests:
               cpu: 1000m
-              memory: 2Gi
+              memory: 4Gi
           securityContext: {}
           volumeMounts:
             - mountPath: /root/.ollama
