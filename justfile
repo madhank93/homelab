@@ -147,3 +147,52 @@ sops-decrypt file:
 
 ping_scan:
     nmap -sn 192.168.1.0/24
+
+TALOSCTL := 'talosctl --talosconfig "$HOME/.talos/config" -e 192.168.1.210'
+NODES    := '192.168.1.211,192.168.1.212,192.168.1.213,192.168.1.221,192.168.1.222,192.168.1.223,192.168.1.224'
+
+# Upgrade one running Talos node.
+# Upgrade workers first, then GPU workers, then controllers; verify cluster
+# health between nodes. The upgrade preserves ephemeral state for etcd members.
+#   just talos-upgrade 192.168.1.223
+#   just talos-upgrade 192.168.1.224 gpu
+talos-upgrade node schematic='base':
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Derive the version and schematic IDs from Pulumi configuration.
+    SRC=core/platform/talos.go
+    VERSION=$(sed -nE 's/.*talosVersion[[:space:]]*=[[:space:]]*"(v[0-9.]+)".*/\1/p' "$SRC")
+    IDS=$(sed -nE 's|.*factory\.talos\.dev/image/([0-9a-f]{64}).*|\1|p' "$SRC")
+
+    case "{{schematic}}" in
+      base) ID=$(echo "$IDS" | sed -n 1p) ;;
+      gpu)  ID=$(echo "$IDS" | sed -n 2p) ;;
+      *) echo "schematic must be 'base' or 'gpu'" >&2; exit 1 ;;
+    esac
+
+    [ -n "$VERSION" ] && [ -n "$ID" ] || {
+      echo "could not parse $SRC" >&2
+      exit 1
+    }
+
+    IMAGE="factory.talos.dev/installer/$ID:$VERSION"
+    echo "upgrading {{node}} to $VERSION"
+    echo "  $IMAGE"
+    read -rp "reboot this node? [y/N] " ok
+    [ "$ok" = "y" ] || exit 1
+
+    {{TALOSCTL}} upgrade --nodes {{node}} --image "$IMAGE" --preserve
+
+# Cluster health. Must be clean before upgrading the next node.
+talos-health:
+    {{TALOSCTL}} -n 192.168.1.211 health
+
+# Talos version reported by every node.
+talos-versions:
+    {{TALOSCTL}} -n {{NODES}} version
+
+# Upgrade Kubernetes. Separate from the OS; requires all nodes healthy.
+#   just talos-upgrade-k8s 1.36.2
+talos-upgrade-k8s version:
+    {{TALOSCTL}} -n 192.168.1.211 upgrade-k8s --to {{version}}

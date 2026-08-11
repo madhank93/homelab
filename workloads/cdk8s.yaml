@@ -1,16 +1,9 @@
 language: go
 app: go run .
-# Every entry here generates typed Go constructs into workloads/imports/.
-# Only add a chart when a construct actually imports the generated package —
-# an unused entry costs synth time and drifts silently from what is deployed.
-#
-# Charts rendered with cdk8s.NewHelm (raw values maps, no typed construct) are
-# versioned at the call site instead, not here. Those are: cloudnative-pg,
-# falco, nvidia-device-plugin, dcgm-exporter, opentelemetry-collector,
-# reloader, secrets-store-csi-driver, openbao, victoria-metrics-k8s-stack
-# and n8n.
+# Only list a chart here if a construct imports its generated package.
+# Charts rendered via cdk8s.NewHelm are versioned at the call site instead.
 imports:
-  # Kubernetes API types — keep aligned with the cluster (Talos ships 1.36.x).
+  # Keep aligned with the cluster (Talos 1.13.x ships Kubernetes 1.36.x).
   - k8s@1.36.0
   - helm:https://grafana-community.github.io/helm-charts/grafana@12.4.1
   - helm:https://helm.goharbor.io/harbor@1.19.0

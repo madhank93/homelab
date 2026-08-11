@@ -26,6 +26,9 @@ const (
 // controller, and writes talosconfig + kubeconfig to disk for the platform stack.
 //
 // Run `just core talos up` to apply.
+//
+// Changing the Talos image affects only newly created VMs; upgrade existing
+// nodes with `just talos-upgrade <ip>`.
 func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Initialize Provider & Config
 	provider, cfg, err := NewProxmoxProvider(ctx)

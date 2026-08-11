@@ -6,9 +6,8 @@ ARG NVM_VERSION=0.40.6
 ARG PULUMI_VERSION=3.256.0
 ARG YQ_VERSION=4.53.3
 ARG JUST_VERSION=1.58.0
-# Helm held on the 3.x line deliberately: cdk8s renders every chart by shelling
-# out to `helm template`, so a move to Helm 4 can shift synthesised manifests
-# without any version change in this repo. Upgrade it on its own, diffing app/.
+# Held on 3.x: cdk8s renders charts via `helm template`, so Helm 4 can shift
+# synth output on its own. Upgrade separately and diff app/.
 ARG HELM_VERSION=3.21.3
 ARG CDK8S_VERSION=2.207.49
 ARG KUBECTL_VERSION=1.36.3
