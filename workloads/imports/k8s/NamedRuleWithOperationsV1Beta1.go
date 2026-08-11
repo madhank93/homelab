@@ -3,23 +3,23 @@ package k8s
 
 // NamedRuleWithOperations is a tuple of Operations and Resources with ResourceNames.
 type NamedRuleWithOperationsV1Beta1 struct {
-	// APIGroups is the API groups the resources belong to.
+	// apiGroups is the API groups the resources belong to.
 	//
 	// '*' is all groups. If '*' is present, the length of the slice must be one. Required.
 	ApiGroups *[]*string `field:"optional" json:"apiGroups" yaml:"apiGroups"`
-	// APIVersions is the API versions the resources belong to.
+	// apiVersions is the API versions the resources belong to.
 	//
 	// '*' is all versions. If '*' is present, the length of the slice must be one. Required.
 	ApiVersions *[]*string `field:"optional" json:"apiVersions" yaml:"apiVersions"`
-	// Operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or * for all of those operations and any future admission operations that are added.
+	// operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or * for all of those operations and any future admission operations that are added.
 	//
 	// If '*' is present, the length of the slice must be one. Required.
 	Operations *[]*string `field:"optional" json:"operations" yaml:"operations"`
-	// ResourceNames is an optional white list of names that the rule applies to.
+	// resourceNames is an optional white list of names that the rule applies to.
 	//
 	// An empty set means that everything is allowed.
 	ResourceNames *[]*string `field:"optional" json:"resourceNames" yaml:"resourceNames"`
-	// Resources is a list of resources this rule applies to.
+	// resources is a list of resources this rule applies to.
 	//
 	// For example: 'pods' means pods. 'pods/log' means the log subresource of pods. '*' means all resources, but not subresources. 'pods/*' means all subresources of pods. '_/scale' means all scale subresources. '_/*' means all resources and their subresources.
 	//

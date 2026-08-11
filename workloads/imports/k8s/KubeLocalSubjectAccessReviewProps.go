@@ -5,11 +5,11 @@ package k8s
 //
 // Having a namespace scoped resource makes it much easier to grant namespace scoped policy that includes permissions checking.
 type KubeLocalSubjectAccessReviewProps struct {
-	// Spec holds information about the request being evaluated.
+	// spec holds information about the request being evaluated.
 	//
 	// spec.namespace must be equal to the namespace you made the request against.  If empty, it is defaulted.
 	Spec *SubjectAccessReviewSpec `field:"required" json:"spec" yaml:"spec"`
-	// Standard list metadata.
+	// metadata is the standard list metadata.
 	//
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`

@@ -5,7 +5,7 @@ package k8s
 type KubeMutatingWebhookConfigurationListProps struct {
 	// List of MutatingWebhookConfiguration.
 	Items *[]*KubeMutatingWebhookConfigurationProps `field:"required" json:"items" yaml:"items"`
-	// Standard list metadata.
+	// metadata is the standard list metadata.
 	//
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`

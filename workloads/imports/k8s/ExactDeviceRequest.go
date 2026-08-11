@@ -13,7 +13,7 @@ type ExactDeviceRequest struct {
 	//
 	// Claims with AdminAccess are expected to be used for monitoring or other management services for a device.  They ignore all ordinary claims to the device with respect to access modes and any resource allocations.
 	//
-	// This is an alpha field and requires enabling the DRAAdminAccess feature gate. Admin access is disabled if this field is unset or set to false, otherwise it is enabled.
+	// Admin access is disabled if this field is unset or set to false, otherwise it is enabled.
 	AdminAccess *bool `field:"optional" json:"adminAccess" yaml:"adminAccess"`
 	// AllocationMode and its related fields define how devices are allocated to satisfy this request. Supported values are:.
 	//
@@ -52,7 +52,7 @@ type ExactDeviceRequest struct {
 	//
 	// The maximum number of tolerations is 16.
 	//
-	// This is an alpha field and requires enabling the DRADeviceTaints feature gate.
+	// This is a beta field and requires enabling the DRADeviceTaints feature gate.
 	Tolerations *[]*DeviceToleration `field:"optional" json:"tolerations" yaml:"tolerations"`
 }
 

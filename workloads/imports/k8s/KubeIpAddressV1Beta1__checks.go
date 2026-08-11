@@ -27,6 +27,9 @@ func validateKubeIpAddressV1Beta1_IsConstructParameters(x interface{}) error {
 }
 
 func validateKubeIpAddressV1Beta1_ManifestParameters(props *KubeIpAddressV1Beta1Props) error {
+	if props == nil {
+		return fmt.Errorf("parameter props is required, but nil was provided")
+	}
 	if err := _jsii_.ValidateStruct(props, func() string { return "parameter props" }); err != nil {
 		return err
 	}
@@ -51,6 +54,9 @@ func validateNewKubeIpAddressV1Beta1Parameters(scope constructs.Construct, id *s
 		return fmt.Errorf("parameter id is required, but nil was provided")
 	}
 
+	if props == nil {
+		return fmt.Errorf("parameter props is required, but nil was provided")
+	}
 	if err := _jsii_.ValidateStruct(props, func() string { return "parameter props" }); err != nil {
 		return err
 	}

@@ -20,8 +20,6 @@ import (
 // When allocating all resources in a pool matching certain criteria or when looking for the best solution among several different alternatives, a consumer should check the number of ResourceSlices in a pool (included in each ResourceSlice) to determine whether its view of a pool is complete and if not, should wait until the driver has completed updating the pool.
 //
 // For resources that are not local to a node, the node name is not set. Instead, the driver may use a node selector to specify where the devices are available.
-//
-// This is an alpha type and requires enabling the DynamicResourceAllocation feature gate.
 type KubeResourceSlice interface {
 	cdk8s.ApiObject
 	// The group portion of the API version (e.g. `authorization.k8s.io`).
@@ -57,6 +55,15 @@ type KubeResourceSlice interface {
 	ToJson() interface{}
 	// Returns a string representation of this construct.
 	ToString() *string
+	// Applies one or more mixins to this construct.
+	//
+	// Mixins are applied in order. The list of constructs is captured at the
+	// start of the call, so constructs added by a mixin will not be visited.
+	// Use multiple `with()` calls if subsequent mixins should apply to added
+	// constructs.
+	//
+	// Returns: This construct for chaining.
+	With(mixins ...constructs.IMixin) constructs.IConstruct
 }
 
 // The jsii proxy struct for KubeResourceSlice
@@ -321,6 +328,24 @@ func (k *jsiiProxy_KubeResourceSlice) ToString() *string {
 		k,
 		"toString",
 		nil, // no parameters
+		&returns,
+	)
+
+	return returns
+}
+
+func (k *jsiiProxy_KubeResourceSlice) With(mixins ...constructs.IMixin) constructs.IConstruct {
+	args := []interface{}{}
+	for _, a := range mixins {
+		args = append(args, a)
+	}
+
+	var returns constructs.IConstruct
+
+	_jsii_.Invoke(
+		k,
+		"with",
+		args,
 		&returns,
 	)
 

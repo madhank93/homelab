@@ -3,29 +3,29 @@ package k8s
 
 // ValidatingWebhook describes an admission webhook and the resources and operations it applies to.
 type ValidatingWebhook struct {
-	// AdmissionReviewVersions is an ordered list of preferred `AdmissionReview` versions the Webhook expects.
+	// admissionReviewVersions is an ordered list of preferred `AdmissionReview` versions the Webhook expects.
 	//
 	// API server will try to use first version in the list which it supports. If none of the versions specified in this list supported by API server, validation will fail for this object. If a persisted webhook configuration specifies allowed versions and does not include any versions known to the API Server, calls to the webhook will fail and be subject to the failure policy.
 	AdmissionReviewVersions *[]*string `field:"required" json:"admissionReviewVersions" yaml:"admissionReviewVersions"`
-	// ClientConfig defines how to communicate with the hook.
+	// clientConfig defines how to communicate with the hook.
 	//
 	// Required.
 	ClientConfig *WebhookClientConfig `field:"required" json:"clientConfig" yaml:"clientConfig"`
-	// The name of the admission webhook.
+	// name is the name of the admission webhook.
 	//
 	// Name should be fully qualified, e.g., imagepolicy.kubernetes.io, where "imagepolicy" is the name of the webhook, and kubernetes.io is the name of the organization. Required.
 	Name *string `field:"required" json:"name" yaml:"name"`
-	// SideEffects states whether this webhook has side effects.
+	// sideEffects states whether this webhook has side effects.
 	//
 	// Acceptable values are: None, NoneOnDryRun (webhooks created via v1beta1 may also specify Some or Unknown). Webhooks with side effects MUST implement a reconciliation system, since a request may be rejected by a future step in the admission chain and the side effects therefore need to be undone. Requests with the dryRun attribute will be auto-rejected if they match a webhook with sideEffects == Unknown or Some.
 	SideEffects *string `field:"required" json:"sideEffects" yaml:"sideEffects"`
-	// FailurePolicy defines how unrecognized errors from the admission endpoint are handled - allowed values are Ignore or Fail.
+	// failurePolicy defines how unrecognized errors from the admission endpoint are handled - allowed values are Ignore or Fail.
 	//
 	// Defaults to Fail.
 	// Default: Fail.
 	//
 	FailurePolicy *string `field:"optional" json:"failurePolicy" yaml:"failurePolicy"`
-	// MatchConditions is a list of conditions that must be met for a request to be sent to this webhook.
+	// matchConditions is a list of conditions that must be met for a request to be sent to this webhook.
 	//
 	// Match conditions filter requests that have already been matched by the rules, namespaceSelector, and objectSelector. An empty list of matchConditions matches all requests. There are a maximum of 64 match conditions allowed.
 	//
@@ -46,7 +46,7 @@ type ValidatingWebhook struct {
 	// Default: Equivalent".
 	//
 	MatchPolicy *string `field:"optional" json:"matchPolicy" yaml:"matchPolicy"`
-	// NamespaceSelector decides whether to run the webhook on an object based on whether the namespace for that object matches the selector.
+	// namespaceSelector decides whether to run the webhook on an object based on whether the namespace for that object matches the selector.
 	//
 	// If the object itself is a namespace, the matching is performed on object.metadata.labels. If the object is another cluster scoped resource, it never skips the webhook.
 	//
@@ -82,17 +82,17 @@ type ValidatingWebhook struct {
 	// Default: the empty LabelSelector, which matches everything.
 	//
 	NamespaceSelector *LabelSelector `field:"optional" json:"namespaceSelector" yaml:"namespaceSelector"`
-	// ObjectSelector decides whether to run the webhook based on if the object has matching labels.
+	// objectSelector decides whether to run the webhook based on if the object has matching labels.
 	//
 	// objectSelector is evaluated against both the oldObject and newObject that would be sent to the webhook, and is considered to match if either object matches the selector. A null object (oldObject in the case of create, or newObject in the case of delete) or an object that cannot have labels (like a DeploymentRollback or a PodProxyOptions object) is not considered to match. Use the object selector only if the webhook is opt-in, because end users may skip the admission webhook by setting the labels. Default to the empty LabelSelector, which matches everything.
 	// Default: the empty LabelSelector, which matches everything.
 	//
 	ObjectSelector *LabelSelector `field:"optional" json:"objectSelector" yaml:"objectSelector"`
-	// Rules describes what operations on what resources/subresources the webhook cares about.
+	// rules describes what operations on what resources/subresources the webhook cares about.
 	//
 	// The webhook cares about an operation if it matches _any_ Rule. However, in order to prevent ValidatingAdmissionWebhooks and MutatingAdmissionWebhooks from putting the cluster in a state which cannot be recovered from without completely disabling the plugin, ValidatingAdmissionWebhooks and MutatingAdmissionWebhooks are never called on admission requests for ValidatingWebhookConfiguration and MutatingWebhookConfiguration objects.
 	Rules *[]*RuleWithOperations `field:"optional" json:"rules" yaml:"rules"`
-	// TimeoutSeconds specifies the timeout for this webhook.
+	// timeoutSeconds specifies the timeout for this webhook.
 	//
 	// After the timeout passes, the webhook call will be ignored or the API call will fail based on the failure policy. The timeout value must be between 1 and 30 seconds. Default to 10 seconds.
 	// Default: 10 seconds.

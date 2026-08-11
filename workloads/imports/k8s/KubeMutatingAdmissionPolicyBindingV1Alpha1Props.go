@@ -9,11 +9,11 @@ package k8s
 //
 // Adding/removing policies, bindings, or params can not affect whether a given (policy, binding, param) combination is within its own CEL budget.
 type KubeMutatingAdmissionPolicyBindingV1Alpha1Props struct {
-	// Standard object metadata;
+	// metadata is the standard object metadata;
 	//
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
-	// Specification of the desired behavior of the MutatingAdmissionPolicyBinding.
+	// spec defines the desired behavior of the MutatingAdmissionPolicyBinding.
 	Spec *MutatingAdmissionPolicyBindingSpecV1Alpha1 `field:"optional" json:"spec" yaml:"spec"`
 }
 

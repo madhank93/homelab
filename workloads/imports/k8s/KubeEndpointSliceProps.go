@@ -12,7 +12,7 @@ type KubeEndpointSliceProps struct {
 	// endpoints is a list of unique endpoints in this slice.
 	//
 	// Each slice may include a maximum of 1000 endpoints.
-	Endpoints *[]*Endpoint `field:"required" json:"endpoints" yaml:"endpoints"`
+	Endpoints *[]*Endpoint `field:"optional" json:"endpoints" yaml:"endpoints"`
 	// Standard object's metadata.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
 	// ports specifies the list of network ports exposed by each endpoint in this slice.

@@ -13,7 +13,7 @@ type DeviceClassSpec struct {
 	//
 	// The devices of this class can be used to satisfy a pod's extended resource requests. It has the same format as the name of a pod's extended resource. It should be unique among all the device classes in a cluster. If two device classes have the same name, then the class created later is picked to satisfy a pod's extended resource requests. If two classes are created at the same time, then the name of the class lexicographically sorted first is picked.
 	//
-	// This is an alpha field.
+	// This is a beta field.
 	ExtendedResourceName *string `field:"optional" json:"extendedResourceName" yaml:"extendedResourceName"`
 	// Each selector must be satisfied by a device which is claimed via this class.
 	Selectors *[]*DeviceSelector `field:"optional" json:"selectors" yaml:"selectors"`
