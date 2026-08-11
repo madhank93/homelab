@@ -1,0 +1,9 @@
+# Project-local tool versions. Overrides the global ~/.config/mise/config.toml
+# for this repo only — other projects keep whatever they are pinned to.
+#
+# Go must match the `go` directive in go.work, core/go.mod and workloads/go.mod.
+# Without this, gopls runs the global toolchain and fails to load any package
+# with "go.work requires go >= 1.26.0". The CLI survives via GOTOOLCHAIN=auto;
+# the editor does not.
+[tools]
+go = "1.26.5"
