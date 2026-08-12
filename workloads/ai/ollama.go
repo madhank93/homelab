@@ -27,11 +27,9 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 		ReleaseName: jsii.String("ollama"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{
+			// Image tag intentionally unset: the chart default tracks its appVersion,
+			// so bumping the chart carries the Ollama runtime with it.
 			"replicaCount": 1,
-			"image": map[string]any{
-				"repository": "ollama/ollama",
-				"tag":        "0.24.0",
-			},
 			"resources": map[string]any{
 				"limits": map[string]any{
 					"nvidia.com/gpu": 1,

@@ -28,7 +28,7 @@ func NewCsiDriverChart(scope constructs.Construct, id string) cdk8s.Chart {
 	cdk8s.NewHelm(chart, jsii.String("csi-driver-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("secrets-store-csi-driver"),
 		Repo:        jsii.String("https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts"),
-		Version:     jsii.String("1.5.6"),
+		Version:     jsii.String("1.6.0"),
 		ReleaseName: jsii.String("secrets-store-csi-driver"),
 		Namespace:   jsii.String("kube-system"),
 		Values: &map[string]any{

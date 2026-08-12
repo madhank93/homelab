@@ -4,6 +4,8 @@ package headlamp
 type HeadlampService struct {
 	// Values that are not available in values.schema.json will not be code generated. You can add such values to this property.
 	AdditionalValues *map[string]interface{} `field:"optional" json:"additionalValues" yaml:"additionalValues"`
+	// Kubernetes Service port appProtocol (for the main http port).
+	AppProtocol *string `field:"optional" json:"appProtocol" yaml:"appProtocol"`
 	// Kubernetes Service clusterIP.
 	ClusterIp *string `field:"optional" json:"clusterIp" yaml:"clusterIp"`
 	// Additional ports to expose on the Service in addition to the default http port.

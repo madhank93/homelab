@@ -5,12 +5,12 @@ app: go run .
 imports:
   # Keep aligned with the cluster (Talos 1.13.x ships Kubernetes 1.36.x).
   - k8s@1.36.0
-  - helm:https://grafana-community.github.io/helm-charts/grafana@12.4.1
-  - helm:https://helm.goharbor.io/harbor@1.19.0
-  - helm:https://otwld.github.io/ollama-helm/ollama@1.57.0
-  - helm:https://victoriametrics.github.io/helm-charts/victoria-logs-single@0.12.5
-  - helm:https://aquasecurity.github.io/helm-charts/trivy-operator@0.32.1
-  - helm:https://kubernetes-sigs.github.io/headlamp/headlamp@0.42.0
-  - helm:https://kyverno.github.io/kyverno/kyverno@3.8.1
-  - helm:https://charts.longhorn.io/longhorn@1.11.2
-  - helm:https://kubernetes-sigs.github.io/metrics-server/metrics-server@3.13.0
+  - helm:https://grafana-community.github.io/helm-charts/grafana@12.10.4
+  - helm:https://helm.goharbor.io/harbor@1.19.2
+  - helm:https://otwld.github.io/ollama-helm/ollama@1.74.0
+  - helm:https://victoriametrics.github.io/helm-charts/victoria-logs-single@0.13.9
+  - helm:https://aquasecurity.github.io/helm-charts/trivy-operator@0.35.0
+  - helm:https://kubernetes-sigs.github.io/headlamp/headlamp@0.44.0
+  - helm:https://kyverno.github.io/kyverno/kyverno@3.8.2
+  - helm:https://charts.longhorn.io/longhorn@1.12.0
+  - helm:https://kubernetes-sigs.github.io/metrics-server/metrics-server@3.13.1
