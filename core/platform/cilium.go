@@ -156,9 +156,16 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 // InstallGateway creates the shared Gateway resource for the cluster
 func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 
-	// Install Gateway API CRDs (Experimental v1.2.1 - Required for Cilium 1.16+)
+	// Gateway API CRDs (experimental channel v1.2.1) — required by Cilium 1.16+.
+	//
+	// Vendored rather than fetched from the GitHub release URL: that fetch ran on
+	// every apply, so a rate limit or a blip failed the whole stack with an opaque
+	// "cannot unmarshal string into Go value of type map[string]interface{}" —
+	// GitHub's error page parsed as a bare string. The version is now pinned in
+	// git like every other dependency. Re-vendor to upgrade; do not point this
+	// back at a URL.
 	crds, err := yaml.NewConfigFile(ctx, "gateway-api-crds", &yaml.ConfigFileArgs{
-		File: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml",
+		File: "platform/manifests/gateway-api-v1.2.1-experimental-install.yaml",
 	}, pulumi.Provider(k8sProvider))
 	if err != nil {
 		return err
