@@ -140,7 +140,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return err
 	}
 
-	// 5. Create ApplicationSet to Bootstrap GitOps (Watch v0.1.6-manifests)
+	// 5. Create ApplicationSet to Bootstrap GitOps (Watch v0.1.7-manifests)
 	_, err = apiextensions.NewCustomResource(ctx, "bootstrap-appset", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("argoproj.io/v1alpha1"),
 		Kind:       pulumi.String("ApplicationSet"),
@@ -154,7 +154,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 					{
 						"git": map[string]any{
 							"repoURL":  "https://github.com/madhank93/homelab.git",
-							"revision": "v0.1.6-manifests", // Watch the manifests branch
+							"revision": "v0.1.7-manifests", // Watch the manifests branch
 							"directories": []map[string]any{
 								{"path": "*"}, // Apps are at the root of the manifests branch
 							},
@@ -169,7 +169,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						"project": "default",
 						"source": map[string]any{
 							"repoURL":        "https://github.com/madhank93/homelab.git",
-							"targetRevision": "v0.1.6-manifests",
+							"targetRevision": "v0.1.7-manifests",
 							"path":           "{{path}}",
 						},
 						"destination": map[string]any{
