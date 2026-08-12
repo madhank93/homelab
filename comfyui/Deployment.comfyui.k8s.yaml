@@ -21,7 +21,7 @@ spec:
               value: all
             - name: CLI_ARGS
               value: --listen 0.0.0.0 --port 8188
-          image: yanwk/comfyui-boot:cu128-megapak-20260223
+          image: yanwk/comfyui-boot:cu130-megapak-pt211-20260812
           imagePullPolicy: IfNotPresent
           name: comfyui
           ports:
@@ -31,7 +31,7 @@ spec:
           resources:
             limits:
               cpu: 4000m
-              memory: 8Gi
+              memory: 6Gi
               nvidia.com/gpu: 1
             requests:
               cpu: 1000m
