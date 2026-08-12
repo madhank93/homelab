@@ -175,12 +175,20 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
       - name: nvidia_modeset
 `
 
+	// install.disk is required: these nodes boot with talos.platform=metal, and the
+	// metal installer refuses to run an upgrade without it. sda is the 215 GB virtio
+	// system disk on every node; sdb on the workers is the iSCSI volume Longhorn uses.
+	// install.image is deliberately unset — deprecated in favour of Image Factory,
+	// and `just talos-upgrade` passes the factory installer explicitly.
 	basePatch := `cluster:
   network:
     cni:
       name: none
   proxy:
     disabled: true
+machine:
+  install:
+    disk: /dev/sda
 `
 
 	// Generate Configs
@@ -368,7 +376,6 @@ func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
 
 		if _, hasMachine := doc["machine"]; hasMachine {
 			if machineMap, ok := doc["machine"].(map[string]any); ok {
-				delete(machineMap, "install")
 				if _, hasNetwork := machineMap["network"]; !hasNetwork {
 					machineMap["network"] = make(map[string]any)
 				}
