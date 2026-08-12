@@ -279,6 +279,48 @@ gateway-repair-l2:
     echo "still unreachable after re-election — look past L2" >&2
     exit 1
 
+# Start or stop ComfyUI.
+#
+# Argo CD runs selfHeal, so `kubectl scale` is reverted within minutes — the
+# replica count has to change in git. Scaling to 0 is also the only thing that
+# reliably frees GPU memory: ComfyUI caches its model in VRAM after a run and
+# does not release it, which would leave Ollama unable to load one. The card has
+# 16 GB and no Kubernetes limit applies to it, so the two do not share well.
+#   just comfyui on
+#   just comfyui off
+comfyui state:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    case "{{state}}" in
+      on)  want=1 ;;
+      off) want=0 ;;
+      *)   echo "usage: just comfyui on|off" >&2; exit 1 ;;
+    esac
+
+    # The replica count lives in a literal tagged `// comfyui-replicas`.
+    f=workloads/ai/comfyui.go
+    re='(replicas := float64\()\d+(\) // comfyui-replicas)'
+
+    have=$(perl -ne 'print $1 if m{replicas := float64\((\d+)\) // comfyui-replicas}' "$f")
+    if [ -z "$have" ]; then
+      echo "no comfyui-replicas marker in $f" >&2
+      exit 1
+    fi
+    if [ "$have" = "$want" ]; then
+      echo "ComfyUI is already {{state}}"
+      exit 0
+    fi
+
+    perl -pi -e "s{$re}{\${1}$want\${2}}" "$f"
+    just synth
+    git add "$f"
+    git commit -m "chore(comfyui): turn {{state}}"
+    git push
+    echo
+    echo "pushed — Argo CD applies it once CI republishes the manifests branch"
+    [ "$want" = "1" ] && echo "first start pulls a 12.3 GB image: kubectl get pods -n comfyui -w" || true
+
 # Cluster health. Must be clean before upgrading the next node.
 talos-health:
     {{TALOSCTL}} -n 192.168.1.211 health
