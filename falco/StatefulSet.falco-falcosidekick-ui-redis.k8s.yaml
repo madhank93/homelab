@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: ui-redis
+    app.kubernetes.io/instance: falco
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: falcosidekick
+    app.kubernetes.io/part-of: falcosidekick
+    app.kubernetes.io/version: 2.31.1
+    helm.sh/chart: falcosidekick-0.12.1
+  name: falco-falcosidekick-ui-redis
+  namespace: falco
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: ui-redis
+      app.kubernetes.io/instance: falco
+      app.kubernetes.io/name: falcosidekick
+  serviceName: falco-falcosidekick-ui-redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: ui-redis
+        app.kubernetes.io/instance: falco
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: falcosidekick
+        app.kubernetes.io/part-of: falcosidekick
+        app.kubernetes.io/version: 2.31.1
+        helm.sh/chart: falcosidekick-0.12.1
+    spec:
+      containers:
+        - args: []
+          image: docker.io/redis/redis-stack:7.2.0-v11
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 6379
+            timeoutSeconds: 2
+          name: redis
+          ports:
+            - containerPort: 6379
+              name: redis
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 6379
+            timeoutSeconds: 2
+          resources: {}
+          volumeMounts:
+            - mountPath: /data
+              name: falco-falcosidekick-ui-redis-data
+      serviceAccountName: falco-falcosidekick-ui
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: falco-falcosidekick-ui-redis-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

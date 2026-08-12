@@ -1,0 +1,24 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openbao-csi-provider
+  name: openbao-csi-provider-role
+  namespace: openbao
+rules:
+  - apiGroups:
+      - ""
+    resourceNames:
+      - openbao-csi-provider-hmac-key
+    resources:
+      - secrets
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create

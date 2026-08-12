@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/instance: falco
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: falcosidekick
+    app.kubernetes.io/part-of: falcosidekick
+    app.kubernetes.io/version: 2.31.1
+    helm.sh/chart: falcosidekick-0.12.1
+  name: falco-falcosidekick-ui
+  namespace: falco
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: ui
+      app.kubernetes.io/instance: falco
+      app.kubernetes.io/name: falcosidekick
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: ui
+        app.kubernetes.io/instance: falco
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: falcosidekick
+        app.kubernetes.io/part-of: falcosidekick
+        app.kubernetes.io/version: 2.31.1
+        helm.sh/chart: falcosidekick-0.12.1
+    spec:
+      containers:
+        - args:
+            - -r
+            - falco-falcosidekick-ui-redis:6379
+            - -l
+            - info
+          envFrom:
+            - secretRef:
+                name: falco-falcosidekick-ui
+          image: docker.io/falcosecurity/falcosidekick-ui:2.2.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          name: falcosidekick-ui
+          ports:
+            - containerPort: 2802
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - /scripts/ping-redis.sh
+          envFrom:
+            - secretRef:
+                name: falco-falcosidekick-ui
+          image: docker.io/redis/redis-stack:7.2.0-v11
+          name: wait-redis
+          volumeMounts:
+            - mountPath: /scripts/ping-redis.sh
+              name: scripts
+              subPath: ping-redis.sh
+      securityContext:
+        fsGroup: 1234
+        runAsUser: 1234
+      serviceAccountName: falco-falcosidekick-ui
+      volumes:
+        - configMap:
+            defaultMode: 365
+            items:
+              - key: ping-redis.sh
+                path: ping-redis.sh
+            name: falco-falcosidekick-ui-redis
+          name: scripts

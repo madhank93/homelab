@@ -1,0 +1,225 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notebook-gateway-controller-script
+  namespace: kubeflow
+data:
+  controller.py: |
+    
+    # notebook-gateway-controller v6 — fix apply_httproute url_rewrite passthrough
+    import threading, time, logging
+    from kubernetes import client, config, watch
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    log = logging.getLogger("ngc")
+
+    config.load_incluster_config()
+    custom = client.CustomObjectsApi()
+    net    = client.CustomObjectsApi()
+
+    GATEWAY_NS    = "kube-system"
+    GATEWAY_NAME  = "homelab-gateway"
+    ROUTE_NS      = "kubeflow"
+    HOSTNAME      = "kubeflow.madhan.app"
+    USERID_HEADER = "kubeflow-userid"
+    USERID_VALUE  = "user@example.com"
+
+    # --- helpers ---
+
+    def _route_name(kind, ns, name):
+        return f"{kind}-{ns}-{name}"
+
+    def _desired_httproute(route_name, path, svc_name, svc_ns, url_rewrite=False):
+        filters = [{"type": "RequestHeaderModifier", "requestHeaderModifier": {
+            "set": [{"name": USERID_HEADER, "value": USERID_VALUE}]
+        }}]
+        if url_rewrite:
+            filters.append({"type": "URLRewrite", "urlRewrite": {
+                "path": {"type": "ReplacePrefixMatch", "replacePrefixMatch": "/"}
+            }})
+        return {
+            "apiVersion": "gateway.networking.k8s.io/v1",
+            "kind": "HTTPRoute",
+            "metadata": {
+                "name": route_name,
+                "namespace": ROUTE_NS,
+                "labels": {"app.kubernetes.io/managed-by": "notebook-gateway-controller"},
+            },
+            "spec": {
+                "parentRefs": [{"name": GATEWAY_NAME, "namespace": GATEWAY_NS}],
+                "hostnames": [HOSTNAME],
+                "rules": [{
+                    "matches": [{"path": {"type": "PathPrefix", "value": path}}],
+                    "filters": filters,
+                    "backendRefs": [{"name": svc_name, "namespace": svc_ns, "port": 80, "group": "", "kind": "Service"}],
+                }],
+            },
+        }
+
+    def desired_refgrant(ns):
+        return {
+            "apiVersion": "gateway.networking.k8s.io/v1beta1",
+            "kind": "ReferenceGrant",
+            "metadata": {
+                "name": "allow-kubeflow-gateway",
+                "namespace": ns,
+                "labels": {"app.kubernetes.io/managed-by": "notebook-gateway-controller"},
+            },
+            "spec": {
+                "from": [{"group": "gateway.networking.k8s.io", "kind": "HTTPRoute", "namespace": ROUTE_NS}],
+                "to":   [{"group": "", "kind": "Service"}],
+            },
+        }
+
+    def apply_httproute(rname, path, svc_name, svc_ns, url_rewrite=False):
+        body = _desired_httproute(rname, path, svc_name, svc_ns, url_rewrite=url_rewrite)
+        try:
+            net.get_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname)
+            net.patch_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname, body)
+            log.info(f"Updated HTTPRoute {rname}")
+        except client.exceptions.ApiException as e:
+            if e.status == 404:
+                net.create_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", body)
+                log.info(f"Created HTTPRoute {rname}")
+            else:
+                raise
+
+    def apply_refgrant(ns):
+        body = desired_refgrant(ns)
+        try:
+            net.get_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", "allow-kubeflow-gateway")
+            net.patch_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", "allow-kubeflow-gateway", body)
+        except client.exceptions.ApiException as e:
+            if e.status == 404:
+                net.create_namespaced_custom_object("gateway.networking.k8s.io", "v1beta1", ns, "referencegrants", body)
+                log.info(f"Created ReferenceGrant in {ns}")
+            else:
+                raise
+
+    def delete_httproute(rname):
+        try:
+            net.delete_namespaced_custom_object("gateway.networking.k8s.io", "v1", ROUTE_NS, "httproutes", rname)
+            log.info(f"Deleted HTTPRoute {rname}")
+        except client.exceptions.ApiException as e:
+            if e.status != 404:
+                raise
+
+    # --- notebook handlers ---
+
+    def apply_notebook(ns, name):
+        apply_refgrant(ns)
+        apply_httproute(
+            _route_name("notebook", ns, name),
+            f"/notebook/{ns}/{name}/",
+            name, ns,
+        )
+
+    def delete_notebook(ns, name):
+        delete_httproute(_route_name("notebook", ns, name))
+
+    # --- tensorboard handlers ---
+
+    def apply_tensorboard(ns, name):
+        apply_refgrant(ns)
+        apply_httproute(
+            _route_name("tensorboard", ns, name),
+            f"/tensorboard/{ns}/{name}/",
+            name, ns,
+            url_rewrite=True,
+        )
+
+    def delete_tensorboard(ns, name):
+        delete_httproute(_route_name("tensorboard", ns, name))
+
+    # --- pvcviewer handlers ---
+
+    def apply_pvcviewer(ns, name):
+        apply_refgrant(ns)
+        # filebrowser sets FB_BASEURL but still needs URLRewrite (Istio rewrite: / equivalent)
+        apply_httproute(
+            _route_name("pvcviewer", ns, name),
+            f"/pvcviewers/{ns}/{name}/",
+            f"pvcviewer-{name}", ns,
+            url_rewrite=True,
+        )
+
+    def delete_pvcviewer(ns, name):
+        delete_httproute(_route_name("pvcviewer", ns, name))
+
+    # --- sync + watch ---
+
+    def sync_all():
+        notebooks = custom.list_cluster_custom_object("kubeflow.org", "v1", "notebooks")
+        for nb in notebooks.get("items", []):
+            apply_notebook(nb["metadata"]["namespace"], nb["metadata"]["name"])
+        log.info(f"Synced {len(notebooks.get('items', []))} notebooks")
+
+        tensorboards = custom.list_cluster_custom_object("tensorboard.kubeflow.org", "v1alpha1", "tensorboards")
+        for tb in tensorboards.get("items", []):
+            apply_tensorboard(tb["metadata"]["namespace"], tb["metadata"]["name"])
+        log.info(f"Synced {len(tensorboards.get('items', []))} tensorboards")
+
+        pvcviewers = custom.list_cluster_custom_object("kubeflow.org", "v1alpha1", "pvcviewers")
+        for pv in pvcviewers.get("items", []):
+            apply_pvcviewer(pv["metadata"]["namespace"], pv["metadata"]["name"])
+        log.info(f"Synced {len(pvcviewers.get('items', []))} pvcviewers")
+
+    def watch_notebooks():
+        w = watch.Watch()
+        while True:
+            try:
+                for event in w.stream(custom.list_cluster_custom_object, "kubeflow.org", "v1", "notebooks", timeout_seconds=300):
+                    etype, obj = event["type"], event["object"]
+                    ns, name = obj["metadata"]["namespace"], obj["metadata"]["name"]
+                    if etype in ("ADDED", "MODIFIED"):
+                        apply_notebook(ns, name)
+                    elif etype == "DELETED":
+                        delete_notebook(ns, name)
+            except Exception as exc:
+                log.warning(f"Notebook watch error: {exc}. Resyncing in 10s...")
+                time.sleep(10)
+                sync_all()
+
+    def watch_tensorboards():
+        w = watch.Watch()
+        while True:
+            try:
+                for event in w.stream(custom.list_cluster_custom_object, "tensorboard.kubeflow.org", "v1alpha1", "tensorboards", timeout_seconds=300):
+                    etype, obj = event["type"], event["object"]
+                    ns, name = obj["metadata"]["namespace"], obj["metadata"]["name"]
+                    if etype in ("ADDED", "MODIFIED"):
+                        apply_tensorboard(ns, name)
+                    elif etype == "DELETED":
+                        delete_tensorboard(ns, name)
+            except Exception as exc:
+                log.warning(f"Tensorboard watch error: {exc}. Resyncing in 10s...")
+                time.sleep(10)
+                sync_all()
+
+    def watch_pvcviewers():
+        w = watch.Watch()
+        while True:
+            try:
+                for event in w.stream(custom.list_cluster_custom_object, "kubeflow.org", "v1alpha1", "pvcviewers", timeout_seconds=300):
+                    etype, obj = event["type"], event["object"]
+                    ns, name = obj["metadata"]["namespace"], obj["metadata"]["name"]
+                    if etype in ("ADDED", "MODIFIED"):
+                        apply_pvcviewer(ns, name)
+                    elif etype == "DELETED":
+                        delete_pvcviewer(ns, name)
+            except Exception as exc:
+                log.warning(f"PVCViewer watch error: {exc}. Resyncing in 10s...")
+                time.sleep(10)
+                sync_all()
+
+    def run():
+        sync_all()
+        log.info("Watching Notebook, Tensorboard, and PVCViewer CRs...")
+        t1 = threading.Thread(target=watch_tensorboards, daemon=True)
+        t2 = threading.Thread(target=watch_pvcviewers, daemon=True)
+        t1.start()
+        t2.start()
+        watch_notebooks()
+
+    if __name__ == "__main__":
+        run()

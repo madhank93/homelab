@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: netbird-peer
+  namespace: netbird
+spec:
+  clusterIP: None
+  selector:
+    app: netbird-peer

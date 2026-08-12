@@ -1,0 +1,35 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: victoria-metrics
+  namespace: victoria-metrics
+spec:
+  hostnames:
+    - vmselect.madhan.app
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
+      namespace: kube-system
+  rules:
+    - filters:
+        - requestRedirect:
+            path:
+              replaceFullPath: /vmui/
+              type: ReplaceFullPath
+            statusCode: 302
+          type: RequestRedirect
+      matches:
+        - path:
+            type: Exact
+            value: /
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: vmsingle-vm-stack
+          port: 8428
+          weight: 1
+      matches:
+        - path:
+            type: PathPrefix
+            value: /

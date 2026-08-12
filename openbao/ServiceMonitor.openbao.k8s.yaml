@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openbao
+  namespace: openbao
+spec:
+  endpoints:
+    - interval: 30s
+      params:
+        format:
+          - prometheus
+      path: /v1/sys/metrics
+      port: http
+  namespaceSelector:
+    matchNames:
+      - openbao
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openbao

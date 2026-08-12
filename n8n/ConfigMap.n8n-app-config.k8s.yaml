@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: n8n
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/version: 1.122.4
+    helm.sh/chart: n8n-2.0.1
+  name: n8n-app-config
+  namespace: n8n
+data:
+  DB_POSTGRESDB_DATABASE: n8n
+  DB_POSTGRESDB_HOST: n8n-pg-rw
+  DB_POSTGRESDB_PORT: "5432"
+  DB_POSTGRESDB_USER: n8n
+  DB_TYPE: postgresdb
+  N8N_HOST: n8n.madhan.app
