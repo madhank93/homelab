@@ -134,11 +134,10 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 		return err
 	}
 
-	// Cilium's Envoy SDS server fetches TLS certs from cilium-secrets under the name
-	// "<source-namespace>-<secret-name>". cert-manager owns this secret directly so it
-	// survives node failures without depending on Cilium's secretsNamespace.sync
-	// (which does not re-run after simultaneous node failures — observed Jun 2026).
-	// Cilium sync is disabled in cilium.go: gatewayAPI.secretsNamespace.sync=false.
+	// Cilium's Envoy SDS server reads TLS certs from cilium-secrets as
+	// "<source-namespace>-<secret-name>". cert-manager owns this secret directly
+	// because Cilium's secretsNamespace.sync does not recover from simultaneous
+	// node failures; that sync is disabled in cilium.go.
 	_, err = apiextensions.NewCustomResource(ctx, "wildcard-certificate-cilium-sds", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("cert-manager.io/v1"),
 		Kind:       pulumi.String("Certificate"),

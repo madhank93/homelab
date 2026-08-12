@@ -8,18 +8,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// InstallArgoCD installs ArgoCD via Helm and configures the GitOps bootstrap.
+// InstallArgoCD installs ArgoCD and the ApplicationSet that drives every
+// workload deployment. Run `just core platform up` to apply.
 //
-// It creates:
-//   - ArgoCD Helm release (chart argo-cd, namespace argocd) in insecure mode (HTTP :80)
-//   - HTTPRoute for argocd.local + argocd.madhan.app (homelab-gateway, port 80)
-//   - ApplicationSet "cots-applications" watching the v0.1.6-manifests branch
-//
-// TLS cert for argocd.madhan.app is managed via CDK8s (workloads/observability/argocd_monitor.go).
-// The gateway HTTPS listener terminates TLS using that cert before proxying to ArgoCD :80.
-//
-// The ApplicationSet drives all workload deployments via GitOps. Run
-// `just core platform up` to apply.
+// ArgoCD serves plain HTTP; the gateway terminates TLS using a certificate
+// owned by CDK8s in workloads/observability/argocd_monitor.go.
 func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	chart, err := helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 		Chart:   pulumi.String("argo-cd"),

@@ -303,13 +303,9 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	}
 	ctx.Export("GrafanaOIDCClientID", pulumi.String("grafana-homelab"))
 
-	// Netbird — confidential OIDC app used by embedded Dex as an upstream connector.
-	// The combined server always runs embedded Dex; users authenticate against Dex,
-	// which federates to Authentik. Dex's callback URI is always issuer + "/callback".
-	// Configure this connector: NetBird → Settings → Identity Providers → Add → Authentik
-	//   Client ID:     aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT
-	//   Client Secret: NETBIRD_CLIENT_SECRET from sops
-	//   Issuer:        https://auth.madhan.app/application/o/netbird/
+	// Netbird — confidential OIDC app for NetBird's embedded Dex, which federates
+	// to Authentik. Dex's callback URI is always issuer + "/callback".
+	// The connector itself is registered by hand in the NetBird UI; see docs.
 	netbirdSecret := cfg.K.String("NETBIRD_CLIENT_SECRET")
 	if netbirdSecret == "" {
 		return fmt.Errorf("missing NETBIRD_CLIENT_SECRET in config")

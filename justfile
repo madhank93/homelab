@@ -183,6 +183,7 @@ talos-upgrade node schematic='base':
     [ "$ok" = "y" ] || exit 1
 
     {{TALOSCTL}} upgrade --nodes {{node}} --image "$IMAGE" --preserve
+    {{TALOSCTL}} -n 192.168.1.211 health --wait-timeout=10m
 
 # Cluster health. Must be clean before upgrading the next node.
 talos-health:
