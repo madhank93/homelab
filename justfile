@@ -239,6 +239,46 @@ longhorn-repair-iscsi:
       done
     done
 
+# Re-elect the Gateway's L2 announcement when its LoadBalancer IP goes dark.
+#
+# A Cilium agent restart can leave the lease holder renewing normally, and
+# still listing the IP in db/show l2-announce, while it has quietly stopped
+# answering ARP. Nothing reports unhealthy: the Gateway stays Programmed=True
+# and Envoy stays ready on every node. Only the LAN notices.
+#
+# The discriminator is that in-cluster requests to the Gateway succeed while
+# the LoadBalancer IP times out, so that is what this checks before touching
+# anything. Deleting the lease hands the IP to another node within seconds.
+gateway-repair-l2:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    svc=cilium-gateway-homelab-gateway
+    ip=$(kubectl get svc -n kube-system "$svc" \
+      -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    [ -n "$ip" ] || { echo "no LoadBalancer IP assigned to $svc" >&2; exit 1; }
+
+    if nc -z -w 5 "$ip" 80 2>/dev/null; then
+      echo "$ip:80 reachable — nothing to do"
+      exit 0
+    fi
+
+    echo "$ip:80 unreachable; re-electing L2 announcement"
+    kubectl delete lease -n kube-system "cilium-l2announce-kube-system-$svc"
+
+    for _ in $(seq 1 12); do
+      sleep 5
+      if nc -z -w 5 "$ip" 80 2>/dev/null; then
+        echo "recovered, now held by $(kubectl get lease -n kube-system \
+          "cilium-l2announce-kube-system-$svc" \
+          -o jsonpath='{.spec.holderIdentity}')"
+        exit 0
+      fi
+    done
+
+    echo "still unreachable after re-election — look past L2" >&2
+    exit 1
+
 # Cluster health. Must be clean before upgrading the next node.
 talos-health:
     {{TALOSCTL}} -n 192.168.1.211 health
