@@ -8,10 +8,20 @@ on:
     paths:
       - 'workloads/**'
       - '.github/workflows/cdk8s-seal-publish.yml'
+  # A new release branch must publish its manifests branch even when its first
+  # commits touch only core/ or docs/. ArgoCD is repointed to <branch>-manifests
+  # by `just core platform up`; if that branch does not exist yet, every
+  # Application loses its source at once.
+  create:
   workflow_dispatch:
 
 jobs:
   publish:
+    # `create` has no branch filter in `on:`, so gate it here — otherwise every
+    # feature branch would publish its own manifests branch.
+    if: >-
+      github.event_name != 'create' ||
+      (github.ref_type == 'branch' && startsWith(github.ref_name, 'v'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
