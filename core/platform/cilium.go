@@ -22,7 +22,10 @@ import (
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
 		Chart:   pulumi.String("cilium"),
-		Version: pulumi.String("1.18.10"), // Pinned: 1.19.x regression blocks host TCP on eth0 nodes (cilium/cilium#44430)
+		// Held on 1.18.x: 1.19.x breaks host TCP on eth0 nodes (cilium/cilium#44430,
+		// #46010). Fixed in 1.20.0, which needs its own change window — a bad
+		// upgrade takes out the Talos API too.
+		Version: pulumi.String("1.18.12"),
 		RepositoryOpts: &helm.RepositoryOptsArgs{
 			Repo: pulumi.String("https://helm.cilium.io/"),
 		},
