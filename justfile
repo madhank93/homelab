@@ -153,7 +153,12 @@ NODES    := '192.168.1.211,192.168.1.212,192.168.1.213,192.168.1.221,192.168.1.2
 
 # Upgrade one running Talos node.
 # Upgrade workers first, then GPU workers, then controllers; verify cluster
-# health between nodes. The upgrade preserves ephemeral state for etcd members.
+# health between nodes.
+#
+# Never pass --preserve: it forces the deprecated MachineService.Upgrade path,
+# whose installer runs in metal mode and rejects configs without a
+# machine.install section. Talos 1.13 upgrades via LifecycleService, which
+# keeps user data and drains the node on its own.
 #   just talos-upgrade 192.168.1.223
 #   just talos-upgrade 192.168.1.224 gpu
 talos-upgrade node schematic='base':
@@ -180,9 +185,9 @@ talos-upgrade node schematic='base':
     echo "upgrading {{node}} to $VERSION"
     echo "  $IMAGE"
     read -rp "reboot this node? [y/N] " ok
-    [ "$ok" = "y" ] || exit 1
+    case "$ok" in y|Y|yes|YES) ;; *) echo "aborted"; exit 1 ;; esac
 
-    {{TALOSCTL}} upgrade --nodes {{node}} --image "$IMAGE" --preserve
+    {{TALOSCTL}} upgrade --nodes {{node}} --image "$IMAGE"
     {{TALOSCTL}} -n 192.168.1.211 health --wait-timeout=10m
 
 # Cluster health. Must be clean before upgrading the next node.
