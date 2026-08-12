@@ -10,16 +10,19 @@ weight = 20
 
 ## Why Headlamp?
 
-Headlamp is faster and lighter than the standard Kubernetes Dashboard or Rancher's embedded UI. For quick cluster inspection — pod logs, resource views, event browsing — Headlamp is the go-to tool. Rancher is used for deeper management tasks.
+Headlamp is faster and lighter than the standard Kubernetes Dashboard, and it is
+the only cluster UI here. Anything it cannot do is done through Argo CD or
+`kubectl` — the cluster is GitOps-managed, so changes belong in code rather than
+in a console.
 
 | Tool | Use case |
 |------|----------|
 | Headlamp | Quick browsing, logs, events, resource inspection |
-| Rancher | Cluster admin, Fleet GitOps, Helm app catalog |
+| Argo CD | Sync state, diffs, rollbacks |
 
 ## How It's Used Here
 
-Headlamp runs in the `headlamp` namespace, accessible at `http://headlamp.madhan.app`. It uses a long-lived ServiceAccount token with `cluster-admin` ClusterRoleBinding.
+Headlamp runs in the `headlamp` namespace, accessible at `https://headlamp.madhan.app`. It uses a long-lived ServiceAccount token with `cluster-admin` ClusterRoleBinding.
 
 Source: [`workloads/management/headlamp.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/management/headlamp.go)
 

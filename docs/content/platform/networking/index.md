@@ -14,7 +14,7 @@ Cilium's eBPF data plane eliminates `iptables` overhead and enables features not
 
 ## How It's Used Here
 
-Cilium v1.16.6 replaces kube-proxy entirely, manages LoadBalancer IPs in the `192.168.1.220–230` pool, runs the shared `homelab-gateway` (Envoy) for all HTTP routing, and exposes Hubble UI at `hubble.madhan.app`. Installed via Pulumi at `core/platform/cilium.go`.
+Cilium 1.18.12 replaces kube-proxy entirely, manages LoadBalancer IPs in the `192.168.1.220–230` pool, runs the shared `homelab-gateway` (Envoy) for all HTTP routing, and exposes Hubble UI at `hubble.madhan.app`. Installed via Pulumi at `core/platform/cilium.go`.
 
 ## Configuration
 
@@ -155,6 +155,12 @@ spec:
 
 `allowedRoutes.namespaces.from: All` is a deliberate single-tenant homelab choice. In a multi-tenant cluster you would restrict this to specific namespaces.
 
+The HTTPS listener references the certificate in `kube-system`, but Envoy reads
+TLS material from `cilium-secrets`. Cilium mirrors it there itself
+(`gatewayAPI.secretsNamespace.sync: true`) and owns that copy — do not write a
+certificate into that namespace by hand. See
+[cert-manager](/platform/cert-manager).
+
 **Per-app HTTPRoutes:**
 
 Each app creates its own `HTTPRoute` in its own namespace pointing back to the shared gateway. Example from `workloads/monitoring/grafana.go`:
@@ -198,7 +204,7 @@ LAN Client
 
 ## Hubble UI
 
-Hubble UI is accessible at `http://hubble.madhan.app`. It provides network flow visibility across the cluster — which pods talk to which, which connections are dropped, and L7 protocol details.
+Hubble UI is accessible at `https://hubble.madhan.app`. It provides network flow visibility across the cluster — which pods talk to which, which connections are dropped, and L7 protocol details.
 
 ```yaml
 # HTTPRoute created by Pulumi in core/platform/cilium.go

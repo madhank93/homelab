@@ -1,6 +1,6 @@
 +++
 title = "Management"
-description = "Cluster management tools: Rancher and Headlamp."
+description = "Cluster management tools: Headlamp."
 weight = 40
 sort_by = "weight"
 +++

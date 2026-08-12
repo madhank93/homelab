@@ -27,7 +27,6 @@ OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Po
 | Grafana | `grafana` (default) | `grafana` | `grafana-policy` |
 | Harbor | `secret-sync` | `harbor` | `harbor-policy` |
 | n8n | `n8n` (default) | `n8n` | `n8n-policy` |
-| Rancher | `secret-sync` | `cattle-system` | `rancher-policy` |
 | NetBird | `netbird-peer` | `netbird` | `netbird-policy` |
 
 **Secret paths (KV v2):**
@@ -37,7 +36,6 @@ OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Po
 | Grafana | `secret/data/grafana` | `ADMIN_PASSWORD`, `OAUTH_CLIENT_SECRET` |
 | Harbor | `secret/data/harbor` | `HARBOR_ADMIN_PASSWORD` |
 | n8n | `secret/data/n8n` | `ENCRYPTION_KEY` |
-| Rancher | `secret/data/rancher` | `BOOTSTRAP_PASSWORD` |
 | NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` |
 
 Source: [`workloads/secrets/openbao.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/secrets/openbao.go)
@@ -55,13 +53,13 @@ env:
 
 No k8s Secret is created. The secret value never appears in `kubectl get secret` output.
 
-### Pattern B — secretObjects sync (Harbor, n8n, Rancher, NetBird)
+### Pattern B — secretObjects sync (Harbor, n8n, NetBird)
 
 The CSI volume mount triggers the SecretProviderClass `secretObjects` block, which creates a k8s Secret in the app's namespace. Required for Helm charts that only accept `existingSecret` references.
 
 > The CSI volume mount is **required** to trigger the sync — if no pod mounts the volume, the k8s Secret is never created.
 
-For Harbor and Rancher (whose Helm charts do not support `extraVolumes`), a dedicated `secret-sync` Deployment with a `pause` container mounts the CSI volume just to trigger the secretObjects sync.
+For Harbor, whose Helm chart does not support `extraVolumes`, a dedicated `secret-sync` Deployment with a `pause` container mounts the CSI volume just to trigger the secretObjects sync.
 
 ## Configuration
 

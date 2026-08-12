@@ -46,7 +46,7 @@ A simple Deployment would create a new peer registration on every restart (e.g.,
 | Setting | Value | Why |
 |---------|-------|-----|
 | Namespace | `netbird` | Privileged PSA (needs NET_ADMIN, SYS_MODULE) |
-| Image | `netbirdio/netbird:0.71.4` | Pinned to match Bifrost server version |
+| Image | `netbirdio/netbird:0.76.3` | Pinned to match Bifrost server version |
 | Kind | `StatefulSet` | Persistent identity across restarts |
 | `hostNetwork: true` | true | WireGuard must manipulate host routing table |
 | `dnsPolicy` | `ClusterFirstWithHostNet` | DNS works with hostNetwork |

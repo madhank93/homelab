@@ -145,7 +145,7 @@ workloads/
 ├── ai/                  ollama.go  comfyui.go
 ├── automation/          n8n.go
 ├── hardware/            nvidia_gpu_operator.go
-├── management/          headlamp.go  fleet_device_manager.go  rancher.go
+├── management/          headlamp.go
 ├── monitoring/          grafana.go
 ├── networking/          netbird_peer.go
 ├── observability/       victoria_metrics.go  victoria_logs.go  otel_collector.go  alert_manager.go

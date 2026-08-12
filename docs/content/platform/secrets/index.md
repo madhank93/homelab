@@ -34,7 +34,6 @@ OpenBao (ns: openbao, port 8200)
   │     ├── secret/data/grafana   ADMIN_PASSWORD
   │     ├── secret/data/harbor    HARBOR_ADMIN_PASSWORD
   │     ├── secret/data/n8n       ENCRYPTION_KEY
-  │     ├── secret/data/rancher   BOOTSTRAP_PASSWORD
   │     └── secret/data/netbird   NETBIRD_SETUP_KEY
   └── Kubernetes Auth method
         └── per-app roles → bound to app ServiceAccount + namespace
@@ -55,7 +54,7 @@ No k8s Secret is created. The secret value never appears in `kubectl get secret`
 
 ## Pattern B — secretObjects sync (k8s Secret created)
 
-Used by: **Harbor**, **n8n**, **Rancher**, **NetBird**
+Used by: **Harbor**, **n8n**, **NetBird**
 
 The CSI volume mount triggers the SecretProviderClass `secretObjects` block, which creates a k8s Secret in the app's namespace. This is required for Helm charts that only accept `existingSecret` references.
 
@@ -126,7 +125,6 @@ kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
 kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
   bao kv put -mount=secret n8n      ENCRYPTION_KEY=<real>
 kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv put -mount=secret rancher  BOOTSTRAP_PASSWORD=<real>
 kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
   bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=<real>
 ```
@@ -138,7 +136,6 @@ kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
 | Grafana | `secret/data/grafana` | `ADMIN_PASSWORD` | none | A (file) |
 | Harbor | `secret/data/harbor` | `HARBOR_ADMIN_PASSWORD` | `harbor-admin` | B |
 | n8n | `secret/data/n8n` | `ENCRYPTION_KEY` | `n8n-secrets` | B |
-| Rancher | `secret/data/rancher` | `BOOTSTRAP_PASSWORD` | `rancher-bootstrap` | B |
 | NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` | `netbird-setup-key` | B |
 
 > n8n DB password is **not** in OpenBao — it is auto-managed by the CloudNativePG operator (`n8n-pg-app` Secret).

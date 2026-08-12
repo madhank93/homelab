@@ -56,7 +56,7 @@ http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local
 
 ## HTTPRoute
 
-VictoriaLogs UI is accessible at `http://victorialogs.madhan.app`. The web UI provides a log explorer interface.
+VictoriaLogs UI is accessible at `https://victorialogs.madhan.app`. The web UI provides a log explorer interface.
 
 ## Querying in Grafana
 
@@ -108,7 +108,7 @@ kubectl get pods -n victoria-logs
 kubectl logs -n opentelemetry -l app.kubernetes.io/name=otel-agent --tail=50
 
 # Check ingestion directly
-curl "http://victorialogs.madhan.app/select/logsql/query?query=*&limit=5"
+curl "https://victorialogs.madhan.app/select/logsql/query?query=*&limit=5"
 ```
 
 **Fix:** If OTel Agent is failing, check if the VictoriaLogs OTLP endpoint is reachable from the agent pods. The agent runs in the `opentelemetry` namespace with `privileged` pod security.

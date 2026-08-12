@@ -16,7 +16,7 @@ GitOps with ArgoCD ensures the cluster state is always derivable from code — t
 
 ArgoCD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.7-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
 
-**Code:** [`core/platform/argocd.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/argocd.go) · **Namespace:** `argocd` · **Chart version:** `9.4.2`
+**Code:** [`core/platform/argocd.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/argocd.go) · **Namespace:** `argocd` · **Chart version:** `10.3.2` · **Argo CD:** `v3.5.1`
 
 ## Screenshots
 
@@ -27,7 +27,7 @@ ArgoCD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-
 ```go
 helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
     Chart:   pulumi.String("argo-cd"),
-    Version: pulumi.String("9.4.2"),
+    Version: pulumi.String("10.3.2"),
     RepositoryOpts: &helm.RepositoryOptsArgs{
         Repo: pulumi.String("https://argoproj.github.io/argo-helm"),
     },

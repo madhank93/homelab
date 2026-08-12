@@ -92,14 +92,14 @@ kubectl port-forward -n alertmanager svc/alertmanager-kube-promethe-alertmanager
 # Open http://localhost:9093
 ```
 
-Or browse to `http://alertmanager.madhan.app`.
+Or browse to `https://alertmanager.madhan.app`.
 
 ### Checking Active Alerts
 
 ```bash
 # List active alerts via API
-curl http://alertmanager.madhan.app/api/v2/alerts | jq .
+curl https://alertmanager.madhan.app/api/v2/alerts | jq .
 
 # Check silences
-curl http://alertmanager.madhan.app/api/v2/silences | jq .
+curl https://alertmanager.madhan.app/api/v2/silences | jq .
 ```

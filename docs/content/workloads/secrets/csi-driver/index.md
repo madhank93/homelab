@@ -81,7 +81,7 @@ When a pod mounts the CSI volume referencing `harbor-secrets`:
 | Pattern | Secret as file | k8s Secret created | Used by |
 |---------|---------------|-------------------|---------|
 | A (file-only) | Yes | No | Grafana |
-| B (secretObjects) | Yes | Yes | Harbor, n8n, Rancher, NetBird |
+| B (secretObjects) | Yes | Yes | Harbor, n8n, NetBird |
 
 Pattern B is needed for Helm charts that only accept `existingSecret` references and cannot read secrets from file paths.
 
@@ -89,7 +89,7 @@ Pattern B is needed for Helm charts that only accept `existingSecret` references
 
 ## secret-sync Deployments
 
-For Harbor and Rancher, whose Helm charts do not support `extraVolumes` on their component pods, a dedicated `secret-sync` Deployment runs a `pause` container whose only purpose is to mount the CSI volume and trigger secretObjects sync:
+For Harbor, whose Helm chart does not support `extraVolumes` on its component pods, a dedicated `secret-sync` Deployment runs a `pause` container whose only purpose is to mount the CSI volume and trigger secretObjects sync:
 
 ```go
 // workloads/registry/harbor.go

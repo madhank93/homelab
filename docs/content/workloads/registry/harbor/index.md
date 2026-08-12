@@ -133,7 +133,7 @@ kubectl exec -n openbao openbao-0 -- bao kv get secret/harbor
 
 ### Configuring Pull-Through Proxy
 
-1. Log in to `http://harbor.madhan.app` as admin
+1. Log in to `https://harbor.madhan.app` as admin
 2. Go to **Administration → Registries → New Endpoint**
 3. Add Docker Hub, GHCR, or other registries
 4. Create a proxy project pointing to the registry endpoint

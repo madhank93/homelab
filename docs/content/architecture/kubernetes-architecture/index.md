@@ -39,12 +39,12 @@ flowchart TB
     subgraph BIFROST["Bifrost VPS · Hetzner · 178.156.199.250"]
         TRF["Traefik v3.7.1\nTLS termination + ForwardAuth"]
         AUTH["Authentik 2026.5.2\nOIDC / SSO broker"]
-        NBS["NetBird 0.71.4\nManagement + Signal + Relay"]
+        NBS["NetBird 0.76.3\nManagement + Signal + Relay"]
         NBA["netbird-agent\nWireGuard routing peer\n→ advertises 192.168.1.0/24"]
     end
 
     subgraph LAN["On-Prem LAN · 192.168.1.0/24"]
-        subgraph CP["Control Plane · Talos v1.13.3"]
+        subgraph CP["Control Plane · Talos v1.13.8"]
             VIP["KubeVIP\n192.168.1.210:6443"]
             CP1["controller1\n.211"]
             CP2["controller2\n.212"]
@@ -53,9 +53,9 @@ flowchart TB
         end
 
         subgraph PLT["Platform Layer"]
-            CIL["Cilium 1.19.4\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API"]
+            CIL["Cilium 1.18.12\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API"]
             CERT["cert-manager v1.20.2\nCloudflare DNS-01\nwildcard TLS"]
-            ARGO["ArgoCD 9.5.15\nApplicationSet → v0.1.6-manifests"]
+            ARGO["Argo CD 10.3.2\nApplicationSet → v0.1.7-manifests"]
         end
 
         subgraph SECRETS["Secrets Layer"]
@@ -64,14 +64,14 @@ flowchart TB
         end
 
         subgraph STORAGE["Storage"]
-            LONG["Longhorn 1.11.2\nReplicated block storage"]
+            LONG["Longhorn 1.12.0\nReplicated block storage"]
             CNPG["CloudNativePG 0.28.2\nPostgreSQL operator"]
         end
 
         subgraph WORKERS["Workers · k8s-worker1–3"]
             OBS["Observability\nVictoriaMetrics · VictoriaLogs\nGrafana · OTel 0.156.2"]
             SEC["Security\nFalco · Kyverno · Trivy"]
-            APPS["Applications\nn8n · Harbor · Headlamp\nOpenBao · Rancher · NetBird peer"]
+            APPS["Applications\nn8n · Harbor · Headlamp\nOpenBao · NetBird peer"]
         end
 
         subgraph GPU["k8s-worker4 · RTX 5070 Ti"]
@@ -82,7 +82,7 @@ flowchart TB
 
     subgraph GITOPS["GitOps · GitHub"]
         SRC["v0.1.6 branch\nPulumi + CDK8s source"]
-        MFST["v0.1.6-manifests branch\nSynthesized YAML"]
+        MFST["v0.1.7-manifests branch\nSynthesized YAML"]
         GHA["GitHub Actions\ncdk8s synth + publish"]
     end
 
@@ -160,7 +160,7 @@ The Gateway API `GatewayClass` is provisioned by `core/platform/cilium.go`. App 
 | `registry/` | Harbor | Deployments + RWO PVCs |
 | `automation/` | n8n + PostgreSQL | Any worker |
 | `ai/` | Ollama, ComfyUI | **`k8s-worker4` only** (GPU) |
-| `management/` | Headlamp, Rancher, Fleet | Any worker |
+| `management/` | Headlamp | Any worker |
 | `support/` | Stakater Reloader | Any worker |
 
 ---

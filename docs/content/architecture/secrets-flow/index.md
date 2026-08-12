@@ -11,7 +11,7 @@ All secrets are managed by exactly two systems. The split is intentional — boo
 | Tier | Tool | When | What's stored |
 |------|------|------|---------------|
 | **Bootstrap** | SOPS + age | One-time setup | OpenBao unseal key, Cloudflare API token, Hetzner token, Authentik keys, NetBird keys |
-| **Runtime** | OpenBao + CSI Driver | Continuously available | All app secrets (Grafana, Harbor, n8n, Rancher, …) |
+| **Runtime** | OpenBao + CSI Driver | Continuously available | All app secrets (Grafana, Harbor, n8n, …) |
 
 **CDK8s generates zero `Secret` resources.** The CI pipeline needs zero GitHub Actions secrets.
 
@@ -166,7 +166,7 @@ SecretProviderClass.secretObjects → k8s Secret (e.g. harbor-admin)
 Helm chart: existingSecret: harbor-admin
 ```
 
-Used by: **Harbor**, **n8n**, **Rancher**, **NetBird peer**
+Used by: **Harbor**, **n8n**, **NetBird peer**
 
 ### Apps and their OpenBao paths
 
@@ -175,7 +175,6 @@ Used by: **Harbor**, **n8n**, **Rancher**, **NetBird peer**
 | Grafana | `secret/data/grafana` | A (file) | — |
 | Harbor | `secret/data/harbor` | B (sync) | `harbor-admin` |
 | n8n | `secret/data/n8n` | B (sync) | `n8n-db` |
-| Rancher | `secret/data/rancher` | B (sync) | `rancher-bootstrap` |
 | NetBird peer | `secret/data/netbird` | B (sync) | `netbird-setup-key` |
 
 ### One-time setup

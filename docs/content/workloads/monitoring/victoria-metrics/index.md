@@ -66,7 +66,7 @@ VMAgent uses `serviceMonitorSelector: {}` and `podMonitorSelector: {}` (empty = 
 
 ## HTTPRoute
 
-VictoriaMetrics vmselect is accessible at `http://vmselect.madhan.app`. Browsing to the root redirects to `/select/0/vmui/` — the vmui web interface.
+VictoriaMetrics vmselect is accessible at `https://vmselect.madhan.app`. Browsing to the root redirects to `/select/0/vmui/` — the vmui web interface.
 
 ## How It Connects
 

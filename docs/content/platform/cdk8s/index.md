@@ -42,7 +42,7 @@ workloads/
 ├── automation/          n8n.go
 ├── databases/           cnpg.go
 ├── ai/                  ollama.go, comfyui.go
-├── management/          headlamp.go, rancher.go
+├── management/          headlamp.go
 └── support/             reloader.go
 ```
 

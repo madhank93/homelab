@@ -98,7 +98,7 @@ kubectl delete pod -n comfyui <old-pod> --grace-period=0 --force
 
 ```bash
 # Unload Ollama models from VRAM
-curl http://ollama.madhan.app/api/generate -d '{"model": "llama3.2", "keep_alive": 0}'
+curl https://ollama.madhan.app/api/generate -d '{"model": "llama3.2", "keep_alive": 0}'
 ```
 
 ### Custom Nodes Not Installing

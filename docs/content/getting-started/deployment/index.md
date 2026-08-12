@@ -173,10 +173,6 @@ kubectl exec -n openbao openbao-0 -- bao kv put secret/harbor \
 kubectl exec -n openbao openbao-0 -- bao kv put secret/n8n \
   N8N_ENCRYPTION_KEY="<32-char random — record this, required on every rebuild>"
 
-# Rancher
-kubectl exec -n openbao openbao-0 -- bao kv put secret/rancher \
-  BOOTSTRAP_PASSWORD="<strong password>"
-
 # NetBird — add the setup key after Phase 6
 kubectl exec -n openbao openbao-0 -- bao kv put secret/netbird \
   NETBIRD_SETUP_KEY="placeholder"
@@ -467,7 +463,6 @@ kubectl get applications -n argocd
 | `OAUTH_CLIENT_SECRET` (Grafana) | OpenBao `secret/grafana` | Phase 7 | Authentik OIDC client secret |
 | `HARBOR_ADMIN_PASSWORD` | OpenBao `secret/harbor` | Phase 2 | |
 | `N8N_ENCRYPTION_KEY` | OpenBao `secret/n8n` | Phase 2 | **Never rotate** — re-entering workflows |
-| `BOOTSTRAP_PASSWORD` (Rancher) | OpenBao `secret/rancher` | Phase 2 | |
 | `NETBIRD_SETUP_KEY` | OpenBao `secret/netbird` | Phase 6 | k8s-routing-peer setup key |
 
 ---

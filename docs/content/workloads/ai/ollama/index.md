@@ -41,18 +41,18 @@ Source: [`workloads/ai/ollama.go`](https://github.com/madhank93/homelab/blob/v0.
 
 ```bash
 # List available models
-curl http://ollama.madhan.app/api/tags
+curl https://ollama.madhan.app/api/tags
 
 # Run inference (streaming)
-curl http://ollama.madhan.app/api/generate \
+curl https://ollama.madhan.app/api/generate \
   -d '{"model": "llama3.2", "prompt": "Hello!"}'
 
 # Pull a new model (stores to 100Gi PVC)
-curl http://ollama.madhan.app/api/pull \
+curl https://ollama.madhan.app/api/pull \
   -d '{"name": "mistral"}'
 
 # OpenAI-compatible chat completions
-curl http://ollama.madhan.app/v1/chat/completions \
+curl https://ollama.madhan.app/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "llama3.2", "messages": [{"role": "user", "content": "Hello"}]}'
 ```

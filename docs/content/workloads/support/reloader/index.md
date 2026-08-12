@@ -58,7 +58,6 @@ Apps that use this annotation in this homelab:
 | AlertManager | Restart when routing config changes |
 | OpenBao | Restart when unseal key secret updates |
 | Harbor secret-sync | Restart when OpenBao password rotates |
-| Rancher secret-sync | Restart when bootstrap password rotates |
 | NetBird | Restart when setup key changes |
 | OTel collectors | Restart when pipeline config changes |
 
