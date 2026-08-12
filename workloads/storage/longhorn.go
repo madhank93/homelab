@@ -57,14 +57,14 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		"preUpgradeChecker": map[string]any{
 			"jobEnabled": false,
 		},
-		// Talos-specific: Allow control-plane components to run on control-plane nodes
+		// longhorn-manager must not tolerate the control-plane taint: a manager pod
+		// registers its node as a Longhorn node, and every registered node needs an
+		// engine image. Engine-image DaemonSets get no tolerations, so control planes
+		// would leave EngineImages stuck "deploying" and block volume attachment.
 		"longhornManager": map[string]any{
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
 				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},
-			},
-			"tolerations": []map[string]any{
-				{"key": "node-role.kubernetes.io/control-plane", "operator": "Exists", "effect": "NoSchedule"},
 			},
 		},
 		"longhornDriver": map[string]any{
