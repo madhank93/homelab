@@ -25,7 +25,7 @@ Both export:
 - **Metrics** → VictoriaMetrics via Prometheus remote-write
 - **Logs** → VictoriaLogs via OTLP/HTTP
 
-Source: [`workloads/observability/otel_collector.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/otel_collector.go)
+Source: [`workloads/observability/otel_collector.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/observability/otel_collector.go)
 
 ## Agent DaemonSet Configuration
 

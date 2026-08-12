@@ -22,7 +22,7 @@ Trivy is the most widely adopted open-source vulnerability scanner. The Operator
 
 Trivy Operator runs as a single-replica Deployment in the `trivy` namespace. It watches for new or updated Pods and spawns scan Jobs that pull the image and check it against the Trivy vulnerability database.
 
-Source: [`workloads/security/trivy.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/security/trivy.go)
+Source: [`workloads/security/trivy.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/security/trivy.go)
 
 ## Configuration
 

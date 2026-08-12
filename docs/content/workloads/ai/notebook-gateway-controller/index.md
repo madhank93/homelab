@@ -40,7 +40,7 @@ HTTPRoutes live in the `kubeflow` namespace but backend Services live in user na
 
 Tensorboard and PVCViewer use `URLRewrite` (strip the prefix to `/`) since those apps don't handle path prefixes. Notebooks do not use URL rewrite.
 
-Source: [`workloads/ai/notebook_gateway_controller.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/notebook_gateway_controller.go)
+Source: [`workloads/ai/notebook_gateway_controller.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/notebook_gateway_controller.go)
 
 ## Configuration
 

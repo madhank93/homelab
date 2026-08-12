@@ -144,7 +144,7 @@ Synthesize and push:
 just synth
 git add workloads/networking/netbird_peer.go app/netbird/
 git commit -m "feat: add netbird expose sidecar for headlamp"
-git push origin v0.1.5-manifests
+git push origin v0.1.7-manifests
 ```
 
 ArgoCD will roll the `netbird-peer` Deployment with the new sidecar within 3 minutes.

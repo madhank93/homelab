@@ -21,7 +21,7 @@ CDK8s enables Go functions to generate manifests, making it easy to share patter
 
 ## How It's Used Here
 
-All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in `workloads/`. A CI pipeline runs `go run .` on every push to synthesize YAML into `app/` and force-pushes that output to the `v0.1.5-manifests` branch, which ArgoCD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero `Secret` resources.
+All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in `workloads/`. A CI pipeline runs `go run .` on every push to synthesize YAML into `app/` and force-pushes that output to the `v0.1.7-manifests` branch, which ArgoCD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero `Secret` resources.
 
 ## Structure
 
@@ -77,9 +77,9 @@ Running `just synth` executes `go run .` in `workloads/`, which writes all manif
 1. Checkout source
 2. Set up Go
 3. `go run .` — synthesizes all manifests to `app/`
-4. Force-pushes `app/` content to `${branch}-manifests` branch (e.g. `v0.1.5-manifests`)
+4. Force-pushes `app/` content to `${branch}-manifests` branch (e.g. `v0.1.7-manifests`)
 
-The manifests branch is the ArgoCD source. ArgoCD's `ApplicationSet` directory generator watches every top-level directory in `v0.1.5-manifests` and creates an Application for each.
+The manifests branch is the ArgoCD source. ArgoCD's `ApplicationSet` directory generator watches every top-level directory in `v0.1.7-manifests` and creates an Application for each.
 
 ## Synthesis Flow
 
@@ -87,7 +87,7 @@ The manifests branch is the ArgoCD source. ArgoCD's `ApplicationSet` directory g
 workloads/main.go (Go source)
   → cdk8s.Synth()
   → YAML files per resource in app/<workload>/
-  → CI pushes to v0.1.5-manifests branch
+  → CI pushes to v0.1.7-manifests branch
   → ArgoCD detects new/changed directories
   → ArgoCD syncs to cluster
 ```

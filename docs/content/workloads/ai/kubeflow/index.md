@@ -52,7 +52,7 @@ workloads/ai/kubeflow/kustomization.yaml
       └── Delete all Istio resources (DestinationRule, VirtualService, AuthorizationPolicy)
 ```
 
-Source: [`workloads/ai/kubeflow/kustomization.yaml`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/kubeflow/kustomization.yaml)
+Source: [`workloads/ai/kubeflow/kustomization.yaml`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/kubeflow/kustomization.yaml)
 
 Components installed:
 
@@ -90,13 +90,13 @@ All Kubeflow sub-apps are exposed at `https://kubeflow.madhan.app` via the Ciliu
 
 > **Why URL rewrite?** Flask-based web apps (jupyter, volumes, tensorboards, pipeline UI) serve their HTML at `/` and generate relative links. The gateway strips the path prefix so the Flask app receives `/` and everything works. The `katib-ui` Go binary is aware of its path prefix and serves correctly without rewriting.
 
-Source: [`app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml`](https://github.com/madhank93/homelab/blob/v0.1.5/app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml)
+Source: [`app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml`](https://github.com/madhank93/homelab/blob/v0.1.7/app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml)
 
 ## Notebook and Tensorboard Routing
 
 Notebook and Tensorboard CRs each get their own HTTPRoute dynamically. The upstream controllers create Istio VirtualServices per CR — without Istio those are no-ops. A custom controller watches the CRs and creates Gateway API HTTPRoutes instead.
 
-Source: [`workloads/ai/notebook_gateway_controller.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/notebook_gateway_controller.go)
+Source: [`workloads/ai/notebook_gateway_controller.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/notebook_gateway_controller.go)
 
 The controller runs as a Python deployment in the `kubeflow` namespace and watches three CRD types:
 

@@ -40,7 +40,7 @@ OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Po
 | Rancher | `secret/data/rancher` | `BOOTSTRAP_PASSWORD` |
 | NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` |
 
-Source: [`workloads/secrets/openbao.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/secrets/openbao.go)
+Source: [`workloads/secrets/openbao.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/secrets/openbao.go)
 
 ## Secrets Patterns
 

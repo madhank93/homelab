@@ -16,7 +16,7 @@ n8n is the leading self-hosted automation platform with native Kubernetes suppor
 
 n8n is deployed using the [8gears Helm chart](https://github.com/8gears/n8n-helm-chart) (OCI chart `oci://8gears.container-registry.com/library/n8n`, v2.0.1). It uses CloudNativePG for PostgreSQL instead of the embedded Bitnami PostgreSQL subchart.
 
-Source: [`workloads/automation/n8n.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/automation/n8n.go)
+Source: [`workloads/automation/n8n.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/automation/n8n.go)
 
 ## Configuration
 

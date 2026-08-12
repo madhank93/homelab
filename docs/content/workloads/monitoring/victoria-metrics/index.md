@@ -36,7 +36,7 @@ VictoriaMetrics runs in **cluster mode** with three components:
 - Discovers `PodMonitor` resources across all namespaces (required for CNPG)
 - Remote-writes to `vminsert:8480`
 
-Source: [`workloads/observability/victoria_metrics.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/victoria_metrics.go)
+Source: [`workloads/observability/victoria_metrics.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/observability/victoria_metrics.go)
 
 ## Configuration
 

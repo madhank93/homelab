@@ -25,7 +25,7 @@ netbird-peer-0 (any worker · wt0: 100.109.244.71)
 Grafana / other cluster pod
 ```
 
-Source: [`workloads/networking/netbird_peer.go`](https://github.com/madhank93/homelab/blob/v0.1.6/workloads/networking/netbird_peer.go)
+Source: [`workloads/networking/netbird_peer.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/networking/netbird_peer.go)
 
 ---
 

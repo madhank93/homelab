@@ -31,7 +31,7 @@ Three Helm charts are deployed in the `nvidia-gpu-operator` namespace:
 
 A `RuntimeClass` named `nvidia` is also created (handler: `nvidia`), matching the containerd runtime configured by the `nvidia-container-toolkit-production` Talos extension.
 
-Source: [`workloads/hardware/nvidia_gpu_operator.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/hardware/nvidia_gpu_operator.go)
+Source: [`workloads/hardware/nvidia_gpu_operator.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/hardware/nvidia_gpu_operator.go)
 
 ## Configuration
 

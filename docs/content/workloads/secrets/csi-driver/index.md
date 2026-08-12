@@ -22,7 +22,7 @@ Kubernetes Secrets have a fundamental security limitation: they are stored as ba
 
 The CSI driver is deployed as a DaemonSet in `kube-system` (one pod per node). It intercepts CSI volume mounts and calls the OpenBao provider to fetch secrets at pod startup.
 
-Source: [`workloads/secrets/csi_driver.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/secrets/csi_driver.go)
+Source: [`workloads/secrets/csi_driver.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/secrets/csi_driver.go)
 
 ## Configuration
 

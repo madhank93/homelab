@@ -145,4 +145,4 @@ kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
 
 ## CDK8s Generates Zero Secrets
 
-The CI pipeline synthesizes CDK8s manifests to the `v0.1.5-manifests` branch. It requires **zero GitHub Actions secrets** — CDK8s never generates any `Secret` resources. All runtime secrets are pulled by the in-cluster CSI driver at mount time.
+The CI pipeline synthesizes CDK8s manifests to the `v0.1.7-manifests` branch. It requires **zero GitHub Actions secrets** — CDK8s never generates any `Secret` resources. All runtime secrets are pulled by the in-cluster CSI driver at mount time.

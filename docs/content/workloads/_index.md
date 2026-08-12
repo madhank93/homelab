@@ -5,7 +5,7 @@ weight = 60
 sort_by = "weight"
 +++
 
-All applications are defined as CDK8s Go code in `workloads/`, synthesized to YAML by CI, and deployed by ArgoCD from the `v0.1.5-manifests` branch.
+All applications are defined as CDK8s Go code in `workloads/`, synthesized to YAML by CI, and deployed by ArgoCD from the `v0.1.7-manifests` branch.
 
 ## App Catalog
 

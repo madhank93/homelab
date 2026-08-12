@@ -25,7 +25,7 @@ Four ArgoCD components are scraped:
 
 For each component, a `Service` and a `ServiceMonitor` are created in the `argocd` namespace. The Service selects ArgoCD pods by `app.kubernetes.io/name`, and the ServiceMonitor selects the Service by a `-metrics` label suffix.
 
-Source: [`workloads/observability/argocd_monitor.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/argocd_monitor.go)
+Source: [`workloads/observability/argocd_monitor.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/observability/argocd_monitor.go)
 
 ## Configuration
 

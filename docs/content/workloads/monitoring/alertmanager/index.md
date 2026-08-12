@@ -18,7 +18,7 @@ AlertManager is deployed from `kube-prometheus-stack` (chart `82.0.1`) in **Aler
 
 This pattern avoids running a full Prometheus stack when VictoriaMetrics is already handling metrics storage and VMAgent is handling scraping.
 
-Source: [`workloads/observability/alert_manager.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/alert_manager.go)
+Source: [`workloads/observability/alert_manager.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/observability/alert_manager.go)
 
 ## Configuration
 

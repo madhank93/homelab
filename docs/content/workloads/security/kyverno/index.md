@@ -19,7 +19,7 @@ Kyverno runs in HA mode in its own namespace. It integrates with:
 - **VMAgent** — a ServiceMonitor scrapes Kyverno metrics on port 8000 every 30s
 - **Grafana** — the Helm chart creates a ConfigMap with the Kyverno dashboard JSON; Grafana's sidecar picks it up automatically
 
-Source: [`workloads/security/keyverno.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/security/keyverno.go)
+Source: [`workloads/security/keyverno.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/security/keyverno.go)
 
 ## Configuration
 

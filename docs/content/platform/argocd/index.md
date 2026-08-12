@@ -14,9 +14,9 @@ GitOps with ArgoCD ensures the cluster state is always derivable from code — t
 
 ## How It's Used Here
 
-ArgoCD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.5-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
+ArgoCD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.7-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
 
-**Code:** [`core/platform/argocd.go`](https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/argocd.go) · **Namespace:** `argocd` · **Chart version:** `9.4.2`
+**Code:** [`core/platform/argocd.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/argocd.go) · **Namespace:** `argocd` · **Chart version:** `9.4.2`
 
 ## Screenshots
 
@@ -45,7 +45,7 @@ helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 
 ## ApplicationSet
 
-One `ApplicationSet` named `cots-applications` watches the `v0.1.5-manifests` branch. Every top-level directory automatically becomes an ArgoCD Application:
+One `ApplicationSet` named `cots-applications` watches the `v0.1.7-manifests` branch. Every top-level directory automatically becomes an ArgoCD Application:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -57,7 +57,7 @@ spec:
   generators:
     - git:
         repoURL: https://github.com/madhank93/homelab.git
-        revision: v0.1.5-manifests
+        revision: v0.1.7-manifests
         directories:
           - path: "*"      # Every top-level directory = one Application
   template:
@@ -67,7 +67,7 @@ spec:
       project: default
       source:
         repoURL: https://github.com/madhank93/homelab.git
-        targetRevision: v0.1.5-manifests
+        targetRevision: v0.1.7-manifests
         path: "{{path}}"
       destination:
         server: https://kubernetes.default.svc

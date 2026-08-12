@@ -21,7 +21,7 @@ Headlamp is faster and lighter than the standard Kubernetes Dashboard or Rancher
 
 Headlamp runs in the `headlamp` namespace, accessible at `http://headlamp.madhan.app`. It uses a long-lived ServiceAccount token with `cluster-admin` ClusterRoleBinding.
 
-Source: [`workloads/management/headlamp.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/management/headlamp.go)
+Source: [`workloads/management/headlamp.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/management/headlamp.go)
 
 ## Configuration
 

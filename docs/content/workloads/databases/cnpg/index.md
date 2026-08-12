@@ -26,7 +26,7 @@ See [n8n](/workloads/automation/n8n/) for the Cluster CR definition and how n8n 
 | Namespace | `cnpg-system` | Operator runs cluster-wide |
 | Chart repo | `cloudnative-pg.github.io/charts` | Official CNPG chart repo |
 
-Source: [`workloads/databases/cnpg.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/databases/cnpg.go)
+Source: [`workloads/databases/cnpg.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/databases/cnpg.go)
 
 ## Troubleshooting
 

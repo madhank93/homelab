@@ -34,7 +34,7 @@ Cilium v1.16.6 replaces kube-proxy entirely, manages LoadBalancer IPs in the `19
 
 Standard Kubernetes uses `kube-proxy` as a DaemonSet to manage `iptables` rules for Service-to-Pod routing. This homelab replaces kube-proxy entirely with Cilium's eBPF data plane.
 
-**How it's disabled in Talos** (from [`core/platform/talos.go`](https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/talos.go)):
+**How it's disabled in Talos** (from [`core/platform/talos.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/talos.go)):
 
 ```yaml
 cluster:
@@ -42,7 +42,7 @@ cluster:
     disabled: true
 ```
 
-**How Cilium takes over** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go)):
+**How Cilium takes over** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/cilium.go)):
 
 ```go
 "kubeProxyReplacement": pulumi.Bool(true),
@@ -73,7 +73,7 @@ cilium status | grep KubeProxyReplacement
 
 Bare-metal clusters have no cloud provider to assign LoadBalancer IPs. Cilium's L2 announcement feature fills this role using ARP.
 
-**IP Pool** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go)):
+**IP Pool** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/cilium.go)):
 
 ```go
 // IPs: 192.168.1.220 through 192.168.1.230 (11 addresses, each as /32)
@@ -123,7 +123,7 @@ The [Gateway API](https://gateway-api.sigs.k8s.io/) is the successor to the Kube
 | Expressiveness | Limited header/path matching | Rich routing rules |
 | Future | Legacy | Active development |
 
-**The shared Gateway** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/cilium.go)):
+**The shared Gateway** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/cilium.go)):
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1

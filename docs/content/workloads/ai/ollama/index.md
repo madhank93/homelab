@@ -16,7 +16,7 @@ Ollama is the simplest way to run local LLMs on a GPU. It handles model quantiza
 
 Ollama runs on k8s-worker4 (the GPU node, `192.168.1.224`) using the RTX 5070 Ti for inference. It stores downloaded model files on a 100 Gi Longhorn PVC.
 
-Source: [`workloads/ai/ollama.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/ollama.go)
+Source: [`workloads/ai/ollama.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/ollama.go)
 
 ## Configuration
 

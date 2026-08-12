@@ -21,7 +21,7 @@ VictoriaLogs runs as a single-node server in the `victoria-logs` namespace. It r
 - Kubernetes events (via OTel Gateway `k8sobjects` receiver)
 - Falco runtime security alerts (JSON to stdout, collected by OTel Agent)
 
-Source: [`workloads/observability/victoria_logs.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/victoria_logs.go)
+Source: [`workloads/observability/victoria_logs.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/observability/victoria_logs.go)
 
 ## Configuration
 

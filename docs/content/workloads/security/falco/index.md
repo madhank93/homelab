@@ -32,7 +32,7 @@ Falco DaemonSet (every node)
   → Grafana (LogQL query)
 ```
 
-Source: [`workloads/security/falco.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/security/falco.go)
+Source: [`workloads/security/falco.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/security/falco.go)
 
 ## Configuration
 

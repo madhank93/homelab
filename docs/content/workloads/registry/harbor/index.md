@@ -16,7 +16,7 @@ Harbor is the most feature-complete self-hosted registry available. Alternatives
 
 Harbor stores private container images built for this homelab and provides pull-through proxy caches for Docker Hub, GHCR, and other public registries. Images are pushed to `harbor.madhan.app` and pulled into cluster deployments.
 
-Source: [`workloads/registry/harbor.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/registry/harbor.go)
+Source: [`workloads/registry/harbor.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/registry/harbor.go)
 
 ## Configuration
 
