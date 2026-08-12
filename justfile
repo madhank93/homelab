@@ -159,9 +159,16 @@ NODES    := '192.168.1.211,192.168.1.212,192.168.1.213,192.168.1.221,192.168.1.2
 # whose installer runs in metal mode and rejects configs without a
 # machine.install section. Talos 1.13 upgrades via LifecycleService, which
 # keeps user data and drains the node on its own.
+#
+# Pass drain=false for a node whose pods cannot be evicted: Longhorn gives each
+# instance-manager a PDB allowing zero disruptions while a volume is attached
+# there, and a single-instance CNPG cluster can never release its only pod. The
+# drain then burns its timeout and talosctl exits before rebooting, leaving the
+# node cordoned and un-upgraded.
 #   just talos-upgrade 192.168.1.223
 #   just talos-upgrade 192.168.1.224 gpu
-talos-upgrade node schematic='base':
+#   just talos-upgrade 192.168.1.224 gpu false
+talos-upgrade node schematic='base' drain='true':
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -187,7 +194,7 @@ talos-upgrade node schematic='base':
     read -rp "reboot this node? [y/N] " ok
     case "$ok" in y|Y|yes|YES) ;; *) echo "aborted"; exit 1 ;; esac
 
-    {{TALOSCTL}} upgrade --nodes {{node}} --image "$IMAGE"
+    {{TALOSCTL}} upgrade --nodes {{node}} --image "$IMAGE" --drain={{drain}}
     {{TALOSCTL}} -n 192.168.1.211 health --wait-timeout=10m
 
 # Cluster health. Must be clean before upgrading the next node.
