@@ -80,10 +80,14 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			"gatewayAPI": pulumi.Map{
 				"enabled": pulumi.Bool(true),
 				"secretsNamespace": pulumi.Map{
-					// cert-manager writes kube-system-wildcard-madhan-app-tls directly into
-					// cilium-secrets (see cert_manager.go). Disable sync so Cilium does not
-					// race with cert-manager over ownership of that secret.
-					"sync": pulumi.Bool(false),
+					// Cilium copies the Gateway's TLS secret into cilium-secrets for Envoy
+					// SDS. It must own that copy: cilium-secrets is Cilium's own namespace,
+					// so a foreign secret parked there gets removed, and if cert-manager is
+					// what recreates it, every removal costs a fresh ACME order. That loop
+					// exhausted Let's Encrypt's 5-per-168h duplicate-certificate limit and
+					// took down HTTPS on every route. One Certificate in kube-system, one
+					// owner for the copy.
+					"sync": pulumi.Bool(true),
 				},
 			},
 			// Both ens18 (existing VMs, Talos ≤v1.12 predictable naming) and eth0

@@ -134,28 +134,9 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 		return err
 	}
 
-	// Cilium's Envoy SDS server reads TLS certs from cilium-secrets as
-	// "<source-namespace>-<secret-name>". cert-manager owns this secret directly
-	// because Cilium's secretsNamespace.sync does not recover from simultaneous
-	// node failures; that sync is disabled in cilium.go.
-	_, err = apiextensions.NewCustomResource(ctx, "wildcard-certificate-cilium-sds", &apiextensions.CustomResourceArgs{
-		ApiVersion: pulumi.String("cert-manager.io/v1"),
-		Kind:       pulumi.String("Certificate"),
-		Metadata: &metav1.ObjectMetaArgs{
-			Name:      pulumi.String("wildcard-madhan-app-cilium-sds"),
-			Namespace: pulumi.String("cilium-secrets"),
-		},
-		OtherFields: map[string]any{
-			"spec": map[string]any{
-				"secretName": "kube-system-wildcard-madhan-app-tls",
-				"issuerRef": map[string]any{
-					"name": "letsencrypt-prod",
-					"kind": "ClusterIssuer",
-				},
-				"dnsNames": []string{"madhan.app", "*.madhan.app"},
-			},
-		},
-	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{chart}))
-
-	return err
+	// The wildcard is issued exactly once, here. Cilium mirrors it into
+	// cilium-secrets for Envoy SDS (gatewayAPI.secretsNamespace.sync in
+	// cilium.go). A second Certificate for the same dnsNames would share an ACME
+	// identifier set with this one and burn the same 5-per-168h issuance budget.
+	return nil
 }

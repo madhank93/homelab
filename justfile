@@ -196,6 +196,48 @@ talos-upgrade node schematic='base' drain='true':
 
     {{TALOSCTL}} upgrade --nodes {{node}} --image "$IMAGE" --drain={{drain}}
     {{TALOSCTL}} -n 192.168.1.211 health --wait-timeout=10m
+    just longhorn-repair-iscsi
+
+# Drop iSCSI node records the current open-iscsi refuses to parse.
+#
+# An upgrade can ship an open-iscsi that rejects a parameter its predecessor
+# wrote into /var/lib/iscsi/nodes/<iqn>/<portal>/default. `iscsiadm -m node`
+# reads every record, so one unparseable file fails the whole call and no
+# Longhorn volume on that node can attach: the engine's frontend never starts,
+# Longhorn marks the volume faulted and retries forever. The records sit on
+# persistent /var, so rebooting does not clear them.
+#
+# Reads the rejected parameter out of iscsiadm's own error, so it keeps working
+# when a later release renames a different one.
+longhorn-repair-iscsi:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    for pod in $(kubectl get pods -n longhorn-system \
+        -l longhorn.io/component=instance-manager -o name); do
+      pod=${pod#pod/}
+      node=$(kubectl get pod -n longhorn-system "$pod" \
+        -o jsonpath='{.metadata.labels.longhorn\.io/node}')
+
+      # iscsiadm lives on the host, not in this container, and the records it
+      # reads are the host's. Enter the iscsid namespaces to validate; repair
+      # through the /host bind mount, where the same files are writable.
+      pid=$(kubectl exec -n longhorn-system "$pod" -- bash -c \
+        'for p in /host/proc/[0-9]*; do grep -qa iscsid "$p/comm" 2>/dev/null && { echo "${p#/host/proc/}"; break; }; done')
+      [ -n "$pid" ] || { echo "$node: iscsid not running, skipped"; continue; }
+
+      for _ in $(seq 1 10); do
+        err=$(kubectl exec -n longhorn-system "$pod" -- nsenter \
+          --mount=/host/proc/"$pid"/ns/mnt --net=/host/proc/"$pid"/ns/net \
+          iscsiadm -m node -o show 2>&1 >/dev/null) && break
+        param=$(printf '%s' "$err" \
+          | sed -nE 's/.*Unknown parameter name ([A-Za-z0-9_.]+).*/\1/p' | head -1)
+        [ -n "$param" ] || break
+        echo "$node: stripping $param"
+        kubectl exec -n longhorn-system "$pod" -- bash -c \
+          "grep -rl '$param' /host/var/lib/iscsi/nodes/ | while read -r f; do sed -i '/$param/d' \"\$f\"; done"
+      done
+    done
 
 # Cluster health. Must be clean before upgrading the next node.
 talos-health:
