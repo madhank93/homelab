@@ -559,7 +559,7 @@
 </span><span>      ├── Delete seaweedfs NetworkPolicy (blocks profile controller IAM port 8111)
 </span><span>      └── Delete all Istio resources (DestinationRule, VirtualService, AuthorizationPolicy)
 </span></code></pre>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/kubeflow/kustomization.yaml"><code>workloads/ai/kubeflow/kustomization.yaml</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/kubeflow/kustomization.yaml"><code>workloads/ai/kubeflow/kustomization.yaml</code></a></p>
 <p>Components installed:</p>
 <table><thead><tr><th>Component</th><th>Path</th></tr></thead><tbody>
 <tr><td>cert-manager Kubeflow issuer</td><td><code>common/cert-manager/kubeflow-issuer/base</code></td></tr>
@@ -592,10 +592,10 @@
 <blockquote>
 <p><strong>Why URL rewrite?</strong> Flask-based web apps (jupyter, volumes, tensorboards, pipeline UI) serve their HTML at <code>/</code> and generate relative links. The gateway strips the path prefix so the Flask app receives <code>/</code> and everything works. The <code>katib-ui</code> Go binary is aware of its path prefix and serves correctly without rewriting.</p>
 </blockquote>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml"><code>app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml"><code>app/kubeflow/HTTPRoute.kubeflow-dashboard.k8s.yaml</code></a></p>
 <h2 id="notebook-and-tensorboard-routing">Notebook and Tensorboard Routing</h2>
 <p>Notebook and Tensorboard CRs each get their own HTTPRoute dynamically. The upstream controllers create Istio VirtualServices per CR — without Istio those are no-ops. A custom controller watches the CRs and creates Gateway API HTTPRoutes instead.</p>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/notebook_gateway_controller.go"><code>workloads/ai/notebook_gateway_controller.go</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/notebook_gateway_controller.go"><code>workloads/ai/notebook_gateway_controller.go</code></a></p>
 <p>The controller runs as a Python deployment in the <code>kubeflow</code> namespace and watches three CRD types:</p>
 <table><thead><tr><th>CR type</th><th>URL pattern</th><th>URL rewrite</th><th>Notes</th></tr></thead><tbody>
 <tr><td><code>notebooks.kubeflow.org/v1</code></td><td><code>/notebook/&lt;ns&gt;/&lt;name&gt;/</code></td><td><strong>None</strong></td><td>notebook-controller sets <code>--NotebookApp.base_url</code> — Jupyter serves at its own prefix</td></tr>
@@ -1367,8 +1367,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1413,11 +1411,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1429,11 +1427,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1461,11 +1459,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1477,11 +1475,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

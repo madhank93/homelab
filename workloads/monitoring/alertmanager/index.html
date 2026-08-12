@@ -530,7 +530,7 @@
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
 <p>AlertManager is deployed from <code>kube-prometheus-stack</code> (chart <code>82.0.1</code>) in <strong>AlertManager-only mode</strong> — all other kube-prometheus-stack components (Prometheus, Grafana, node-exporter, kube-state-metrics) are disabled. Only the Prometheus Operator (for CRDs) and AlertManager itself are enabled.</p>
 <p>This pattern avoids running a full Prometheus stack when VictoriaMetrics is already handling metrics storage and VMAgent is handling scraping.</p>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/alert_manager.go"><code>workloads/observability/alert_manager.go</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/workloads/observability/alert_manager.go"><code>workloads/observability/alert_manager.go</code></a></p>
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>alertmanager</code></td><td>Isolated namespace</td></tr>
@@ -585,13 +585,13 @@
 </span><span style="color:#ffd580;">kubectl</span><span> port-forward</span><span style="color:#ffcc66;"> -n</span><span> alertmanager svc/alertmanager-kube-promethe-alertmanager 9093:9093
 </span><span style="font-style:italic;color:#5c6773;"># Open http://localhost:9093
 </span></code></pre>
-<p>Or browse to <code>http://alertmanager.madhan.app</code>.</p>
+<p>Or browse to <code>https://alertmanager.madhan.app</code>.</p>
 <h3 id="checking-active-alerts">Checking Active Alerts</h3>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># List active alerts via API
-</span><span style="color:#ffd580;">curl</span><span> http://alertmanager.madhan.app/api/v2/alerts </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span> .
+</span><span style="color:#ffd580;">curl</span><span> https://alertmanager.madhan.app/api/v2/alerts </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span> .
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># Check silences
-</span><span style="color:#ffd580;">curl</span><span> http://alertmanager.madhan.app/api/v2/silences </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span> .
+</span><span style="color:#ffd580;">curl</span><span> https://alertmanager.madhan.app/api/v2/silences </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">jq</span><span> .
 </span></code></pre>
 
 
@@ -1088,8 +1088,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1134,11 +1132,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1150,11 +1148,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1182,11 +1180,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1198,11 +1196,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

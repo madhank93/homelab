@@ -534,7 +534,7 @@
 </tbody></table>
 <p>CDK8s enables Go functions to generate manifests, making it easy to share patterns (like the OpenBao CSI volume + SecretProviderClass pattern) across all apps without duplicating YAML.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in <code>workloads/</code>. A CI pipeline runs <code>go run .</code> on every push to synthesize YAML into <code>app/</code> and force-pushes that output to the <code>v0.1.5-manifests</code> branch, which ArgoCD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero <code>Secret</code> resources.</p>
+<p>All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in <code>workloads/</code>. A CI pipeline runs <code>go run .</code> on every push to synthesize YAML into <code>app/</code> and force-pushes that output to the <code>v0.1.7-manifests</code> branch, which ArgoCD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero <code>Secret</code> resources.</p>
 <h2 id="structure">Structure</h2>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>workloads/
 </span><span>├── main.go              # Entrypoint — one CDK8s App per workload
@@ -552,7 +552,7 @@
 </span><span>├── automation/          n8n.go
 </span><span>├── databases/           cnpg.go
 </span><span>├── ai/                  ollama.go, comfyui.go
-</span><span>├── management/          headlamp.go, rancher.go
+</span><span>├── management/          headlamp.go
 </span><span>└── support/             reloader.go
 </span></code></pre>
 <h2 id="how-main-go-works">How main.go Works</h2>
@@ -580,14 +580,14 @@
 <li>Checkout source</li>
 <li>Set up Go</li>
 <li><code>go run .</code> — synthesizes all manifests to <code>app/</code></li>
-<li>Force-pushes <code>app/</code> content to <code>${branch}-manifests</code> branch (e.g. <code>v0.1.5-manifests</code>)</li>
+<li>Force-pushes <code>app/</code> content to <code>${branch}-manifests</code> branch (e.g. <code>v0.1.7-manifests</code>)</li>
 </ol>
-<p>The manifests branch is the ArgoCD source. ArgoCD's <code>ApplicationSet</code> directory generator watches every top-level directory in <code>v0.1.5-manifests</code> and creates an Application for each.</p>
+<p>The manifests branch is the ArgoCD source. ArgoCD's <code>ApplicationSet</code> directory generator watches every top-level directory in <code>v0.1.7-manifests</code> and creates an Application for each.</p>
 <h2 id="synthesis-flow">Synthesis Flow</h2>
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>workloads/main.go (Go source)
 </span><span>  → cdk8s.Synth()
 </span><span>  → YAML files per resource in app/&lt;workload&gt;/
-</span><span>  → CI pushes to v0.1.5-manifests branch
+</span><span>  → CI pushes to v0.1.7-manifests branch
 </span><span>  → ArgoCD detects new/changed directories
 </span><span>  → ArgoCD syncs to cluster
 </span></code></pre>
@@ -1114,8 +1114,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1160,11 +1158,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1176,11 +1174,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1208,11 +1206,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1224,11 +1222,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

@@ -535,7 +535,7 @@
 <li>Kubernetes events (via OTel Gateway <code>k8sobjects</code> receiver)</li>
 <li>Falco runtime security alerts (JSON to stdout, collected by OTel Agent)</li>
 </ul>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/victoria_logs.go"><code>workloads/observability/victoria_logs.go</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/workloads/observability/victoria_logs.go"><code>workloads/observability/victoria_logs.go</code></a></p>
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>victoria-logs</code></td><td>Isolated namespace</td></tr>
@@ -558,7 +558,7 @@
 <p><strong>Do NOT append <code>/loki</code> or <code>/loki/api/v1</code> to this URL.</strong> Grafana's Loki datasource plugin appends the API path (<code>/loki/api/v1/query_range</code>, etc.) automatically. If you configure the URL as <code>/select/loki</code>, Grafana will construct double-path URLs like <code>/select/loki/loki/api/v1/query_range</code> and every query will return 404.</p>
 </blockquote>
 <h2 id="httproute">HTTPRoute</h2>
-<p>VictoriaLogs UI is accessible at <code>http://victorialogs.madhan.app</code>. The web UI provides a log explorer interface.</p>
+<p>VictoriaLogs UI is accessible at <code>https://victorialogs.madhan.app</code>. The web UI provides a log explorer interface.</p>
 <h2 id="querying-in-grafana">Querying in Grafana</h2>
 <p>Select the VictoriaLogs datasource and use LogQL:</p>
 <pre data-lang="logql" style="background-color:#212733;color:#ccc9c2;" class="language-logql "><code class="language-logql" data-lang="logql"><span># All logs from a namespace
@@ -597,7 +597,7 @@
 </span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> opentelemetry</span><span style="color:#ffcc66;"> -l</span><span> app.kubernetes.io/name=otel-agent</span><span style="color:#ffcc66;"> --tail</span><span style="color:#f29e74;">=</span><span>50
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># Check ingestion directly
-</span><span style="color:#ffd580;">curl </span><span style="color:#bae67e;">&quot;http://victorialogs.madhan.app/select/logsql/query?query=*&amp;limit=5&quot;
+</span><span style="color:#ffd580;">curl </span><span style="color:#bae67e;">&quot;https://victorialogs.madhan.app/select/logsql/query?query=*&amp;limit=5&quot;
 </span></code></pre>
 <p><strong>Fix:</strong> If OTel Agent is failing, check if the VictoriaLogs OTLP endpoint is reachable from the agent pods. The agent runs in the <code>opentelemetry</code> namespace with <code>privileged</code> pod security.</p>
 <h3 id="double-path-404-errors">Double-Path 404 Errors</h3>
@@ -1110,8 +1110,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1156,11 +1154,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1172,11 +1170,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1204,11 +1202,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1220,11 +1218,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

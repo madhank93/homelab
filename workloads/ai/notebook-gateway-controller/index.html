@@ -548,7 +548,7 @@
 <p>HTTPRoutes live in the <code>kubeflow</code> namespace but backend Services live in user namespaces (e.g. <code>kubeflow-user-example-com</code>). Gateway API requires a <code>ReferenceGrant</code> in the target namespace. The controller creates one <code>ReferenceGrant</code> named <code>allow-kubeflow-gateway</code> per user namespace the first time a CR is found there.</p>
 <p><strong>URL rewrite:</strong></p>
 <p>Tensorboard and PVCViewer use <code>URLRewrite</code> (strip the prefix to <code>/</code>) since those apps don't handle path prefixes. Notebooks do not use URL rewrite.</p>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/notebook_gateway_controller.go"><code>workloads/ai/notebook_gateway_controller.go</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/notebook_gateway_controller.go"><code>workloads/ai/notebook_gateway_controller.go</code></a></p>
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>kubeflow</code></td></tr>
@@ -1110,8 +1110,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1156,11 +1154,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1172,11 +1170,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1204,11 +1202,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1220,11 +1218,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

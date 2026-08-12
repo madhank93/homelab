@@ -525,60 +525,10 @@
     </div>
     <p>Version upgrades follow a strict layer order — each layer depends on the one below it being stable first.</p>
 <hr />
-<h2 id="current-version-inventory">Current Version Inventory</h2>
-<blockquote>
-<p><strong>Branch:</strong> <code>v0.1.6</code> — code targets below. Some require Pulumi/kubectl apply to take effect on the live cluster.</p>
-</blockquote>
-<h3 id="infrastructure-platform">Infrastructure &amp; Platform</h3>
-<table><thead><tr><th>Component</th><th>v0.1.6 Target</th><th>Live</th><th>File</th></tr></thead><tbody>
-<tr><td>Talos</td><td><code>v1.13.3</code></td><td>v1.13.3 ✓</td><td><code>core/platform/talos.go:17</code></td></tr>
-<tr><td>Cilium</td><td><code>1.19.4</code></td><td>1.19.4 ✓</td><td><code>core/platform/cilium.go:30</code></td></tr>
-<tr><td>ArgoCD chart</td><td><code>9.5.15</code></td><td>9.5.15 ✓</td><td><code>core/platform/argocd.go:24</code></td></tr>
-<tr><td>ArgoCD manifests branch</td><td><code>v0.1.6-manifests</code></td><td>patched live</td><td><code>core/platform/argocd.go:175,190</code></td></tr>
-<tr><td>cert-manager</td><td><code>v1.20.2</code></td><td>v1.19.3 ✓</td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>k8s API target</td><td><code>1.35.0</code></td><td>1.35.0 ✓</td><td><code>workloads/cdk8s.yaml</code></td></tr>
-</tbody></table>
-<h3 id="cloud-bifrost-docker-compose">Cloud (Bifrost Docker Compose)</h3>
-<table><thead><tr><th>Component</th><th>v0.1.6 Target</th><th>File</th></tr></thead><tbody>
-<tr><td>Traefik</td><td><code>v3.7.1</code></td><td><code>core/cloud/bifrost/docker-compose.yml:35</code></td></tr>
-<tr><td>NetBird server</td><td><code>0.71.4</code></td><td><code>docker-compose.yml:59</code></td></tr>
-<tr><td>NetBird dashboard</td><td><code>v0.71.4</code></td><td><code>docker-compose.yml:73</code></td></tr>
-<tr><td>NetBird reverse-proxy</td><td><code>v0.71.4</code></td><td><code>docker-compose.yml:82</code></td></tr>
-<tr><td>NetBird agent (Bifrost)</td><td><code>0.71.4</code></td><td><code>docker-compose.yml:94</code></td></tr>
-<tr><td>Authentik</td><td><code>2026.5.2</code></td><td><code>docker-compose.yml:137,168</code></td></tr>
-<tr><td>PostgreSQL (Authentik)</td><td><code>16.14-alpine</code></td><td><code>docker-compose.yml:115</code></td></tr>
-<tr><td>Gatus</td><td><code>v5.36.0</code></td><td><code>docker-compose.yml</code> — uptime monitoring at <code>uptime.madhan.app</code></td></tr>
-</tbody></table>
-<h3 id="secrets-storage">Secrets &amp; Storage</h3>
-<table><thead><tr><th>Component</th><th>v0.1.6 Target</th><th>File</th></tr></thead><tbody>
-<tr><td>OpenBao helm</td><td><code>0.28.3</code></td><td><code>workloads/secrets/openbao.go:42</code></td></tr>
-<tr><td>OpenBao image</td><td><code>2.5.4</code></td><td><code>workloads/secrets/openbao.go:98</code></td></tr>
-<tr><td>CSI Driver</td><td><code>1.6.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>Longhorn</td><td><code>1.11.2</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>CNPG operator</td><td><code>0.28.2</code></td><td><code>workloads/databases/cnpg.go:31</code></td></tr>
-</tbody></table>
-<h3 id="workloads">Workloads</h3>
-<table><thead><tr><th>Component</th><th>v0.1.6 Target</th><th>File</th></tr></thead><tbody>
-<tr><td>VictoriaMetrics k8s-stack</td><td><code>0.80.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>VictoriaLogs</td><td><code>0.12.5</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>Grafana</td><td><code>12.4.1</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>Metrics Server</td><td><code>3.13.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>OTel Collector</td><td><code>0.156.2</code></td><td><code>workloads/observability/otel_collector.go:155,213</code></td></tr>
-<tr><td>Harbor</td><td><code>1.19.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>NVIDIA GPU Operator (import)</td><td><code>v26.3.1</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>NVIDIA Device Plugin</td><td><code>0.19.1</code></td><td><code>workloads/hardware/nvidia_gpu_operator.go:47</code></td></tr>
-<tr><td>DCGM Exporter</td><td><code>4.8.2</code></td><td><code>workloads/hardware/nvidia_gpu_operator.go:99</code></td></tr>
-<tr><td>n8n (8gears OCI)</td><td><code>2.0.1</code></td><td><code>workloads/automation/n8n.go:184</code></td></tr>
-<tr><td>Ollama chart</td><td><code>1.57.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>Ollama image</td><td><code>0.24.0</code></td><td><code>workloads/ai/ollama.go:33</code></td></tr>
-<tr><td>ComfyUI image</td><td><code>cu128-megapak-20260223</code></td><td><code>workloads/ai/comfyui.go:73</code></td></tr>
-<tr><td>Headlamp</td><td><code>0.42.0</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>Kyverno</td><td><code>3.8.1</code></td><td><code>workloads/cdk8s.yaml</code></td></tr>
-<tr><td>Trivy Operator</td><td><code>0.32.1</code></td><td><code>workloads/security/trivy.go:22</code> + <code>cdk8s.yaml</code></td></tr>
-<tr><td>Falco</td><td><code>8.0.5</code></td><td><code>workloads/security/falco.go:84</code></td></tr>
-<tr><td>Reloader</td><td><code>2.2.12</code></td><td><code>workloads/support/reloader.go:20</code></td></tr>
-<tr><td>NetBird peer (k8s)</td><td><code>0.71.4</code></td><td><code>workloads/networking/netbird_peer.go:139,158</code></td></tr>
-</tbody></table>
+<h2 id="what-is-pinned-right-now">What is pinned right now</h2>
+<p>Every current version lives in one place — the
+<a href="/architecture/software-inventory">Software Inventory</a>. It is not repeated here,
+so there is nothing to keep in sync.</p>
 <hr />
 <h2 id="upgrade-order">Upgrade Order</h2>
 <p>Components must be upgraded in layer order. Never skip layers.</p>
@@ -643,11 +593,41 @@
 <p><strong>Rules:</strong></p>
 <ul>
 <li>Upgrade one minor version at a time (1.12 → 1.13, not 1.12 → 1.15)</li>
-<li>Control planes upgrade first, workers after all CPs are healthy</li>
-<li>Check k8s version embedded in the new Talos release — if it bumps (e.g., 1.30 → 1.31), update <code>k8s@1.30.0</code> in <code>workloads/cdk8s.yaml</code> and re-run <code>cdk8s import</code></li>
+<li>Workers first, then GPU workers, then control planes — verify health between nodes</li>
+<li>Check the k8s version embedded in the new Talos release — if it bumps, update <code>k8s@X.Y.Z</code> in <code>workloads/cdk8s.yaml</code> and re-run <code>cdk8s import</code></li>
 </ul>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core talos up
-</span><span style="color:#ffd580;">talosctl</span><span style="color:#ffcc66;"> --talosconfig </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.talos/config health</span><span style="color:#ffcc66;"> --nodes</span><span> 192.168.1.210
+<blockquote>
+<p><strong><code>just core talos up</code> does not upgrade a running node.</strong> Images download to a
+fixed filename, so the Proxmox file ID never changes and existing disks keep
+their old Talos. Only newly created VMs get the new image.</p>
+</blockquote>
+<p>Upgrade each node explicitly:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> talos-upgrade 192.168.1.222          </span><span style="font-style:italic;color:#5c6773;"># worker
+</span><span style="color:#ffd580;">just</span><span> talos-upgrade 192.168.1.224 gpu      </span><span style="font-style:italic;color:#5c6773;"># GPU worker (different schematic)
+</span><span style="color:#ffd580;">just</span><span> talos-upgrade 192.168.1.224 gpu false  </span><span style="font-style:italic;color:#5c6773;"># skip the drain
+</span><span style="color:#ffd580;">just</span><span> talos-health                          </span><span style="font-style:italic;color:#5c6773;"># must be clean before the next node
+</span></code></pre>
+<p>Pass <code>drain=false</code> for a node whose pods cannot be evicted — Longhorn gives each
+instance-manager a PDB allowing zero disruptions while a volume is attached, and
+a single-instance CNPG cluster can never release its only pod. The drain then
+burns its timeout and <code>talosctl</code> exits <em>before</em> rebooting, leaving the node
+cordoned and un-upgraded.</p>
+<p>Kubernetes does not ride along: <code>just talos-upgrade-k8s &lt;version&gt;</code> is separate.</p>
+<h3 id="after-each-node">After each node</h3>
+<p><code>just talos-upgrade</code> runs <code>just longhorn-repair-iscsi</code> for you. It exists
+because an upgrade can ship an open-iscsi that rejects a parameter its
+predecessor wrote into <code>/var/lib/iscsi/nodes/</code>. <code>iscsiadm</code> reads <em>every</em> record,
+so one unparseable file fails the whole call and no Longhorn volume on that node
+can attach — the engine's frontend never starts, Longhorn marks the volume
+faulted, and it retries forever. Those records live on persistent <code>/var</code>, so
+rebooting does not clear them.</p>
+<h3 id="if-a-node-will-not-come-back">If a node will not come back</h3>
+<p>A node whose Cilium datapath does not recover cannot reboot gracefully: the
+unmount of a Longhorn RWX volume blocks on an NFS share-manager ClusterIP it can
+no longer reach, so <code>talosctl reboot</code> hangs at <code>unmountPodMounts</code> forever. <code>cri</code>
+and <code>kubelet</code> read <code>Finished/Fail</code> while the Talos API stays up, because <code>apid</code>
+survives the shutdown sequence. Skip the graceful path:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">talosctl</span><span style="color:#ffcc66;"> --talosconfig </span><span style="font-style:italic;color:#5ccfe6;">~</span><span>/.talos/config reboot</span><span style="color:#ffcc66;"> --nodes </span><span style="color:#f29e74;">&lt;</span><span>ip</span><span style="color:#f29e74;">&gt; </span><span style="color:#ccc9c2cc;">-</span><span>-mode powercycle
 </span></code></pre>
 <hr />
 <h2 id="phase-2-cilium">Phase 2 — Cilium</h2>
@@ -665,6 +645,21 @@
 </span><span style="color:#ffd580;">kubectl</span><span style="color:#ffcc66;"> -n</span><span> kube-system rollout status daemonset/cilium
 </span><span style="color:#ffd580;">kubectl</span><span> get gateway</span><span style="color:#ffcc66;"> -n</span><span> kube-system homelab-gateway
 </span></code></pre>
+<h3 id="if-every-loadbalancer-ip-goes-dark-afterwards">If every LoadBalancer IP goes dark afterwards</h3>
+<p>An agent restart can leave the L2 announcement lease holder renewing normally,
+still listing the IP in <code>db/show l2-announce</code>, while it has quietly stopped
+answering ARP. Nothing reports unhealthy — the Gateway stays <code>Programmed=True</code>
+and Envoy stays ready on every node. The fingerprint is that <strong>in-cluster
+requests to the Gateway return 200 while the LAN times out</strong>:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> gateway-repair-l2
+</span></code></pre>
+<p>It checks that discriminator before touching anything, then re-elects onto
+another node. Ignore <code>Proxy Status: 0 redirects active</code> while debugging — with
+<code>Envoy: external</code> the Gateway listeners live in the <code>cilium-envoy</code> DaemonSet and
+are never counted there.</p>
+<p>Pulumi reports the Cilium release as failed (<code>failed to become available within allocated timeout</code>) if a single agent never goes ready, even when the DaemonSet
+reached every node on the new image. Fix the node, then re-run
+<code>just core platform up</code> — it is idempotent.</p>
 <hr />
 <h2 id="phase-3-argocd">Phase 3 — ArgoCD</h2>
 <p><strong>Risk:</strong> Medium — GitOps engine downtime during pod restart.</p>
@@ -682,12 +677,21 @@
 <hr />
 <h2 id="phase-4-cert-manager">Phase 4 — cert-manager</h2>
 <p><strong>Risk:</strong> Low — but high blast radius if broken (TLS for all services).</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
-</span><span>- </span><span style="color:#bae67e;">helm:https://charts.jetstack.io/cert-manager@1.X.Y
+<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// core/platform/cert_manager.go:22 — Pulumi, not cdk8s
+</span><span>Version</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;vX.Y.Z&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
 </span></code></pre>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> synth </span><span style="color:#f29e74;">&amp;&amp; </span><span style="color:#ffd580;">git</span><span> push
-</span><span style="color:#ffd580;">kubectl</span><span> get certificaterequests</span><span style="color:#ffcc66;"> -A  </span><span style="font-style:italic;color:#5c6773;"># must all show Ready=True
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core platform up
+</span><span style="color:#ffd580;">kubectl</span><span> get certificate</span><span style="color:#ffcc66;"> -A   </span><span style="font-style:italic;color:#5c6773;"># must all show Ready=True
 </span></code></pre>
+<blockquote>
+<p><strong>Never add a second Certificate for <code>madhan.app</code> / <code>*.madhan.app</code>.</strong> Let's
+Encrypt allows 5 per exact identifier set per 168h. Cilium mirrors the one in
+<code>kube-system</code> into <code>cilium-secrets</code> itself — see
+<a href="/platform/cert-manager">cert-manager</a>. A <code>429 rateLimited</code> error, or a
+Certificate whose <code>Revision:</code> is in the dozens, means duplicates are competing
+for that budget. Do not delete and recreate the Certificate; that spends more
+of it.</p>
+</blockquote>
 <hr />
 <h2 id="phase-5-openbao-csi-driver">Phase 5 — OpenBao + CSI Driver</h2>
 <p><strong>Risk:</strong> Medium — all running apps read secrets through this layer.</p>
@@ -757,7 +761,6 @@
 <tr><td>Falco</td><td><code>security/falco.go:84</code></td></tr>
 <tr><td>Metrics Server</td><td><code>cdk8s.yaml</code></td></tr>
 <tr><td>Reloader</td><td><code>support/reloader.go:20</code></td></tr>
-<tr><td>Fleet</td><td><code>cdk8s.yaml</code></td></tr>
 <tr><td>OTel Collector</td><td><code>observability/otel_collector.go:168,227</code> — both agent + gateway releases</td></tr>
 <tr><td>Headlamp</td><td><code>cdk8s.yaml</code></td></tr>
 <tr><td>Trivy</td><td><code>cdk8s.yaml</code> <strong>and</strong> <code>security/trivy.go:22</code> — both must match; CRD fetch URL is built from this version</td></tr>
@@ -792,13 +795,6 @@
 </span></code></pre>
 <hr />
 <h2 id="phase-10-workloads-complex">Phase 10 — Workloads: Complex</h2>
-<h3 id="rancher">Rancher</h3>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># workloads/cdk8s.yaml
-</span><span>- </span><span style="color:#bae67e;">helm:https://releases.rancher.com/server-charts/stable/rancher@2.X.Y
-</span></code></pre>
-<p>Update <code>--kube-version</code> flag in <code>workloads/management/rancher.go:117</code> to match the actual cluster k8s version after the Talos upgrade:</p>
-<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span>HelmFlags</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>[]</span><span style="color:#f29e74;">*</span><span style="font-style:italic;color:#5ccfe6;">string</span><span>{jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;--kube-version&quot;</span><span>)</span><span style="color:#ccc9c2cc;">, </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;1.3X.0&quot;</span><span>)}</span><span style="color:#ccc9c2cc;">,
-</span></code></pre>
 <h3 id="n8n">n8n</h3>
 <pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// workloads/automation/n8n.go:184
 </span><span>Version</span><span style="color:#ccc9c2cc;">: </span><span>jsii</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;2.X.Y&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
@@ -870,7 +866,6 @@
 <tr><td>ArgoCD chart major</td><td>TLSRoute backend service name hash changes — check <code>argocd.go:148</code></td></tr>
 <tr><td>Grafana 10 → 11</td><td>Angular plugins removed; datasource API changed</td></tr>
 <tr><td>Longhorn minor</td><td>Upgrade one minor at a time only</td></tr>
-<tr><td>Rancher any</td><td><code>--kube-version</code> flag must match cluster k8s version</td></tr>
 <tr><td>NetBird any</td><td>All components (server/dashboard/proxy/agent/peer) must be on identical version</td></tr>
 <tr><td>Authentik any</td><td>Migration race: <code>bootstrap.sh</code> runs <code>ak migrate</code> first; if health check times out SSH + force-migrate (see Phase 7)</td></tr>
 <tr><td>Authentik any</td><td>After <code>netbird-agent</code> restart, verify <code>ip rule show | grep 7120</code> — missing rules = restart agent again</td></tr>
@@ -1028,30 +1023,7 @@
             
                 <li>
                     
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/upgrade-guide/#current-version-inventory" class="toc-link">Current Version Inventory</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/upgrade-guide/#infrastructure-platform" class="toc-link">Infrastructure &amp; Platform</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/upgrade-guide/#cloud-bifrost-docker-compose" class="toc-link">Cloud (Bifrost Docker Compose)</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/upgrade-guide/#secrets-storage" class="toc-link">Secrets &amp; Storage</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/upgrade-guide/#workloads" class="toc-link">Workloads</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
+                    <a href="https://homelab.madhan.app/upgrade-guide/#what-is-pinned-right-now" class="toc-link">What is pinned right now</a>
                     
                 </li>
             
@@ -1069,13 +1041,39 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-1-talos" class="toc-link">Phase 1 — Talos</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/upgrade-guide/#phase-1-talos" class="toc-link">Phase 1 — Talos</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#after-each-node" class="toc-link">After each node</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#if-a-node-will-not-come-back" class="toc-link">If a node will not come back</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-2-cilium" class="toc-link">Phase 2 — Cilium</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/upgrade-guide/#phase-2-cilium" class="toc-link">Phase 2 — Cilium</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#if-every-loadbalancer-ip-goes-dark-afterwards" class="toc-link">If every LoadBalancer IP goes dark afterwards</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -1166,10 +1164,6 @@
                             <a href="https://homelab.madhan.app/upgrade-guide/#phase-10-workloads-complex" class="toc-link">Phase 10 — Workloads: Complex</a>
                         </summary>
                         <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/upgrade-guide/#rancher" class="toc-link">Rancher</a>
-                                </li>
                             
                                 <li>
                                     <a href="https://homelab.madhan.app/upgrade-guide/#n8n" class="toc-link">n8n</a>
@@ -1559,8 +1553,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1605,11 +1597,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1621,11 +1613,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1653,11 +1645,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1669,11 +1661,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

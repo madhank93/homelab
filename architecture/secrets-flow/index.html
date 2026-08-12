@@ -527,7 +527,7 @@
 <p>All secrets are managed by exactly two systems. The split is intentional — bootstrap secrets are needed to bootstrap the cluster itself, and the cluster hosts the runtime secrets platform:</p>
 <table><thead><tr><th>Tier</th><th>Tool</th><th>When</th><th>What's stored</th></tr></thead><tbody>
 <tr><td><strong>Bootstrap</strong></td><td>SOPS + age</td><td>One-time setup</td><td>OpenBao unseal key, Cloudflare API token, Hetzner token, Authentik keys, NetBird keys</td></tr>
-<tr><td><strong>Runtime</strong></td><td>OpenBao + CSI Driver</td><td>Continuously available</td><td>All app secrets (Grafana, Harbor, n8n, Rancher, …)</td></tr>
+<tr><td><strong>Runtime</strong></td><td>OpenBao + CSI Driver</td><td>Continuously available</td><td>All app secrets (Grafana, Harbor, n8n, …)</td></tr>
 </tbody></table>
 <p><strong>CDK8s generates zero <code>Secret</code> resources.</strong> The CI pipeline needs zero GitHub Actions secrets.</p>
 <hr />
@@ -654,13 +654,12 @@
 <pre style="background-color:#212733;color:#ccc9c2;"><code><span>SecretProviderClass.secretObjects → k8s Secret (e.g. harbor-admin)
 </span><span>Helm chart: existingSecret: harbor-admin
 </span></code></pre>
-<p>Used by: <strong>Harbor</strong>, <strong>n8n</strong>, <strong>Rancher</strong>, <strong>NetBird peer</strong></p>
+<p>Used by: <strong>Harbor</strong>, <strong>n8n</strong>, <strong>NetBird peer</strong></p>
 <h3 id="apps-and-their-openbao-paths">Apps and their OpenBao paths</h3>
 <table><thead><tr><th>App</th><th>OpenBao path</th><th>Pattern</th><th>k8s Secret</th></tr></thead><tbody>
 <tr><td>Grafana</td><td><code>secret/data/grafana</code></td><td>A (file)</td><td>—</td></tr>
 <tr><td>Harbor</td><td><code>secret/data/harbor</code></td><td>B (sync)</td><td><code>harbor-admin</code></td></tr>
 <tr><td>n8n</td><td><code>secret/data/n8n</code></td><td>B (sync)</td><td><code>n8n-db</code></td></tr>
-<tr><td>Rancher</td><td><code>secret/data/rancher</code></td><td>B (sync)</td><td><code>rancher-bootstrap</code></td></tr>
 <tr><td>NetBird peer</td><td><code>secret/data/netbird</code></td><td>B (sync)</td><td><code>netbird-setup-key</code></td></tr>
 </tbody></table>
 <h3 id="one-time-setup">One-time setup</h3>
@@ -1181,8 +1180,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1227,11 +1224,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1243,11 +1240,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1275,11 +1272,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1291,11 +1288,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

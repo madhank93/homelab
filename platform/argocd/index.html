@@ -528,14 +528,14 @@
 <h2 id="why-argocd">Why ArgoCD?</h2>
 <p>GitOps with ArgoCD ensures the cluster state is always derivable from code — there are no manual steps that can't be reproduced. Its ApplicationSet directory generator means adding a new workload requires only pushing a new directory to the manifests branch; no ArgoCD config changes are needed.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>ArgoCD is bootstrapped once by Pulumi (<code>core/platform/argocd.go</code>) and then self-manages via GitOps from the <code>v0.1.5-manifests</code> branch. A single <code>ApplicationSet</code> watches every top-level directory on that branch and creates one Application per directory, with <code>prune=true</code> and <code>selfHeal=true</code> enforcing git as the single source of truth.</p>
-<p><strong>Code:</strong> <a href="https://github.com/madhank93/homelab/blob/v0.1.5/core/platform/argocd.go"><code>core/platform/argocd.go</code></a> · <strong>Namespace:</strong> <code>argocd</code> · <strong>Chart version:</strong> <code>9.4.2</code></p>
+<p>ArgoCD is bootstrapped once by Pulumi (<code>core/platform/argocd.go</code>) and then self-manages via GitOps from the <code>v0.1.7-manifests</code> branch. A single <code>ApplicationSet</code> watches every top-level directory on that branch and creates one Application per directory, with <code>prune=true</code> and <code>selfHeal=true</code> enforcing git as the single source of truth.</p>
+<p><strong>Code:</strong> <a href="https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/argocd.go"><code>core/platform/argocd.go</code></a> · <strong>Namespace:</strong> <code>argocd</code> · <strong>Chart version:</strong> <code>10.3.2</code> · <strong>Argo CD:</strong> <code>v3.5.1</code></p>
 <h2 id="screenshots">Screenshots</h2>
 <p><img src="/assets/screenshots/argocd/app-list.png" alt="ArgoCD application list showing all workloads with sync status and health indicators" /></p>
 <h2 id="helm-installation">Helm Installation</h2>
 <pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span>helm</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">NewRelease</span><span>(ctx</span><span style="color:#ccc9c2cc;">, </span><span style="color:#bae67e;">&quot;argo-cd&quot;</span><span style="color:#ccc9c2cc;">, </span><span style="color:#f29e74;">&amp;</span><span>helm</span><span style="color:#f29e74;">.</span><span>ReleaseArgs{
 </span><span>    Chart</span><span style="color:#ccc9c2cc;">:   </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;argo-cd&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
-</span><span>    Version</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;9.4.2&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
+</span><span>    Version</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;10.3.2&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
 </span><span>    RepositoryOpts</span><span style="color:#ccc9c2cc;">: </span><span style="color:#f29e74;">&amp;</span><span>helm</span><span style="color:#f29e74;">.</span><span>RepositoryOptsArgs{
 </span><span>        Repo</span><span style="color:#ccc9c2cc;">: </span><span>pulumi</span><span style="color:#f29e74;">.</span><span style="color:#ffd580;">String</span><span>(</span><span style="color:#bae67e;">&quot;https://argoproj.github.io/argo-helm&quot;</span><span>)</span><span style="color:#ccc9c2cc;">,
 </span><span>    }</span><span style="color:#ccc9c2cc;">,
@@ -551,7 +551,7 @@
 </span><span>})
 </span></code></pre>
 <h2 id="applicationset">ApplicationSet</h2>
-<p>One <code>ApplicationSet</code> named <code>cots-applications</code> watches the <code>v0.1.5-manifests</code> branch. Every top-level directory automatically becomes an ArgoCD Application:</p>
+<p>One <code>ApplicationSet</code> named <code>cots-applications</code> watches the <code>v0.1.7-manifests</code> branch. Every top-level directory automatically becomes an ArgoCD Application:</p>
 <pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">apiVersion</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">argoproj.io/v1alpha1
 </span><span style="color:#73d0ff;">kind</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">ApplicationSet
 </span><span style="color:#73d0ff;">metadata</span><span style="color:#ccc9c2cc;">:
@@ -561,7 +561,7 @@
 </span><span>  </span><span style="color:#73d0ff;">generators</span><span style="color:#ccc9c2cc;">:
 </span><span>    - </span><span style="color:#73d0ff;">git</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">repoURL</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://github.com/madhank93/homelab.git
-</span><span>        </span><span style="color:#73d0ff;">revision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.5-manifests
+</span><span>        </span><span style="color:#73d0ff;">revision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.7-manifests
 </span><span>        </span><span style="color:#73d0ff;">directories</span><span style="color:#ccc9c2cc;">:
 </span><span>          - </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;*&quot;      </span><span style="font-style:italic;color:#5c6773;"># Every top-level directory = one Application
 </span><span>  </span><span style="color:#73d0ff;">template</span><span style="color:#ccc9c2cc;">:
@@ -571,7 +571,7 @@
 </span><span>      </span><span style="color:#73d0ff;">project</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">default
 </span><span>      </span><span style="color:#73d0ff;">source</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">repoURL</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://github.com/madhank93/homelab.git
-</span><span>        </span><span style="color:#73d0ff;">targetRevision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.5-manifests
+</span><span>        </span><span style="color:#73d0ff;">targetRevision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.7-manifests
 </span><span>        </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;{{path}}&quot;
 </span><span>      </span><span style="color:#73d0ff;">destination</span><span style="color:#ccc9c2cc;">:
 </span><span>        </span><span style="color:#73d0ff;">server</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://kubernetes.default.svc
@@ -1172,8 +1172,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1218,11 +1216,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1234,11 +1232,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1266,11 +1264,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1282,11 +1280,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

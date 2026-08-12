@@ -541,14 +541,17 @@
     <h2 id="what-is-headlamp">What is Headlamp?</h2>
 <p><a href="https://headlamp.dev/">Headlamp</a> is a lightweight, extensible Kubernetes dashboard providing a clean web UI for browsing workloads, events, nodes, storage, RBAC, and custom resources. It is plugin-based and actively maintained by the CNCF ecosystem.</p>
 <h2 id="why-headlamp">Why Headlamp?</h2>
-<p>Headlamp is faster and lighter than the standard Kubernetes Dashboard or Rancher's embedded UI. For quick cluster inspection — pod logs, resource views, event browsing — Headlamp is the go-to tool. Rancher is used for deeper management tasks.</p>
+<p>Headlamp is faster and lighter than the standard Kubernetes Dashboard, and it is
+the only cluster UI here. Anything it cannot do is done through Argo CD or
+<code>kubectl</code> — the cluster is GitOps-managed, so changes belong in code rather than
+in a console.</p>
 <table><thead><tr><th>Tool</th><th>Use case</th></tr></thead><tbody>
 <tr><td>Headlamp</td><td>Quick browsing, logs, events, resource inspection</td></tr>
-<tr><td>Rancher</td><td>Cluster admin, Fleet GitOps, Helm app catalog</td></tr>
+<tr><td>Argo CD</td><td>Sync state, diffs, rollbacks</td></tr>
 </tbody></table>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Headlamp runs in the <code>headlamp</code> namespace, accessible at <code>http://headlamp.madhan.app</code>. It uses a long-lived ServiceAccount token with <code>cluster-admin</code> ClusterRoleBinding.</p>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/management/headlamp.go"><code>workloads/management/headlamp.go</code></a></p>
+<p>Headlamp runs in the <code>headlamp</code> namespace, accessible at <code>https://headlamp.madhan.app</code>. It uses a long-lived ServiceAccount token with <code>cluster-admin</code> ClusterRoleBinding.</p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/workloads/management/headlamp.go"><code>workloads/management/headlamp.go</code></a></p>
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>headlamp</code></td><td>Isolated namespace</td></tr>
@@ -1101,8 +1104,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1147,11 +1148,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1163,11 +1164,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1195,11 +1196,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1211,11 +1212,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

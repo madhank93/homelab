@@ -537,7 +537,7 @@
 <li>Longhorn volume status</li>
 <li>Falco security events</li>
 </ul>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/monitoring/grafana.go"><code>workloads/monitoring/grafana.go</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/workloads/monitoring/grafana.go"><code>workloads/monitoring/grafana.go</code></a></p>
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>grafana</code></td><td>Isolated namespace</td></tr>
@@ -672,7 +672,7 @@
 <p><strong>Fix:</strong> If the <code>grafana-oauth-secret</code> k8s Secret is missing, the CSI volume mount may have failed. Check OpenBao is unsealed and the <code>grafana</code> role exists.</p>
 <h3 id="github-sso-works-on-lan-but-fails-externally">GitHub SSO Works on LAN but Fails Externally</h3>
 <p><strong>Symptoms:</strong> Clicking "GitHub via Authentik" on LAN completes successfully, but from the internet Authentik returns a <code>redirect_uri mismatch</code> or <code>invalid_grant</code> error.</p>
-<p><strong>Root cause:</strong> Without <code>root_url</code> set, Grafana detects its scheme from the incoming request. TLS terminates at Bifrost/Traefik, which proxies to the cluster as plain HTTP. Grafana sees an HTTP request and constructs the OAuth callback as <code>http://grafana.madhan.app/login/generic_oauth</code>. Authentik has <code>https://...</code> registered — the mismatch causes OAuth to fail. On LAN, the request is plain HTTP end-to-end, so <code>http://</code> is correct and it works.</p>
+<p><strong>Root cause:</strong> Without <code>root_url</code> set, Grafana detects its scheme from the incoming request. TLS terminates at Bifrost/Traefik, which proxies to the cluster as plain HTTP. Grafana sees an HTTP request and constructs the OAuth callback as <code>https://grafana.madhan.app/login/generic_oauth</code>. Authentik has <code>https://...</code> registered — the mismatch causes OAuth to fail. On LAN, the request is plain HTTP end-to-end, so <code>http://</code> is correct and it works.</p>
 <p><strong>Fix:</strong> <code>root_url = https://grafana.madhan.app</code> is set in <code>[server]</code> in <code>grafana.ini</code> (already applied). This forces Grafana to always construct the correct <code>https://</code> callback URL regardless of the incoming request scheme.</p>
 <h3 id="pod-connection-timeout-kubelet-nodeip-issue-with-netbird">Pod Connection Timeout (kubelet nodeIP issue with NetBird)</h3>
 <p><strong>Symptoms:</strong> Grafana pod shows connection timeouts to VictoriaMetrics or VictoriaLogs.</p>
@@ -1222,8 +1222,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1268,11 +1266,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1284,11 +1282,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1316,11 +1314,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1332,11 +1330,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

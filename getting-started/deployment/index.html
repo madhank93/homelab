@@ -645,10 +645,6 @@
 </span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/n8n </span><span style="color:#ccc9c2cc;">\
 </span><span>  N8N_ENCRYPTION_KEY=</span><span style="color:#bae67e;">&quot;&lt;32-char random — record this, required on every rebuild&gt;&quot;
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Rancher
-</span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/rancher </span><span style="color:#ccc9c2cc;">\
-</span><span>  BOOTSTRAP_PASSWORD=</span><span style="color:#bae67e;">&quot;&lt;strong password&gt;&quot;
-</span><span>
 </span><span style="font-style:italic;color:#5c6773;"># NetBird — add the setup key after Phase 6
 </span><span style="color:#ffd580;">kubectl</span><span> exec</span><span style="color:#ffcc66;"> -n</span><span> openbao openbao-0</span><span style="color:#f29e74;"> --</span><span> bao kv put secret/netbird </span><span style="color:#ccc9c2cc;">\
 </span><span>  NETBIRD_SETUP_KEY=</span><span style="color:#bae67e;">&quot;placeholder&quot;
@@ -856,7 +852,6 @@
 <tr><td><code>OAUTH_CLIENT_SECRET</code> (Grafana)</td><td>OpenBao <code>secret/grafana</code></td><td>Phase 7</td><td>Authentik OIDC client secret</td></tr>
 <tr><td><code>HARBOR_ADMIN_PASSWORD</code></td><td>OpenBao <code>secret/harbor</code></td><td>Phase 2</td><td></td></tr>
 <tr><td><code>N8N_ENCRYPTION_KEY</code></td><td>OpenBao <code>secret/n8n</code></td><td>Phase 2</td><td><strong>Never rotate</strong> — re-entering workflows</td></tr>
-<tr><td><code>BOOTSTRAP_PASSWORD</code> (Rancher)</td><td>OpenBao <code>secret/rancher</code></td><td>Phase 2</td><td></td></tr>
 <tr><td><code>NETBIRD_SETUP_KEY</code></td><td>OpenBao <code>secret/netbird</code></td><td>Phase 6</td><td>k8s-routing-peer setup key</td></tr>
 </tbody></table>
 <hr />
@@ -1579,8 +1574,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1625,11 +1618,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1641,11 +1634,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1673,11 +1666,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1689,11 +1682,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

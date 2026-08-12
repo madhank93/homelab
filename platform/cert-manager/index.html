@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Wildcard TLS certificate for *.madhan.app via Let&#x27;s Encrypt DNS-01 challenge and Cloudflare." />
+            <meta name="description" content="One wildcard certificate for *.madhan.app, issued via Let&#x27;s Encrypt DNS-01 and mirrored to Cilium for TLS termination." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="cert-manager | Homelab" />
-      <meta property="og:description" content="Wildcard TLS certificate for *.madhan.app via Let&#x27;s Encrypt DNS-01 challenge and Cloudflare." />
+      <meta property="og:description" content="One wildcard certificate for *.madhan.app, issued via Let&#x27;s Encrypt DNS-01 and mirrored to Cilium for TLS termination." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="cert-manager" />
-      <meta name="twitter:description" content="Wildcard TLS certificate for *.madhan.app via Let&#x27;s Encrypt DNS-01 challenge and Cloudflare." />
+      <meta name="twitter:description" content="One wildcard certificate for *.madhan.app, issued via Let&#x27;s Encrypt DNS-01 and mirrored to Cilium for TLS termination." />
       
       
       
@@ -521,66 +521,85 @@
             cert-manager
             
         </h1>
-        <p class="text-gray-500">Wildcard TLS certificate for *.madhan.app via Let&#x27;s Encrypt DNS-01 challenge and Cloudflare.</p>
+        <p class="text-gray-500">One wildcard certificate for *.madhan.app, issued via Let&#x27;s Encrypt DNS-01 and mirrored to Cilium for TLS termination.</p>
     </div>
-    <h2 id="what-is-cert-manager">What is cert-manager?</h2>
-<p><a href="https://cert-manager.io/">cert-manager</a> is a Kubernetes controller that automates the issuance and renewal of TLS certificates from ACME providers like Let's Encrypt. It supports DNS-01 challenges, which allow issuing wildcard certificates without requiring public HTTP access.</p>
-<h2 id="why-cert-manager">Why cert-manager?</h2>
-<p>DNS-01 challenge via Cloudflare lets cert-manager obtain a wildcard <code>*.madhan.app</code> certificate for a private cluster that has no public HTTP endpoint — the only requirement is write access to the Cloudflare DNS zone.</p>
-<h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>cert-manager issues and renews a single wildcard certificate (<code>wildcard-madhan-app-tls</code>) stored in <code>kube-system</code>, which the shared Cilium Gateway uses for HTTPS termination across all services. Managed by Pulumi (<code>core/platform/cert_manager.go</code>, stack: <code>platform</code>):</p>
+    <p><a href="https://cert-manager.io/">cert-manager</a> issues and renews the TLS certificate
+that terminates HTTPS for every <code>*.madhan.app</code> service. A DNS-01 challenge
+through Cloudflare means the cluster needs no public HTTP endpoint — only write
+access to the DNS zone.</p>
+<p>Managed by Pulumi (<code>core/platform/cert_manager.go</code>, stack <code>platform</code>):</p>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> core platform up
 </span></code></pre>
 <h2 id="chart">Chart</h2>
 <table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
-<tr><td>Chart</td><td><code>cert-manager</code></td></tr>
-<tr><td>Repo</td><td><code>https://charts.jetstack.io</code></td></tr>
-<tr><td>Version</td><td><code>v1.19.3</code></td></tr>
+<tr><td>Chart</td><td><code>cert-manager</code> (<code>https://charts.jetstack.io</code>)</td></tr>
+<tr><td>Version</td><td><code>v1.21.1</code></td></tr>
 <tr><td>Namespace</td><td><code>cert-manager</code></td></tr>
 <tr><td>CRDs</td><td>Bundled (<code>installCRDs: true</code>)</td></tr>
 </tbody></table>
 <h2 id="clusterissuers">ClusterIssuers</h2>
-<table><thead><tr><th>Name</th><th>Type</th><th>Used For</th></tr></thead><tbody>
-<tr><td><code>letsencrypt-prod</code></td><td>ACME DNS-01 via Cloudflare</td><td>Wildcard <code>*.madhan.app</code> certificate</td></tr>
+<table><thead><tr><th>Name</th><th>Type</th><th>Used for</th></tr></thead><tbody>
+<tr><td><code>letsencrypt-prod</code></td><td>ACME DNS-01 via Cloudflare</td><td>The wildcard certificate</td></tr>
 <tr><td><code>homelab-ca</code></td><td>Self-signed</td><td>Internal / testing certificates</td></tr>
 </tbody></table>
-<h2 id="wildcard-certificate">Wildcard Certificate</h2>
+<h2 id="one-certificate-mirrored">One certificate, mirrored</h2>
+<p>There is exactly <strong>one</strong> Certificate for these names:</p>
 <table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>
 <tr><td>Name</td><td><code>wildcard-madhan-app</code></td></tr>
 <tr><td>Namespace</td><td><code>kube-system</code></td></tr>
 <tr><td>Secret</td><td><code>wildcard-madhan-app-tls</code></td></tr>
 <tr><td>DNS names</td><td><code>madhan.app</code>, <code>*.madhan.app</code></td></tr>
-<tr><td>Issuer</td><td><code>letsencrypt-prod</code></td></tr>
 </tbody></table>
-<p>The certificate lives in <code>kube-system</code> so the <code>homelab-gateway</code> HTTPS listener can reference it across namespaces.</p>
-<h2 id="cloudflare-api-token">Cloudflare API Token</h2>
-<p>The DNS-01 solver requires a Cloudflare API token scoped to <code>madhan.app</code>:</p>
-<table><thead><tr><th>Permission</th><th>Purpose</th></tr></thead><tbody>
-<tr><td>Zone → Zone → Read</td><td>Resolve domain to Cloudflare Zone ID</td></tr>
-<tr><td>Zone → DNS → Edit</td><td>Create/delete <code>_acme-challenge</code> TXT records</td></tr>
-</tbody></table>
-<p>The token is stored in the <code>cert-manager/cloudflare-api-token</code> Secret (key: <code>CLOUDFLARE_API_TOKEN</code>), created by <code>just create-secrets</code> from SOPS. It carries <code>argocd.argoproj.io/sync-options: Prune=false</code> so ArgoCD never deletes it.</p>
-<h2 id="bootstrap-dependency">Bootstrap Dependency</h2>
-<p>cert-manager needs the <code>cloudflare-api-token</code> Secret before it can issue certificates:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> create-secrets   </span><span style="font-style:italic;color:#5c6773;"># creates the Secret from SOPS
-</span><span style="color:#ffd580;">just</span><span> core platform up </span><span style="font-style:italic;color:#5c6773;"># deploys cert-manager + ClusterIssuer
+<p>Cilium's Envoy reads TLS material from its own namespace, <code>cilium-secrets</code>, so
+it mirrors that secret there itself — <code>gatewayAPI.secretsNamespace.sync: true</code>
+in <code>core/platform/cilium.go</code>. The copy appears as
+<code>cilium-sync-secret-&lt;hash&gt;</code> and Cilium owns it.</p>
+<pre style="background-color:#212733;color:#ccc9c2;"><code><span>cert-manager                Cilium                      Envoy
+</span><span>─────────────               ──────                      ─────
+</span><span>kube-system/                cilium-secrets/             HTTPS listener
+</span><span>wildcard-madhan-app-tls ──&gt; cilium-sync-secret-&lt;hash&gt; ─&gt; homelab-gateway
 </span></code></pre>
-<h2 id="current-status">Current Status</h2>
 <blockquote>
-<p>The HTTPS Gateway listener is currently <strong>disabled</strong> pending <code>wildcard-madhan-app-tls</code> creation. All app URLs use HTTP.</p>
-<p>Once the certificate exists in <code>kube-system</code>, re-enable the HTTPS listener in <code>core/platform/cilium.go</code> and run <code>just core platform up</code>.</p>
+<p><strong>Never add a second Certificate for the same DNS names.</strong> Let's Encrypt caps
+issuance at 5 per <em>exact set of identifiers</em> per 168h. A second Certificate
+writing into <code>cilium-secrets</code> shares that budget, and because the namespace
+belongs to Cilium the secret gets removed and reissued repeatedly until the
+limit is hit. When that happens there is no certificate at all and <strong>every</strong>
+<code>*.madhan.app</code> HTTPS endpoint resets, while plain HTTP through the same
+Gateway keeps returning 200. Let Cilium do the copying.</p>
 </blockquote>
+<h2 id="cloudflare-api-token">Cloudflare API token</h2>
+<p>The DNS-01 solver needs a token scoped to <code>madhan.app</code>:</p>
+<table><thead><tr><th>Permission</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>Zone → Zone → Read</td><td>Resolve the domain to a Zone ID</td></tr>
+<tr><td>Zone → DNS → Edit</td><td>Create and delete <code>_acme-challenge</code> TXT records</td></tr>
+</tbody></table>
+<p>Stored in the <code>cert-manager/cloudflare-api-token</code> Secret (key
+<code>CLOUDFLARE_API_TOKEN</code>), created by <code>just create-secrets</code> from SOPS. It carries
+<code>argocd.argoproj.io/sync-options: Prune=false</code> so Argo CD never deletes it.</p>
+<p>cert-manager cannot issue anything until that Secret exists:</p>
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">just</span><span> create-secrets    </span><span style="font-style:italic;color:#5c6773;"># from SOPS
+</span><span style="color:#ffd580;">just</span><span> core platform up  </span><span style="font-style:italic;color:#5c6773;"># cert-manager + ClusterIssuer
+</span></code></pre>
 <h2 id="troubleshooting">Troubleshooting</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Watch Certificate status
+<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># Is the certificate healthy? Expect Ready=True.
+</span><span style="color:#ffd580;">kubectl</span><span> get certificate</span><span style="color:#ffcc66;"> -A
+</span><span>
+</span><span style="font-style:italic;color:#5c6773;"># Why not? Look at the Issuing condition, not just Ready.
 </span><span style="color:#ffd580;">kubectl</span><span> describe certificate wildcard-madhan-app</span><span style="color:#ffcc66;"> -n</span><span> kube-system
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Watch CertificateRequest and Order objects
-</span><span style="color:#ffd580;">kubectl</span><span> get certificaterequests,orders</span><span style="color:#ffcc66;"> -n</span><span> kube-system
+</span><span style="font-style:italic;color:#5c6773;"># Did Cilium mirror it?
+</span><span style="color:#ffd580;">kubectl</span><span> get secret</span><span style="color:#ffcc66;"> -n</span><span> cilium-secrets
 </span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Check cert-manager logs for Cloudflare API errors
+</span><span style="font-style:italic;color:#5c6773;"># Cloudflare API errors
 </span><span style="color:#ffd580;">kubectl</span><span> logs</span><span style="color:#ffcc66;"> -n</span><span> cert-manager deployment/cert-manager </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">grep</span><span style="color:#ffcc66;"> -i</span><span> cloudflare
 </span></code></pre>
-<p>A successful issuance shows: <code>Status: True  Type: Ready  Message: Certificate is up to date and has not expired</code></p>
+<p><strong><code>429 ... too many certificates already issued for this exact set of identifiers</code></strong> means the weekly budget is gone; the message includes the retry
+time. Do not delete and recreate the Certificate — that consumes more budget.
+Find what is issuing duplicates first.</p>
+<p><strong>A high <code>Revision:</code> on a Certificate</strong> (dozens) means something keeps deleting
+its Secret and cert-manager keeps reissuing. That is the shape of the failure
+above.</p>
 
 
     <!--  Errata section  -->
@@ -670,24 +689,6 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/cert-manager/#what-is-cert-manager" class="toc-link">What is cert-manager?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/cert-manager/#why-cert-manager" class="toc-link">Why cert-manager?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/cert-manager/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
-                    
-                </li>
-            
-                <li>
-                    
                     <a href="https://homelab.madhan.app/platform/cert-manager/#chart" class="toc-link">Chart</a>
                     
                 </li>
@@ -700,25 +701,13 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/cert-manager/#wildcard-certificate" class="toc-link">Wildcard Certificate</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#one-certificate-mirrored" class="toc-link">One certificate, mirrored</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/cert-manager/#cloudflare-api-token" class="toc-link">Cloudflare API Token</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/cert-manager/#bootstrap-dependency" class="toc-link">Bootstrap Dependency</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/platform/cert-manager/#current-status" class="toc-link">Current Status</a>
+                    <a href="https://homelab.madhan.app/platform/cert-manager/#cloudflare-api-token" class="toc-link">Cloudflare API token</a>
                     
                 </li>
             
@@ -1073,8 +1062,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1119,11 +1106,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1135,11 +1122,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1167,11 +1154,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1183,11 +1170,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

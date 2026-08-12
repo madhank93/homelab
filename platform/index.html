@@ -547,10 +547,29 @@
 <h2 id="gitops-layer">GitOps Layer</h2>
 <ul>
 <li><strong>No secrets in git</strong> — CDK8s generates zero <code>Secret</code> resources. Bootstrap secrets are created by <code>just create-secrets</code> from a laptop.</li>
-<li><strong>Manifests are generated, not hand-written</strong> — The <code>v0.1.5-manifests</code> branch is machine-generated YAML. Never edit it by hand.</li>
+<li><strong>Manifests are generated, not hand-written</strong> — The <code>v0.1.7-manifests</code> branch is machine-generated YAML. Never edit it by hand.</li>
 <li><strong>One CDK8s app per ArgoCD Application</strong> — Each <code>main.go</code> entry writes to a separate <code>app/&lt;name&gt;/</code> directory, which becomes one ArgoCD Application.</li>
 <li><strong>ArgoCD is the single source of truth</strong> — All drift is auto-corrected (<code>selfHeal: true</code>), all removed resources are pruned (<code>prune: true</code>).</li>
+<li><strong>The chart pins the version; never float a tag</strong> — Every Helm release carries an explicit chart version, and any image tag we set is pinned. <code>latest</code> is never used.</li>
 </ul>
+<h3 id="running-an-image-ahead-of-its-chart">Running an image ahead of its chart</h3>
+<p>Charts sometimes lag an upstream release. Overriding the image tag to get there
+early is allowed <strong>only</strong> when all of the following hold:</p>
+<ol>
+<li>It is a <strong>patch</strong> bump (<code>x.y.0</code> → <code>x.y.1</code>). Never a minor or major — a newer
+binary may expect CRD fields or flags the older chart does not render.</li>
+<li>The upstream diff between the two tags changes <strong>no CRDs and no manifests</strong>
+beyond the image tag itself. Verify it, do not assume:<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -sL </span><span style="color:#bae67e;">&quot;https://api.github.com/repos/&lt;org&gt;/&lt;repo&gt;/compare/&lt;old&gt;...&lt;new&gt;&quot; </span><span style="color:#ccc9c2cc;">\
+</span><span>  </span><span style="color:#f29e74;">| </span><span style="color:#ffd580;">python3</span><span style="color:#ffcc66;"> -c </span><span style="color:#bae67e;">&quot;import json,sys; [print(f[&#39;filename&#39;]) for f in json.load(sys.stdin)[&#39;files&#39;]]&quot;
+</span></code></pre>
+</li>
+<li>The override renders as intended — confirm with <code>helm template --set ...</code>
+rather than trusting the value key. A wrong key is silently ignored.</li>
+<li>A comment records <strong>why</strong> and says to drop it once the chart catches up.</li>
+</ol>
+<p>Current instance: <code>core/platform/argocd.go</code> runs Argo CD <code>v3.5.1</code> on chart
+<code>10.3.2</code> (which pins <code>v3.5.0</code>) for the server-side-diff Secret-masking fixes.
+Upstream's own 3.5.1 diff is nothing but the image tag.</p>
 <p>See <a href="/architecture/gitops-flow">GitOps Flow</a> for the end-to-end diagram.</p>
 
 
@@ -682,7 +701,18 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/platform/#gitops-layer" class="toc-link">GitOps Layer</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/platform/#gitops-layer" class="toc-link">GitOps Layer</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/platform/#running-an-image-ahead-of-its-chart" class="toc-link">Running an image ahead of its chart</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -1030,8 +1060,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1076,11 +1104,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1092,11 +1120,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1124,11 +1152,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1140,11 +1168,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

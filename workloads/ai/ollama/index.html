@@ -529,7 +529,7 @@
 <p>Ollama is the simplest way to run local LLMs on a GPU. It handles model quantization, GPU memory management, and serves an OpenAI-compatible API that works with any client that supports the OpenAI SDK (Python, TypeScript, etc.). The Helm chart provides native Kubernetes integration.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
 <p>Ollama runs on k8s-worker4 (the GPU node, <code>192.168.1.224</code>) using the RTX 5070 Ti for inference. It stores downloaded model files on a 100 Gi Longhorn PVC.</p>
-<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.5/workloads/ai/ollama.go"><code>workloads/ai/ollama.go</code></a></p>
+<p>Source: <a href="https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/ollama.go"><code>workloads/ai/ollama.go</code></a></p>
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>ollama</code></td><td>Isolated namespace</td></tr>
@@ -550,18 +550,18 @@
 </blockquote>
 <h2 id="api-usage">API Usage</h2>
 <pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># List available models
-</span><span style="color:#ffd580;">curl</span><span> http://ollama.madhan.app/api/tags
+</span><span style="color:#ffd580;">curl</span><span> https://ollama.madhan.app/api/tags
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># Run inference (streaming)
-</span><span style="color:#ffd580;">curl</span><span> http://ollama.madhan.app/api/generate </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffd580;">curl</span><span> https://ollama.madhan.app/api/generate </span><span style="color:#ccc9c2cc;">\
 </span><span style="color:#ffcc66;">  -d </span><span style="color:#bae67e;">&#39;{&quot;model&quot;: &quot;llama3.2&quot;, &quot;prompt&quot;: &quot;Hello!&quot;}&#39;
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># Pull a new model (stores to 100Gi PVC)
-</span><span style="color:#ffd580;">curl</span><span> http://ollama.madhan.app/api/pull </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffd580;">curl</span><span> https://ollama.madhan.app/api/pull </span><span style="color:#ccc9c2cc;">\
 </span><span style="color:#ffcc66;">  -d </span><span style="color:#bae67e;">&#39;{&quot;name&quot;: &quot;mistral&quot;}&#39;
 </span><span>
 </span><span style="font-style:italic;color:#5c6773;"># OpenAI-compatible chat completions
-</span><span style="color:#ffd580;">curl</span><span> http://ollama.madhan.app/v1/chat/completions </span><span style="color:#ccc9c2cc;">\
+</span><span style="color:#ffd580;">curl</span><span> https://ollama.madhan.app/v1/chat/completions </span><span style="color:#ccc9c2cc;">\
 </span><span style="color:#ffcc66;">  -H </span><span style="color:#bae67e;">&quot;Content-Type: application/json&quot; </span><span style="color:#ccc9c2cc;">\
 </span><span style="color:#ffcc66;">  -d </span><span style="color:#bae67e;">&#39;{&quot;model&quot;: &quot;llama3.2&quot;, &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Hello&quot;}]}&#39;
 </span></code></pre>
@@ -1093,8 +1093,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1139,11 +1137,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1155,11 +1153,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1187,11 +1185,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1203,11 +1201,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

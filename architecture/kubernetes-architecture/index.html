@@ -551,12 +551,12 @@
     subgraph BIFROST[&quot;Bifrost VPS · Hetzner · 178.156.199.250&quot;]
         TRF[&quot;Traefik v3.7.1\nTLS termination + ForwardAuth&quot;]
         AUTH[&quot;Authentik 2026.5.2\nOIDC &#x2F; SSO broker&quot;]
-        NBS[&quot;NetBird 0.71.4\nManagement + Signal + Relay&quot;]
+        NBS[&quot;NetBird 0.76.3\nManagement + Signal + Relay&quot;]
         NBA[&quot;netbird-agent\nWireGuard routing peer\n→ advertises 192.168.1.0&#x2F;24&quot;]
     end
 
     subgraph LAN[&quot;On-Prem LAN · 192.168.1.0&#x2F;24&quot;]
-        subgraph CP[&quot;Control Plane · Talos v1.13.3&quot;]
+        subgraph CP[&quot;Control Plane · Talos v1.13.8&quot;]
             VIP[&quot;KubeVIP\n192.168.1.210:6443&quot;]
             CP1[&quot;controller1\n.211&quot;]
             CP2[&quot;controller2\n.212&quot;]
@@ -565,9 +565,9 @@
         end
 
         subgraph PLT[&quot;Platform Layer&quot;]
-            CIL[&quot;Cilium 1.19.4\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API&quot;]
+            CIL[&quot;Cilium 1.18.12\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API&quot;]
             CERT[&quot;cert-manager v1.20.2\nCloudflare DNS-01\nwildcard TLS&quot;]
-            ARGO[&quot;ArgoCD 9.5.15\nApplicationSet → v0.1.6-manifests&quot;]
+            ARGO[&quot;Argo CD 10.3.2\nApplicationSet → v0.1.7-manifests&quot;]
         end
 
         subgraph SECRETS[&quot;Secrets Layer&quot;]
@@ -576,14 +576,14 @@
         end
 
         subgraph STORAGE[&quot;Storage&quot;]
-            LONG[&quot;Longhorn 1.11.2\nReplicated block storage&quot;]
+            LONG[&quot;Longhorn 1.12.0\nReplicated block storage&quot;]
             CNPG[&quot;CloudNativePG 0.28.2\nPostgreSQL operator&quot;]
         end
 
         subgraph WORKERS[&quot;Workers · k8s-worker1–3&quot;]
             OBS[&quot;Observability\nVictoriaMetrics · VictoriaLogs\nGrafana · OTel 0.156.2&quot;]
             SEC[&quot;Security\nFalco · Kyverno · Trivy&quot;]
-            APPS[&quot;Applications\nn8n · Harbor · Headlamp\nOpenBao · Rancher · NetBird peer&quot;]
+            APPS[&quot;Applications\nn8n · Harbor · Headlamp\nOpenBao · NetBird peer&quot;]
         end
 
         subgraph GPU[&quot;k8s-worker4 · RTX 5070 Ti&quot;]
@@ -594,7 +594,7 @@
 
     subgraph GITOPS[&quot;GitOps · GitHub&quot;]
         SRC[&quot;v0.1.6 branch\nPulumi + CDK8s source&quot;]
-        MFST[&quot;v0.1.6-manifests branch\nSynthesized YAML&quot;]
+        MFST[&quot;v0.1.7-manifests branch\nSynthesized YAML&quot;]
         GHA[&quot;GitHub Actions\ncdk8s synth + publish&quot;]
     end
 
@@ -656,7 +656,7 @@
 <tr><td><code>registry/</code></td><td>Harbor</td><td>Deployments + RWO PVCs</td></tr>
 <tr><td><code>automation/</code></td><td>n8n + PostgreSQL</td><td>Any worker</td></tr>
 <tr><td><code>ai/</code></td><td>Ollama, ComfyUI</td><td><strong><code>k8s-worker4</code> only</strong> (GPU)</td></tr>
-<tr><td><code>management/</code></td><td>Headlamp, Rancher, Fleet</td><td>Any worker</td></tr>
+<tr><td><code>management/</code></td><td>Headlamp</td><td>Any worker</td></tr>
 <tr><td><code>support/</code></td><td>Stakater Reloader</td><td>Any worker</td></tr>
 </tbody></table>
 <hr />
@@ -1144,8 +1144,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1190,11 +1188,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1206,11 +1204,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1238,11 +1236,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1254,11 +1252,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

@@ -562,10 +562,10 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
 <tr><td><code>authentik-server</code></td><td><code>ghcr.io/goauthentik/server:2026.5.2</code></td><td>GitHub OAuth, OIDC, ForwardAuth provider</td></tr>
 <tr><td><code>authentik-worker</code></td><td><code>ghcr.io/goauthentik/server:2026.5.2</code></td><td>Background tasks, email, jobs</td></tr>
 <tr><td><code>authentik-postgres</code></td><td><code>postgres:16.14-alpine</code></td><td>Authentik database</td></tr>
-<tr><td><code>netbird-server</code></td><td><code>netbirdio/netbird-server:0.71.4</code></td><td>Combined: management + signal + relay + STUN + embedded Dex OIDC</td></tr>
+<tr><td><code>netbird-server</code></td><td><code>netbirdio/netbird-server:0.76.3</code></td><td>Combined: management + signal + relay + STUN + embedded Dex OIDC</td></tr>
 <tr><td><code>netbird-dashboard</code></td><td><code>netbirdio/dashboard:v2.38.1</code></td><td>NetBird web UI</td></tr>
-<tr><td><code>netbird-proxy</code></td><td><code>netbirdio/reverse-proxy:0.71.4</code></td><td><code>*.proxy.madhan.app</code> TCP passthrough</td></tr>
-<tr><td><code>netbird-agent</code></td><td><code>netbirdio/netbird:0.71.4</code></td><td>WireGuard peer, advertises <code>192.168.1.0/24</code></td></tr>
+<tr><td><code>netbird-proxy</code></td><td><code>netbirdio/reverse-proxy:0.76.3</code></td><td><code>*.proxy.madhan.app</code> TCP passthrough</td></tr>
+<tr><td><code>netbird-agent</code></td><td><code>netbirdio/netbird:0.76.3</code></td><td>WireGuard peer, advertises <code>192.168.1.0/24</code></td></tr>
 <tr><td><code>gatus</code></td><td><code>ghcr.io/twin/gatus:v5.36.0</code></td><td>Uptime monitoring at <code>uptime.madhan.app</code></td></tr>
 </tbody></table>
 <p>All containers share <code>bifrost_net</code> (172.30.0.0/24). Traefik is the only container with public ports 80/443.</p>
@@ -1257,8 +1257,6 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1303,11 +1301,11 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1319,11 +1317,11 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1351,11 +1349,11 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1367,11 +1365,11 @@ the agent, Traefik cannot reach <code>192.168.1.220</code> and all public servic
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

@@ -551,7 +551,7 @@
     subgraph GITHUB[&quot;GitHub&quot;]
         REPO[&quot;main branch&lt;br&#x2F;&gt;code changes&quot;]
         CI[&quot;GitHub Actions&lt;br&#x2F;&gt;CDK8s publish workflow&quot;]
-        MBRANCH[&quot;v0.1.5-manifests branch&lt;br&#x2F;&gt;app&#x2F;*&#x2F;  (synthesized manifests)&quot;]
+        MBRANCH[&quot;v0.1.7-manifests branch&lt;br&#x2F;&gt;app&#x2F;*&#x2F;  (synthesized manifests)&quot;]
     end
 
     subgraph CLUSTER[&quot;Kubernetes Cluster&quot;]
@@ -614,12 +614,12 @@
 </span><span style="color:#ffd580;">just</span><span> synth
 </span><span style="font-style:italic;color:#5c6773;"># → cd workloads &amp;&amp; go run . → writes to ../app/
 </span></code></pre>
-<p>In CI, a GitHub Actions workflow runs <code>go run .</code> and pushes the output to the <code>v0.1.5-manifests</code> branch:</p>
+<p>In CI, a GitHub Actions workflow runs <code>go run .</code> and pushes the output to the <code>v0.1.7-manifests</code> branch:</p>
 <pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5c6773;"># .github/workflows/publish.yml (simplified)
 </span><span>- </span><span style="color:#73d0ff;">run</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">go run .
 </span><span>  </span><span style="color:#73d0ff;">working-directory</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">workloads
 </span><span>- </span><span style="color:#73d0ff;">run</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffa759;">|
-</span><span style="color:#bae67e;">    git checkout v0.1.5-manifests
+</span><span style="color:#bae67e;">    git checkout v0.1.7-manifests
 </span><span style="color:#bae67e;">    cp -r app/* .
 </span><span style="color:#bae67e;">    git add . &amp;&amp; git commit -m &quot;chore: Synthesize manifests&quot; &amp;&amp; git push
 </span></code></pre>
@@ -637,7 +637,7 @@
 </span><span>├── ai/                  ollama.go  comfyui.go
 </span><span>├── automation/          n8n.go
 </span><span>├── hardware/            nvidia_gpu_operator.go
-</span><span>├── management/          headlamp.go  fleet_device_manager.go  rancher.go
+</span><span>├── management/          headlamp.go
 </span><span>├── monitoring/          grafana.go
 </span><span>├── networking/          netbird_peer.go
 </span><span>├── observability/       victoria_metrics.go  victoria_logs.go  otel_collector.go  alert_manager.go
@@ -653,7 +653,7 @@
 <pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">generators</span><span style="color:#ccc9c2cc;">:
 </span><span>  - </span><span style="color:#73d0ff;">git</span><span style="color:#ccc9c2cc;">:
 </span><span>      </span><span style="color:#73d0ff;">repoURL</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">https://github.com/madhank93/homelab.git
-</span><span>      </span><span style="color:#73d0ff;">revision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.5-manifests
+</span><span>      </span><span style="color:#73d0ff;">revision</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">v0.1.7-manifests
 </span><span>      </span><span style="color:#73d0ff;">directories</span><span style="color:#ccc9c2cc;">:
 </span><span>        - </span><span style="color:#73d0ff;">path</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;*&quot;
 </span><span style="color:#73d0ff;">template</span><span style="color:#ccc9c2cc;">:
@@ -1174,8 +1174,6 @@
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management/rancher">Rancher</a></li>
-                                                
                                                 
                                                     
                                                     <li>
@@ -1220,11 +1218,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1236,11 +1234,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1268,11 +1266,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1284,11 +1282,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
