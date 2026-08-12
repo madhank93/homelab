@@ -30,6 +30,13 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				"networkPolicy": pulumi.Map{
 					"create": pulumi.Bool(false),
 				},
+				// Chart 10.3.2 still pins v3.5.0. 3.5.1 stops server-side diff
+				// leaking Secret data into last-applied-configuration and closes a
+				// mask-spoofing hole in the same path; this cluster runs
+				// ServerSideApply everywhere. Drop once a chart ships it.
+				"image": pulumi.Map{
+					"tag": pulumi.String("v3.5.1"),
+				},
 			},
 			"repoServer": pulumi.Map{
 				// Kustomize 5.x has a hardcoded 27s git fetch timeout for remote bases.
