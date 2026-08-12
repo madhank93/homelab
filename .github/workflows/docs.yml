@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - v0.1.5
+      - 'v*'  # Release branches, so a version cut does not strand the docs
     paths:
       - 'docs/**'
       - '.github/workflows/docs.yml'
