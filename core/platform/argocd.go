@@ -16,13 +16,21 @@ import (
 func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	chart, err := helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 		Chart:   pulumi.String("argo-cd"),
-		Version: pulumi.String("9.5.15"),
+		Version: pulumi.String("10.3.2"),
 		RepositoryOpts: &helm.RepositoryOptsArgs{
 			Repo: pulumi.String("https://argoproj.github.io/argo-helm"),
 		},
 		Namespace:       pulumi.String("argocd"),
 		CreateNamespace: pulumi.Bool(true),
 		Values: pulumi.Map{
+			// Chart 10.0.0 flipped this default to true. Cilium enforces the
+			// resulting policies, and ArgoCD is what would surface a breakage
+			// anywhere else, so keep them off until they are reviewed on their own.
+			"global": pulumi.Map{
+				"networkPolicy": pulumi.Map{
+					"create": pulumi.Bool(false),
+				},
+			},
 			"repoServer": pulumi.Map{
 				// Kustomize 5.x has a hardcoded 27s git fetch timeout for remote bases.
 				// KUSTOMIZE_REMOTE_FETCH_TIMEOUT overrides it so large repos (e.g. kubeflow/manifests)
