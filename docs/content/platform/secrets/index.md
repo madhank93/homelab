@@ -46,19 +46,32 @@ Secrets Store CSI Driver (ns: kube-system)
 
 ## Pattern A — File-only (no k8s Secret)
 
-Used by: **Grafana**
+The secret is mounted as a file at `/mnt/secrets/<KEY>` and the app reads it via
+an env var naming that path — `GF_SECURITY_ADMIN_PASSWORD__FILE`, for instance.
 
-Secret is mounted as a file at `/mnt/secrets/<KEY>`. The app reads it via an env var pointing to the file path (e.g. `GF_SECURITY_ADMIN_PASSWORD__FILE`).
-
-No k8s Secret is created. The secret value never appears in `kubectl get secret` output.
+No k8s Secret is created, so the value never appears in `kubectl get secret`.
+Prefer this whenever the app can read a file.
 
 ## Pattern B — secretObjects sync (k8s Secret created)
 
-Used by: **Harbor**, **n8n**, **NetBird**
+Used by **Harbor**, **n8n**, **NetBird**, and Grafana's OIDC client secret.
 
-The CSI volume mount triggers the SecretProviderClass `secretObjects` block, which creates a k8s Secret in the app's namespace. This is required for Helm charts that only accept `existingSecret` references.
+The CSI volume mount triggers the SecretProviderClass `secretObjects` block,
+which creates a k8s Secret in the app's namespace. Needed when a Helm chart only
+accepts an `existingSecret` reference, or when the app can read the value only
+from an env var rather than a file.
 
-> The CSI volume mount is **required** to trigger the sync — if no pod mounts the volume, the k8s Secret is never created.
+> The CSI volume mount is **required** to trigger the sync — if no pod mounts
+> the volume, the k8s Secret is never created. This is the single most common
+> cause of "the Secret was never created".
+
+Two charts — Harbor and Rancher — have no `extraVolumes` support at all, so a
+dedicated `secret-sync` Deployment running a `pause` container mounts the CSI
+volume purely to trigger the sync.
+
+An app can use both: Grafana's admin password is file-only (Pattern A) while its
+OIDC client secret is synced (Pattern B), because Grafana reads that one from a
+`GF_` env var.
 
 ## Bootstrap Secrets
 

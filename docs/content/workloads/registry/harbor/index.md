@@ -83,7 +83,7 @@ Secret sync:
 
 ## Troubleshooting
 
-### RWO Multi-Attach Deadlock (Legacy)
+### RWO Multi-Attach Deadlock
 
 > This was the original issue before switching to RWX PVCs. Documented for reference.
 

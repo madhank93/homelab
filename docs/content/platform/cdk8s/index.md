@@ -31,20 +31,22 @@ workloads/
 ├── go.mod / go.sum
 ├── cdk8s.yaml           # Import versions (update here + re-run cdk8s import)
 ├── imports/             # Auto-generated CDK8s Helm chart bindings
-├── storage/             longhorn.go
-├── secrets/             openbao.go, csi_driver.go
-├── observability/       victoria_metrics.go, victoria_logs.go, otel_collector.go, alert_manager.go
-├── monitoring/          grafana.go
-├── security/            falco.go, trivy.go
-├── hardware/            nvidia_gpu_operator.go
-├── networking/          netbird_peer.go
-├── registry/            harbor.go
+├── ai/                  ollama.go  comfyui.go  kubeflow.go  notebook_gateway_controller.go
 ├── automation/          n8n.go
 ├── databases/           cnpg.go
-├── ai/                  ollama.go, comfyui.go
+├── hardware/            nvidia_gpu_operator.go
 ├── management/          headlamp.go
+├── monitoring/          grafana.go  metrics_server.go
+├── networking/          netbird_peer.go
+├── observability/       victoria_metrics.go  victoria_logs.go  otel_collector.go  argocd_monitor.go
+├── registry/            harbor.go
+├── secrets/             openbao.go  csi_driver.go
+├── security/            falco.go  keyverno.go  trivy.go
+├── storage/             longhorn.go
 └── support/             reloader.go
 ```
+
+This is the one copy of the tree; other pages link here rather than repeating it.
 
 ## How main.go Works
 

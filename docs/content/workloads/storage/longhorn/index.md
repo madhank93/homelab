@@ -115,20 +115,12 @@ kubectl get volumes.longhorn.io -n longhorn-system \
 
 **Why this happens:** RWO (ReadWriteOnce) volumes can only be attached to one node at a time. During a rolling update, the new pod may start on a different node before the old pod fully terminates and releases the volume.
 
-**Fix for Harbor (and similar):**
+**Fix:** scale down the ReplicaSet still holding the volume, then force-delete
+the stuck pod. Harbor hits this most often and the worked example lives on its
+page — see [Harbor](@/workloads/registry/harbor/index.md#rwo-multi-attach-deadlock).
 
-```bash
-# 1. Find the old ReplicaSet
-kubectl get replicasets -n harbor
-
-# 2. Scale down the old RS
-kubectl scale replicaset <old-rs-name> -n harbor --replicas=0
-
-# 3. Force delete any stuck pod
-kubectl delete pod -n harbor <stuck-pod> --grace-period=0 --force
-```
-
-**Long-term fix:** Switch the PVC to `ReadWriteMany` — Harbor's registry and jobservice PVCs are already set to RWX in this homelab for exactly this reason.
+**Long-term fix:** switch the PVC to `ReadWriteMany`. Harbor's registry and
+jobservice PVCs are already RWX for exactly this reason.
 
 ### Checking Volume Health
 

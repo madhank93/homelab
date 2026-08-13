@@ -135,26 +135,7 @@ In CI, a GitHub Actions workflow runs `go run .` and pushes the output to the `v
 2. Register it in `workloads/main.go`
 3. Push to `main` → CI synthesizes manifests → ArgoCD syncs automatically
 
-### File structure
-
-```
-workloads/
-├── main.go              # registers all apps, calls cdk8s.App.Synth()
-├── go.mod               # module: github.com/madhank93/homelab/workloads
-├── imports/             # generated CDK8s type bindings
-├── ai/                  ollama.go  comfyui.go
-├── automation/          n8n.go
-├── hardware/            nvidia_gpu_operator.go
-├── management/          headlamp.go
-├── monitoring/          grafana.go
-├── networking/          netbird_peer.go
-├── observability/       victoria_metrics.go  victoria_logs.go  otel_collector.go  alert_manager.go
-├── registry/            harbor.go
-├── secrets/             openbao.go  csi_driver.go
-├── security/            falco.go  keyverno.go  trivy.go
-├── storage/             longhorn.go
-└── support/             reloader.go
-```
+The `workloads/` layout is mapped in [CDK8s](@/platform/cdk8s/index.md).
 
 ---
 

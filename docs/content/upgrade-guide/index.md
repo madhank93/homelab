@@ -23,7 +23,7 @@ Components must be upgraded in layer order. Never skip layers.
 ```
 Talos
   └─► Cilium  (CNI must be compatible with Talos k8s version)
-        └─► Gateway API CRDs  (bundled with Cilium chart)
+        └─► Gateway API CRDs  (vendored in core/platform/manifests/)
               └─► ArgoCD  (GitOps engine)
                     └─► cert-manager
                           └─► OpenBao + CSI Driver  (secrets layer; all apps depend on this)
@@ -45,30 +45,31 @@ curl -s https://api.github.com/repos/siderolabs/talos/releases/latest | jq -r .t
 helm repo add cilium https://helm.cilium.io && helm search repo cilium/cilium --versions | head -3
 helm repo add argo https://argoproj.github.io/argo-helm && helm search repo argo/argo-cd --versions | head -3
 
-# Add all workload chart repos
-helm repo add longhorn    https://charts.longhorn.io
-helm repo add vm          https://victoriametrics.github.io/helm-charts
-helm repo add grafana     https://grafana-community.github.io/helm-charts
-helm repo add harbor      https://helm.goharbor.io
-helm repo add openbao     https://openbao.github.io/openbao-helm
-helm repo add csi-driver  https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-helm repo add headlamp    https://kubernetes-sigs.github.io/headlamp
-helm repo add kyverno     https://kyverno.github.io/kyverno
-helm repo add trivy       https://aquasecurity.github.io/helm-charts
-helm repo add otel        https://open-telemetry.github.io/opentelemetry-helm-charts
-helm repo add ollama      https://otwld.github.io/ollama-helm
-helm repo add reloader    https://stakater.github.io/stakater-charts
-helm repo add cnpg        https://cloudnative-pg.github.io/charts
-helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
-helm repo update
+# All workload chart repos, then the latest two versions of each
+while read -r name url chart; do
+  helm repo add "$name" "$url" >/dev/null
+done <<'REPOS'
+longhorn       https://charts.longhorn.io                                          longhorn/longhorn
+vm             https://victoriametrics.github.io/helm-charts                       vm/victoria-metrics-k8s-stack
+grafana        https://grafana-community.github.io/helm-charts                     grafana/grafana
+harbor         https://helm.goharbor.io                                            harbor/harbor
+openbao        https://openbao.github.io/openbao-helm                              openbao/openbao
+csi-driver     https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts   csi-driver/secrets-store-csi-driver
+headlamp       https://kubernetes-sigs.github.io/headlamp                          headlamp/headlamp
+kyverno        https://kyverno.github.io/kyverno                                   kyverno/kyverno
+trivy          https://aquasecurity.github.io/helm-charts                          trivy/trivy-operator
+otel           https://open-telemetry.github.io/opentelemetry-helm-charts          otel/opentelemetry-collector
+ollama         https://otwld.github.io/ollama-helm                                 ollama/ollama
+reloader       https://stakater.github.io/stakater-charts                          reloader/reloader
+cnpg           https://cloudnative-pg.github.io/charts                             cnpg/cloudnative-pg
+metrics-server https://kubernetes-sigs.github.io/metrics-server                    metrics-server/metrics-server
+REPOS
+helm repo update >/dev/null
 
-for chart in longhorn/longhorn \
-  vm/victoria-metrics-k8s-stack vm/victoria-logs-single \
-  grafana/grafana harbor/harbor openbao/openbao \
-  csi-driver/secrets-store-csi-driver \
-  headlamp/headlamp kyverno/kyverno trivy/trivy-operator \
-  otel/opentelemetry-collector ollama/ollama reloader/reloader \
-  cnpg/cloudnative-pg metrics-server/metrics-server; do
+for chart in longhorn/longhorn vm/victoria-metrics-k8s-stack vm/victoria-logs-single \
+  grafana/grafana harbor/harbor openbao/openbao csi-driver/secrets-store-csi-driver \
+  headlamp/headlamp kyverno/kyverno trivy/trivy-operator otel/opentelemetry-collector \
+  ollama/ollama reloader/reloader cnpg/cloudnative-pg metrics-server/metrics-server; do
   echo "=== $chart ===" && helm search repo "$chart" --versions | head -2
 done
 
@@ -86,7 +87,7 @@ curl -s https://hub.docker.com/v2/repositories/ollama/ollama/tags?page_size=3 | 
 **Risk:** High — rolling node restart.
 
 ```go
-// core/platform/talos.go:17
+// core/platform/talos.go — the talosVersion const
 talosVersion = "vX.Y.Z"
 ```
 
@@ -145,14 +146,14 @@ talosctl --talosconfig ~/.talos/config reboot --nodes <ip> --mode powercycle
 **Risk:** High — CNI restart interrupts pod networking briefly.
 
 ```go
-// core/platform/cilium.go:30
+// core/platform/cilium.go — Version on the cilium Release
 Version: pulumi.String("1.X.Y"),
 ```
 
 **Rules:**
 - Verify compatibility with new Talos k8s version: https://docs.cilium.io/en/stable/network/kubernetes/compatibility/
 - `wt0` must **not** be added to Cilium devices — keep only `eth0` in `cilium.go`. See [NetBird routing notes](../infrastructure/#netbird).
-- After upgrade check `CiliumLoadBalancerIPPool` and `BGPCiliumPeeringPolicy` CR specs in `cilium.go:208,225` for field renames
+- After upgrade check the `CiliumLoadBalancerIPPool` and `CiliumL2AnnouncementPolicy` CR specs in `cilium.go` for field renames
 
 ```bash
 just core platform up
@@ -189,18 +190,13 @@ reached every node on the new image. Fix the node, then re-run
 **Risk:** Medium — GitOps engine downtime during pod restart.
 
 ```go
-// core/platform/argocd.go:24
-Version: pulumi.String("9.X.Y"),
+// core/platform/argocd.go — Version on the argo-cd Release
+Version: pulumi.String("X.Y.Z"),
 ```
 
-**TLSRoute service name — critical:** The TLSRoute backend at `argocd.go:148` hardcodes a Helm-generated service name `argo-cd-964152f1-argocd-server`. The hash suffix may change on chart upgrade. After `just core platform up`, verify and update if needed:
-
-```bash
-kubectl get svc -n argocd | grep argocd-server
-# Update argocd.go:148 if the name changed, then re-run just core platform up
-```
-
-**ApplicationSet UI:** Already enabled. ArgoCD chart 9.x (ArgoCD 2.14.x) shows ApplicationSets under the top-level **ApplicationSets** tab in the UI. No config changes needed.
+**Image ahead of chart:** the Release overrides `image.tag` to run a server
+newer than the chart pins. Check on every chart bump whether the override is
+still needed and drop it once the chart catches up.
 
 ```bash
 just core platform up
@@ -214,7 +210,7 @@ kubectl rollout status deployment argocd-server -n argocd
 **Risk:** Low — but high blast radius if broken (TLS for all services).
 
 ```go
-// core/platform/cert_manager.go:22 — Pulumi, not cdk8s
+// core/platform/cert_manager.go — Pulumi, not cdk8s
 Version: pulumi.String("vX.Y.Z"),
 ```
 
@@ -238,9 +234,9 @@ kubectl get certificate -A   # must all show Ready=True
 **Risk:** Medium — all running apps read secrets through this layer.
 
 ```go
-// workloads/secrets/openbao.go:42
+// workloads/secrets/openbao.go — chart Version
 Version: jsii.String("0.X.Y"),
-// workloads/secrets/openbao.go:98
+// workloads/secrets/openbao.go — unseal sidecar image
 "image": "openbao/openbao:2.X.Y",
 ```
 
@@ -283,7 +279,7 @@ kubectl get volume.longhorn.io -n longhorn-system  # all must be healthy
 ### CNPG
 
 ```go
-// workloads/databases/cnpg.go:31
+// workloads/databases/cnpg.go
 Version: jsii.String("0.X.Y"),
 ```
 
@@ -310,7 +306,8 @@ ghcr.io/goauthentik/server:20XX.X.X        # lines 137, 168
 postgres:16.X-alpine                       # line 115  (minor bumps only)
 ```
 
-**NetBird rule:** All four NetBird components (`server`, `dashboard`, `reverse-proxy`, agent on Bifrost) **must be on the same version**. Also update `workloads/networking/netbird_peer.go:139,158` to match.
+**NetBird rule:** All four NetBird components (`server`, `dashboard`, `reverse-proxy`, agent on Bifrost) **must be on the same version**. Also update both image tags in `workloads/networking/netbird_peer.go` — the
+`setup-iptables` init container and the main container.
 
 **Authentik migration race (fixed in bootstrap.sh):** On Authentik upgrades, `bootstrap.sh` now runs `ak migrate` explicitly (via a one-off server container) before starting `authentik-server` and `authentik-worker`. This prevents a crash-loop where the server queries new ORM columns that haven't been added yet. If `just core hetzner up` fails at the Authentik health check step, SSH in and run:
 ```bash
@@ -337,12 +334,12 @@ No inter-dependencies. Update all in one commit, run `just synth`, push.
 | Component | Change |
 |-----------|--------|
 | Kyverno | `cdk8s.yaml` |
-| Falco | `security/falco.go:84` |
+| Falco | `security/falco.go` |
 | Metrics Server | `cdk8s.yaml` |
-| Reloader | `support/reloader.go:20` |
-| OTel Collector | `observability/otel_collector.go:168,227` — both agent + gateway releases |
+| Reloader | `support/reloader.go` |
+| OTel Collector | `observability/otel_collector.go` — two releases, `otel-agent` and `otel-gateway`, both must move |
 | Headlamp | `cdk8s.yaml` |
-| Trivy | `cdk8s.yaml` **and** `security/trivy.go:22` — both must match; CRD fetch URL is built from this version |
+| Trivy | `cdk8s.yaml` (chart) **and** `security/trivy.go` (`trivyVersion`, builds the CRD fetch URL) — deliberately independent, but a chart bump usually wants a CRD bump |
 
 ```bash
 just synth && git push
@@ -361,7 +358,7 @@ kubectl get applications -n argocd  # all Synced + Healthy
 - helm:https://victoriametrics.github.io/helm-charts/victoria-logs-single@0.X.Y
 ```
 
-Also update `workloads/observability/victoria_metrics.go:69`. Run `helm diff upgrade` first — the values schema changes frequently between minor versions.
+Also update the chart Version in `workloads/observability/victoria_metrics.go`. Run `helm diff upgrade` first — the values schema changes frequently between minor versions.
 
 ### Grafana
 
@@ -388,7 +385,7 @@ Minor bumps only. After upgrade verify `harbor:80` routing still works (Harbor n
 - helm:https://helm.ngc.nvidia.com/nvidia/gpu-operator@X.Y.Z
 ```
 
-Also update device plugin and DCGM exporter versions in `workloads/hardware/nvidia_gpu_operator.go:47,99`. Verify RTX 5070 Ti (sm_120, Blackwell) still supported in the new operator release — Blackwell support was added in 570.x driver series.
+Also update the device plugin and DCGM exporter versions in `workloads/hardware/nvidia_gpu_operator.go`. Verify RTX 5070 Ti (sm_120, Blackwell) still supported in the new operator release — Blackwell support was added in 570.x driver series.
 
 ```bash
 kubectl exec -n ollama deploy/ollama -- nvidia-smi
@@ -402,7 +399,7 @@ kubectl exec -n ollama deploy/ollama -- nvidia-smi
 ### n8n
 
 ```go
-// workloads/automation/n8n.go:184
+// workloads/automation/n8n.go — chart Version
 Version: jsii.String("2.X.Y"),
 ```
 
@@ -414,12 +411,9 @@ kubectl rollout status deployment n8n -n n8n
 
 ### Ollama
 
-```go
-// workloads/ai/ollama.go:33
-"tag": "0.X.Y",
-```
-
-Also update chart in `cdk8s.yaml`. Downloaded models stay in the PVC — no re-pull needed.
+Bump the chart in `cdk8s.yaml`. There is no image tag to change: it is left
+unset so Ollama tracks the chart's appVersion. Downloaded models stay in the
+PVC — no re-pull needed.
 
 ```bash
 kubectl exec -n ollama deploy/ollama -- ollama list
@@ -428,16 +422,22 @@ kubectl exec -n ollama deploy/ollama -- ollama list
 ### ComfyUI
 
 ```go
-// workloads/ai/comfyui.go:73
-Image: jsii.String("yanwk/comfyui-boot:cu128-megapak-YYYYMMDD"),
+// workloads/ai/comfyui.go
+Image: jsii.String("yanwk/comfyui-boot:cu130-megapak-ptXXX-YYYYMMDD"),
 ```
 
-Check [yanwk/comfyui-boot tags](https://hub.docker.com/r/yanwk/comfyui-boot/tags) — use `cu128-megapak-*` variants only (CUDA 12.8 required for RTX 5070 Ti / sm_120). Do **not** use `latest-cu128` — that tag does not exist.
+Check [yanwk/comfyui-boot tags](https://hub.docker.com/r/yanwk/comfyui-boot/tags).
+The RTX 5070 Ti is Blackwell (sm_120) and needs CUDA 12.8 or newer, so `cu126`
+tags will not run. The `cu128-megapak` line stopped building in May 2026;
+`cu130-megapak-pt*` is the current one. There is no `latest-*` tag.
+
+ComfyUI is scaled to zero by default — `just comfyui on` after the bump, then
+`just comfyui off` when finished. See [ComfyUI](@/workloads/ai/comfyui/index.md).
 
 ### NetBird Peer (k8s)
 
 ```go
-// workloads/networking/netbird_peer.go:139,158  (both init + main containers)
+// workloads/networking/netbird_peer.go  (both init + main containers)
 Image: jsii.String("netbirdio/netbird:0.X.Y"),
 ```
 
@@ -445,7 +445,7 @@ Must match Bifrost docker-compose NetBird version exactly. Upgrade Bifrost and k
 
 ### Kubeflow
 
-Kubeflow is deployed via Kustomize from `kubeflow/manifests`, not a Helm chart. Upgrade by updating `targetRevision` in the ApplicationSet at `core/platform/argocd.go:175`. Check the [kubeflow/manifests releases](https://github.com/kubeflow/manifests/releases) for the version compatible with the current k8s version.
+Kubeflow is deployed via Kustomize from `kubeflow/manifests`, not a Helm chart. Upgrade by updating the `ref` on each base in `workloads/ai/kubeflow/kustomization.yaml`. Check the [kubeflow/manifests releases](https://github.com/kubeflow/manifests/releases) for the version compatible with the current k8s version.
 
 ---
 
@@ -501,12 +501,11 @@ docker exec netbird-agent netbird status
 | Upgrade | Breaking change |
 |---------|----------------|
 | Talos minor bump | k8s version embedded — check `cdk8s.yaml` `k8s@` version |
-| Cilium any | `CiliumLoadBalancerIPPool` / `BGPCiliumPeeringPolicy` field renames — check `cilium.go:208,225` |
-| ArgoCD chart major | TLSRoute backend service name hash changes — check `argocd.go:148` |
+| Cilium any | `CiliumLoadBalancerIPPool` / `CiliumL2AnnouncementPolicy` field renames — check `cilium.go` |
 | Grafana 10 → 11 | Angular plugins removed; datasource API changed |
 | Longhorn minor | Upgrade one minor at a time only |
 | NetBird any | All components (server/dashboard/proxy/agent/peer) must be on identical version |
 | Authentik any | Migration race: `bootstrap.sh` runs `ak migrate` first; if health check times out SSH + force-migrate (see Phase 7) |
 | Authentik any | After `netbird-agent` restart, verify `ip rule show \| grep 7120` — missing rules = restart agent again |
-| Trivy any | `trivyVersion` const in `trivy.go:22` and `cdk8s.yaml` import must match |
-| ComfyUI any | Only `cu128-megapak-*` tags work on RTX 5070 Ti — do not use `latest-cu128` |
+| Trivy any | `trivyVersion` const in `trivy.go` drives the CRD bundle; the chart comes from `cdk8s.yaml` |
+| ComfyUI any | Needs a CUDA 12.8+ tag for sm_120; the `cu128` line is discontinued |

@@ -342,23 +342,11 @@ ssh root@178.156.199.250 'curl -sv -H "Host: grafana.madhan.app" --connect-timeo
 
 ## Troubleshooting
 
-### 504 from public URL — netbird-agent not running
+Problems on the tunnel and routing side — 504s, routes not distributing, a dead
+`wt0` — are covered in one place on
+[NetBird Peer](@/workloads/networking/netbird-peer/index.md#troubleshooting).
 
-```bash
-ssh root@178.156.199.250 'docker ps | grep netbird-agent'
-# If not running:
-ssh root@178.156.199.250 'NB_BIFROST_SETUP_KEY=$(grep NB_BIFROST_SETUP_KEY /etc/bifrost/.secrets.env | cut -d= -f2) docker compose -f /etc/bifrost/docker-compose.yml up -d netbird-agent'
-```
-
-### Routes not distributed to bifrost-agent
-
-```bash
-# On Bifrost
-docker exec netbird-agent netbird routes list
-# If "Networks: -" or route missing:
-# Check it's in the "All" distribution group in NetBird UI → Network Routes
-```
-
-### Tunnel dead — wt0: 0 bytes
-
-`NB_SKIP_SOCKET_MARK` must not be set on the `netbird-peer` StatefulSet — it disables the socket fwmark, causing management traffic to loop through the WireGuard tunnel and breaking the relay connection.
+For the server itself, the usual causes are the embedded-Dex constraint above
+and a stale peer entry: if the `netbird-peer` pod was recreated after the
+Network Route was configured, the route still points at the old peer. Delete the
+disconnected duplicates under **Peers** and re-assign the route.

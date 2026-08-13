@@ -208,46 +208,9 @@ Traefik on Bifrost uses the **file provider** only (no Docker provider). Routes 
 
 ---
 
-## Troubleshooting the Public Traffic Path
+## When the public path breaks
 
-### 504 Gateway Timeout from public URL
-
-Traefik is reachable but cannot proxy to the cluster backend.
-
-```bash
-# 1. Check netbird-agent is running and connected on Bifrost
-ssh root@178.156.199.250 'docker exec netbird-agent netbird status'
-# Must show: Management: Connected, Peers count: 1/1 Connected
-
-# 2. Check the route is selected
-ssh root@178.156.199.250 'docker exec netbird-agent netbird routes list'
-# Must show: 192.168.1.0/24 Status: Selected
-
-# 3. Verify kernel route table has the tunnel entry
-ssh root@178.156.199.250 'ip route show table 7120'
-# Must show: 192.168.1.0/24 dev wt0
-
-# 4. Test direct HTTP to the Cilium LB from Bifrost
-ssh root@178.156.199.250 'curl -sv -H "Host: grafana.madhan.app" --connect-timeout 5 http://192.168.1.220/'
-# Expect: HTTP/1.1 302 Found
-```
-
-If step 4 times out, the WireGuard → cluster path is broken. Continue to the next section.
-
-### WireGuard tunnel up but traffic not flowing to cluster
-
-The `netbird-peer` pod is connected but `192.168.1.220` is unreachable from Bifrost.
-
-```bash
-# Check netbird-peer pod status
-kubectl exec -n netbird statefulset/netbird-peer -- netbird status
-# Must show: Networks: 192.168.1.0/24, Peers count: 1/1 Connected
-
-# Confirm WireGuard bytes are flowing during a test
-kubectl exec -n netbird statefulset/netbird-peer -- cat /proc/net/dev | grep wt0
-# RX bytes should increase while making requests
-
-# Check worker1 can reach the Cilium LB via another worker's NodePort
-ssh root@178.156.199.250 'curl -sv -H "Host: grafana.madhan.app" --connect-timeout 3 http://192.168.1.222:32601/'
-# If this works but 192.168.1.220 times out, the issue is on worker1 — check Cilium pod health
-```
+A 504 from a public URL means Traefik is up but cannot reach the cluster
+backend. The runbook — agent status, route selection, kernel route table, the
+Cilium device list, and the MASQUERADE rule — is on
+[NetBird Peer](@/workloads/networking/netbird-peer/index.md#troubleshooting).

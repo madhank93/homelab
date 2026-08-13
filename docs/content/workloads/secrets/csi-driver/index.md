@@ -76,16 +76,12 @@ When a pod mounts the CSI volume referencing `harbor-secrets`:
 4. The driver writes the secret as a file into the pod at the specified mount path
 5. The driver also creates/updates the `harbor-admin` k8s Secret (because `syncSecret.enabled=true`)
 
-## Pattern A vs Pattern B
+## Which pattern to use
 
-| Pattern | Secret as file | k8s Secret created | Used by |
-|---------|---------------|-------------------|---------|
-| A (file-only) | Yes | No | Grafana |
-| B (secretObjects) | Yes | Yes | Harbor, n8n, NetBird |
-
-Pattern B is needed for Helm charts that only accept `existingSecret` references and cannot read secrets from file paths.
-
-> **The CSI volume mount is required to trigger secretObjects sync.** If no pod mounts the volume, the k8s Secret is never created or updated.
+Both are explained in [Secrets](@/platform/secrets/index.md). What matters at
+the driver level: the CSI volume mount is what triggers a `secretObjects` sync.
+No pod mounting the volume means no k8s Secret, however correct the
+SecretProviderClass looks.
 
 ## secret-sync Deployments
 

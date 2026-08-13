@@ -42,24 +42,10 @@ Source: {{ src(path="workloads/secrets/openbao.go") }}
 
 ## Secrets Patterns
 
-### Pattern A — File-only (Grafana)
-
-Secret is mounted as a file at `/mnt/secrets/ADMIN_PASSWORD`. The app reads it via an env var pointing to the file path:
-
-```yaml
-env:
-  GF_SECURITY_ADMIN_PASSWORD__FILE: /mnt/secrets/ADMIN_PASSWORD
-```
-
-No k8s Secret is created. The secret value never appears in `kubectl get secret` output.
-
-### Pattern B — secretObjects sync (Harbor, n8n, NetBird)
-
-The CSI volume mount triggers the SecretProviderClass `secretObjects` block, which creates a k8s Secret in the app's namespace. Required for Helm charts that only accept `existingSecret` references.
-
-> The CSI volume mount is **required** to trigger the sync — if no pod mounts the volume, the k8s Secret is never created.
-
-For Harbor, whose Helm chart does not support `extraVolumes`, a dedicated `secret-sync` Deployment with a `pause` container mounts the CSI volume just to trigger the secretObjects sync.
+Apps consume OpenBao secrets as mounted files, optionally synced to a k8s Secret.
+Both patterns are explained once in [Secrets](@/platform/secrets/index.md) — the
+short version is that the CSI volume mount is what triggers the sync, so a
+SecretProviderClass with no pod mounting it produces nothing.
 
 ## Configuration
 

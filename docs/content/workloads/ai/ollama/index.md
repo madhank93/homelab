@@ -25,6 +25,8 @@ Source: {{ src(path="workloads/ai/ollama.go") }}
 | Namespace | `ollama` | Isolated namespace |
 | Image | `ollama/ollama` | Tag deliberately unset — tracks the chart's appVersion |
 | HTTPRoute | `ollama.madhan.app` → `ollama:11434` | Gateway API |
+| Service type | `LoadBalancer` | Also gets an IP from the Cilium L2 pool, for clients that cannot use the hostname |
+| Model PVC | `100Gi` | Pulled models survive pod and PVC recreation |
 | `runtimeClassName` | `nvidia` | Routes through nvidia-container-runtime |
 | `NVIDIA_VISIBLE_DEVICES` | `all` | Make all GPU devices visible |
 | `nvidia.com/gpu` limit | `1` | One time-sliced virtual GPU |
@@ -62,6 +64,25 @@ curl https://ollama.madhan.app/v1/chat/completions \
 Ollama and ComfyUI share the RTX 5070 Ti via GPU time-slicing (2 virtual GPUs from 1 physical). VRAM is not isolated — approximately 4 GB (Ollama 7B model) + 6 GB (ComfyUI SDXL) fits within the 16 GB pool.
 
 If running a large model (70B quantized, ~40 GB VRAM) alongside ComfyUI, VRAM exhaustion will occur. Use smaller quantized models or stop ComfyUI first.
+
+## Declarative model pull
+
+The otwld chart pulls models on boot, so a fresh pod arrives with the model
+already present rather than waiting on a manual `/api/pull`:
+
+```go
+"ollama": map[string]any{
+    "models": map[string]any{"pull": []string{"qwen2.5-coder:14b"}},
+},
+```
+
+It is idempotent and writes into the 100 Gi PVC, so it survives pod restarts.
+Add models by extending that list rather than pulling them by hand — a hand
+pulled model is lost the moment the PVC is recreated.
+
+Ollama will fail to load a model while ComfyUI is holding VRAM. If a pull or a
+first inference fails for no clear reason, check whether ComfyUI is running —
+see [GPU](@/hardware/gpu/index.md#sharing-the-16-gb-of-vram).
 
 ## How It Connects
 

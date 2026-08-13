@@ -146,40 +146,22 @@ See [Hetzner Bifrost](/infrastructure/hetzner-bifrost) for the full bootstrap se
 
 ## Runtime Secrets (OpenBao + CSI Driver)
 
-After the cluster is up, all application secrets are managed by [OpenBao](/workloads/secrets/openbao). Apps consume secrets via the Secrets Store CSI Driver — secrets are mounted as files in pods, or synced to k8s Secrets via `secretObjects`.
-
-### Patterns
-
-**Pattern A — file-only** (no k8s Secret created):
-
-```
-Pod → CSI volume mount → /mnt/secrets/ADMIN_PASSWORD
-env: GF_SECURITY_ADMIN_PASSWORD__FILE=/mnt/secrets/ADMIN_PASSWORD
-```
-
-Used by: **Grafana**
-
-**Pattern B — secretObjects sync** (k8s Secret created and kept in sync):
-
-```
-SecretProviderClass.secretObjects → k8s Secret (e.g. harbor-admin)
-Helm chart: existingSecret: harbor-admin
-```
-
-Used by: **Harbor**, **n8n**, **NetBird peer**
+After the cluster is up, all application secrets are managed by [OpenBao](@/workloads/secrets/openbao/index.md). Apps consume secrets via the Secrets Store CSI Driver — mounted as files in the
+pod, and optionally synced to a k8s Secret via `secretObjects`. The two patterns
+are described in [Secrets](@/platform/secrets/index.md).
 
 ### Apps and their OpenBao paths
 
 | App | OpenBao path | Pattern | k8s Secret |
 |-----|-------------|---------|------------|
-| Grafana | `secret/data/grafana` | A (file) | — |
+| Grafana | `secret/data/grafana` | A + B | `grafana-oauth-secret` |
 | Harbor | `secret/data/harbor` | B (sync) | `harbor-admin` |
 | n8n | `secret/data/n8n` | B (sync) | `n8n-db` |
 | NetBird peer | `secret/data/netbird` | B (sync) | `netbird-setup-key` |
 
 ### One-time setup
 
-After first deploy, run `just openbao-setup` to configure K8s auth, policies, roles, and write initial secrets. See [OpenBao](/workloads/secrets/openbao) for details.
+After first deploy, run `just openbao-setup` to configure K8s auth, policies, roles, and write initial secrets. See [OpenBao](@/workloads/secrets/openbao/index.md) for details.
 
 ---
 

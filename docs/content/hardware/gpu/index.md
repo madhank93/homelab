@@ -40,10 +40,38 @@ Result: the node advertises **5 virtual `nvidia.com/gpu` resources** from 1 phys
 
 ## Resource Requests
 
+These are **host RAM** cgroup limits, not VRAM. Nothing in Kubernetes limits VRAM
+at all. The two limits together stay under worker4's ~15.1 Gi allocatable, so a
+runaway workload is OOM-killed on its own rather than taking its neighbours down.
+
 | Workload | vCPU limit | RAM Request | RAM Limit | GPU |
 |----------|------------|-------------|-----------|-----|
-| Ollama | 4000m | 2 Gi | 4 Gi | 1 |
-| ComfyUI | 4000m | 1 Gi | 8 Gi | 1 |
+| Ollama | 4000m | 4 Gi | 8 Gi | 1 |
+| ComfyUI | 4000m | 1 Gi | 6 Gi | 1 |
+
+## Sharing the 16 GB of VRAM
+
+Time-slicing shares GPU *time*, not memory. ComfyUI keeps its model resident in
+VRAM after a run and does not release it, so with both running Ollama fails to
+load a model — and the error surfaces on the Ollama side, which makes it look
+like an Ollama problem.
+
+ComfyUI therefore ships scaled to zero and is turned on only when needed:
+
+```bash
+just comfyui on
+just comfyui off
+```
+
+Ollama's model can be evicted without a restart:
+
+```bash
+curl https://ollama.madhan.app/api/generate -d '{"model": "llama3.2", "keep_alive": 0}'
+```
+
+Kubeflow notebooks requesting `nvidia.com/gpu` compete for the same pool, and
+**must** set `runtimeClassName: nvidia` — without it the NVIDIA container hook
+never fires and CUDA is invisible even though the resource was granted.
 
 ## GPU Workload Configuration
 

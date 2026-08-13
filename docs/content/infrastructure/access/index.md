@@ -1,7 +1,8 @@
 +++
 title = "Service Access & Internet Exposure"
-description = "DNS split strategy, public vs internal service routing, and how to expose or restrict services"
+description = "Cloudflare DNS, the publicServices toggle, and how services get exposed to the internet or kept on the LAN"
 weight = 50
+aliases = ["/infrastructure/dns-tls/"]
 +++
 
 ## What is Service Access?
@@ -98,6 +99,19 @@ http:
 Remove the service from `publicServices` in `cloudflare.go` and remove its router from `services.yml`, then run `just core cloudflare up && just core hetzner up`.
 
 The Cloudflare A record is deleted. DNS falls back to `*.madhan.app → 192.168.1.220` (private) — service becomes LAN-only again automatically.
+
+## Cloudflare
+
+Cloudflare hosts `madhan.app` and every record is provisioned by Pulumi
+({{ src(path="core/cloud/cloudflare.go") }}, `just core cloudflare up`). Its API
+is also what cert-manager's DNS-01 solver uses to issue the wildcard certificate
+without exposing an HTTP endpoint — see [cert-manager](@/platform/cert-manager/index.md).
+
+All records are **DNS-only** (Proxied: false, orange cloud off). Cloudflare
+resolves specific records before wildcards, so a service with no explicit A
+record falls through to `*.madhan.app` → private IP → unreachable from the
+internet. That fallback is the mechanism behind revoking access below: delete
+the record and the service is LAN-only again, with no other change.
 
 ## DNS Split Strategy
 
