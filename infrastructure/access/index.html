@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="DNS split strategy, public vs internal service routing, and how to expose or restrict services" />
+            <meta name="description" content="Cloudflare DNS, the publicServices toggle, and how services get exposed to the internet or kept on the LAN" />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Service Access &amp; Internet Exposure | Homelab" />
-      <meta property="og:description" content="DNS split strategy, public vs internal service routing, and how to expose or restrict services" />
+      <meta property="og:description" content="Cloudflare DNS, the publicServices toggle, and how services get exposed to the internet or kept on the LAN" />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Service Access &amp; Internet Exposure" />
-      <meta name="twitter:description" content="DNS split strategy, public vs internal service routing, and how to expose or restrict services" />
+      <meta name="twitter:description" content="Cloudflare DNS, the publicServices toggle, and how services get exposed to the internet or kept on the LAN" />
       
       
       
@@ -353,8 +353,10 @@
 
 
 
-<span class="icon " aria-hidden="true"
-    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/list-check.svg'); mask-image: url('https://homelab.madhan.app/icons/list-check.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M448 80v48c0 44.2-100.3 80-224 80S0 172.2 0 128V80C0 35.8 100.3 0 224 0S448 35.8 448 80zM393.2 214.7c20.8-7.4 39.9-16.9 54.8-28.6V288c0 44.2-100.3 80-224 80S0 332.2 0 288V186.1c14.9 11.8 34 21.2 54.8 28.6C99.7 230.7 159.5 240 224 240s124.3-9.3 169.2-25.3zM0 346.1c14.9 11.8 34 21.2 54.8 28.6C99.7 390.7 159.5 400 224 400s124.3-9.3 169.2-25.3c20.8-7.4 39.9-16.9 54.8-28.6V432c0 44.2-100.3 80-224 80S0 476.2 0 432V346.1z"/></svg>
+
+  </span>
 
 
           Software Inventory
@@ -403,8 +405,9 @@
 
 
 
-<span class="icon " aria-hidden="true"
-    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/cloud.svg'); mask-image: url('https://homelab.madhan.app/icons/cloud.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M352 256c0 22.2-1.2 43.6-3.3 64l-185.3 0c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64l185.3 0c2.2 20.4 3.3 41.8 3.3 64zm28.8-64l123.1 0c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64l-123.1 0c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64zm112.6-32l-116.7 0c-10-63.9-29.8-117.4-55.3-151.6c78.3 20.7 142 77.5 171.9 151.6zm-149.1 0l-176.6 0c6.1-36.4 15.5-68.6 27-94.7c10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5c11.6 26 20.9 58.2 27 94.7zm-209 0L18.6 160C48.6 85.9 112.2 29.1 190.6 8.4C165.1 42.6 145.3 96.1 135.3 160zM8.1 192l123.1 0c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64L8.1 320C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64zM194.7 446.6c-11.6-26-20.9-58.2-27-94.6l176.6 0c-6.1 36.4-15.5 68.6-27 94.6c-10.5 23.6-22.2 40.7-33.5 51.5C272.6 508.8 263.3 512 256 512s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6C112.2 482.9 48.6 426.1 18.6 352l116.7 0zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6c25.5-34.2 45.2-87.7 55.3-151.6l116.7 0z"/></svg>
+  </span>
 
 
           Cloud
@@ -442,6 +445,23 @@
 
 
           Workloads
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/upgrade-guide">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M105.1 202.6c7.7-21.8 20.2-42.3 37.8-59.8c62.5-62.5 163.8-62.5 226.3 0L386.3 160 352 160c-17.7 0-32 14.3-32 32s14.3 32 32 32l111.5 0c0 0 0 0 0 0l.4 0c17.7 0 32-14.3 32-32l0-112c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 35.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0C73.2 122 55.6 150.7 44.8 181.4c-5.9 16.7 2.9 34.9 19.5 40.8s34.9-2.9 40.8-19.5zM39 289.3c-5 1.5-9.8 4.2-13.7 8.2c-4 4-6.7 8.8-8.1 14c-.3 1.2-.6 2.5-.8 3.8c-.3 1.7-.4 3.4-.4 5.1L16 432c0 17.7 14.3 32 32 32s32-14.3 32-32l0-35.1 17.6 17.5c0 0 0 0 0 0c87.5 87.4 229.3 87.4 316.7 0c24.4-24.4 42.1-53.1 52.9-83.8c5.9-16.7-2.9-34.9-19.5-40.8s-34.9 2.9-40.8 19.5c-7.7 21.8-20.2 42.3-37.8 59.8c-62.5 62.5-163.8 62.5-226.3 0l-.1-.1L125.6 352l34.4 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L48.4 288c-1.6 0-3.2 .1-4.8 .3s-3.1 .5-4.6 1z"/></svg>
+  </span>
+
+
+          Upgrade Guide
         </a>
     </li>
     
@@ -521,7 +541,7 @@
             Service Access &amp; Internet Exposure
             
         </h1>
-        <p class="text-gray-500">DNS split strategy, public vs internal service routing, and how to expose or restrict services</p>
+        <p class="text-gray-500">Cloudflare DNS, the publicServices toggle, and how services get exposed to the internet or kept on the LAN</p>
     </div>
     <h2 id="what-is-service-access">What is Service Access?</h2>
 <p>Service access describes how homelab services are reachable — whether from the local network only, or from the internet. The routing strategy combines Cloudflare DNS, the Bifrost Hetzner VPS, and the cluster's Cilium Gateway to implement a clean LAN-vs-public split.</p>
@@ -531,56 +551,49 @@
 <p>All services default to <code>*.madhan.app → 192.168.1.220</code> (LAN wildcard). Adding a service name to <code>publicServices</code> in <code>cloudflare.go</code> creates an explicit Cloudflare A record pointing to the Bifrost VPS and generates the corresponding Traefik router with ForwardAuth — one <code>pulumi up</code> call makes a service public or private.</p>
 <h2 id="architecture-overview">Architecture Overview</h2>
 <p>Homelab services are LAN-only by default. Selectively exposing a service to the internet is a single-line config change, controlled by <code>publicServices</code> in <code>core/cloud/cloudflare.go</code>.</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>*.madhan.app          → 192.168.1.220  (wildcard, LAN gateway — default for all services)
-</span><span>*.internal.madhan.app → 192.168.1.220  (explicit internal label)
-</span><span>auth.madhan.app       → 178.156.199.250 (Authentik — always public)
-</span><span>netbird.madhan.app    → 178.156.199.250 (NetBird — always public)
-</span><span>proxy.madhan.app      → 178.156.199.250 (NetBird expose base — always public)
-</span><span>*.proxy.madhan.app    → 178.156.199.250 (NetBird expose wildcard)
-</span><span>grafana.madhan.app    → 178.156.199.250 (overrides wildcard → internet accessible)
-</span><span>headlamp.madhan.app   → 192.168.1.220  (no explicit record → LAN wildcard → private)
-</span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>*.madhan.app          → 192.168.1.220  (wildcard, LAN gateway — default for all services)</span></span>
+<span class="giallo-l"><span>*.internal.madhan.app → 192.168.1.220  (explicit internal label)</span></span>
+<span class="giallo-l"><span>auth.madhan.app       → 178.156.199.250 (Authentik — always public)</span></span>
+<span class="giallo-l"><span>netbird.madhan.app    → 178.156.199.250 (NetBird — always public)</span></span>
+<span class="giallo-l"><span>proxy.madhan.app      → 178.156.199.250 (NetBird expose base — always public)</span></span>
+<span class="giallo-l"><span>*.proxy.madhan.app    → 178.156.199.250 (NetBird expose wildcard)</span></span>
+<span class="giallo-l"><span>grafana.madhan.app    → 178.156.199.250 (overrides wildcard → internet accessible)</span></span>
+<span class="giallo-l"><span>headlamp.madhan.app   → 192.168.1.220  (no explicit record → LAN wildcard → private)</span></span></code></pre>
 <p>Cloudflare resolves specific records before wildcards. A service with no explicit A record falls through to the <code>*.madhan.app</code> wildcard → private IP → unreachable from the internet.</p>
 <h2 id="network-flow-diagrams">Network Flow Diagrams</h2>
 <h3 id="public-service-e-g-grafana">Public service (e.g. Grafana)</h3>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>Internet Browser
-</span><span>  → Cloudflare: grafana.madhan.app → 178.156.199.250
-</span><span>  → Traefik (TLS termination on Hetzner VPS)
-</span><span>  → [no session] → Authentik ForwardAuth
-</span><span>      → auth.madhan.app → GitHub OAuth → redirect back
-</span><span>  → [session cookie set] → k8s-gateway (http://192.168.1.220)
-</span><span>       ↑ reachable via WireGuard (netbird-agent on Hetzner routes 192.168.1.0/24)
-</span><span>  → Cilium HTTPRoute: grafana.madhan.app → Grafana pod
-</span></code></pre>
-<h3 id="internal-service-e-g-headlamp">Internal service (e.g. Headlamp)</h3>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>LAN Browser
-</span><span>  → DNS: headlamp.madhan.app → 192.168.1.220 (LAN wildcard)
-</span><span>  → Cilium Gateway → HTTPRoute → Headlamp pod
-</span><span>  (No Traefik, no Hetzner, no SSO — direct LAN access only)
-</span></code></pre>
-<h2 id="how-to-expose-a-service-to-the-internet">How to Expose a Service to the Internet</h2>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Internet Browser</span></span>
+<span class="giallo-l"><span>  → Cloudflare: grafana.madhan.app → 178.156.199.250</span></span>
+<span class="giallo-l"><span>  → Traefik (TLS termination on Hetzner VPS)</span></span>
+<span class="giallo-l"><span>  → [no session] → Authentik ForwardAuth</span></span>
+<span class="giallo-l"><span>      → auth.madhan.app → GitHub OAuth → redirect back</span></span>
+<span class="giallo-l"><span>  → [session cookie set] → k8s-gateway (http://192.168.1.220)</span></span>
+<span class="giallo-l"><span>       ↑ reachable via WireGuard (netbird-agent on Hetzner routes 192.168.1.0/24)</span></span>
+<span class="giallo-l"><span>  → Cilium HTTPRoute: grafana.madhan.app → Grafana pod</span></span></code></pre><h3 id="internal-service-e-g-headlamp">Internal service (e.g. Headlamp)</h3>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>LAN Browser</span></span>
+<span class="giallo-l"><span>  → DNS: headlamp.madhan.app → 192.168.1.220 (LAN wildcard)</span></span>
+<span class="giallo-l"><span>  → Cilium Gateway → HTTPRoute → Headlamp pod</span></span>
+<span class="giallo-l"><span>  (No Traefik, no Hetzner, no SSO — direct LAN access only)</span></span></code></pre><h2 id="how-to-expose-a-service-to-the-internet">How to Expose a Service to the Internet</h2>
 <p><strong>Step 1</strong>: Add the service name to <code>publicServices</code> in <code>core/cloud/cloudflare.go</code>:</p>
-<pre data-lang="go" style="background-color:#212733;color:#ccc9c2;" class="language-go "><code class="language-go" data-lang="go"><span style="font-style:italic;color:#5c6773;">// Before (only grafana is public by default)
-</span><span style="color:#ffa759;">var </span><span>publicServices </span><span style="color:#f29e74;">= </span><span>[]</span><span style="color:#ffa759;">PublicService</span><span>{
-</span><span>    {Name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;grafana&quot;</span><span style="color:#ccc9c2cc;">, </span><span>SkipAuth</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true</span><span>}</span><span style="color:#ccc9c2cc;">,
-</span><span>}
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;">// After — adding Headlamp (requires Authentik forwardauth)
-</span><span style="color:#ffa759;">var </span><span>publicServices </span><span style="color:#f29e74;">= </span><span>[]</span><span style="color:#ffa759;">PublicService</span><span>{
-</span><span>    {Name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;grafana&quot;</span><span style="color:#ccc9c2cc;">, </span><span>SkipAuth</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">true</span><span>}</span><span style="color:#ccc9c2cc;">,
-</span><span>    {Name</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">&quot;headlamp&quot;</span><span style="color:#ccc9c2cc;">, </span><span>SkipAuth</span><span style="color:#ccc9c2cc;">: </span><span style="color:#ffcc66;">false</span><span>}</span><span style="color:#ccc9c2cc;">,
-</span><span>}
-</span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// Before (only grafana is public by default)</span></span>
+<span class="giallo-l"><span style="color: #FF8F40;">var</span><span> publicServices</span><span style="color: #F29668;"> =</span><span> []</span><span style="color: #59C2FF;">PublicService</span><span>{</span></span>
+<span class="giallo-l"><span>    {Name:</span><span style="color: #AAD94C;"> &quot;grafana&quot;</span><span>, SkipAuth:</span><span style="color: #D2A6FF;"> true</span><span>},</span></span>
+<span class="giallo-l"><span>}</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// After — adding Headlamp (requires Authentik forwardauth)</span></span>
+<span class="giallo-l"><span style="color: #FF8F40;">var</span><span> publicServices</span><span style="color: #F29668;"> =</span><span> []</span><span style="color: #59C2FF;">PublicService</span><span>{</span></span>
+<span class="giallo-l"><span>    {Name:</span><span style="color: #AAD94C;"> &quot;grafana&quot;</span><span>, SkipAuth:</span><span style="color: #D2A6FF;"> true</span><span>},</span></span>
+<span class="giallo-l"><span>    {Name:</span><span style="color: #AAD94C;"> &quot;headlamp&quot;</span><span>, SkipAuth:</span><span style="color: #D2A6FF;"> false</span><span>},</span></span>
+<span class="giallo-l"><span>}</span></span></code></pre>
 <p><strong>Step 2</strong>: Run <code>just core hetzner up</code> — Pulumi generates the Traefik router and updates Cloudflare DNS automatically. Alternatively, add a Traefik router manually to <code>core/cloud/bifrost/traefik/dynamic/services.yml</code>:</p>
-<pre data-lang="yaml" style="background-color:#212733;color:#ccc9c2;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#73d0ff;">http</span><span style="color:#ccc9c2cc;">:
-</span><span>  </span><span style="color:#73d0ff;">routers</span><span style="color:#ccc9c2cc;">:
-</span><span>    </span><span style="color:#73d0ff;">headlamp</span><span style="color:#ccc9c2cc;">:
-</span><span>      </span><span style="color:#73d0ff;">rule</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">Host(`headlamp.madhan.app`)
-</span><span>      </span><span style="color:#73d0ff;">middlewares</span><span style="color:#ccc9c2cc;">: </span><span>[</span><span style="color:#bae67e;">authentik-forwardauth</span><span>]
-</span><span>      </span><span style="color:#73d0ff;">service</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">k8s-gateway
-</span><span>      </span><span style="color:#73d0ff;">tls</span><span style="color:#ccc9c2cc;">:
-</span><span>        </span><span style="color:#73d0ff;">certResolver</span><span style="color:#ccc9c2cc;">: </span><span style="color:#bae67e;">cloudflare-dns
-</span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">http</span><span style="color: #BFBDB6B3;">:</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">  routers</span><span style="color: #BFBDB6B3;">:</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">    headlamp</span><span style="color: #BFBDB6B3;">:</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">      rule</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> Host(`headlamp.madhan.app`)</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">      middlewares</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">authentik-forwardauth</span><span>]</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">      service</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> k8s-gateway</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">      tls</span><span style="color: #BFBDB6B3;">:</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">        certResolver</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> cloudflare-dns</span></span></code></pre>
 <p><strong>Step 3</strong>: Run <code>just core cloudflare up &amp;&amp; just core hetzner up</code> — this:</p>
 <ul>
 <li>Creates the Cloudflare A record <code>headlamp.madhan.app → 178.156.199.250</code></li>
@@ -591,6 +604,18 @@
 <h2 id="how-to-revoke-internet-access">How to Revoke Internet Access</h2>
 <p>Remove the service from <code>publicServices</code> in <code>cloudflare.go</code> and remove its router from <code>services.yml</code>, then run <code>just core cloudflare up &amp;&amp; just core hetzner up</code>.</p>
 <p>The Cloudflare A record is deleted. DNS falls back to <code>*.madhan.app → 192.168.1.220</code> (private) — service becomes LAN-only again automatically.</p>
+<h2 id="cloudflare">Cloudflare</h2>
+<p>Cloudflare hosts <code>madhan.app</code> and every record is provisioned by Pulumi
+(
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;cloud&#x2F;cloudflare.go"><code>core&amp;#x2F;cloud&amp;#x2F;cloudflare.go</code></a>
+, <code>just core cloudflare up</code>). Its API
+is also what cert-manager's DNS-01 solver uses to issue the wildcard certificate
+without exposing an HTTP endpoint — see <a href="https://homelab.madhan.app/platform/cert-manager/">cert-manager</a>.</p>
+<p>All records are <strong>DNS-only</strong> (Proxied: false, orange cloud off). Cloudflare
+resolves specific records before wildcards, so a service with no explicit A
+record falls through to <code>*.madhan.app</code> → private IP → unreachable from the
+internet. That fallback is the mechanism behind revoking access below: delete
+the record and the service is LAN-only again, with no other change.</p>
 <h2 id="dns-split-strategy">DNS Split Strategy</h2>
 <table><thead><tr><th>Domain Pattern</th><th>Resolves To</th><th>Accessible From</th></tr></thead><tbody>
 <tr><td><code>*.madhan.app</code> (wildcard)</td><td><code>192.168.1.220</code></td><td>LAN only</td></tr>
@@ -606,17 +631,15 @@
 <strong>everyone</strong> — including devices already on the LAN. A LAN browser accessing <code>grafana.madhan.app</code>
 will still route out to the Hetzner VPS and tunnel back through WireGuard to reach the pod, even
 though both the client and the pod are on the same network.</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span>LAN Browser
-</span><span>  → DNS (Cloudflare): grafana.madhan.app → 178.156.199.250   ← public IP, not LAN
-</span><span>  → Traefik on Hetzner VPS
-</span><span>  → WireGuard tunnel → 192.168.1.220 → Grafana pod
-</span><span>  (unnecessary internet round-trip for a LAN client)
-</span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>LAN Browser</span></span>
+<span class="giallo-l"><span>  → DNS (Cloudflare): grafana.madhan.app → 178.156.199.250   ← public IP, not LAN</span></span>
+<span class="giallo-l"><span>  → Traefik on Hetzner VPS</span></span>
+<span class="giallo-l"><span>  → WireGuard tunnel → 192.168.1.220 → Grafana pod</span></span>
+<span class="giallo-l"><span>  (unnecessary internet round-trip for a LAN client)</span></span></code></pre>
 <p>To avoid this, run a local DNS resolver (e.g. Pi-hole) that overrides public service records to
 the LAN gateway IP for devices on your network:</p>
-<pre style="background-color:#212733;color:#ccc9c2;"><code><span># Pi-hole custom DNS overrides
-</span><span>grafana.madhan.app  → 192.168.1.220
-</span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span># Pi-hole custom DNS overrides</span></span>
+<span class="giallo-l"><span>grafana.madhan.app  → 192.168.1.220</span></span></code></pre>
 <p>With Pi-hole, LAN clients resolve directly to <code>192.168.1.220</code> and bypass Hetzner entirely.
 Without it, all public services hairpin through the VPS regardless of where the client is.</p>
 <h2 id="public-services-config-single-source-of-truth">Public Services Config (Single Source of Truth)</h2>
@@ -628,11 +651,10 @@ Without it, all public services hairpin through the VPS regardless of where the 
 </ol>
 <h2 id="netbird-expose-feature-temporary-sharing">NetBird Expose Feature (Temporary Sharing)</h2>
 <p>For temporary access without DNS changes, use the NetBird expose feature:</p>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># From any machine on the NetBird mesh
-</span><span style="color:#ffd580;">netbird</span><span> expose 8080
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Output: foo.proxy.madhan.app → your local port 8080
-</span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># From any machine on the NetBird mesh</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">netbird</span><span style="color: #AAD94C;"> expose</span><span style="color: #D2A6FF;"> 8080</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Output: foo.proxy.madhan.app → your local port 8080</span></span></code></pre>
 <p>This routes via <code>*.proxy.madhan.app → Traefik TCP passthrough → netbird-proxy → WireGuard mesh → your machine</code>. TLS is provided by the reverse-proxy container's ACME.</p>
 <p>This is useful for:</p>
 <ul>
@@ -641,20 +663,18 @@ Without it, all public services hairpin through the VPS regardless of where the 
 <li>Access that doesn't need SSO (the TCP passthrough bypasses Authentik)</li>
 </ul>
 <h2 id="verification">Verification</h2>
-<pre data-lang="bash" style="background-color:#212733;color:#ccc9c2;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="font-style:italic;color:#5c6773;"># DNS resolves correctly
-</span><span style="color:#ffd580;">dig</span><span> grafana.madhan.app     </span><span style="font-style:italic;color:#5c6773;"># → 178.156.199.250  (public, explicit A record)
-</span><span style="color:#ffd580;">dig</span><span> headlamp.madhan.app    </span><span style="font-style:italic;color:#5c6773;"># → 192.168.1.220   (LAN wildcard, private)
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># Unauthenticated access redirects to SSO
-</span><span style="color:#ffd580;">curl</span><span style="color:#ffcc66;"> -I</span><span> https://grafana.madhan.app   </span><span style="font-style:italic;color:#5c6773;"># → 302 to auth.madhan.app
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># K8s routing peer connected
-</span><span style="color:#ffd580;">kubectl</span><span> get pods</span><span style="color:#ffcc66;"> -n</span><span> netbird           </span><span style="font-style:italic;color:#5c6773;"># → Running
-</span><span>
-</span><span style="font-style:italic;color:#5c6773;"># NetBird UI: Peers → bifrost-agent Connected, k8s-routing-peer Connected
-</span><span style="font-style:italic;color:#5c6773;"># NetBird UI: Routes → 192.168.1.0/24 → Active
-</span></code></pre>
-
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># DNS resolves correctly</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">dig</span><span style="color: #AAD94C;"> grafana.madhan.app</span><span style="color: #5A6673;font-style: italic;">     # → 178.156.199.250  (public, explicit A record)</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">dig</span><span style="color: #AAD94C;"> headlamp.madhan.app</span><span style="color: #5A6673;font-style: italic;">    # → 192.168.1.220   (LAN wildcard, private)</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Unauthenticated access redirects to SSO</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #95E6CB;"> -I</span><span style="color: #AAD94C;"> https://grafana.madhan.app</span><span style="color: #5A6673;font-style: italic;">   # → 302 to auth.madhan.app</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># K8s routing peer connected</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> netbird</span><span style="color: #5A6673;font-style: italic;">           # → Running</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># NetBird UI: Peers → bifrost-agent Connected, k8s-routing-peer Connected</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># NetBird UI: Routes → 192.168.1.0/24 → Active</span></span></code></pre>
 
     <!--  Errata section  -->
     
@@ -666,7 +686,7 @@ Without it, all public services hairpin through the VPS regardless of where the 
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;main&#x2F;docs/content/infrastructure&#x2F;access&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;v0.1.7&#x2F;docs/content/infrastructure&#x2F;access&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -751,11 +771,11 @@ Without it, all public services hairpin through the VPS regardless of where the 
             
                 
             
+                
+            
         
             
             
-            
-                
             
                 
             
@@ -872,6 +892,12 @@ Without it, all public services hairpin through the VPS regardless of where the 
                 <li>
                     
                     <a href="https://homelab.madhan.app/infrastructure/access/#how-to-revoke-internet-access" class="toc-link">How to Revoke Internet Access</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/access/#cloudflare" class="toc-link">Cloudflare</a>
                     
                 </li>
             
@@ -1092,6 +1118,8 @@ Without it, all public services hairpin through the VPS regardless of where the 
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/development/devcontainer">Devcontainer</a></li>
                             
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/development/docs-site">This Documentation Site</a></li>
+                            
                             
                         </ul>
                     </details>
@@ -1111,8 +1139,6 @@ Without it, all public services hairpin through the VPS regardless of where the 
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/authentik">Authentik</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/netbird">NetBird VPN</a></li>
-                            
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/dns-tls">Cloudflare</a></li>
                             
                                 <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/infrastructure/access">Service Access &amp; Internet Exposure</a></li>
                             
@@ -1198,8 +1224,6 @@ Without it, all public services hairpin through the VPS regardless of where the 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/alertmanager">AlertManager</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
@@ -1299,11 +1323,11 @@ Without it, all public services hairpin through the VPS regardless of where the 
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
                                                 
                                                 
                                             </ul>
@@ -1315,11 +1339,11 @@ Without it, all public services hairpin through the VPS regardless of where the 
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support">Support Tools</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
                                                 
                                                 
                                             </ul>
@@ -1347,11 +1371,11 @@ Without it, all public services hairpin through the VPS regardless of where the 
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
@@ -1363,11 +1387,11 @@ Without it, all public services hairpin through the VPS regardless of where the 
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>

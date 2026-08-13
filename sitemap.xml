@@ -28,6 +28,9 @@
         <loc>https://homelab.madhan.app/development/devcontainer/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/development/docs-site/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/getting-started/</loc>
     </url>
     <url>
@@ -50,9 +53,6 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/infrastructure/authentik/</loc>
-    </url>
-    <url>
-        <loc>https://homelab.madhan.app/infrastructure/dns-tls/</loc>
     </url>
     <url>
         <loc>https://homelab.madhan.app/infrastructure/hetzner-bifrost/</loc>
@@ -131,9 +131,6 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/monitoring/</loc>
-    </url>
-    <url>
-        <loc>https://homelab.madhan.app/workloads/monitoring/alertmanager/</loc>
     </url>
     <url>
         <loc>https://homelab.madhan.app/workloads/monitoring/argocd-monitor/</loc>
