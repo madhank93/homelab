@@ -39,8 +39,9 @@ early is allowed **only** when all of the following hold:
    rather than trusting the value key. A wrong key is silently ignored.
 4. A comment records **why** and says to drop it once the chart catches up.
 
-Current instance: `core/platform/argocd.go` runs Argo CD `v3.5.1` on chart
-`10.3.2` (which pins `v3.5.0`) for the server-side-diff Secret-masking fixes.
-Upstream's own 3.5.1 diff is nothing but the image tag.
+Current instance: `core/platform/argocd.go` runs an Argo CD image ahead of the one
+its chart pins, for the server-side-diff Secret-masking fixes. Upstream's own diff
+between the two is nothing but the image tag. Both numbers are in the
+[Software Inventory](@/architecture/software-inventory.md).
 
-See [GitOps Flow](/architecture/gitops-flow) for the end-to-end diagram.
+See [GitOps Flow](@/architecture/gitops-flow/index.md) for the end-to-end diagram.

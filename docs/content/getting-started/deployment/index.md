@@ -255,7 +255,7 @@ This creates in Authentik:
 
 ## Phase 5 — NetBird First Login + Authentik Connector
 
-NetBird v0.66 runs an embedded Dex OIDC provider. On first deploy, no external identity provider is connected — you must log in with the local admin account to wire up Authentik.
+The NetBird combined server runs an embedded Dex OIDC provider. On first deploy, no external identity provider is connected — you must log in with the local admin account to wire up Authentik.
 
 ### 5a. Log in with local admin
 

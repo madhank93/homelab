@@ -1,6 +1,6 @@
 +++
 title = "NetBird VPN"
-description = "NetBird v0.66 combined server — WireGuard mesh for remote cluster access, with embedded Dex OIDC and Authentik as the upstream identity connector."
+description = "NetBird combined server — WireGuard mesh for remote cluster access, with embedded Dex OIDC and Authentik as the upstream identity connector."
 weight = 30
 +++
 
@@ -92,7 +92,7 @@ flowchart LR
 
 ## Embedded Dex OIDC — Key Design Constraint
 
-NetBird v0.66 combined server **always** runs an embedded [Dex](https://dexidp.io/) OIDC provider. This is hardcoded in the Go source (`Enabled: true` in `ToManagementConfig()`) and cannot be disabled via configuration.
+The NetBird combined server **always** runs an embedded [Dex](https://dexidp.io/) OIDC provider. This is hardcoded in the Go source (`Enabled: true` in `ToManagementConfig()`) and cannot be disabled via configuration.
 
 **Consequence:** all JWT tokens that NetBird validates are issued by embedded Dex — not by Authentik directly. Pointing `auth.issuer` to Authentik's URL would cause Dex to claim to be Authentik while signing tokens with its own SQLite-stored keys, producing a JWKS mismatch and `unable to find appropriate key` errors.
 
@@ -148,7 +148,7 @@ This connector is registered in NetBird via the UI after first login (see [First
 | `reverseProxy.trustedHTTPProxies` | `172.30.0.10/32` | Traefik IP in bifrost_net (static) |
 | `store.engine` | `sqlite` | static |
 
-> **Note:** The `auth.audience` field and `server.idp` section are silently ignored by NetBird v0.66's combined server config parser — the audience is hardcoded to `"netbird-dashboard"` in Go, and the idp section is not part of `ServerConfig`.
+> **Note:** The `auth.audience` field and `server.idp` section are silently ignored by the combined server's config parser — the audience is hardcoded to `"netbird-dashboard"` in Go, and the idp section is not part of `ServerConfig`.
 
 ---
 

@@ -22,11 +22,11 @@ See [n8n](/workloads/automation/n8n/) for the Cluster CR definition and how n8n 
 
 | Setting | Value | Why |
 |---------|-------|-----|
-| Helm chart | `cloudnative-pg` v0.27.1 | Pinned version |
+| Helm chart | `cloudnative-pg` | Version in the [Software Inventory](@/architecture/software-inventory.md) |
 | Namespace | `cnpg-system` | Operator runs cluster-wide |
 | Chart repo | `cloudnative-pg.github.io/charts` | Official CNPG chart repo |
 
-Source: [`workloads/databases/cnpg.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/databases/cnpg.go)
+Source: {{ src(path="workloads/databases/cnpg.go") }}
 
 ## Troubleshooting
 

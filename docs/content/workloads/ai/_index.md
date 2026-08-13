@@ -1,6 +1,6 @@
 +++
 title = "AI"
-description = "GPU-accelerated AI workloads: Ollama, ComfyUI, Kubeflow, and NVIDIA GPU Operator."
+description = "GPU-accelerated AI workloads: Ollama, ComfyUI, Kubeflow, and the NVIDIA device plugin."
 weight = 10
 sort_by = "weight"
 +++

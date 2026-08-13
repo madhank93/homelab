@@ -14,7 +14,7 @@ Cilium's eBPF data plane eliminates `iptables` overhead and enables features not
 
 ## How It's Used Here
 
-Cilium 1.18.12 replaces kube-proxy entirely, manages LoadBalancer IPs in the `192.168.1.220–230` pool, runs the shared `homelab-gateway` (Envoy) for all HTTP routing, and exposes Hubble UI at `hubble.madhan.app`. Installed via Pulumi at `core/platform/cilium.go`.
+Cilium replaces kube-proxy entirely, manages LoadBalancer IPs in the `192.168.1.220–230` pool, runs the shared `homelab-gateway` (Envoy) for all HTTP routing, and exposes Hubble UI at `hubble.madhan.app`. Installed via Pulumi at `core/platform/cilium.go`.
 
 ## Configuration
 
@@ -34,7 +34,7 @@ Cilium 1.18.12 replaces kube-proxy entirely, manages LoadBalancer IPs in the `19
 
 Standard Kubernetes uses `kube-proxy` as a DaemonSet to manage `iptables` rules for Service-to-Pod routing. This homelab replaces kube-proxy entirely with Cilium's eBPF data plane.
 
-**How it's disabled in Talos** (from [`core/platform/talos.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/talos.go)):
+**How it's disabled in Talos** (from {{ src(path="core/platform/talos.go") }}):
 
 ```yaml
 cluster:
@@ -42,7 +42,7 @@ cluster:
     disabled: true
 ```
 
-**How Cilium takes over** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/cilium.go)):
+**How Cilium takes over** (from {{ src(path="core/platform/cilium.go") }}):
 
 ```go
 "kubeProxyReplacement": pulumi.Bool(true),
@@ -73,7 +73,7 @@ cilium status | grep KubeProxyReplacement
 
 Bare-metal clusters have no cloud provider to assign LoadBalancer IPs. Cilium's L2 announcement feature fills this role using ARP.
 
-**IP Pool** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/cilium.go)):
+**IP Pool** (from {{ src(path="core/platform/cilium.go") }}):
 
 ```go
 // IPs: 192.168.1.220 through 192.168.1.230 (11 addresses, each as /32)
@@ -123,7 +123,29 @@ The [Gateway API](https://gateway-api.sigs.k8s.io/) is the successor to the Kube
 | Expressiveness | Limited header/path matching | Rich routing rules |
 | Future | Legacy | Active development |
 
-**The shared Gateway** (from [`core/platform/cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/cilium.go)):
+### Gateway API CRDs
+
+The CRDs are **not** bundled with the Cilium chart. They are vendored into the
+repo at
+{{ src(path="core/platform/manifests/gateway-api-v1.2.1-experimental-install.yaml", label="core/platform/manifests/") }}
+and applied by `InstallGateway` before the Gateway itself.
+
+They used to be fetched from the upstream GitHub release URL on every `pulumi
+up`. One rate-limited fetch returned an HTML error page, which the YAML decoder
+parsed as a bare string, and the whole platform stack failed with `cannot
+unmarshal string into Go value of type map[string]interface{}` — an error that
+names nothing useful. Vendoring pins the CRDs in git like every other
+dependency.
+
+To upgrade, re-vendor rather than pointing the code back at a URL:
+
+```bash
+curl -sL -o core/platform/manifests/gateway-api-<version>-experimental-install.yaml \
+  https://github.com/kubernetes-sigs/gateway-api/releases/download/<version>/experimental-install.yaml
+# then update the File: path in core/platform/cilium.go and the Software Inventory
+```
+
+**The shared Gateway** (from {{ src(path="core/platform/cilium.go") }}):
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1

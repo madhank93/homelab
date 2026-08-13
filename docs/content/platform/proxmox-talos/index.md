@@ -31,7 +31,7 @@ Two image variants are downloaded from the Talos image factory:
 ## Cluster Configuration
 
 **Cluster name:** `talos-cluster`
-**Talos version:** v1.13.8
+**Talos version:** see the [Software Inventory](@/architecture/software-inventory.md)
 **API endpoint (VIP):** `https://192.168.1.210:6443`
 
 ### Cluster-Level Patch

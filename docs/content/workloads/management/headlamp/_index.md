@@ -24,7 +24,7 @@ in a console.
 
 Headlamp runs in the `headlamp` namespace, accessible at `https://headlamp.madhan.app`. It uses a long-lived ServiceAccount token with `cluster-admin` ClusterRoleBinding.
 
-Source: [`workloads/management/headlamp.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/management/headlamp.go)
+Source: {{ src(path="workloads/management/headlamp.go") }}
 
 ## Configuration
 

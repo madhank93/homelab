@@ -38,7 +38,7 @@ OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Po
 | n8n | `secret/data/n8n` | `ENCRYPTION_KEY` |
 | NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` |
 
-Source: [`workloads/secrets/openbao.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/secrets/openbao.go)
+Source: {{ src(path="workloads/secrets/openbao.go") }}
 
 ## Secrets Patterns
 
@@ -65,7 +65,7 @@ For Harbor, whose Helm chart does not support `extraVolumes`, a dedicated `secre
 
 | Setting | Value | Why |
 |---------|-------|-----|
-| Helm chart | `openbao` v0.25.6 | Pinned version |
+| Helm chart | `openbao` | Version in the [Software Inventory](@/architecture/software-inventory.md) |
 | Storage | `10Gi` Longhorn | Persistent secrets storage |
 | Storage backend | `file` | Simple, no Consul dependency |
 | CSI provider | enabled | Bridges OpenBao → CSI driver |
@@ -82,7 +82,7 @@ OpenBao starts in a sealed state after every pod restart. An `unseal` sidecar co
 "extraContainers": []map[string]any{
     {
         "name":  "unseal",
-        "image": "openbao/openbao:2.5.1",
+        "image": "openbao/openbao:<version>",   // matches the server image
         "command": []string{"sh", "-c", `
 while true; do
   STATUS=$(bao status -format=json 2>/dev/null || echo '{"sealed":true}')

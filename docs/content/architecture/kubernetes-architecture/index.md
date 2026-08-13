@@ -37,14 +37,14 @@ flowchart TB
     end
 
     subgraph BIFROST["Bifrost VPS · Hetzner · 178.156.199.250"]
-        TRF["Traefik v3.7.1\nTLS termination + ForwardAuth"]
-        AUTH["Authentik 2026.5.2\nOIDC / SSO broker"]
-        NBS["NetBird 0.76.3\nManagement + Signal + Relay"]
+        TRF["Traefik\nTLS termination + ForwardAuth"]
+        AUTH["Authentik\nOIDC / SSO broker"]
+        NBS["NetBird\nManagement + Signal + Relay"]
         NBA["netbird-agent\nWireGuard routing peer\n→ advertises 192.168.1.0/24"]
     end
 
     subgraph LAN["On-Prem LAN · 192.168.1.0/24"]
-        subgraph CP["Control Plane · Talos v1.13.8"]
+        subgraph CP["Control Plane · Talos"]
             VIP["KubeVIP\n192.168.1.210:6443"]
             CP1["controller1\n.211"]
             CP2["controller2\n.212"]
@@ -53,35 +53,35 @@ flowchart TB
         end
 
         subgraph PLT["Platform Layer"]
-            CIL["Cilium 1.18.12\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API"]
-            CERT["cert-manager v1.20.2\nCloudflare DNS-01\nwildcard TLS"]
-            ARGO["Argo CD 10.3.2\nApplicationSet → v0.1.7-manifests"]
+            CIL["Cilium\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API"]
+            CERT["cert-manager\nCloudflare DNS-01\nwildcard TLS"]
+            ARGO["Argo CD\nApplicationSet → v0.1.7-manifests"]
         end
 
         subgraph SECRETS["Secrets Layer"]
-            OB["OpenBao 0.28.3\nVault-compatible KV"]
+            OB["OpenBao\nVault-compatible KV"]
             CSI["CSI Secrets Store\nfile mounts + k8s Secrets"]
         end
 
         subgraph STORAGE["Storage"]
-            LONG["Longhorn 1.12.0\nReplicated block storage"]
-            CNPG["CloudNativePG 0.28.2\nPostgreSQL operator"]
+            LONG["Longhorn\nReplicated block storage"]
+            CNPG["CloudNativePG\nPostgreSQL operator"]
         end
 
         subgraph WORKERS["Workers · k8s-worker1–3"]
-            OBS["Observability\nVictoriaMetrics · VictoriaLogs\nGrafana · OTel 0.156.2"]
+            OBS["Observability\nVictoriaMetrics · VictoriaLogs\nGrafana · OTel"]
             SEC["Security\nFalco · Kyverno · Trivy"]
             APPS["Applications\nn8n · Harbor · Headlamp\nOpenBao · NetBird peer"]
         end
 
         subgraph GPU["k8s-worker4 · RTX 5070 Ti"]
-            AI["AI Workloads\nOllama 0.24.0 · ComfyUI\nKubeflow"]
-            NVIDIA["NVIDIA Device Plugin 0.19.1\nDCGM Exporter 4.8.2"]
+            AI["AI Workloads\nOllama · ComfyUI\nKubeflow"]
+            NVIDIA["NVIDIA Device Plugin\nDCGM Exporter"]
         end
     end
 
     subgraph GITOPS["GitOps · GitHub"]
-        SRC["v0.1.6 branch\nPulumi + CDK8s source"]
+        SRC["release branch\nPulumi + CDK8s source"]
         MFST["v0.1.7-manifests branch\nSynthesized YAML"]
         GHA["GitHub Actions\ncdk8s synth + publish"]
     end
@@ -139,7 +139,7 @@ Cilium handles both CNI and north-south ingress via the Gateway API:
 | CNI mode | kube-proxy replacement |
 | L2 announcements | `192.168.1.220–230` pool (LAN) |
 | Gateway class | `cilium` |
-| HTTPRoute for Hubble UI | `hubble.madhan.app → hubble-relay:80` |
+| HTTPRoute for Hubble UI | `hubble.madhan.app → hubble-ui:80` |
 | ForwardAuth | Via Traefik on Bifrost (not in-cluster) |
 
 The Gateway API `GatewayClass` is provisioned by `core/platform/cilium.go`. App HTTPRoutes are defined in CDK8s (`workloads/**/*.go`).
@@ -155,11 +155,11 @@ The Gateway API `GatewayClass` is provisioned by `core/platform/cilium.go`. App 
 | `observability/` | VictoriaMetrics, VictoriaLogs, OTel | Deployment + DaemonSet |
 | `monitoring/` | Grafana | Any worker |
 | `security/` | Falco (eBPF), Kyverno, Trivy | DaemonSet + CronJob |
-| `hardware/` | NVIDIA GPU Operator | DaemonSet, NodeFeatureDiscovery |
+| `hardware/` | NVIDIA device plugin + DCGM | DaemonSet, NodeFeatureDiscovery |
 | `networking/` | NetBird peer | `hostNetwork: true`, any worker |
 | `registry/` | Harbor | Deployments + RWO PVCs |
 | `automation/` | n8n + PostgreSQL | Any worker |
-| `ai/` | Ollama, ComfyUI | **`k8s-worker4` only** (GPU) |
+| `ai/` | Ollama, ComfyUI, Kubeflow | **`k8s-worker4` only** (GPU) |
 | `management/` | Headlamp | Any worker |
 | `support/` | Stakater Reloader | Any worker |
 
@@ -176,4 +176,6 @@ The Gateway API `GatewayClass` is provisioned by `core/platform/cilium.go`. App 
 | `headlamp.madhan.app` | `192.168.1.220` (LAN) | LAN or VPN only |
 | `hubble.madhan.app` | `192.168.1.220` (LAN) | LAN or VPN only |
 
-See [Network Flow](/architecture/network-flow) for the complete traffic path breakdown.
+See [Network Flow](@/architecture/network-flow/index.md) for the complete traffic path
+breakdown, and the [Software Inventory](@/architecture/software-inventory.md) for the
+version of everything named above.

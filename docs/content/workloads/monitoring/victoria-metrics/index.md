@@ -36,7 +36,7 @@ VictoriaMetrics runs in **cluster mode** with three components:
 - Discovers `PodMonitor` resources across all namespaces (required for CNPG)
 - Remote-writes to `vminsert:8480`
 
-Source: [`workloads/observability/victoria_metrics.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/observability/victoria_metrics.go)
+Source: {{ src(path="workloads/observability/victoria_metrics.go") }}
 
 ## Configuration
 
@@ -48,7 +48,38 @@ Source: [`workloads/observability/victoria_metrics.go`](https://github.com/madha
 | vminsert resources | `500m` / `512Mi` | Lightweight write path |
 | vmselect resources | `500m` / `1Gi` | Query path needs more memory |
 | vmstorage resources | `1000m` / `1Gi` | Storage is most resource-intensive |
-| VMAgent chart version | `0.15.3` | victoria-metrics-agent |
+| VMAgent | Ships inside the k8s-stack chart | No separate pin |
+
+## Alertmanager
+
+VMAlertmanager ships inside the same k8s-stack chart, so there is no separate
+deployment and no separate namespace — it runs as `vmalertmanager-vm-stack` in
+`victoria-metrics` and is reachable at `https://alertmanager.madhan.app`.
+
+The chart also installs the Prometheus Operator CRDs (`PrometheusRule`,
+`ServiceMonitor`, `PodMonitor`), which is why charts that ship their own
+ServiceMonitors work here without a Prometheus anywhere in the cluster.
+
+Routing is still a placeholder — a webhook receiver with no target:
+
+```yaml
+route:
+  group_by: [alertname]
+  group_wait: 10s
+  repeat_interval: 1h
+  receiver: web.hook
+receivers:
+  - name: web.hook
+```
+
+Add a real receiver under `alertmanager.config.receivers` in
+{{ src(path="workloads/observability/victoria_metrics.go") }} to get
+notifications out.
+
+```bash
+curl https://alertmanager.madhan.app/api/v2/alerts | jq .
+curl https://alertmanager.madhan.app/api/v2/silences | jq .
+```
 
 ## How VMAgent Discovers Metrics
 
@@ -77,7 +108,7 @@ All cluster apps (ServiceMonitor/PodMonitor)
   → vmstorage (100Gi Longhorn PVC)
   → vmselect:8481
   → Grafana (Prometheus datasource)
-  → AlertManager (rules evaluation via Prometheus operator)
+  → VMAlertmanager:9093 (rule evaluation, grouping, routing)
 ```
 
 ## Troubleshooting

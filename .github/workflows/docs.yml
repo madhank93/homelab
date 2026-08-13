@@ -7,8 +7,20 @@ on:
       - 'v*'  # Release branches, so a version cut does not strand the docs
     paths:
       - 'docs/**'
+      - 'scripts/docs-version-check.sh'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
+
+# main and any v* branch publish to the same gh-pages with keep_files: false.
+# Serialise them so a slow run cannot overwrite a newer deploy.
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
+env:
+  # Keep in step with [markdown.highlighting] in docs/config.toml — 0.21 renamed
+  # that table and dropped several themes, so the two versions move together.
+  ZOLA_VERSION: 0.22.1
 
 jobs:
   build-deploy:
@@ -24,8 +36,11 @@ jobs:
 
       - name: Install Zola
         run: |
-          curl -sL https://github.com/getzola/zola/releases/download/v0.20.0/zola-v0.20.0-x86_64-unknown-linux-gnu.tar.gz \
+          curl -sL "https://github.com/getzola/zola/releases/download/v${ZOLA_VERSION}/zola-v${ZOLA_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
             | tar -xz -C /usr/local/bin
+
+      - name: Check documented versions against code
+        run: ./scripts/docs-version-check.sh
 
       - name: Build docs
         working-directory: docs

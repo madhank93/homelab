@@ -1,6 +1,6 @@
 +++
 title = "Monitoring"
-description = "Observability stack: VictoriaMetrics, VictoriaLogs, Grafana, AlertManager, OpenTelemetry."
+description = "Observability stack: VictoriaMetrics, VictoriaLogs, Grafana, OpenTelemetry, Metrics Server."
 weight = 20
 sort_by = "weight"
 +++
@@ -10,8 +10,11 @@ The monitoring stack provides full observability for the cluster:
 - **VictoriaMetrics** — time-series metrics storage (Prometheus-compatible)
 - **VictoriaLogs** — log storage (Loki-compatible)
 - **Grafana** — dashboards and visualization
-- **AlertManager** — alert routing and deduplication
 - **OpenTelemetry Collector** — metrics and log collection pipeline
+- **Metrics Server** — resource metrics for `kubectl top` and HPAs
+- **argocd-monitor** — ServiceMonitors for the Argo CD components
+
+Alertmanager is not separate: it ships inside the VictoriaMetrics k8s-stack chart.
 
 ## Data Flow
 

@@ -16,7 +16,7 @@ GitOps with ArgoCD ensures the cluster state is always derivable from code — t
 
 ArgoCD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.7-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
 
-**Code:** [`core/platform/argocd.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/argocd.go) · **Namespace:** `argocd` · **Chart version:** `10.3.2` · **Argo CD:** `v3.5.1`
+**Code:** {{ src(path="core/platform/argocd.go") }} · **Namespace:** `argocd` · **Versions:** [Software Inventory](@/architecture/software-inventory.md)
 
 ## Screenshots
 
@@ -27,7 +27,7 @@ ArgoCD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-
 ```go
 helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
     Chart:   pulumi.String("argo-cd"),
-    Version: pulumi.String("10.3.2"),
+    Version: pulumi.String(chartVersion),
     RepositoryOpts: &helm.RepositoryOptsArgs{
         Repo: pulumi.String("https://argoproj.github.io/argo-helm"),
     },
@@ -90,14 +90,19 @@ spec:
 | `automated.selfHeal=true` | ApplicationSet-level | Manual kubectl changes are reverted |
 | `Prune=false` on bootstrap Secrets | Per-Secret annotation | Prevents ArgoCD deleting `openbao-unseal-key` and `cloudflare-api-token` |
 
-## HTTPRoutes
+## HTTPRoute
 
-ArgoCD is exposed via two routes:
+One `HTTPRoute` named `argocd-server-route` serves both hostnames:
 
-| Route | URL | Purpose |
-|-------|-----|---------|
-| HTTPRoute | `argocd.local` | LAN HTTP access |
-| TLSRoute | `argocd.madhan.app` | TLS passthrough to argocd-server:443 |
+| Hostname | Purpose |
+|----------|---------|
+| `argocd.local` | LAN HTTP access |
+| `argocd.madhan.app` | TLS terminated at the Cilium gateway |
+
+Argo CD runs in insecure mode (plain HTTP on `:80`) and the wildcard certificate
+is presented by the gateway. The TLS-passthrough `TLSRoute` this page used to
+describe is gone: the gateway's `:443` listener runs `mode: Terminate`, so there
+is nothing for a passthrough route to attach to.
 
 ## `ignoreDifferences`
 

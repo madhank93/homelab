@@ -21,14 +21,14 @@ Without Reloader, secret rotation requires either:
 
 Reloader is deployed from the Stakater Helm chart in the `reloader` namespace. Any Deployment, StatefulSet, or DaemonSet with the annotation `reloader.stakater.com/auto: "true"` is automatically restarted when any ConfigMap or Secret it references changes.
 
-Source: [`workloads/support/reloader.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/support/reloader.go)
+Source: {{ src(path="workloads/support/reloader.go") }}
 
 ## Configuration
 
 | Setting | Value | Why |
 |---------|-------|-----|
 | Namespace | `reloader` | Isolated namespace |
-| Helm chart | `reloader` v2.2.8 | stakater.github.io/stakater-charts |
+| Helm chart | `reloader` | stakater.github.io/stakater-charts |
 
 ## Usage Pattern
 

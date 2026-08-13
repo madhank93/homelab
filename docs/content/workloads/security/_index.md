@@ -1,6 +1,6 @@
 +++
 title = "Security"
-description = "Runtime security and vulnerability scanning: Falco and Trivy."
+description = "Runtime security and vulnerability scanning: Falco, Kyverno, and Trivy."
 weight = 30
 sort_by = "weight"
 +++

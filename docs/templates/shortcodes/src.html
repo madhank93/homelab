@@ -1,0 +1,4 @@
+{#- Link to a file in the source repo at the ref this docs build describes.
+     The ref lives in config.toml (extra.source_ref) so a release cut is a
+     one-line change instead of an edit to every page. -#}
+<a href="{{ config.extra.source_repo }}/blob/{{ config.extra.source_ref }}/{{ path }}"><code>{{ label | default(value=path) }}</code></a>

@@ -14,9 +14,9 @@ n8n is the leading self-hosted automation platform with native Kubernetes suppor
 
 ## How It's Used Here
 
-n8n is deployed using the [8gears Helm chart](https://github.com/8gears/n8n-helm-chart) (OCI chart `oci://8gears.container-registry.com/library/n8n`, v2.0.1). It uses CloudNativePG for PostgreSQL instead of the embedded Bitnami PostgreSQL subchart.
+n8n is deployed using the [8gears Helm chart](https://github.com/8gears/n8n-helm-chart) (OCI chart `oci://8gears.container-registry.com/library/n8n`). It uses CloudNativePG for PostgreSQL instead of the embedded Bitnami PostgreSQL subchart.
 
-Source: [`workloads/automation/n8n.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/automation/n8n.go)
+Source: {{ src(path="workloads/automation/n8n.go") }}
 
 ## Configuration
 
@@ -24,8 +24,8 @@ Source: [`workloads/automation/n8n.go`](https://github.com/madhank93/homelab/blo
 |---------|-------|-----|
 | Namespace | `n8n` | Isolated namespace |
 | HTTPRoute | `n8n.madhan.app` → `n8n:80` | Gateway API |
-| n8n image tag | `1.78.0` | Pinned — never use `latest` |
-| Chart | 8gears OCI v2.0.1 | Native Kubernetes features (`extraVolumes`, etc.) |
+| n8n image tag | Pinned in the [Software Inventory](@/architecture/software-inventory.md) | Never use `latest` |
+| Chart | 8gears OCI | Native Kubernetes features (`extraVolumes`, etc.) |
 | Persistence | `10Gi` RWX Longhorn | Multi-attach safe |
 | Database | CloudNativePG PostgreSQL | CNPG manages credential lifecycle |
 | DB host | `n8n-pg-rw` | CNPG read-write service |

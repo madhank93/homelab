@@ -25,7 +25,7 @@ netbird-peer-0 (any worker · wt0: 100.109.244.71)
 Grafana / other cluster pod
 ```
 
-Source: [`workloads/networking/netbird_peer.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/networking/netbird_peer.go)
+Source: {{ src(path="workloads/networking/netbird_peer.go") }}
 
 ---
 
@@ -46,7 +46,7 @@ A simple Deployment would create a new peer registration on every restart (e.g.,
 | Setting | Value | Why |
 |---------|-------|-----|
 | Namespace | `netbird` | Privileged PSA (needs NET_ADMIN, SYS_MODULE) |
-| Image | `netbirdio/netbird:0.76.3` | Pinned to match Bifrost server version |
+| Image | `netbirdio/netbird` | Must match the Bifrost server version — see the [Software Inventory](@/architecture/software-inventory.md) |
 | Kind | `StatefulSet` | Persistent identity across restarts |
 | `hostNetwork: true` | true | WireGuard must manipulate host routing table |
 | `dnsPolicy` | `ClusterFirstWithHostNet` | DNS works with hostNetwork |
@@ -56,7 +56,7 @@ A simple Deployment would create a new peer registration on every restart (e.g.,
 | `NB_HOSTNAME` | `k8s-routing-peer` | Peer name in NetBird UI |
 | `NB_SETUP_KEY` | From OpenBao (Pattern B) | Used only on first registration |
 
-> **Critical:** PVC mount path is `/var/lib/netbird/` — **not** `/etc/netbird/`. NetBird v0.66 stores its private key at `/var/lib/netbird/` regardless of what `NB_CONFIG` points to. Mounting at the wrong path means the key is never persisted.
+> **Critical:** PVC mount path is `/var/lib/netbird/` — **not** `/etc/netbird/`. NetBird stores its private key at `/var/lib/netbird/` regardless of what `NB_CONFIG` points to. Mounting at the wrong path means the key is never persisted.
 
 ---
 

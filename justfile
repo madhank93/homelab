@@ -12,6 +12,16 @@ core stack action:
 synth:
     go run .
 
+# Docs: every version in the Software Inventory must still be in the file that
+# pins it, and no other page may state a version. Also runs in CI.
+docs-check:
+    ./scripts/docs-version-check.sh
+
+# Serve the docs locally at http://127.0.0.1:1111
+[working-directory: 'docs']
+docs-serve:
+    zola serve
+
 # Build and push a custom image to Harbor
 # Usage: just build-push <image-name> <tag>
 # Example: just build-push notebook-gateway-controller v1

@@ -16,7 +16,7 @@ ComfyUI is the most flexible and performance-oriented frontend for diffusion mod
 
 ComfyUI runs on k8s-worker4 (GPU node) as a standard Kubernetes Deployment. Model files are stored on a 50 Gi RWX Longhorn PVC shared across pod restarts.
 
-Source: [`workloads/ai/comfyui.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/comfyui.go)
+Source: {{ src(path="workloads/ai/comfyui.go") }}
 
 ## Configuration
 
@@ -30,7 +30,7 @@ Source: [`workloads/ai/comfyui.go`](https://github.com/madhank93/homelab/blob/v0
 | `NVIDIA_VISIBLE_DEVICES` | `all` | Make all GPU devices visible |
 | `nvidia.com/gpu` limit | `1` | One time-sliced virtual GPU |
 | Node selector | `nvidia.com/gpu.present: "true"` | Schedule on GPU node |
-| Toleration | `dedicated=ai:NoSchedule` | Allow scheduling on tainted GPU node |
+| Toleration | `dedicated=ai:NoSchedule` | Vestigial — worker4 carries no matching taint |
 | CPU limit | `4000m` | CPU-hungry during inference |
 | RAM request | `1Gi` | Host RAM for process |
 | RAM limit | `8Gi` | Allow headroom for large model loading |

@@ -48,7 +48,7 @@ With 3 control plane nodes: lose 1 → still have 2/3 → quorum maintained → 
 
 Talos Linux has a built-in VIP feature that floats a virtual IP (`192.168.1.210`) between control plane nodes.
 
-Configuration in the machine patch (see [`core/platform/talos.go`](https://github.com/madhank93/homelab/blob/v0.1.7/core/platform/talos.go)):
+Configuration in the machine patch (see {{ src(path="core/platform/talos.go") }}):
 
 ```yaml
 machine:

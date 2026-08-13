@@ -22,14 +22,14 @@ Trivy is the most widely adopted open-source vulnerability scanner. The Operator
 
 Trivy Operator runs as a single-replica Deployment in the `trivy` namespace. It watches for new or updated Pods and spawns scan Jobs that pull the image and check it against the Trivy vulnerability database.
 
-Source: [`workloads/security/trivy.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/security/trivy.go)
+Source: {{ src(path="workloads/security/trivy.go") }}
 
 ## Configuration
 
 | Setting | Value | Why |
 |---------|-------|-----|
 | Namespace | `trivy` | Isolated namespace |
-| Chart version | `trivy-operator` v0.32.0 | Pinned version |
+| Helm chart | `trivy-operator` | Chart and CRD bundle are pinned separately — see the [Software Inventory](@/architecture/software-inventory.md) |
 | Replicas | `1` | Single operator instance |
 | `scanJobsConcurrentLimit` | `3` | Max parallel scan Jobs |
 | `scanJobsRetryDelay` | `30s` | Wait between retries on scan failure |

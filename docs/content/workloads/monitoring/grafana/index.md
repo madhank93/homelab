@@ -22,7 +22,7 @@ Grafana is the primary observability UI for the cluster. It visualizes:
 - Longhorn volume status
 - Falco security events
 
-Source: [`workloads/monitoring/grafana.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/monitoring/grafana.go)
+Source: {{ src(path="workloads/monitoring/grafana.go") }}
 
 ## Configuration
 

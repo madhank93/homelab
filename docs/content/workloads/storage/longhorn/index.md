@@ -35,7 +35,7 @@ Longhorn provides the `longhorn` StorageClass used by virtually every stateful w
 
 **RWX volumes** use Longhorn's built-in NFS share-manager — Longhorn automatically provisions an NFS server pod for each RWX volume. This eliminates rolling update deadlocks that occur with RWO volumes when a new pod starts before the old pod releases the volume.
 
-Source: [`workloads/storage/longhorn.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/storage/longhorn.go)
+Source: {{ src(path="workloads/storage/longhorn.go") }}
 
 ## Configuration
 

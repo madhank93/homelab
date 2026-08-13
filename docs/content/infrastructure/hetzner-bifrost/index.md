@@ -1,6 +1,6 @@
 +++
 title = "Hetzner Bifrost"
-description = "Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab."
+description = "Hetzner VPS running Traefik, NetBird, and Authentik — the automated public edge for the homelab."
 weight = 10
 +++
 
@@ -50,15 +50,19 @@ All services run via `docker compose` from `/etc/bifrost/`:
 
 | Container | Image | Role |
 |-----------|-------|------|
-| `traefik` | `traefik:v3.7.1` | TLS termination, ForwardAuth, routing |
-| `authentik-server` | `ghcr.io/goauthentik/server:2026.5.2` | GitHub OAuth, OIDC, ForwardAuth provider |
-| `authentik-worker` | `ghcr.io/goauthentik/server:2026.5.2` | Background tasks, email, jobs |
-| `authentik-postgres` | `postgres:16.14-alpine` | Authentik database |
-| `netbird-server` | `netbirdio/netbird-server:0.76.3` | Combined: management + signal + relay + STUN + embedded Dex OIDC |
-| `netbird-dashboard` | `netbirdio/dashboard:v2.38.1` | NetBird web UI |
-| `netbird-proxy` | `netbirdio/reverse-proxy:0.76.3` | `*.proxy.madhan.app` TCP passthrough |
-| `netbird-agent` | `netbirdio/netbird:0.76.3` | WireGuard peer, advertises `192.168.1.0/24` |
-| `gatus` | `ghcr.io/twin/gatus:v5.36.0` | Uptime monitoring at `uptime.madhan.app` |
+| `traefik` | `traefik` | TLS termination, ForwardAuth, routing |
+| `authentik-server` | `ghcr.io/goauthentik/server` | GitHub OAuth, OIDC, ForwardAuth provider |
+| `authentik-worker` | `ghcr.io/goauthentik/server` | Background tasks, email, jobs |
+| `authentik-postgres` | `postgres` | Authentik database |
+| `netbird-server` | `netbirdio/netbird-server` | Combined: management + signal + relay + STUN + embedded Dex OIDC |
+| `netbird-dashboard` | `netbirdio/dashboard` | NetBird web UI |
+| `netbird-proxy` | `netbirdio/reverse-proxy` | `*.proxy.madhan.app` TCP passthrough |
+| `netbird-agent` | `netbirdio/netbird` | WireGuard peer, advertises `192.168.1.0/24` |
+| `gatus` | `ghcr.io/twin/gatus` | Uptime monitoring at `uptime.madhan.app` |
+
+Tags are pinned in {{ src(path="core/cloud/bifrost/docker-compose.yml", label="docker-compose.yml") }}
+and listed in the [Software Inventory](@/architecture/software-inventory.md). The four
+NetBird images must move together — mixing versions breaks the management protocol.
 
 All containers share `bifrost_net` (172.30.0.0/24). Traefik is the only container with public ports 80/443.
 
@@ -144,7 +148,7 @@ Authentik has an explicit `healthcheck: test: ["CMD-SHELL", "ak healthcheck"]` a
 
 ### netbird/config.yaml template substitution
 
-NetBird v0.66 does not expand `${VAR}` in its config file — the YAML is read verbatim. `bootstrap.sh` substitutes three placeholders before starting `netbird-server`:
+NetBird does not expand `${VAR}` in its config file — the YAML is read verbatim. `bootstrap.sh` substitutes three placeholders before starting `netbird-server`:
 
 | Placeholder | Substituted with | Method |
 |-------------|-----------------|--------|

@@ -20,7 +20,6 @@ just core platform up
 | Setting | Value |
 |---|---|
 | Chart | `cert-manager` (`https://charts.jetstack.io`) |
-| Version | `v1.21.1` |
 | Namespace | `cert-manager` |
 | CRDs | Bundled (`installCRDs: true`) |
 

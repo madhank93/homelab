@@ -16,20 +16,20 @@ Ollama is the simplest way to run local LLMs on a GPU. It handles model quantiza
 
 Ollama runs on k8s-worker4 (the GPU node, `192.168.1.224`) using the RTX 5070 Ti for inference. It stores downloaded model files on a 100 Gi Longhorn PVC.
 
-Source: [`workloads/ai/ollama.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/ai/ollama.go)
+Source: {{ src(path="workloads/ai/ollama.go") }}
 
 ## Configuration
 
 | Setting | Value | Why |
 |---------|-------|-----|
 | Namespace | `ollama` | Isolated namespace |
-| Image | `ollama/ollama:0.17.0` | Pinned version |
+| Image | `ollama/ollama` | Tag deliberately unset — tracks the chart's appVersion |
 | HTTPRoute | `ollama.madhan.app` → `ollama:11434` | Gateway API |
 | `runtimeClassName` | `nvidia` | Routes through nvidia-container-runtime |
 | `NVIDIA_VISIBLE_DEVICES` | `all` | Make all GPU devices visible |
 | `nvidia.com/gpu` limit | `1` | One time-sliced virtual GPU |
 | Node selector | `nvidia.com/gpu.present: "true"` | Schedule on GPU node |
-| Toleration | `dedicated=ai:NoSchedule` | Allow scheduling on tainted GPU node |
+| Toleration | `dedicated=ai:NoSchedule` | Vestigial — worker4 carries no matching taint |
 | CPU limit | `4000m` | Ollama + ComfyUI both CPU-hungry at inference |
 | RAM request | `2Gi` | Host RAM for model metadata + process |
 | RAM limit | `4Gi` | Keep below worker4's 16 GiB total (shared with ComfyUI) |

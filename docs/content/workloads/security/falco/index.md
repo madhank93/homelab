@@ -32,14 +32,14 @@ Falco DaemonSet (every node)
   → Grafana (LogQL query)
 ```
 
-Source: [`workloads/security/falco.go`](https://github.com/madhank93/homelab/blob/v0.1.7/workloads/security/falco.go)
+Source: {{ src(path="workloads/security/falco.go") }}
 
 ## Configuration
 
 | Setting | Value | Why |
 |---------|-------|-----|
 | Namespace | `falco` | Privileged PSA required |
-| Helm chart | `falco` v8.0.0 | falcosecurity.github.io/charts |
+| Helm chart | `falco` | falcosecurity.github.io/charts |
 | `driver.kind` | `modern_ebpf` | Required on Talos — see below |
 | `driver.sysfsMountPath` | `/sys/kernel` | Exposes BTF at `/sys/kernel/btf/vmlinux` |
 | `json_output` | `true` | Machine-readable alert format |
@@ -75,7 +75,7 @@ Talos Linux locks down kernel module loading — the `kmod` and `legacy_ebpf` Fa
 
 ## Chart Version Notes
 
-Chart v8.0.0 uses **snake_case** config keys:
+The chart uses **snake_case** config keys:
 
 ```yaml
 json_output: true
@@ -83,7 +83,8 @@ grpc_output:
   enabled: true
 ```
 
-Earlier chart versions (< 8.0.0) used camelCase (`jsonOutput`, `grpcOutput`). Use the correct case for the chart version in use.
+Chart 8 renamed these from camelCase (`jsonOutput`, `grpcOutput`); on an upgrade
+from an older chart they must be rewritten or Falco silently ignores them.
 
 ## How It Connects
 

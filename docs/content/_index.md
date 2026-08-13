@@ -32,7 +32,7 @@ icon = "arrows-rotate"
 
 [[extra.features_section.features]]
 title = "Bifrost Edge Layer"
-desc = "Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik. Fully bootstrapped by a single Pulumi command — no manual SSH steps."
+desc = "Hetzner VPS running Traefik, NetBird, and Authentik. Fully bootstrapped by a single Pulumi command — no manual SSH steps."
 icon = "globe"
 
 [[extra.features_section.features]]

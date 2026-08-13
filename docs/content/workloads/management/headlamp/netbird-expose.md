@@ -1,12 +1,12 @@
 +++
 title = "Exposing Headlamp via NetBird Reverse Proxy"
-description = "Expose Headlamp to the internet through NetBird v0.66 expose with Authentik SSO group-based access control."
+description = "Expose Headlamp to the internet through NetBird expose with Authentik SSO group-based access control."
 weight = 10
 +++
 
 ## Overview
 
-NetBird v0.66 introduced the `netbird expose` command — a built-in reverse proxy that publishes a local service to the internet behind your SSO provider. This guide walks through exposing Headlamp at `headlamp.proxy.madhan.app` with Authentik SSO authentication, requiring users to be in a specific Authentik group before they can reach the Headlamp UI.
+NetBird introduced the `netbird expose` command in v0.66 <!-- docs-check: historical --> — a built-in reverse proxy that publishes a local service to the internet behind your SSO provider. This guide walks through exposing Headlamp at `headlamp.proxy.madhan.app` with Authentik SSO authentication, requiring users to be in a specific Authentik group before they can reach the Headlamp UI.
 
 ### Architecture
 
@@ -59,7 +59,7 @@ Then **assign yourself** (and any other users): **Groups → homelab-admins → 
 
 NetBird's SSO flow for exposed services redirects to `https://netbird.madhan.app/api/v1/sso/callback` after authentication. This must be added to the **NetBird OIDC app** in Authentik.
 
-**File to change:** [`core/cloud/authentik.go`](file:///Volumes/work/git-repos/homelab/core/cloud/authentik.go)
+**File to change:** {{ src(path="core/cloud/authentik.go") }}
 
 Find the `createOIDCApp` call for the NetBird app (around line 265) and add the expose callback redirect:
 
@@ -74,7 +74,7 @@ Redirects: []string{
 Redirects: []string{
     "https://netbird.madhan.app/oauth2/callback",      // Dex embedded IdP callback
     "http://localhost:53000",                           // CLI device-auth callback
-    "https://netbird.madhan.app/api/v1/sso/callback",  // expose SSO callback (v0.66+)
+    "https://netbird.madhan.app/api/v1/sso/callback",  // expose SSO callback
 },
 ```
 
@@ -90,7 +90,7 @@ just core authentik up
 
 The existing `k8s-routing-peer` deployment runs `netbird up --advertise-routes=192.168.1.0/24`. You need to run `netbird expose` as a **second container (sidecar)** in the same pod — it uses the same WireGuard interface already established by the primary container.
 
-**File to change:** [`workloads/networking/netbird_peer.go`](file:///Volumes/work/git-repos/homelab/workloads/networking/netbird_peer.go)
+**File to change:** {{ src(path="workloads/networking/netbird_peer.go") }}
 
 Add a sidecar container to the existing Deployment's container list:
 
@@ -98,7 +98,7 @@ Add a sidecar container to the existing Deployment's container list:
 // Add after the existing netbird container in Containers slice:
 {
     Name:  jsii.String("netbird-expose-headlamp"),
-    Image: jsii.String("netbirdio/netbird:0.66"),
+    Image: jsii.String("netbirdio/netbird:<version>"),  // match the Bifrost server
     Command: &[]*string{
         jsii.String("netbird"),
         jsii.String("expose"),
@@ -136,7 +136,7 @@ Add a sidecar container to the existing Deployment's container list:
 },
 ```
 
-> **Note:** Pin to `netbirdio/netbird:0.66` rather than `latest` to match the server version. The `expose` command shares the WireGuard tunnel from the primary container — it doesn't need to run `netbird up` again, just `expose` on top.
+> **Note:** Pin the tag rather than using `latest`, and keep it equal to the Bifrost server version. The `expose` command shares the WireGuard tunnel from the primary container — it doesn't need to run `netbird up` again, just `expose` on top.
 
 Synthesize and push:
 
@@ -208,7 +208,7 @@ The same pattern applies to any other internal service. For each new service, ad
 ```go
 {
     Name:  jsii.String("netbird-expose-grafana"),
-    Image: jsii.String("netbirdio/netbird:0.66"),
+    Image: jsii.String("netbirdio/netbird:<version>"),  // match the Bifrost server
     Command: &[]*string{
         jsii.String("netbird"),
         jsii.String("expose"),
@@ -232,5 +232,5 @@ The same pattern applies to any other internal service. For each new service, ad
 | `headlamp.proxy.madhan.app` returns `502` | Sidecar not running or expose registration failed | Check sidecar logs |
 | SSO redirect loop | Authentik redirect URI not registered | Apply `just core authentik up` and check `netbird.madhan.app/api/v1/sso/callback` is in the allowed redirects |
 | `403` after successful login | User not in `homelab-admins` group | Add user to group in Authentik UI |
-| Sidecar CrashLoopBackOff | Version mismatch between `netbird` client and server | Use the same version tag: `netbirdio/netbird:0.66` |
-| `expose` command not found | Client image too old | Pin image to `netbirdio/netbird:0.66` or later |
+| Sidecar CrashLoopBackOff | Version mismatch between `netbird` client and server | Use the same tag as the Bifrost server |
+| `expose` command not found | Client image too old | `expose` needs v0.66 or later | <!-- docs-check: historical -->

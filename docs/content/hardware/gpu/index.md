@@ -22,7 +22,7 @@ The GPU worker uses a custom Talos image with two additional system extensions:
 | `nvidia-open-gpu-kernel-modules-production` | Open-source NVIDIA kernel driver (loaded as kernel modules, not compiled) |
 | `nvidia-container-toolkit-production` | Container runtime hook — configures containerd CDI automatically |
 
-These extensions are baked into the Talos image at boot. No `machine.files` drop-ins are needed — the container toolkit extension configures containerd automatically. (Talos v1.10+ restricts `machine.files` writes to `/var`; `/etc/cri/conf.d/` is not writable.)
+These extensions are baked into the Talos image at boot. No `machine.files` drop-ins are needed — the container toolkit extension configures containerd automatically. (Talos v1.10+ restricts `machine.files` writes to `/var`; `/etc/cri/conf.d/` is not writable.) <!-- docs-check: historical -->
 
 ## Time-Slicing
 

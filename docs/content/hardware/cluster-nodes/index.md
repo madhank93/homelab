@@ -31,7 +31,7 @@ Workers use 200 GiB disks to provide ~90–95 GiB of usable Longhorn storage per
 
 ## Talos Version
 
-**Talos v1.13.8** — cluster name `talos-cluster`.
+**Talos Linux** — cluster name `talos-cluster`; version in the [Software Inventory](@/architecture/software-inventory.md).
 
 ### Talos Images
 
