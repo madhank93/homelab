@@ -103,7 +103,7 @@ source ~/.zshrc
 
 # 4. Register public key in .sops.yaml at repo root
 # creation_rules:
-#   - path_regex: secrets/.*\.sops$
+#   - path_regex: ^secrets/
 #     age: age1abc123...
 
 # 5. Populate the bootstrap secrets file
@@ -138,7 +138,6 @@ kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
 kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
   bao kv put -mount=secret n8n      ENCRYPTION_KEY=<real>
 kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
   bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=<real>
 ```
 
@@ -146,7 +145,7 @@ kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
 
 | App | OpenBao Path | Secret keys fetched | k8s Secret created | Pattern |
 |-----|-------------|--------------------|--------------------|---------|
-| Grafana | `secret/data/grafana` | `ADMIN_PASSWORD` | none | A (file) |
+| Grafana | `secret/data/grafana` | `ADMIN_PASSWORD`, `OAUTH_CLIENT_SECRET` | `grafana-oauth-secret` | A **and** B |
 | Harbor | `secret/data/harbor` | `HARBOR_ADMIN_PASSWORD` | `harbor-admin` | B |
 | n8n | `secret/data/n8n` | `ENCRYPTION_KEY` | `n8n-secrets` | B |
 | NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` | `netbird-setup-key` | B |

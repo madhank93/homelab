@@ -62,7 +62,7 @@ unrelated Ollama error, so turn it off when finished.
 | `NVIDIA_VISIBLE_DEVICES` | `all` | Make all GPU devices visible |
 | `nvidia.com/gpu` limit | `1` | One time-sliced virtual GPU |
 | Node selector | `nvidia.com/gpu.present: "true"` | Schedule on GPU node |
-| Toleration | `dedicated=ai:NoSchedule` | Vestigial — worker4 carries no matching taint |
+| Toleration | `dedicated=ai:NoSchedule` | **Required** — worker4 is tainted, see [GPU](@/hardware/gpu/index.md#the-dedicated-ai-taint) |
 | CPU limit | `4000m` | CPU-hungry during inference |
 | RAM request | `1Gi` | Host RAM for process |
 | Replicas | `0` | Default off — see above |

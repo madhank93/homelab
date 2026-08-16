@@ -54,7 +54,7 @@ flowchart TB
         RELAY["NetBird Relay<br/>TURN/STUN via Bifrost"]
     end
 
-    subgraph K8S["Talos Cluster · worker1 · 192.168.1.221"]
+    subgraph K8S["Talos Cluster · routing-peer node"]
         NBPEER["netbird-peer pod<br/>hostNetwork · wt0: 100.109.244.71<br/>routes 192.168.1.0/24"]
         MASQ["iptables MASQUERADE<br/>src 100.109.x → 192.168.1.221"]
         CILIUMETH["Cilium BPF · eth0<br/>L7LB DNAT → Envoy :13507"]
@@ -99,7 +99,7 @@ sequenceDiagram
     participant AU as Authentik<br/>auth.madhan.app
     participant NA as netbird-agent<br/>wt0:100.109.47.211
     participant RE as NetBird Relay<br/>rels://netbird.madhan.app:443
-    participant NP as netbird-peer<br/>wt0:100.109.244.71<br/>worker1 eth0:192.168.1.221
+    participant NP as netbird-peer<br/>wt0:100.109.x.x<br/>node eth0:192.168.1.22x
     participant GW as Cilium Gateway<br/>192.168.1.220
     participant GR as Grafana pod
 
@@ -149,8 +149,8 @@ sequenceDiagram
 | Traefik → netbird-agent | Docker bridge `bifrost_net` | `172.30.0.10` (Traefik) | `192.168.1.220` | Nothing — Docker routes to host |
 | netbird-agent wt0 → relay | WireGuard encapsulated | `100.109.47.211` | `100.109.244.71` | Original IP hidden inside WireGuard |
 | relay → netbird-peer wt0 | decapsulated WireGuard | `100.109.47.211` | `192.168.1.220` | Original packet restored |
-| wt0 → eth0 (kernel fwd) | worker1 | `100.109.47.211` | `192.168.1.220` | IP forwarding only |
-| MASQUERADE (CILIUM_POST_nat) | worker1 eth0 | **`192.168.1.221`** | `192.168.1.220` | Source NAT — cluster can reply |
+| wt0 → eth0 (kernel fwd) | peer node | `100.109.x.x` | `192.168.1.220` | IP forwarding only |
+| MASQUERADE (CILIUM_POST_nat) | peer node eth0 | **that node's IP** | `192.168.1.220` | Source NAT — cluster can reply |
 | eth0 → Cilium LB | another worker's eth0 | `192.168.1.221` | **Envoy :13507** | L7LB DNAT by Cilium BPF |
 | Envoy → Grafana pod | pod overlay | pod IP | Grafana pod IP | L7 routing by HTTPRoute |
 

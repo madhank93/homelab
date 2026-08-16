@@ -28,7 +28,7 @@ flowchart TB
 
     subgraph PULUMI["Pulumi — manual, laptop only"]
         direction LR
-        PUL_T["just core talos up<br/>Proxmox VMs + Talos bootstrap<br/>Cilium + ArgoCD"]
+        PUL_T["just core talos up<br/>Proxmox VMs + Talos bootstrap"]
         PUL_P["just core platform up<br/>Gateway API · HTTPRoutes · cert-manager"]
         PUL_H["just core hetzner up<br/>Hetzner VPS + bootstrap.sh<br/>NetBird + Traefik + Authentik"]
         PUL_A["just core authentik up<br/>OIDC apps · GitHub OAuth<br/>ForwardAuth outpost"]

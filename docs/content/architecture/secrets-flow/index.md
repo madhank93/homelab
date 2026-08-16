@@ -156,7 +156,7 @@ are described in [Secrets](@/platform/secrets/index.md).
 |-----|-------------|---------|------------|
 | Grafana | `secret/data/grafana` | A + B | `grafana-oauth-secret` |
 | Harbor | `secret/data/harbor` | B (sync) | `harbor-admin` |
-| n8n | `secret/data/n8n` | B (sync) | `n8n-db` |
+| n8n | `secret/data/n8n` | B (sync) | `n8n-secrets` |
 | NetBird peer | `secret/data/netbird` | B (sync) | `netbird-setup-key` |
 
 ### One-time setup

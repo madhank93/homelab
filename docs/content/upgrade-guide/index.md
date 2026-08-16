@@ -152,7 +152,7 @@ Version: pulumi.String("1.X.Y"),
 
 **Rules:**
 - Verify compatibility with new Talos k8s version: https://docs.cilium.io/en/stable/network/kubernetes/compatibility/
-- `wt0` must **not** be added to Cilium devices — keep only `eth0` in `cilium.go`. See [NetBird routing notes](../infrastructure/#netbird).
+- Never add `wt0` to Cilium's `devices` list in `cilium.go` — it stays `["ens18", "eth0"]`. See [NetBird Peer](@/workloads/networking/netbird-peer/index.md).
 - After upgrade check the `CiliumLoadBalancerIPPool` and `CiliumL2AnnouncementPolicy` CR specs in `cilium.go` for field renames
 
 ```bash
@@ -295,18 +295,21 @@ kubectl get cluster -A  # all clusters healthy
 
 **Risk:** Low — independent of k8s cluster.
 
-```yaml
-# core/cloud/bifrost/docker-compose.yml
-traefik:vX.Y                               # line 35
-netbirdio/netbird-server:0.X.Y             # line 59
-netbirdio/dashboard:0.X.Y                  # line 73  (was: latest)
-netbirdio/reverse-proxy:0.X.Y             # line 82  (was: latest)
-netbirdio/netbird:0.X.Y                    # line 94
-ghcr.io/goauthentik/server:20XX.X.X        # lines 137, 168
-postgres:16.X-alpine                       # line 115  (minor bumps only)
-```
+All image tags live in `core/cloud/bifrost/docker-compose.yml`:
 
-**NetBird rule:** All four NetBird components (`server`, `dashboard`, `reverse-proxy`, agent on Bifrost) **must be on the same version**. Also update both image tags in `workloads/networking/netbird_peer.go` — the
+| Image | Note |
+|---|---|
+| `traefik` | |
+| `netbirdio/netbird-server` | |
+| `netbirdio/reverse-proxy` | |
+| `netbirdio/netbird` | agent |
+| `netbirdio/dashboard` | **separate version line** — see below |
+| `ghcr.io/goauthentik/server` | two services: server and worker |
+| `postgres` | minor bumps only |
+
+**NetBird rule:** `netbird-server`, `reverse-proxy` and the agent **must be on the
+same version**. The dashboard is versioned independently (`v2.x`) and does not
+follow them. Also update both image tags in `workloads/networking/netbird_peer.go` — the
 `setup-iptables` init container and the main container.
 
 **Authentik migration race (fixed in bootstrap.sh):** On Authentik upgrades, `bootstrap.sh` now runs `ak migrate` explicitly (via a one-off server container) before starting `authentik-server` and `authentik-worker`. This prevents a crash-loop where the server queries new ORM columns that haven't been added yet. If `just core hetzner up` fails at the Authentik health check step, SSH in and run:
@@ -352,11 +355,14 @@ kubectl get applications -n argocd  # all Synced + Healthy
 
 ### VictoriaMetrics + VictoriaLogs
 
+`victoria-logs-single` is pinned in `workloads/cdk8s.yaml`:
+
 ```yaml
-# workloads/cdk8s.yaml
-- helm:https://victoriametrics.github.io/helm-charts/victoria-metrics-k8s-stack@0.X.Y
 - helm:https://victoriametrics.github.io/helm-charts/victoria-logs-single@0.X.Y
 ```
+
+`victoria-metrics-k8s-stack` is **not** in `cdk8s.yaml` — it is pinned at its call
+site, on the chart Version in `workloads/observability/victoria_metrics.go`.
 
 Also update the chart Version in `workloads/observability/victoria_metrics.go`. Run `helm diff upgrade` first — the values schema changes frequently between minor versions.
 
@@ -380,12 +386,14 @@ Minor bumps only. After upgrade verify `harbor:80` routing still works (Harbor n
 
 ### NVIDIA GPU Operator
 
-```yaml
-# workloads/cdk8s.yaml
-- helm:https://helm.ngc.nvidia.com/nvidia/gpu-operator@X.Y.Z
-```
+The full GPU Operator is deliberately not used. Two charts are pinned at their call
+site in `workloads/hardware/nvidia_gpu_operator.go`:
 
-Also update the device plugin and DCGM exporter versions in `workloads/hardware/nvidia_gpu_operator.go`. Verify RTX 5070 Ti (sm_120, Blackwell) still supported in the new operator release — Blackwell support was added in 570.x driver series.
+- `nvidia-device-plugin` from `https://nvidia.github.io/k8s-device-plugin`
+- `dcgm-exporter`
+
+Verify the RTX 5070 Ti (sm_120, Blackwell) is still supported by the new release —
+Blackwell support arrived in the 570.x driver series.
 
 ```bash
 kubectl exec -n ollama deploy/ollama -- nvidia-smi
@@ -460,7 +468,7 @@ go mod tidy
 just synth          # verify no compile errors before pushing
 ```
 
-If Talos upgrades the embedded k8s version, also update the `k8s@1.30.0` import at the top of `cdk8s.yaml`.
+If Talos upgrades the embedded k8s version, also update the `k8s@X.Y.Z` import at the top of `cdk8s.yaml`.
 
 ---
 

@@ -6,7 +6,7 @@ weight = 20
 
 ## Overview
 
-Three Talos control-plane nodes sit behind a KubeVIP virtual IP. Four worker nodes run all workloads. **Cilium** handles CNI, Gateway API ingress, and L2 LoadBalancer announcements. **ArgoCD** syncs all apps via GitOps.
+Three Talos control-plane nodes share a virtual IP. Four worker nodes run all workloads. **Cilium** handles CNI, Gateway API ingress, and L2 LoadBalancer announcements. **ArgoCD** syncs all apps via GitOps.
 
 ---
 
@@ -21,7 +21,7 @@ Three Talos control-plane nodes sit behind a KubeVIP virtual IP. Four worker nod
 | `k8s-worker2` | Worker | 192.168.1.222 | 4 vCPU | 14 GiB | 200 GiB |
 | `k8s-worker3` | Worker | 192.168.1.223 | 4 vCPU | 14 GiB | 200 GiB |
 | `k8s-worker4` | Worker + GPU | 192.168.1.224 | 8 vCPU | 16 GiB | 250 GiB + RTX 5070 Ti |
-| **KubeVIP** | Virtual IP | 192.168.1.210 | — | — | Floats across control-plane nodes |
+| **Talos VIP** | Virtual IP | 192.168.1.210 | — | — | Floats across control-plane nodes |
 | **Cilium L2 LB** | LoadBalancer pool | 192.168.1.220–230 | — | — | Assigned per LoadBalancer Service |
 
 ---
@@ -45,7 +45,7 @@ flowchart TB
 
     subgraph LAN["On-Prem LAN · 192.168.1.0/24"]
         subgraph CP["Control Plane · Talos"]
-            VIP["KubeVIP\n192.168.1.210:6443"]
+            VIP["Talos VIP\n192.168.1.210:6443"]
             CP1["controller1\n.211"]
             CP2["controller2\n.212"]
             CP3["controller3\n.213"]
@@ -115,18 +115,21 @@ Talos Linux is provisioned by Pulumi (`core/platform/talos.go`). Each role gets 
 
 | Patch | Controller | Worker | Worker4 (GPU) |
 |-------|-----------|--------|---------------|
-| `controlplane.patch.yaml` | ✓ | — | — |
-| `worker.patch.yaml` | — | ✓ | ✓ |
-| `nvidia.patch.yaml` | — | — | ✓ |
+| `cpPatch` | ✓ | — | — |
+| `workerPatch` | — | ✓ | — |
+| `gpuWorkerPatch` | — | — | ✓ |
+
+These are inline Go strings in {{ src(path="core/platform/talos.go") }}, not
+separate YAML files.
 
 **Talos image schematics** (from factory.talos.dev):
 
 | Schematic | Extensions | Used by |
 |-----------|-----------|---------|
-| Base | `iscsi-tools`, `qemu-guest-agent` | All nodes |
-| GPU | Base + `nvidia-container-toolkit` | `k8s-worker4` |
+| Base | `iscsi-tools`, `util-linux-tools`, `qemu-guest-agent` | All nodes |
+| GPU | Base + `nvidia-container-toolkit`, `nvidia-open-gpu-kernel-modules` | `k8s-worker4` |
 
-The cluster endpoint is `https://192.168.1.210:6443` (KubeVIP).
+The cluster endpoint is `https://192.168.1.210:6443` (Talos VIP).
 
 ---
 

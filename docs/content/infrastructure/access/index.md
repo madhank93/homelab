@@ -75,7 +75,8 @@ var publicServices = []PublicService{
 }
 ```
 
-**Step 2**: Run `just core hetzner up` — Pulumi generates the Traefik router and updates Cloudflare DNS automatically. Alternatively, add a Traefik router manually to `core/cloud/bifrost/traefik/dynamic/services.yml`:
+**Step 2**: Run `just core hetzner up` — Pulumi generates the Traefik router. DNS is a
+separate stack; step 3 runs both. Alternatively, add a Traefik router manually to `core/cloud/bifrost/traefik/dynamic/services.yml`:
 
 ```yaml
 http:
@@ -118,7 +119,6 @@ the record and the service is LAN-only again, with no other change.
 | Domain Pattern | Resolves To | Accessible From |
 |----------------|-------------|-----------------|
 | `*.madhan.app` (wildcard) | `192.168.1.220` | LAN only |
-| `*.internal.madhan.app` | `192.168.1.220` | LAN only (explicit label) |
 | `auth.madhan.app` | `178.156.199.250` | Internet |
 | `netbird.madhan.app` | `178.156.199.250` | Internet |
 | `proxy.madhan.app` | `178.156.199.250` | Internet |

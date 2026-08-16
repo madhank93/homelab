@@ -89,7 +89,7 @@ Talos system extensions (boot time):
 NVIDIA Device Plugin DaemonSet:
   → NFD labels GPU nodes
   → GFD labels GPU capabilities
-  → Advertises nvidia.com/gpu:2 on k8s-worker4
+  → Advertises nvidia.com/gpu:5 on k8s-worker4
 
 Pod with nvidia.com/gpu: 1 + runtimeClassName: nvidia:
   → containerd routes to nvidia-container-runtime
@@ -111,7 +111,7 @@ kubectl get pods -n nvidia-gpu-operator -o wide | grep worker4
 kubectl describe node k8s-worker4 | grep -A5 Allocatable
 
 # Should show:
-# nvidia.com/gpu: 2
+# nvidia.com/gpu: 5
 ```
 
 ### NVML Initialization Failed

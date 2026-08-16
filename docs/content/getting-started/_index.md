@@ -31,7 +31,7 @@ to install them by hand: `pulumi`, `talosctl`, `kubectl`, `just`, `sops`, `age`,
 `cdk8s` (`npm i -g cdk8s-cli`) and Go — the toolchain version is pinned in
 `.mise.toml` and the devcontainer image.
 
-The Proxmox host needs headroom for 7 VMs (≈28 vCPU, 42 GiB, ~900 GiB disk),
+The Proxmox host needs headroom for 7 VMs (32 vCPU, 82 GiB, 1000 GiB disk),
 API access for the Pulumi provider, and an NVIDIA GPU to pass through to
 `k8s-worker4`.
 
@@ -51,8 +51,8 @@ The repository layout is mapped in [CDK8s](@/platform/cdk8s/index.md).
 | Command | What it does |
 |---------|-------------|
 | `just create-secrets` | Create bootstrap k8s Secrets from SOPS |
-| `just core talos up` | Provision cluster (Talos + Cilium + ArgoCD) |
-| `just core platform up` | Apply Gateway API + cert-manager config |
+| `just core talos up` | Provision Proxmox VMs and bootstrap Talos |
+| `just core platform up` | Install Cilium, Gateway API, cert-manager, and Argo CD |
 | `just core hetzner up` | Deploy Bifrost VPS + automated bootstrap |
 | `just core authentik up` | Create OIDC apps + ForwardAuth in Authentik |
 | `just core cloudflare up` | Create/update DNS records |
@@ -70,15 +70,15 @@ The repository layout is mapped in [CDK8s](@/platform/cdk8s/index.md).
 | `just openbao-revoke <token>` | Revoke a root token when finished |
 | `just openbao-sa-token <sa> <ns> <role>` | Mint a token as an app's ServiceAccount |
 | `just openbao-sa-get <sa> <ns> <role> <path> [field]` | Read a secret as that app — checks a policy actually works |
-| `just sops-view <file>` | Decrypt a SOPS file to stdout |
-| `just sops-decrypt <file>` | Decrypt a SOPS file in place |
+| `just sops-view <file>` | Open a SOPS file in `$EDITOR` |
+| `just sops-decrypt <file>` | Decrypt a SOPS file to stdout |
 
 **Operations**
 
 | Command | What it does |
 |---------|-------------|
 | `just talos-health` | Cluster health — must be clean before upgrading a node |
-| `just talos-versions` | Talos and Kubernetes version on every node |
+| `just talos-versions` | Talos version reported by every node |
 | `just talos-upgrade <node> [schematic] [drain]` | Upgrade one node |
 | `just talos-upgrade-k8s <version>` | Upgrade Kubernetes (separate from Talos) |
 | `just longhorn-repair-iscsi` | Recover volumes after an iSCSI parameter rejection |

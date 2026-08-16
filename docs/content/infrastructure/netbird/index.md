@@ -14,7 +14,7 @@ NetBird eliminates the need to manage WireGuard configs manually — peers regis
 
 ## How It's Used Here
 
-The NetBird combined server runs on Bifrost alongside a `netbird-agent` WireGuard peer. A `netbird-peer` StatefulSet on Kubernetes worker1 joins the mesh and advertises `192.168.1.0/24`, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.
+The NetBird combined server runs on Bifrost alongside a `netbird-agent` WireGuard peer. A `netbird-peer` StatefulSet joins the mesh from whichever worker it lands on and advertises `192.168.1.0/24`, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.
 
 ```
 Your laptop (NetBird client)
@@ -26,7 +26,7 @@ Bifrost VPS
     │
     └─ WireGuard mesh ──────────────────────────────────┐
                                                          ▼
-                                          K8s: netbird-peer pod (worker1)
+                                          K8s: netbird-peer pod (any worker)
                                                hostNetwork · wt0: 100.109.244.71
                                                routes 192.168.1.0/24
                                                          │  IP forward + MASQUERADE
@@ -60,7 +60,7 @@ flowchart LR
         RE["NetBird TURN/STUN<br/>via netbird-server<br/>UDP 3478 / TCP 5349"]
     end
 
-    subgraph K8S["Kubernetes · worker1 · 192.168.1.221"]
+    subgraph K8S["Kubernetes · routing-peer node"]
         NBPEER["netbird-peer-0<br/>hostNetwork · wt0: 100.109.244.71<br/>routes 192.168.1.0/24"]
         MASQ["CILIUM_POST_nat<br/>MASQUERADE<br/>100.109.x → 192.168.1.221"]
         CILBPF["Cilium BPF (other node eth0)<br/>L7LB DNAT → Envoy :13507"]
@@ -217,7 +217,7 @@ External user
     ↓ HTTPS
 Traefik (Bifrost)
     ↓ http://192.168.1.220
-netbird-agent (Bifrost) ←── WireGuard ───→ k8s-routing-peer (worker1 · 192.168.1.221)
+netbird-agent (Bifrost) ←── WireGuard ───→ k8s-routing-peer (any worker)
                                                     ↓ kernel IP forward
                                               CILIUM_POST_nat MASQUERADE
                                                     ↓
@@ -243,7 +243,8 @@ Both keys can share the same **Reusable** setup key value from the NetBird UI �
 
 ## K8s Routing Peer
 
-The `netbird-peer` StatefulSet in the `netbird` namespace runs on **worker1** (`192.168.1.221`), connects to the WireGuard mesh, and advertises `192.168.1.0/24` as a route. This makes all cluster services reachable from any NetBird-connected device.
+The `netbird-peer` StatefulSet in the `netbird` namespace has no `nodeSelector` — it
+floats to any available worker for resilience. It connects to the WireGuard mesh, and advertises `192.168.1.0/24` as a route. This makes all cluster services reachable from any NetBird-connected device.
 
 See [NetBird Peer](/workloads/networking/netbird-peer/) for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium `wt0` constraint.
 

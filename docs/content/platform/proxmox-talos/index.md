@@ -107,7 +107,7 @@ Pulumi performs the full cluster bootstrap in dependency order:
 1. Download Talos images to Proxmox
 2. Create VMs (Proxmox QEMU resources)
 3. Generate Talos machine secrets (PKI, tokens)
-4. Patch per-node configs (hostname, static IP, gateway, DNS)
+4. Patch per-role configs (VIP, kernel modules, node labels and taints)
 5. Apply configs via Talos API (in-band, using QEMU guest agent IP)
 6. Bootstrap etcd on `k8s-controller1`
 7. Wait for the cluster to become healthy

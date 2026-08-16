@@ -34,7 +34,7 @@ Source: {{ src(path="workloads/databases/cnpg.go") }}
 
 ```bash
 kubectl get cluster -n n8n
-kubectl describe cluster n8n-db -n n8n
+kubectl describe cluster n8n-pg -n n8n
 kubectl logs -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg
 ```
 

@@ -61,24 +61,20 @@ nvidia, nvidia_uvm, nvidia_drm, nvidia_modeset
 
 ## Network Configuration
 
-Each node is assigned a static IP via Talos machine config (patched by Pulumi at provision time):
+Nodes take their address by **DHCP**, not static machine config. The addresses in
+this document are DHCP reservations on the router — Talos itself just asks:
 
 ```yaml
 machine:
   network:
-    hostname: k8s-worker1
     interfaces:
       - deviceSelector:
           physical: true
-        dhcp: false
-        addresses:
-          - 192.168.1.221/24
-        routes:
-          - gateway: 192.168.1.254
-    nameservers:
-      - 1.1.1.1
-      - 192.168.1.254
+        dhcp: true
 ```
+
+Changing a node's IP therefore means changing the reservation, not the Talos config.
+Control planes additionally get the shared VIP on the same interface.
 
 ## Longhorn Node Labels
 

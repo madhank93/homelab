@@ -11,8 +11,8 @@ Platform covers both cluster provisioning (`core/platform/`) and the GitOps deli
 
 | Stack | Command | Manages |
 |-------|---------|---------|
-| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap, Cilium CNI, ArgoCD |
-| `platform` | `just core platform up` | Gateway API, IP pool, HTTPRoutes, cert-manager |
+| `talos` | `just core talos up` | Proxmox VMs and Talos cluster bootstrap |
+| `platform` | `just core platform up` | Cilium CNI, Gateway API + IP pool, cert-manager, Argo CD |
 
 ## GitOps Layer
 

@@ -73,11 +73,14 @@ The setup key is only used on **first registration**. Once the peer is registere
 The StatefulSet includes an `initContainer` that adds an iptables rule before the NetBird agent starts:
 
 ```bash
-iptables -t nat -C POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null \
-  || iptables -t nat -A POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE
+iptables -t nat -C POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null \
+  || iptables -t nat -A POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE
 ```
 
-The `-C` check prevents duplicate rules on pod restart. This rule ensures that traffic from Bifrost's WireGuard IP range (`100.109.x.x`) destined for the cluster LAN gets source-NAT'd to the worker node's IP, allowing cluster nodes to send replies back via normal LAN routing.
+The rule matches on the **outbound interface** (`-o ens18`), not a source range: anything
+leaving the node toward the cluster LAN is source-NAT'd to that node's own IP, so
+replies come back via normal LAN routing instead of trying to find the WireGuard
+overlay. The `-C` check makes it idempotent across pod restarts.
 
 In practice the actual NAT is performed by Cilium's `CILIUM_POST_nat` BPF chain, not the raw iptables rule. Both coexist without conflict.
 

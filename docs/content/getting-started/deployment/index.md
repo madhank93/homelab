@@ -95,10 +95,10 @@ OPENBAO_UNSEAL_KEY: placeholder                 # replaced in Phase 2 after firs
 # 1. Create bootstrap k8s Secrets (OpenBao unseal key + Cloudflare token)
 just create-secrets
 
-# 2. Provision Proxmox VMs → bootstrap Talos → install Cilium + ArgoCD (~15 min)
+# 2. Provision Proxmox VMs → bootstrap Talos (~15 min)
 just core talos up
 
-# 3. Apply Cilium Gateway API, IP pool, HTTPRoutes
+# 3. Install Cilium, Gateway API + IP pool, cert-manager, Argo CD
 just core platform up
 ```
 
@@ -128,12 +128,14 @@ kubectl get pods -n openbao   # wait for Running
 just openbao-init
 ```
 
-This generates the root token and unseal key, writes them to `/tmp/openbao-init.json`, then unseals OpenBao.
+This generates the root token and unseal key and writes them to
+`/tmp/openbao-init.json`. It does **not** unseal OpenBao — that happens in 2c, once
+the key is in SOPS and the sidecar can read it.
 
 ### 2b. Store the unseal key in SOPS
 
 ```bash
-UNSEAL_KEY=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['keys'][0])")
+UNSEAL_KEY=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['unseal_keys_b64'][0])")
 echo "OPENBAO_UNSEAL_KEY: $UNSEAL_KEY"
 
 # Add to SOPS (replaces the placeholder from Phase 0)
@@ -374,13 +376,12 @@ Authentik UI → **Directory → Groups → Create** → name: `grafana-admins`
 
 Add yourself to this group for Admin role in Grafana.
 
-### 7d. Update client_id in code
+### 7d. Check the client_id matches
 
-In `workloads/monitoring/grafana.go`, replace:
-```
-"client_id": "REPLACE_WITH_AUTHENTIK_CLIENT_ID",
-```
-with the Client ID from step 7a. Then:
+`workloads/monitoring/grafana.go` sets `"client_id": "grafana-homelab"`. Create the
+Authentik provider with that same Client ID and there is nothing to change here. If
+you used a different one, update the Go value, then:
+
 ```bash
 just synth && git add -A && git commit -m "feat: set Grafana Authentik client_id" && git push
 ```
@@ -398,13 +399,13 @@ Grafana pod will start and SSO will work.
 
 ## Phase 8 — Publish CDK8s Manifests
 
-If you haven't already, synthesize and push the manifests:
+`app/` is gitignored — manifests are never committed from a laptop. CI synthesizes
+them and force-pushes the result to the manifests branch, which is what Argo CD
+watches. Push your source change and let the pipeline run:
 
 ```bash
-just synth
-git add app/
-git commit -m "chore: synth manifests"
-git push
+just synth        # optional: verify it synthesizes cleanly before pushing
+git push          # CI publishes to the manifests branch
 ```
 
 ArgoCD auto-syncs within 3 minutes:

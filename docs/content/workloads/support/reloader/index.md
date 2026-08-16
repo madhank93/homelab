@@ -53,9 +53,9 @@ Apps that use this annotation in this homelab:
 | App | Why |
 |-----|-----|
 | Grafana | Restart when OAuth secret rotates |
-| VictoriaMetrics | Restart when config changes |
 | VictoriaLogs | Restart when config changes |
-| AlertManager | Restart when routing config changes |
+| Falco | Restart when rules config changes |
+| notebook-gateway-controller | Restart when its config changes |
 | OpenBao | Restart when unseal key secret updates |
 | Harbor secret-sync | Restart when OpenBao password rotates |
 | NetBird | Restart when setup key changes |

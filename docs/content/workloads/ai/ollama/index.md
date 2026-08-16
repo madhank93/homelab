@@ -31,13 +31,15 @@ Source: {{ src(path="workloads/ai/ollama.go") }}
 | `NVIDIA_VISIBLE_DEVICES` | `all` | Make all GPU devices visible |
 | `nvidia.com/gpu` limit | `1` | One time-sliced virtual GPU |
 | Node selector | `nvidia.com/gpu.present: "true"` | Schedule on GPU node |
-| Toleration | `dedicated=ai:NoSchedule` | Vestigial — worker4 carries no matching taint |
+| Toleration | `dedicated=ai:NoSchedule` | **Required** — worker4 is tainted, see [GPU](@/hardware/gpu/index.md#the-dedicated-ai-taint) |
 | CPU limit | `4000m` | Ollama + ComfyUI both CPU-hungry at inference |
-| RAM request | `2Gi` | Host RAM for model metadata + process |
-| RAM limit | `4Gi` | Keep below worker4's 16 GiB total (shared with ComfyUI) |
+| RAM request | `4Gi` | Host RAM for model metadata + process |
+| RAM limit | `8Gi` | With ComfyUI's 6Gi, stays under worker4's ~15.1Gi allocatable |
 | Model PVC | `100Gi` Longhorn | Stores downloaded model weights |
 
-> **Note:** `memory: 4Gi` is the host RAM cgroup limit, NOT GPU VRAM. GPU VRAM (16 GB) is controlled by the `nvidia.com/gpu: 1` resource limit and is shared with ComfyUI via time-slicing.
+> **Note:** `memory` here is the host RAM cgroup limit, **not** GPU VRAM. Nothing in
+> Kubernetes limits VRAM — `nvidia.com/gpu: 1` grants one time-sliced share of the
+> device, not a slice of its memory. See [GPU](@/hardware/gpu/index.md#sharing-the-16-gb-of-vram).
 
 ## API Usage
 
@@ -61,7 +63,10 @@ curl https://ollama.madhan.app/v1/chat/completions \
 
 ## Coexistence with ComfyUI
 
-Ollama and ComfyUI share the RTX 5070 Ti via GPU time-slicing (2 virtual GPUs from 1 physical). VRAM is not isolated — approximately 4 GB (Ollama 7B model) + 6 GB (ComfyUI SDXL) fits within the 16 GB pool.
+Ollama and ComfyUI share the RTX 5070 Ti via time-slicing (5 virtual GPUs from 1
+physical). VRAM is not partitioned, and ComfyUI does not release it after a run —
+which is why ComfyUI ships scaled to zero. See
+[GPU](@/hardware/gpu/index.md#sharing-the-16-gb-of-vram).
 
 If running a large model (70B quantized, ~40 GB VRAM) alongside ComfyUI, VRAM exhaustion will occur. Use smaller quantized models or stop ComfyUI first.
 

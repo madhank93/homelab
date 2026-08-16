@@ -69,6 +69,28 @@ Ollama's model can be evicted without a restart:
 curl https://ollama.madhan.app/api/generate -d '{"model": "llama3.2", "keep_alive": 0}'
 ```
 
+## The `dedicated=ai` taint
+
+worker4 carries `dedicated=ai:NoSchedule`, set in the GPU machine patch
+({{ src(path="core/platform/talos.go") }}) so that ordinary workloads do not drift
+onto the GPU node and compete for its CPU during inference.
+
+Every pod that belongs on worker4 must therefore carry the matching toleration —
+Ollama, ComfyUI, the NVIDIA device plugin, DCGM exporter, and any Kubeflow notebook
+requesting a GPU. Without it the pod stays `Pending` with no obvious cause:
+
+```yaml
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: ai
+    effect: NoSchedule
+```
+
+The taint controls *scheduling*; `nodeSelector: nvidia.com/gpu.present: "true"`
+(a label from GPU Feature Discovery) is what selects the node. Both are needed —
+the selector alone will not get a pod past the taint.
+
 Kubeflow notebooks requesting `nvidia.com/gpu` compete for the same pool, and
 **must** set `runtimeClassName: nvidia` — without it the NVIDIA container hook
 never fires and CUDA is invisible even though the resource was granted.

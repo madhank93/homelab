@@ -24,7 +24,7 @@ Nodes/Pods
     ├── Container logs ──→ OTel Agent DaemonSet ──→ VictoriaLogs
     ├── Host metrics ────→ OTel Agent DaemonSet ──→ VictoriaMetrics
     ├── kubelet metrics ──→ OTel Agent DaemonSet ──→ VictoriaMetrics
-    └── k8s events ─────→ OTel Gateway ──────────→ VictoriaMetrics
+    └── k8s events ─────→ OTel Gateway ──────────→ VictoriaLogs
                                                          │
                                                Grafana queries ◄──── User
 ```

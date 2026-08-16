@@ -82,7 +82,7 @@ pipelines:
 
 | Exporter | Endpoint | Data |
 |----------|----------|------|
-| `prometheusremotewrite` | `http://victoria-metrics-victoria-metrics-cluster-vminsert.victoria-metrics.svc.cluster.local:8480/insert/0/prometheus/api/v1/write` | Metrics |
+| `prometheusremotewrite` | `http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428/api/v1/write` | Metrics |
 | `otlphttp/logs` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry` | Logs |
 
 ## Common Processors
@@ -130,8 +130,8 @@ kubectl logs -n opentelemetry -l app.kubernetes.io/name=otel-agent --tail=50
 # Check remote-write errors
 kubectl logs -n opentelemetry -l app.kubernetes.io/name=otel-agent | grep "remote_write\|error"
 
-# Verify vminsert is reachable
+# Verify vmsingle is reachable
 kubectl exec -n opentelemetry <agent-pod> -- \
   curl -s -o /dev/null -w "%{http_code}" \
-  http://victoria-metrics-victoria-metrics-cluster-vminsert.victoria-metrics.svc.cluster.local:8480
+  http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428
 ```
