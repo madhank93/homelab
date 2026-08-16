@@ -212,19 +212,8 @@ The Bifrost VPS runs both the NetBird **server** and a NetBird **agent**. These 
 
 Without `netbird-agent`, Traefik has no route to `192.168.1.0/24`. Every proxy request to the cluster returns **504 Gateway Timeout**. The agent receives the `192.168.1.0/24` route advertised by `k8s-routing-peer` and sets up a WireGuard tunnel:
 
-```
-External user
-    ↓ HTTPS
-Traefik (Bifrost)
-    ↓ http://192.168.1.220
-netbird-agent (Bifrost) ←── WireGuard ───→ k8s-routing-peer (any worker)
-                                                    ↓ kernel IP forward
-                                              CILIUM_POST_nat MASQUERADE
-                                                    ↓
-                                            192.168.1.220 (Cilium gateway)
-                                                    ↓
-                                              cluster pods
-```
+The full packet path — including the kernel forward and MASQUERADE hop — is drawn
+once in [Network Flow](@/architecture/network-flow/index.md#public-request-packet-level-detail).
 
 `netbird-agent` uses `network_mode: host` so WireGuard routes are created on the Bifrost host directly, making them reachable from all Docker containers (including Traefik in `bifrost_net`).
 

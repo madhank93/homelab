@@ -40,9 +40,33 @@ OpenBao (ns: openbao, port 8200)
 
 Secrets Store CSI Driver (ns: kube-system)
   └── SecretProviderClass (per app ns)
-        └── CSI volume in pod → mounts secrets as files
-              └── secretObjects → syncs to k8s Secret (Pattern B only)
 ```
+
+## What happens at pod start
+
+{% mermaid() %}
+flowchart TB
+    SPC["SecretProviderClass<br/>(app namespace)"]
+    SA["Pod ServiceAccount<br/>token"]
+    BAO["OpenBao<br/>Kubernetes auth → role → policy"]
+    VOL["CSI volume<br/>mounted in the pod"]
+    FILE["/mnt/secrets/KEY<br/>Pattern A — file only"]
+    SEC["k8s Secret<br/>Pattern B — secretObjects"]
+    ENV["Container env var"]
+
+    SA --> BAO
+    SPC --> BAO
+    BAO -->|"secret value"| VOL
+    VOL --> FILE
+    VOL -->|"only if secretObjects is set"| SEC
+    SEC --> ENV
+{% end %}
+
+The arrow that catches people is the one from the volume: **the mount is what
+drives everything**. A SecretProviderClass on its own fetches nothing, and a
+`secretObjects` block on its own creates nothing. If no pod mounts the volume,
+the k8s Secret never appears — which is why Harbor runs a `pause` container
+whose only job is to hold the mount open.
 
 ## Pattern A — File-only (no k8s Secret)
 

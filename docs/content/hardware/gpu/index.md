@@ -56,6 +56,30 @@ VRAM after a run and does not release it, so with both running Ollama fails to
 load a model — and the error surfaces on the Ollama side, which makes it look
 like an Ollama problem.
 
+{% mermaid() %}
+flowchart TB
+    subgraph CARD["RTX 5070 Ti · 16 GB VRAM · not partitioned"]
+        VRAM["one shared pool"]
+    end
+
+    subgraph SLICES["Device plugin advertises nvidia.com/gpu: 5"]
+        S["5 time-slices of GPU *compute*"]
+    end
+
+    OLL["Ollama<br/>evictable: keep_alive 0"]
+    CFY["ComfyUI<br/>holds VRAM after a run"]
+    NB["Kubeflow notebooks<br/>hold until deleted"]
+
+    S --> OLL & CFY & NB
+    OLL --> VRAM
+    CFY --> VRAM
+    NB --> VRAM
+{% end %}
+
+Time-slicing divides GPU *time*, and the `nvidia.com/gpu: 5` count is a count of
+those slices — it says nothing about memory. Three pods can each hold a slice and
+still collectively exhaust the 16 GB, at which point the next allocation fails.
+
 ComfyUI therefore ships scaled to zero and is turned on only when needed:
 
 ```bash
@@ -91,18 +115,21 @@ The taint controls *scheduling*; `nodeSelector: nvidia.com/gpu.present: "true"`
 (a label from GPU Feature Discovery) is what selects the node. Both are needed —
 the selector alone will not get a pod past the taint.
 
-Kubeflow notebooks requesting `nvidia.com/gpu` compete for the same pool, and
-**must** set `runtimeClassName: nvidia` — without it the NVIDIA container hook
-never fires and CUDA is invisible even though the resource was granted.
-
 ## GPU Workload Configuration
 
-All GPU workloads use `nodeSelector: nvidia.com/gpu.present: "true"` to pin to `k8s-worker4`. `runtimeClassName: nvidia` is required — without it the NVIDIA container hook does not fire and CUDA is inaccessible even with the `nvidia.com/gpu` resource requested.
+Every GPU pod needs all four of these. Miss `runtimeClassName` and the NVIDIA
+container hook never fires — the pod schedules, the resource is granted, and CUDA
+is still invisible inside the container, which is a confusing failure to debug.
 
 ```yaml
-runtimeClassName: nvidia
+runtimeClassName: nvidia            # or CUDA is not visible in the container
 nodeSelector:
-  nvidia.com/gpu.present: "true"
+  nvidia.com/gpu.present: "true"    # GPU Feature Discovery label
+tolerations:                        # worker4 is tainted — see above
+  - key: dedicated
+    operator: Equal
+    value: ai
+    effect: NoSchedule
 resources:
   limits:
     nvidia.com/gpu: "1"
@@ -110,6 +137,8 @@ env:
   - name: NVIDIA_VISIBLE_DEVICES
     value: all
 ```
+
+This applies to Kubeflow notebooks too — they request the same pool.
 
 ## Kernel Modules
 
@@ -129,5 +158,5 @@ A DCGM Exporter DaemonSet runs on the GPU node to export GPU metrics (utilisatio
 ```bash
 # Check GPU metrics in Grafana: look for the DCGM dashboard
 # Or query directly:
-kubectl get pods -n nvidia-gpu-operator -l app=dcgm-exporter
+kubectl get pods -n nvidia-gpu-operator -l app.kubernetes.io/name=dcgm-exporter
 ```
