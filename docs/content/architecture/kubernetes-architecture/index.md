@@ -30,82 +30,40 @@ Three Talos control-plane nodes share a virtual IP. Four worker nodes run all wo
 
 {% mermaid() %}
 flowchart TB
-    subgraph INTERNET["Internet"]
-        USER["Browser / Client"]
-        GH["GitHub\nrepo: madhank93/homelab"]
-        CF["Cloudflare DNS\n*.madhan.app"]
-    end
-
-    subgraph BIFROST["Bifrost VPS · Hetzner · 178.156.199.250"]
-        TRF["Traefik\nTLS termination + ForwardAuth"]
-        AUTH["Authentik\nOIDC / SSO broker"]
-        NBS["NetBird\nManagement + Signal + Relay"]
-        NBA["netbird-agent\nWireGuard routing peer\n→ advertises 192.168.1.0/24"]
-    end
-
     subgraph LAN["On-Prem LAN · 192.168.1.0/24"]
         subgraph CP["Control Plane · Talos"]
-            VIP["Talos VIP\n192.168.1.210:6443"]
-            CP1["controller1\n.211"]
-            CP2["controller2\n.212"]
-            CP3["controller3\n.213"]
+            VIP["Talos VIP<br/>192.168.1.210:6443"]
+            CP1["controller1 · .211"]
+            CP2["controller2 · .212"]
+            CP3["controller3 · .213"]
             VIP --- CP1 & CP2 & CP3
         end
 
-        subgraph PLT["Platform Layer"]
-            CIL["Cilium\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API"]
-            CERT["cert-manager\nCloudflare DNS-01\nwildcard TLS"]
-            ARGO["Argo CD\nApplicationSet → v0.1.7-manifests"]
-        end
-
-        subgraph SECRETS["Secrets Layer"]
-            OB["OpenBao\nVault-compatible KV"]
-            CSI["CSI Secrets Store\nfile mounts + k8s Secrets"]
-        end
-
-        subgraph STORAGE["Storage"]
-            LONG["Longhorn\nReplicated block storage"]
-            CNPG["CloudNativePG\nPostgreSQL operator"]
-        end
-
         subgraph WORKERS["Workers · k8s-worker1–3"]
-            OBS["Observability\nVictoriaMetrics · VictoriaLogs\nGrafana · OTel"]
-            SEC["Security\nFalco · Kyverno · Trivy"]
-            APPS["Applications\nn8n · Harbor · Headlamp\nOpenBao · NetBird peer"]
+            W1["worker1 · .221"]
+            W2["worker2 · .222"]
+            W3["worker3 · .223"]
         end
 
-        subgraph GPU["k8s-worker4 · RTX 5070 Ti"]
-            AI["AI Workloads\nOllama · ComfyUI\nKubeflow"]
-            NVIDIA["NVIDIA Device Plugin\nDCGM Exporter"]
+        subgraph GPU["GPU node · k8s-worker4 · .224"]
+            W4["RTX 5070 Ti<br/>dedicated=ai:NoSchedule"]
         end
     end
 
-    subgraph GITOPS["GitOps · GitHub"]
-        SRC["release branch\nPulumi + CDK8s source"]
-        MFST["v0.1.7-manifests branch\nSynthesized YAML"]
-        GHA["GitHub Actions\ncdk8s synth + publish"]
-    end
-
-    USER -->|"HTTPS"| CF
-    CF -->|"public services\nauth/netbird/grafana"| TRF
-    CF -->|"LAN services via VPN\nharbor/headlamp/etc"| CIL
-    TRF -->|"ForwardAuth"| AUTH
-    TRF -->|"proxy via NetBird\nWireGuard tunnel"| CIL
-    NBA <-->|"WireGuard mesh"| APPS
-    NBS --- NBA
-    GH --- SRC
-    SRC -->|"push triggers"| GHA
-    GHA -->|"publishes"| MFST
-    MFST -->|"ArgoCD watches"| ARGO
-    ARGO -->|"syncs"| WORKERS & GPU & SECRETS & STORAGE
-    VIP --> CIL
-    CIL --> WORKERS & GPU
-    CERT -->|"ACME DNS-01"| CF
-    OB --> CSI
-    CSI -->|"volume mounts"| WORKERS & GPU & APPS
-    LONG --> WORKERS & GPU
-    CNPG --> WORKERS
+    CP --> WORKERS
+    CP --> GPU
 {% end %}
+
+The three control planes share a VIP provided by Talos itself. Workers 1–3 carry
+the general workloads and Longhorn replicas; worker4 is tainted so only GPU work
+lands on it — see [GPU](@/hardware/gpu/index.md).
+
+Two flows cross this topology, each drawn in full on its own page:
+
+- **Inbound requests** — Cloudflare → Bifrost or the LAN gateway → Cilium → pod.
+  See [Network Flow](@/architecture/network-flow/index.md).
+- **Deployments** — source branch → GitHub Actions → manifests branch → Argo CD.
+  See [GitOps Flow](@/architecture/gitops-flow/index.md).
 
 ---
 

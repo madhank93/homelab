@@ -151,10 +151,51 @@ else
   )
 fi
 
+# --- Rule 4: no doc links into a gitignored path -----------------------------
+#
+# A src() into app/ renders a 404: the manifests are synthesized by CI and never
+# committed, so the path exists locally and nowhere on GitHub.
+
+echo "Checking source links point at tracked files..."
+
+while IFS= read -r hit; do
+  file="${hit%%:*}"
+  rest="${hit#*:}"
+  lineno="${rest%%:*}"
+  text="${rest#*:}"
+  [[ "$text" =~ src\(path=\"([^\"]+)\" ]] || continue
+  target="${BASH_REMATCH[1]}"
+  if [[ ! -f "$target" ]]; then
+    fail "$file:$lineno links to $target, which does not exist"
+  elif ! git ls-files --error-unmatch "$target" >/dev/null 2>&1; then
+    fail "$file:$lineno links to $target, which is untracked — the link will 404"
+  fi
+done < <(grep -rn 'src(path=' docs/content --include='*.md' || true)
+
+# --- Rule 5: mermaid line breaks ---------------------------------------------
+#
+# Mermaid renders a literal \n inside a node label rather than breaking the
+# line. <br/> is the one that works, and is what every other diagram uses.
+
+echo "Checking mermaid diagrams..."
+
+while IFS= read -r hit; do
+  file="${hit%%:*}"
+  rest="${hit#*:}"
+  lineno="${rest%%:*}"
+  fail "$file:$lineno uses a literal \\n in a diagram label — use <br/>"
+done < <(
+  awk '
+    /\{% *mermaid\(\)/ { inblock = 1 }
+    /\{% *end *%\}/    { inblock = 0 }
+    inblock && /\\n/   { print FILENAME ":" FNR ":" $0 }
+  ' $(grep -rl 'mermaid()' docs/content --include='*.md' 2>/dev/null) 2>/dev/null || true
+)
+
 echo
 if [[ "$failures" -gt 0 ]]; then
   echo "$failures problem(s). The inventory is the single source of truth:"
   echo "  docs/content/architecture/software-inventory.md"
   exit 1
 fi
-echo "Docs versions agree with the code."
+echo "Docs agree with the code."
