@@ -65,9 +65,9 @@ from an env var rather than a file.
 > the volume, the k8s Secret is never created. This is the single most common
 > cause of "the Secret was never created".
 
-Two charts — Harbor and Rancher — have no `extraVolumes` support at all, so a
-dedicated `secret-sync` Deployment running a `pause` container mounts the CSI
-volume purely to trigger the sync.
+Harbor's chart has no `extraVolumes` support at all, so a dedicated
+`secret-sync` Deployment running a `pause` container mounts the CSI volume
+purely to trigger the sync.
 
 An app can use both: Grafana's admin password is file-only (Pattern A) while its
 OIDC client secret is synced (Pattern B), because Grafana reads that one from a

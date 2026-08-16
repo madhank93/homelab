@@ -12,7 +12,7 @@ import (
 // secret providers (OpenBao). syncSecret.enabled=true is required so that
 // secretObjects defined in a SecretProviderClass are synced to k8s Secrets —
 // necessary for apps that reference secrets via existingSecret (Harbor, n8n,
-// Rancher, NetBird). The DaemonSet tolerates all nodes so every node can serve
+// NetBird). The DaemonSet tolerates all nodes so every node can serve
 // CSI mount requests from pods scheduled on it.
 func NewCsiDriverChart(scope constructs.Construct, id string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
@@ -24,7 +24,7 @@ func NewCsiDriverChart(scope constructs.Construct, id string) cdk8s.Chart {
 	// in kube-system with tolerations covering all nodes so every node can serve
 	// CSI mount requests.
 	// syncSecret.enabled=true: creates k8s Secrets from secretObjects in SecretProviderClass,
-	// required for apps that use existingSecret (Harbor, N8n, Rancher, NetBird).
+	// required for apps that use existingSecret (Harbor, N8n, NetBird).
 	cdk8s.NewHelm(chart, jsii.String("csi-driver-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("secrets-store-csi-driver"),
 		Repo:        jsii.String("https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts"),
@@ -32,7 +32,7 @@ func NewCsiDriverChart(scope constructs.Construct, id string) cdk8s.Chart {
 		ReleaseName: jsii.String("secrets-store-csi-driver"),
 		Namespace:   jsii.String("kube-system"),
 		Values: &map[string]any{
-			// Required for Pattern B (Harbor, N8n, Rancher, NetBird) — creates k8s Secret
+			// Required for Pattern B (Harbor, N8n, NetBird) — creates k8s Secret
 			// from secretObjects defined in SecretProviderClass when a pod mounts the CSI volume.
 			"syncSecret": map[string]any{
 				"enabled": true,
