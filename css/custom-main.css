@@ -4,8 +4,8 @@
    The Goyo header nav does not adapt to its own width: the wrapper is
    `flex-none`, so a nav longer than the bar is clipped at the viewport edge and
    the last entries — including the theme toggle — become unreachable. Let the
-   bar shrink its items first, then scroll, and never wrap: the navbar is a
-   fixed 4rem tall, so a second row would overlap the page.
+   bar shrink its items as the viewport narrows, and never wrap: the navbar is
+   a fixed 4rem tall, so a second row would overlap the page.
 
    Selectors target `ul.menu` rather than `.menu-horizontal`, because the theme
    applies the horizontal layout through the responsive variant class
@@ -17,15 +17,12 @@
     min-width: 0;
   }
 
+  /* No overflow property here: the Reference panel is absolutely positioned
+     below the 4rem bar, and any scroll container would clip it away. The
+     item-tightening rules below are what keep the bar inside its width. */
   .navbar > .flex-none:last-child {
     flex: 0 1 auto;
     min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .navbar > .flex-none:last-child::-webkit-scrollbar {
-    display: none;
   }
 
   .navbar ul.menu {
