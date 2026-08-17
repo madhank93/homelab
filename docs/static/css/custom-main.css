@@ -1,0 +1,56 @@
+/* Overrides the theme's placeholder of the same name (Zola serves static/ over
+   the theme's static/). Loaded because extra.enable_custom_css is on.
+
+   The Goyo header nav does not adapt to its own width: the wrapper is
+   `flex-none`, so a nav longer than the bar is clipped at the viewport edge and
+   the last entries — including the theme toggle — become unreachable. Let the
+   bar shrink its items first, then scroll, and never wrap: the navbar is a
+   fixed 4rem tall, so a second row would overlap the page.
+
+   Selectors target `ul.menu` rather than `.menu-horizontal`, because the theme
+   applies the horizontal layout through the responsive variant class
+   `lg:menu-horizontal`. */
+
+@media (min-width: 1024px) {
+  .navbar > .flex-1 {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .navbar > .flex-none:last-child {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .navbar > .flex-none:last-child::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navbar ul.menu {
+    flex-wrap: nowrap;
+  }
+
+  .navbar ul.menu > li > a,
+  .navbar ul.menu > li > div[role="button"],
+  .navbar ul.menu > li > label {
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .navbar ul.menu > li > a,
+  .navbar ul.menu > li > div[role="button"] {
+    padding-inline: 0.45rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Icons are decoration, labels are navigation: drop the icons before the bar
+   starts eating the labels. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .navbar ul.menu .icon {
+    display: none;
+  }
+}

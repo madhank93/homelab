@@ -17,6 +17,9 @@ bottom_footnotes = true
 theme = "ayu-dark"
 
 [extra]
+# Loads static/css/custom-main.css, which fixes the header nav clipping.
+enable_custom_css = true
+
 footer_html = "<span>Powered by <a href='https://www.getzola.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Zola</a> and <a href='https://github.com/hahwul/goyo' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Goyo</a></span>"
 
 # Ref the docs describe. Bump on a release cut: it drives both edit_url and
@@ -25,18 +28,23 @@ source_repo = "https://github.com/madhank93/homelab"
 source_ref = "v0.1.7"
 edit_url = "https://github.com/madhank93/homelab/edit/v0.1.7/docs"
 
+# Header width is finite: past ~8 entries the bar clips its last item on a
+# laptop screen. The layer sections stay top-level; everything you look up
+# rather than read lives under Reference. The sidebar still lists all of it.
 nav = [
     { name = "Getting Started", url = "/getting-started", type = "url", icon = "rocket" },
-    { name = "Software Inventory", url = "/architecture/software-inventory", type = "url", icon = "database" },
     { name = "Architecture", url = "/architecture", type = "url", icon = "diagram-project" },
     { name = "Hardware", url = "/hardware", type = "url", icon = "server" },
     { name = "Cloud", url = "/infrastructure", type = "url", icon = "globe" },
     { name = "Platform", url = "/platform", type = "url", icon = "layer-group" },
     { name = "Workloads", url = "/workloads", type = "url", icon = "cubes" },
-    { name = "Upgrade Guide", url = "/upgrade-guide", type = "url", icon = "arrows-rotate" },
     { name = "Troubleshooting", url = "/troubleshooting", type = "url", icon = "shield-halved" },
-    { name = "Glossary", url = "/glossary", type = "url", icon = "book" },
-    { name = "Development", url = "/development", type = "url", icon = "code" },
+    { name = "Reference", type = "dropdown", icon = "book", members = [
+        { name = "Software Inventory", url = "/architecture/software-inventory", icon = "database" },
+        { name = "Upgrade Guide", url = "/upgrade-guide", icon = "arrows-rotate" },
+        { name = "Glossary", url = "/glossary", icon = "book" },
+        { name = "Development", url = "/development", icon = "code" },
+    ] },
     { name = "GitHub", url = "https://github.com/madhank93/homelab", type = "url", icon = "github" },
 ]
 
