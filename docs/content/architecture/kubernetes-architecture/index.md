@@ -6,7 +6,7 @@ weight = 20
 
 ## Overview
 
-Three Talos control-plane nodes share a virtual IP. Four worker nodes run all workloads. **Cilium** handles CNI, Gateway API ingress, and L2 LoadBalancer announcements. **ArgoCD** syncs all apps via GitOps.
+Three Talos control-plane nodes share a virtual IP. Four worker nodes run all workloads. **Cilium** handles CNI, Gateway API ingress, and L2 LoadBalancer announcements. **Argo CD** syncs all apps via GitOps.
 
 ---
 

@@ -21,7 +21,7 @@ CDK8s enables Go functions to generate manifests, making it easy to share patter
 
 ## How It's Used Here
 
-All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in `workloads/`. A CI pipeline runs `go run .` on every push to synthesize YAML into `app/` and force-pushes that output to the `v0.1.7-manifests` branch, which ArgoCD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero `Secret` resources.
+All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in `workloads/`. A CI pipeline runs `go run .` on every push to synthesize YAML into `app/` and force-pushes that output to the `v0.1.7-manifests` branch, which Argo CD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero `Secret` resources.
 
 ## Structure
 
@@ -81,7 +81,7 @@ Running `just synth` executes `go run .` in `workloads/`, which writes all manif
 3. `go run .` — synthesizes all manifests to `app/`
 4. Force-pushes `app/` content to `${branch}-manifests` branch (e.g. `v0.1.7-manifests`)
 
-The manifests branch is the ArgoCD source. ArgoCD's `ApplicationSet` directory generator watches every top-level directory in `v0.1.7-manifests` and creates an Application for each.
+The manifests branch is the Argo CD source. Argo CD's `ApplicationSet` directory generator watches every top-level directory in `v0.1.7-manifests` and creates an Application for each.
 
 ## Synthesis Flow
 
@@ -90,8 +90,8 @@ workloads/main.go (Go source)
   → cdk8s.Synth()
   → YAML files per resource in app/<workload>/
   → CI pushes to v0.1.7-manifests branch
-  → ArgoCD detects new/changed directories
-  → ArgoCD syncs to cluster
+  → Argo CD detects new/changed directories
+  → Argo CD syncs to cluster
 ```
 
 ## No Secrets in Generated Manifests
@@ -116,7 +116,7 @@ The entire manifests branch can be public (and is) without any security risk.
    myApp.Synth()
    ```
 3. Push — CI synthesizes and publishes the new directory to the manifests branch
-4. ArgoCD detects the new directory and creates an Application automatically
+4. Argo CD detects the new directory and creates an Application automatically
 
 ## Updating Chart Versions
 

@@ -18,7 +18,7 @@ Grafana is the primary observability UI for the cluster. It visualizes:
 - Node and pod metrics from VictoriaMetrics
 - Container logs from VictoriaLogs
 - GPU metrics from DCGM Exporter
-- ArgoCD application health
+- Argo CD application health
 - Longhorn volume status
 - Falco security events
 

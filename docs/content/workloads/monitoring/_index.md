@@ -28,3 +28,12 @@ Nodes/Pods
                                                          │
                                                Grafana queries ◄──── User
 ```
+
+| Page | What it covers |
+|---|---|
+| [VictoriaMetrics](@/workloads/monitoring/victoria-metrics/index.md) | Metrics storage, VMAgent scraping, and Alertmanager |
+| [VictoriaLogs](@/workloads/monitoring/victoria-logs/index.md) | Log storage and LogQL queries |
+| [Grafana](@/workloads/monitoring/grafana/index.md) | Dashboards, datasources, and Authentik OIDC |
+| [OpenTelemetry](@/workloads/monitoring/opentelemetry/index.md) | The agent/gateway collector pipelines |
+| [Metrics Server](@/workloads/monitoring/metrics-server/index.md) | `kubectl top` and HPA support |
+| [Argo CD Monitor](@/workloads/monitoring/argocd-monitor/index.md) | ServiceMonitors for Argo CD's components |

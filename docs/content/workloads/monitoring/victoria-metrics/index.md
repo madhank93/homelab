@@ -6,7 +6,7 @@ weight = 20
 
 ## What is VictoriaMetrics?
 
-[VictoriaMetrics](https://victoriametrics.com/) is a fast, resource-efficient time-series database and monitoring solution that is fully compatible with the Prometheus remote-write protocol and PromQL query language. It offers significantly lower memory and storage usage compared to Prometheus, with better compression and faster ingestion.
+[VictoriaMetrics](https://victoriametrics.com/) is where every metric in the cluster ends up. It speaks Prometheus remote-write and PromQL, so anything that would have targeted Prometheus works unchanged — at noticeably lower memory and disk cost, which is the reason it is here rather than Prometheus.
 
 ## Why VictoriaMetrics?
 
@@ -96,7 +96,7 @@ PodMonitor in every namespace with no per-app configuration:
 # - OpenBao: /v1/sys/metrics (Prometheus format)
 # - Falco sidekick: :2801/metrics
 # - DCGM Exporter: GPU metrics
-# - ArgoCD components: :8082-8085/metrics
+# - Argo CD components: :8082-8085/metrics
 # - Longhorn: via ServiceMonitor
 ```
 

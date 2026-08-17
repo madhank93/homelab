@@ -65,7 +65,7 @@ core/
 └── platform/
     ├── talos.go          # Proxmox VMs + Talos machine configs + bootstrap
     ├── proxmox.go        # Proxmox provider setup
-    ├── argocd.go         # ArgoCD Helm chart + ApplicationSet
+    ├── argocd.go         # Argo CD Helm chart + ApplicationSet
     ├── cilium.go         # Cilium CNI + Gateway API + L2 announcements
     └── cert_manager.go   # cert-manager Helm + ClusterIssuer
 ```

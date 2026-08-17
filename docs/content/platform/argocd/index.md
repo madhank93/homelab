@@ -1,26 +1,26 @@
 +++
-title = "ArgoCD"
-description = "ArgoCD Helm bootstrap, ApplicationSet directory generator, and sync configuration."
+title = "Argo CD"
+description = "Argo CD Helm bootstrap, ApplicationSet directory generator, and sync configuration."
 weight = 10
 +++
 
-## What is ArgoCD?
+## What is Argo CD?
 
-[ArgoCD](https://argo-cd.readthedocs.io/) is a Kubernetes-native GitOps controller that continuously reconciles cluster state against a git repository. It watches a target branch and automatically applies any changes, reverting manual `kubectl` edits and pruning resources that are removed from the repo.
+[Argo CD](https://argo-cd.readthedocs.io/) is a Kubernetes-native GitOps controller that continuously reconciles cluster state against a git repository. It watches a target branch and automatically applies any changes, reverting manual `kubectl` edits and pruning resources that are removed from the repo.
 
-## Why ArgoCD?
+## Why Argo CD?
 
-GitOps with ArgoCD ensures the cluster state is always derivable from code — there are no manual steps that can't be reproduced. Its ApplicationSet directory generator means adding a new workload requires only pushing a new directory to the manifests branch; no ArgoCD config changes are needed.
+GitOps with Argo CD ensures the cluster state is always derivable from code — there are no manual steps that can't be reproduced. Its ApplicationSet directory generator means adding a new workload requires only pushing a new directory to the manifests branch; no Argo CD config changes are needed.
 
 ## How It's Used Here
 
-ArgoCD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.7-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
+Argo CD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.7-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
 
 **Code:** {{ src(path="core/platform/argocd.go") }} · **Namespace:** `argocd` · **Versions:** [Software Inventory](@/architecture/software-inventory.md)
 
 ## Screenshots
 
-![ArgoCD application list showing all workloads with sync status and health indicators](/assets/screenshots/argocd/app-list.png)
+![Argo CD application list showing all workloads with sync status and health indicators](/assets/screenshots/argocd/app-list.png)
 
 ## Helm Installation
 
@@ -45,7 +45,7 @@ helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 
 ## ApplicationSet
 
-One `ApplicationSet` named `cots-applications` watches the `v0.1.7-manifests` branch. Every top-level directory automatically becomes an ArgoCD Application:
+One `ApplicationSet` named `cots-applications` watches the `v0.1.7-manifests` branch. Every top-level directory automatically becomes an Argo CD Application:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -88,7 +88,7 @@ spec:
 | `ServerSideApply=true` | ApplicationSet-level | kube-prometheus-stack CRDs exceed the 262 KB `kubectl.kubernetes.io/last-applied-configuration` annotation limit |
 | `automated.prune=true` | ApplicationSet-level | Resources removed from manifests are deleted from cluster |
 | `automated.selfHeal=true` | ApplicationSet-level | Manual kubectl changes are reverted |
-| `Prune=false` on bootstrap Secrets | Per-Secret annotation | Prevents ArgoCD deleting `openbao-unseal-key` and `cloudflare-api-token` |
+| `Prune=false` on bootstrap Secrets | Per-Secret annotation | Prevents Argo CD deleting `openbao-unseal-key` and `cloudflare-api-token` |
 
 ## HTTPRoute
 
@@ -116,7 +116,7 @@ The ApplicationSet ignores fields that change dynamically and would otherwise ca
 
 ## Bootstrap Secrets (`Prune=false`)
 
-Two Secrets are created by `just create-secrets` and must never be deleted by ArgoCD:
+Two Secrets are created by `just create-secrets` and must never be deleted by Argo CD:
 
 | Secret | Namespace | Purpose |
 |--------|-----------|---------|
@@ -128,7 +128,7 @@ Both carry `argocd.argoproj.io/sync-options: Prune=false`.
 ## Operations
 
 ```bash
-# Apply ArgoCD config changes
+# Apply Argo CD config changes
 just core platform up
 
 # Manual sync of a specific app
@@ -175,4 +175,4 @@ This recreates both `openbao-unseal-key` and `cloudflare-api-token` from `secret
 
 ### Out of Sync After kubectl Change
 
-ArgoCD's `selfHeal=true` will revert any manual `kubectl apply/patch/delete` within 3 minutes. This is intentional — all changes must go through Git.
+Argo CD's `selfHeal=true` will revert any manual `kubectl apply/patch/delete` within 3 minutes. This is intentional — all changes must go through Git.

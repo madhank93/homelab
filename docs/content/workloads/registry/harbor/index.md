@@ -6,7 +6,7 @@ weight = 10
 
 ## What is Harbor?
 
-[Harbor](https://goharbor.io/) is an open-source cloud-native container registry that provides role-based access control, vulnerability scanning (via Trivy), image signing, content trust, and pull-through proxy caching. It is CNCF Graduated status.
+[Harbor](https://goharbor.io/) is the cluster's own container registry. Two of its features earn it a place here beyond storing images: a pull-through proxy cache, so repeated pulls of upstream images do not leave the LAN, and vulnerability scanning of what it holds.
 
 ## Why Harbor?
 

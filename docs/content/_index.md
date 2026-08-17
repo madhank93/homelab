@@ -4,8 +4,8 @@ title = "Homelab"
 
 [extra.hero]
 title = "Homelab"
-badge = "Talos · Proxmox · Pulumi · ArgoCD · CDK8s · NetBird · Authentik"
-description = "A production-grade Kubernetes homelab on Talos Linux, provisioned entirely by Pulumi, with full GitOps via ArgoCD and CDK8s. One command deploys everything — from bare VMs to running apps."
+badge = "Talos · Proxmox · Pulumi · Argo CD · CDK8s · NetBird · Authentik"
+description = "A production-grade Kubernetes homelab on Talos Linux, provisioned entirely by Pulumi, with full GitOps via Argo CD and CDK8s. One command deploys everything — from bare VMs to running apps."
 cta_buttons = [
     { text = "Getting Started", url = "/getting-started", style = "primary" },
     { text = "View on GitHub", url = "https://github.com/madhank93/homelab", style = "secondary" },
@@ -22,12 +22,12 @@ icon = "shield-halved"
 
 [[extra.features_section.features]]
 title = "Pulumi IaC (Go)"
-desc = "Infrastructure as typed Go code. Proxmox VMs, Talos cluster, Cilium, ArgoCD, Hetzner VPS, Cloudflare DNS — all in one codebase."
+desc = "Infrastructure as typed Go code. Proxmox VMs, Talos cluster, Cilium, Argo CD, Hetzner VPS, Cloudflare DNS — all in one codebase."
 icon = "code"
 
 [[extra.features_section.features]]
-title = "ArgoCD GitOps"
-desc = "CDK8s synthesizes manifests to a branch; ArgoCD ApplicationSet detects every new directory and syncs automatically. Zero manual kubectl."
+title = "Argo CD GitOps"
+desc = "CDK8s synthesizes manifests to a branch; Argo CD ApplicationSet detects every new directory and syncs automatically. Zero manual kubectl."
 icon = "arrows-rotate"
 
 [[extra.features_section.features]]

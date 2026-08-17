@@ -1,11 +1,11 @@
 +++
 title = "Workloads"
-description = "All workloads deployed to the cluster via CDK8s and ArgoCD."
+description = "All workloads deployed to the cluster via CDK8s and Argo CD."
 weight = 60
 sort_by = "weight"
 +++
 
-All applications are defined as CDK8s Go code in `workloads/`, synthesized to YAML by CI, and deployed by ArgoCD from the `v0.1.7-manifests` branch.
+All applications are defined as CDK8s Go code in `workloads/`, synthesized to YAML by CI, and deployed by Argo CD from the `v0.1.7-manifests` branch.
 
 ## App Catalog
 

@@ -113,7 +113,7 @@ Pulumi performs the full cluster bootstrap in dependency order:
 7. Wait for the cluster to become healthy
 8. Retrieve kubeconfig → write to `core/kubeconfig`
 
-The kubeconfig is used by downstream platform Pulumi code (Cilium, ArgoCD) via the Kubernetes provider.
+The kubeconfig is used by downstream platform Pulumi code (Cilium, Argo CD) via the Kubernetes provider.
 
 ## Exported Outputs
 

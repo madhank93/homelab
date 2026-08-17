@@ -120,7 +120,7 @@ just create-secrets
 # → kubectl create secret generic cloudflare-api-token -n cert-manager
 ```
 
-Both secrets carry `argocd.argoproj.io/sync-options: Prune=false` — ArgoCD never deletes them.
+Both secrets carry `argocd.argoproj.io/sync-options: Prune=false` — Argo CD never deletes them.
 
 ---
 

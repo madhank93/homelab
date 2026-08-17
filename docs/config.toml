@@ -34,6 +34,8 @@ nav = [
     { name = "Platform", url = "/platform", type = "url", icon = "layer-group" },
     { name = "Workloads", url = "/workloads", type = "url", icon = "cubes" },
     { name = "Upgrade Guide", url = "/upgrade-guide", type = "url", icon = "arrows-rotate" },
+    { name = "Troubleshooting", url = "/troubleshooting", type = "url", icon = "shield-halved" },
+    { name = "Glossary", url = "/glossary", type = "url", icon = "book" },
     { name = "Development", url = "/development", type = "url", icon = "code" },
     { name = "GitHub", url = "https://github.com/madhank93/homelab", type = "url", icon = "github" },
 ]

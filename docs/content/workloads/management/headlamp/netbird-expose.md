@@ -147,7 +147,7 @@ git commit -m "feat: add netbird expose sidecar for headlamp"
 git push origin v0.1.7-manifests
 ```
 
-ArgoCD will roll the `netbird-peer` Deployment with the new sidecar within 3 minutes.
+Argo CD will roll the `netbird-peer` Deployment with the new sidecar within 3 minutes.
 
 ---
 

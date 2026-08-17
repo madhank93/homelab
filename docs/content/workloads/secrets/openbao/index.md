@@ -83,7 +83,7 @@ done`},
 
 > **Why `extraContainers` and not `extraInitContainers`?** Init containers must complete before the main container starts, but OpenBao must be running before it can accept an unseal request. A sidecar container runs alongside the main container and can poll until the server is ready.
 
-The `openbao-unseal-key` Secret is created by `just create-secrets` from `secrets/bootstrap.sops.yaml`. It carries `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never deletes it.
+The `openbao-unseal-key` Secret is created by `just create-secrets` from `secrets/bootstrap.sops.yaml`. It carries `argocd.argoproj.io/sync-options: Prune=false` so Argo CD never deletes it.
 
 ## How It Connects
 
@@ -217,5 +217,5 @@ kubectl get secretproviderclass -n <namespace>
 kubectl describe secretproviderclass <name> -n <namespace>
 ```
 
-**Fix:** Ensure the `SecretProviderClass` exists in the same namespace as the pod. CDK8s should create it — check if ArgoCD has synced the namespace.
+**Fix:** Ensure the `SecretProviderClass` exists in the same namespace as the pod. CDK8s should create it — check if Argo CD has synced the namespace.
 

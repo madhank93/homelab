@@ -6,7 +6,7 @@ weight = 30
 
 ## What is ComfyUI?
 
-[ComfyUI](https://github.com/comfyanonymous/ComfyUI) is a powerful, modular, node-based GUI for Stable Diffusion and Flux image generation models. It allows building complex image generation pipelines by connecting nodes (samplers, models, VAEs, ControlNets, LoRAs, etc.) in a visual graph editor.
+[ComfyUI](https://github.com/comfyanonymous/ComfyUI) is the image-generation front end on the GPU node. Workflows are built as a node graph — samplers, checkpoints, VAEs, ControlNets, LoRAs wired together — which is what makes it worth running over a form-based UI like Automatic1111.
 
 ## Why ComfyUI?
 

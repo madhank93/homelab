@@ -17,8 +17,8 @@ The homelab is organized in four layers. Each layer is managed by a specific too
 
 | Layer | What's in it | Managed by |
 |-------|-------------|------------|
-| **Apps** | ComfyUI, Ollama, Grafana, Harbor, n8n, Falco, … | ArgoCD + CDK8s |
-| **Platform** | Talos K8s, Cilium CNI, Gateway API, ArgoCD, cert-manager | Pulumi |
+| **Apps** | ComfyUI, Ollama, Grafana, Harbor, n8n, Falco, … | Argo CD + CDK8s |
+| **Platform** | Talos K8s, Cilium CNI, Gateway API, Argo CD, cert-manager | Pulumi |
 | **Infrastructure** | Proxmox VMs (7 nodes), Hetzner VPS (Bifrost edge) | Pulumi |
 | **Hardware** | Proxmox host, NVIDIA RTX 5070 Ti | Manual |
 

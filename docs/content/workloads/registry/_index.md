@@ -6,3 +6,7 @@ sort_by = "weight"
 +++
 
 Harbor is the cluster's enterprise container image registry with vulnerability scanning, RBAC, and pull-through proxy cache.
+
+| Page | What it covers |
+|---|---|
+| [Harbor](@/workloads/registry/harbor/index.md) | Registry, pull-through cache, and the RWO multi-attach fix |

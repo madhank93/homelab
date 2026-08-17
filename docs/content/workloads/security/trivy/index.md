@@ -10,7 +10,7 @@ weight = 20
 
 ## Why Trivy?
 
-Trivy is the most widely adopted open-source vulnerability scanner. The Operator pattern means scanning happens automatically whenever a workload changes — no manual scans required, no separate CI pipeline integration needed.
+Trivy is a widely used open-source vulnerability scanner. The Operator pattern means scanning happens automatically whenever a workload changes — no manual scans required, no separate CI pipeline integration needed.
 
 | Tool | Scan type | When |
 |------|-----------|------|

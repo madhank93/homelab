@@ -42,7 +42,7 @@ flowchart TB
     end
 
     subgraph CLUSTER["Kubernetes Cluster"]
-        ARGO["ArgoCD ApplicationSet<br/>watches manifests branch"]
+        ARGO["Argo CD ApplicationSet<br/>watches manifests branch"]
         APPS["Application pods<br/>Grafana · Harbor · n8n · etc."]
     end
 
@@ -80,7 +80,7 @@ SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
 
 | Stack | Command | Manages |
 |-------|---------|---------|
-| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap, Cilium CNI, ArgoCD |
+| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap, Cilium CNI, Argo CD |
 | `platform` | `just core platform up` | Gateway API, IP pools, HTTPRoutes, cert-manager |
 | `hetzner` | `just core hetzner up` | Hetzner VPS, Bifrost config, `bootstrap.sh` execution |
 | `authentik` | `just core authentik up` | Authentik OIDC apps, GitHub OAuth, ForwardAuth outpost |
@@ -100,7 +100,7 @@ core/
 └── platform/
     ├── talos.go           # VMs + cluster bootstrap
     ├── proxmox.go         # Proxmox provider
-    ├── argocd.go          # ArgoCD Helm + ApplicationSet
+    ├── argocd.go          # Argo CD Helm + ApplicationSet
     ├── cilium.go          # CNI + Gateway API
     └── cert_manager.go    # TLS cert automation
 ```
@@ -133,15 +133,15 @@ In CI, a GitHub Actions workflow runs `go run .` and pushes the output to the `v
 
 1. Create `workloads/<category>/<name>.go` with a `Deploy<Name>(app cdk8s.App)` function
 2. Register it in `workloads/main.go`
-3. Push to `main` → CI synthesizes manifests → ArgoCD syncs automatically
+3. Push to `main` → CI synthesizes manifests → Argo CD syncs automatically
 
 The `workloads/` layout is mapped in [CDK8s](@/platform/cdk8s/index.md).
 
 ---
 
-## ArgoCD ApplicationSet
+## Argo CD ApplicationSet
 
-One `ApplicationSet` watches the manifests branch. Every top-level directory under `app/` becomes one ArgoCD Application automatically:
+One `ApplicationSet` watches the manifests branch. Every top-level directory under `app/` becomes one Argo CD Application automatically:
 
 ```yaml
 generators:
@@ -157,7 +157,7 @@ template:
         - ServerSideApply=true   # required for CRDs >262KB (kube-prometheus-stack)
 ```
 
-> **`Prune=false` on bootstrap Secrets**: `openbao-unseal-key` and `cloudflare-api-token` are created by `just create-secrets`, not by CDK8s. Both carry `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never tries to delete them.
+> **`Prune=false` on bootstrap Secrets**: `openbao-unseal-key` and `cloudflare-api-token` are created by `just create-secrets`, not by CDK8s. Both carry `argocd.argoproj.io/sync-options: Prune=false` so Argo CD never tries to delete them.
 
 ---
 

@@ -114,10 +114,10 @@ kubectl get secret n8n-pg-app -n n8n
 
 If migrating from the community n8n chart to the 8gears chart, the Deployment's `spec.selector` changes. Kubernetes does not allow modifying selectors after creation.
 
-**Fix:** Delete the old Deployment before ArgoCD syncs:
+**Fix:** Delete the old Deployment before Argo CD syncs:
 
 ```bash
 kubectl delete deployment n8n -n n8n
-# Then trigger ArgoCD sync
+# Then trigger Argo CD sync
 argocd app sync n8n
 ```

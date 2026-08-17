@@ -6,7 +6,7 @@ weight = 10
 
 ## What is Longhorn?
 
-[Longhorn](https://longhorn.io/) is a lightweight, cloud-native distributed block storage system for Kubernetes. It provides persistent volumes that are automatically replicated across multiple nodes, with a built-in UI for volume management, snapshots, and backups.
+[Longhorn](https://longhorn.io/) provides the cluster's default StorageClass. It replicates each volume across the worker nodes, so a PVC survives losing the node it was scheduled on, and it ships a UI for volumes, snapshots and backups.
 
 ## Why Longhorn?
 
@@ -47,7 +47,7 @@ Source: {{ src(path="workloads/storage/longhorn.go") }}
 | `preUpgradeChecker.jobEnabled` | `false` | Disable pre-upgrade hook for GitOps compatibility |
 | Namespace PSA | `privileged` | Longhorn CSI driver requires host mounts |
 
-**Why 300% overprovisioning?** Workers have ~90–95 GiB actually free. At 200% (the previous setting), the 240 GiB scheduling cap was exhausted — there was no room for new 50 GiB AI model replicas. At 300%, each node schedules up to ~285 GiB, providing ~150 GiB of headroom for AI volumes and future growth. Longhorn does not actually allocate all scheduled space immediately; volumes grow on demand.
+**Why 300% overprovisioning?** Workers have ~90–95 GiB actually free. At 200% (the previous setting), the 240 GiB scheduling cap was exhausted — there was no room for new 50 GiB AI model replicas. At 300% each node has roughly 150 GiB of headroom for AI volumes and future growth. Longhorn does not actually allocate all scheduled space immediately; volumes grow on demand.
 
 ## Storage Capacity
 

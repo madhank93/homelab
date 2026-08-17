@@ -110,7 +110,7 @@ kubectl get nodes
 kubectl get applications -n argocd
 ```
 
-ArgoCD starts syncing apps from the manifests branch. Most apps will show `Degraded` — that's expected. OpenBao needs to be initialised and unsealed before apps can fetch their secrets.
+Argo CD starts syncing apps from the manifests branch. Most apps will show `Degraded` — that's expected. OpenBao needs to be initialised and unsealed before apps can fetch their secrets.
 
 ---
 
@@ -180,7 +180,7 @@ kubectl exec -n openbao openbao-0 -- bao kv put secret/netbird \
   NETBIRD_SETUP_KEY="placeholder"
 ```
 
-> After writing secrets, ArgoCD syncs and app pods start. Apps will become `Healthy` progressively as their CSI volumes mount.
+> After writing secrets, Argo CD syncs and app pods start. Apps will become `Healthy` progressively as their CSI volumes mount.
 
 ---
 
@@ -408,7 +408,7 @@ just synth        # optional: verify it synthesizes cleanly before pushing
 git push          # CI publishes to the manifests branch
 ```
 
-ArgoCD auto-syncs within 3 minutes:
+Argo CD auto-syncs within 3 minutes:
 
 ```bash
 kubectl get applications -n argocd

@@ -99,14 +99,14 @@ OIDC client secret is synced (Pattern B), because Grafana reads that one from a
 
 ## Bootstrap Secrets
 
-Only two Secrets are created by the bootstrap script and never managed by ArgoCD:
+Only two Secrets are created by the bootstrap script and never managed by Argo CD:
 
 | Secret | Namespace | Keys | Purpose |
 |--------|-----------|------|---------|
 | `openbao-unseal-key` | `openbao` | `unseal-key` | Unseals OpenBao on pod startup via sidecar |
 | `cloudflare-api-token` | `cert-manager` | `CLOUDFLARE_API_TOKEN` | DNS-01 ACME challenge for wildcard cert |
 
-Both carry `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never deletes them.
+Both carry `argocd.argoproj.io/sync-options: Prune=false` so Argo CD never deletes them.
 
 ## SOPS + age Setup
 

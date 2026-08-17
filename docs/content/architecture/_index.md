@@ -17,7 +17,7 @@ The homelab is designed around four principles: **everything as code**, **no man
 ┌─────────────────────────────────────────────────────────────────┐
 │  APPS                                                           │
 │  ComfyUI · Ollama · Grafana · Harbor · n8n · Falco · Trivy …  │
-│  Managed by: ArgoCD (GitOps) + CDK8s (manifest synthesis)      │
+│  Managed by: Argo CD (GitOps) + CDK8s (manifest synthesis)      │
 ├─────────────────────────────────────────────────────────────────┤
 │  PLATFORM                                                       │
 │  Talos Linux K8s · Cilium CNI · Gateway API · cert-manager     │

@@ -4,29 +4,24 @@ description = "Kubernetes Metrics Server — required for kubectl top, HPA, and 
 weight = 60
 +++
 
-## What is Metrics Server?
+[Metrics Server](https://github.com/kubernetes-sigs/metrics-server) serves the
+Kubernetes Metrics API (`metrics.k8s.io`) by scraping CPU and memory from the
+kubelets. It keeps only the latest data point and stores no history — anything
+historical comes from
+[VictoriaMetrics](@/workloads/monitoring/victoria-metrics/index.md) instead.
 
-[Metrics Server](https://github.com/kubernetes-sigs/metrics-server) is a cluster-wide aggregator of resource usage data. It collects CPU and memory metrics from kubelets and exposes them via the Kubernetes Metrics API (`metrics.k8s.io`).
+Without it, `kubectl top` returns `error: Metrics API not available`, Headlamp
+shows no resource usage, and any HPA or VPA has nothing to scale on.
 
-Metrics Server is **not** a monitoring solution — it only keeps the most recent data point per pod/node and does not persist history. For historical metrics, VictoriaMetrics is used.
+It is deployed as a CDK8s chart into `kube-system` with two flags that Talos
+specifically requires:
 
-## Why It's Needed
+| Flag | Why |
+|---|---|
+| `--kubelet-insecure-tls` | Talos kubelets serve self-signed certificates, which the default config rejects |
+| `--kubelet-preferred-address-types=InternalIP` | Node hostnames do not resolve in-cluster |
 
-Several Kubernetes features depend on the Metrics API:
-
-| Feature | Needs Metrics Server |
-|---------|---------------------|
-| `kubectl top nodes` | Yes |
-| `kubectl top pods` | Yes |
-| HPA (Horizontal Pod Autoscaler) | Yes |
-| Headlamp resource views | Yes |
-| VPA (Vertical Pod Autoscaler) | Yes |
-
-Without Metrics Server, `kubectl top` returns `error: Metrics API not available` and Headlamp cannot show pod CPU/memory usage.
-
-## How It's Deployed
-
-Metrics Server is typically deployed via the Talos cluster bootstrap or as a separate workload. On Talos Linux, the default installation may need the `--kubelet-insecure-tls` flag because Talos kubelets use self-signed certificates.
+Source: {{ src(path="workloads/monitoring/metrics_server.go") }}
 
 ```bash
 # Verify Metrics Server is running

@@ -37,7 +37,7 @@ The in-cluster NetBird peer is deployed as a **StatefulSet** (not a Deployment) 
 - Without persistence, every pod restart generates a new private key → new peer registration in NetBird Management → accumulating duplicate peers in the UI
 - StatefulSet + PVC ensures the same peer identity is reused across restarts
 
-A simple Deployment would create a new peer registration on every restart (e.g., every ArgoCD sync that changes the pod spec), filling the NetBird Management UI with ghost peers.
+A simple Deployment would create a new peer registration on every restart (e.g., every Argo CD sync that changes the pod spec), filling the NetBird Management UI with ghost peers.
 
 ---
 

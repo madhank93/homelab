@@ -132,7 +132,7 @@ kubectl describe pod <pod-name> -n <namespace>
 kubectl get secretproviderclass -n <namespace>
 ```
 
-**Fix:** The `SecretProviderClass` must exist in the same namespace as the pod. Check ArgoCD sync status.
+**Fix:** The `SecretProviderClass` must exist in the same namespace as the pod. Check Argo CD sync status.
 
 ### Secret Not Updating After Change
 

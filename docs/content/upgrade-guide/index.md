@@ -24,7 +24,7 @@ Components must be upgraded in layer order. Never skip layers.
 Talos
   └─► Cilium  (CNI must be compatible with Talos k8s version)
         └─► Gateway API CRDs  (vendored in core/platform/manifests/)
-              └─► ArgoCD  (GitOps engine)
+              └─► Argo CD  (GitOps engine)
                     └─► cert-manager
                           └─► OpenBao + CSI Driver  (secrets layer; all apps depend on this)
                                 └─► Longhorn + CNPG  (storage; stateful apps depend on this)
@@ -185,7 +185,7 @@ reached every node on the new image. Fix the node, then re-run
 
 ---
 
-## Phase 3 — ArgoCD
+## Phase 3 — Argo CD
 
 **Risk:** Medium — GitOps engine downtime during pod restart.
 
@@ -478,7 +478,7 @@ If Talos upgrades the embedded k8s version, also update the `k8s@X.Y.Z` import a
 # Cluster health
 talosctl --talosconfig ~/.talos/config health --nodes 192.168.1.210
 
-# All ArgoCD apps synced
+# All Argo CD apps synced
 kubectl get applications -n argocd
 
 # Secrets layer
