@@ -246,7 +246,7 @@ Version: jsii.String("0.X.Y"),
 - helm:https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts/secrets-store-csi-driver@1.X.Y
 ```
 
-Helm chart version and image tag must be compatible — check OpenBao [release notes](https://github.com/openbao/openbao/releases).
+Helm chart version and image tag must be compatible — check the OpenBao [tags](https://github.com/openbao/openbao/tags).
 
 ```bash
 just synth && git push
@@ -453,7 +453,7 @@ Must match Bifrost docker-compose NetBird version exactly. Upgrade Bifrost and k
 
 ### Kubeflow
 
-Kubeflow is deployed via Kustomize from `kubeflow/manifests`, not a Helm chart. Upgrade by updating the `ref` on each base in `workloads/ai/kubeflow/kustomization.yaml`. Check the [kubeflow/manifests releases](https://github.com/kubeflow/manifests/releases) for the version compatible with the current k8s version.
+Kubeflow is deployed via Kustomize from `kubeflow/manifests`, not a Helm chart. Upgrade by updating the `ref` on each base in `workloads/ai/kubeflow/kustomization.yaml`. Check the [kubeflow/manifests tags](https://github.com/kubeflow/manifests/tags) for the version compatible with the current k8s version.
 
 ---
 
