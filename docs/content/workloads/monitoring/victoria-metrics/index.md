@@ -1,12 +1,12 @@
 +++
 title = "VictoriaMetrics"
-description = "Time-series metrics storage, Prometheus-compatible, cluster mode."
+description = "Time-series metrics storage for the cluster: VMSingle, VMAgent, VMAlert and Alertmanager from one chart."
 weight = 20
 +++
 
 ## What is VictoriaMetrics?
 
-[VictoriaMetrics](https://victoriametrics.com/) is a fast, resource-efficient time-series database and monitoring solution that is fully compatible with the Prometheus remote-write protocol and PromQL query language. It offers significantly lower memory and storage usage compared to Prometheus, with better compression and faster ingestion.
+[VictoriaMetrics](https://victoriametrics.com/) is where every metric in the cluster ends up. It speaks Prometheus remote-write and PromQL, so anything that would have targeted Prometheus works unchanged — at noticeably lower memory and disk cost, which is the reason it is here rather than Prometheus.
 
 ## Why VictoriaMetrics?
 
@@ -17,26 +17,33 @@ weight = 20
 | Ingestion speed | Good | Faster |
 | Query language | PromQL | MetricsQL (superset of PromQL) |
 | Long-term storage | Requires Thanos/Cortex | Built-in |
-| Cluster mode | Manual | Native |
 
 VictoriaMetrics is a drop-in Prometheus replacement that works with any PromQL-compatible client (Grafana, etc.) while using fewer resources — important for a homelab running many workloads on limited hardware.
 
 ## How It's Used Here
 
-VictoriaMetrics runs in **cluster mode** with three components:
+One chart (`victoria-metrics-k8s-stack`) brings up the whole metrics pipeline in the
+`victoria-metrics` namespace:
 
-| Component | Replicas | Role |
-|-----------|---------|------|
-| `vminsert` | 1 | Receives prometheus remote-write from VMAgent and OTel collectors |
-| `vmselect` | 1 | Serves PromQL queries from Grafana |
-| `vmstorage` | 1 | Stores time-series data to a 100 Gi Longhorn PVC |
+| Component | Role |
+|-----------|------|
+| `vmsingle` | Stores and serves everything — ingest, query, and a 100 Gi Longhorn PVC |
+| `vmagent` | Scrapes the cluster and remote-writes into vmsingle |
+| `vmalert` | Evaluates PrometheusRules and VMRules |
+| `vmalertmanager` | Groups and routes the resulting alerts |
 
-**VMAgent** (a separate lightweight agent) scrapes metrics across the cluster and remote-writes to vminsert:
-- Discovers `ServiceMonitor` resources across all namespaces
-- Discovers `PodMonitor` resources across all namespaces (required for CNPG)
-- Remote-writes to `vminsert:8480`
+**Single-node, not cluster mode.** `vmcluster.enabled: false` — there is no
+`vminsert`/`vmselect`/`vmstorage` split. One node's worth of metrics does not justify
+the extra moving parts, and everything lands on one endpoint:
 
-Source: [`workloads/observability/victoria_metrics.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/victoria_metrics.go)
+```
+vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428
+```
+
+`fullnameOverride: "vm-stack"` keeps that name short on purpose: the default naming
+pushes VMAlertmanager's generated pod labels past Kubernetes' 63-byte limit.
+
+Source: {{ src(path="workloads/observability/victoria_metrics.go") }}
 
 ## Configuration
 
@@ -44,15 +51,44 @@ Source: [`workloads/observability/victoria_metrics.go`](https://github.com/madha
 |---------|-------|-----|
 | Namespace | `victoria-metrics` | Isolated namespace |
 | Retention | `30d` | 30 days of metrics |
-| vmstorage PVC | `100Gi` Longhorn | Long-term metrics storage |
-| vminsert resources | `500m` / `512Mi` | Lightweight write path |
-| vmselect resources | `500m` / `1Gi` | Query path needs more memory |
-| vmstorage resources | `1000m` / `1Gi` | Storage is most resource-intensive |
-| VMAgent chart version | `0.15.3` | victoria-metrics-agent |
+| vmsingle PVC | `100Gi` Longhorn | Metrics storage |
+| vmsingle limits | `1000m` / `2Gi` | Ingest and query in one process |
+| vmagent limits | `500m` / `512Mi` | Scrape path only |
+| vmalert / alertmanager limits | `200m` / `256Mi` each | Both are light |
+| Scrape interval | `30s` | |
+
+## Alertmanager
+
+VMAlertmanager ships inside the same k8s-stack chart, so there is no separate
+deployment and no separate namespace — it runs as `vmalertmanager-vm-stack` in
+`victoria-metrics` and is reachable at `https://alertmanager.madhan.app`.
+
+Alerts currently go nowhere on purpose — the only receiver is a blackhole:
+
+```yaml
+route:
+  group_by: [alertname, namespace]
+  group_wait: 10s
+  group_interval: 10m
+  repeat_interval: 1h
+  receiver: blackhole
+receivers:
+  - name: blackhole
+```
+
+Add a real receiver under `alertmanager.config.receivers` in
+{{ src(path="workloads/observability/victoria_metrics.go") }} to get
+notifications out.
+
+```bash
+curl https://alertmanager.madhan.app/api/v2/alerts | jq .
+curl https://alertmanager.madhan.app/api/v2/silences | jq .
+```
 
 ## How VMAgent Discovers Metrics
 
-VMAgent uses `serviceMonitorSelector: {}` and `podMonitorSelector: {}` (empty = match all), meaning it discovers every ServiceMonitor and PodMonitor across every namespace:
+VMAgent runs with `selectAllByDefault: true`, so it picks up every ServiceMonitor and
+PodMonitor in every namespace with no per-app configuration:
 
 ```yaml
 # Every app with a ServiceMonitor is automatically scraped
@@ -60,24 +96,27 @@ VMAgent uses `serviceMonitorSelector: {}` and `podMonitorSelector: {}` (empty = 
 # - OpenBao: /v1/sys/metrics (Prometheus format)
 # - Falco sidekick: :2801/metrics
 # - DCGM Exporter: GPU metrics
-# - ArgoCD components: :8082-8085/metrics
+# - Argo CD components: :8082-8085/metrics
 # - Longhorn: via ServiceMonitor
 ```
 
 ## HTTPRoute
 
-VictoriaMetrics vmselect is accessible at `http://vmselect.madhan.app`. Browsing to the root redirects to `/select/0/vmui/` — the vmui web interface.
+Reachable at `https://vmselect.madhan.app` (the hostname predates the move to
+single-node). The root redirects to `/vmui/` — **not** `/select/0/vmui/`, which is
+the cluster-mode path and 404s here.
+
+OpenBao has no ServiceMonitor, so it is scraped by an `inlineScrapeConfig` against
+`/v1/sys/metrics` instead.
 
 ## How It Connects
 
 ```
 All cluster apps (ServiceMonitor/PodMonitor)
   → VMAgent (scrapes every 30s)
-  → vminsert:8480 (prometheus remote-write)
-  → vmstorage (100Gi Longhorn PVC)
-  → vmselect:8481
+  → vmsingle-vm-stack:8428 (remote-write, storage, query — 100Gi Longhorn PVC)
   → Grafana (Prometheus datasource)
-  → AlertManager (rules evaluation via Prometheus operator)
+  → VMAlert (rule evaluation) → VMAlertmanager:9093 (grouping, routing)
 ```
 
 ## Troubleshooting
@@ -90,7 +129,7 @@ All cluster apps (ServiceMonitor/PodMonitor)
 
 ```bash
 # Check VMAgent targets
-kubectl port-forward -n victoria-metrics svc/vmagent 8429:8429
+kubectl port-forward -n victoria-metrics svc/vmagent-vm-stack 8429:8429
 # Open http://localhost:8429/targets
 ```
 
@@ -98,11 +137,11 @@ kubectl port-forward -n victoria-metrics svc/vmagent 8429:8429
 
 ### Storage Full
 
-**Symptoms:** vminsert returns errors, no new data ingested.
+**Symptoms:** writes fail, no new data ingested.
 
 ```bash
-kubectl exec -n victoria-metrics victoria-metrics-victoria-metrics-cluster-vmstorage-0 \
-  -- df -h /storage
+kubectl exec -n victoria-metrics vmsingle-vm-stack-0 -- df -h /storage
 ```
 
-Expand the PVC via Longhorn UI or increase `vmstorage.persistentVolume.size` and re-sync.
+Expand the PVC via the Longhorn UI, or raise the `vmsingle` storage request in
+{{ src(path="workloads/observability/victoria_metrics.go") }} and re-sync.

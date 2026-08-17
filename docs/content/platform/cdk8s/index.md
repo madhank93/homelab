@@ -21,7 +21,7 @@ CDK8s enables Go functions to generate manifests, making it easy to share patter
 
 ## How It's Used Here
 
-All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in `workloads/`. A CI pipeline runs `go run .` on every push to synthesize YAML into `app/` and force-pushes that output to the `v0.1.5-manifests` branch, which ArgoCD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero `Secret` resources.
+All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in `workloads/`. A CI pipeline runs `go run .` on every push to synthesize YAML into `app/` and force-pushes that output to the `v0.1.7-manifests` branch, which Argo CD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero `Secret` resources.
 
 ## Structure
 
@@ -31,20 +31,22 @@ workloads/
 ├── go.mod / go.sum
 ├── cdk8s.yaml           # Import versions (update here + re-run cdk8s import)
 ├── imports/             # Auto-generated CDK8s Helm chart bindings
-├── storage/             longhorn.go
-├── secrets/             openbao.go, csi_driver.go
-├── observability/       victoria_metrics.go, victoria_logs.go, otel_collector.go, alert_manager.go
-├── monitoring/          grafana.go
-├── security/            falco.go, trivy.go
-├── hardware/            nvidia_gpu_operator.go
-├── networking/          netbird_peer.go
-├── registry/            harbor.go
+├── ai/                  ollama.go  comfyui.go  kubeflow.go  notebook_gateway_controller.go
 ├── automation/          n8n.go
 ├── databases/           cnpg.go
-├── ai/                  ollama.go, comfyui.go
-├── management/          headlamp.go, rancher.go
+├── hardware/            nvidia_gpu_operator.go
+├── management/          headlamp.go
+├── monitoring/          grafana.go  metrics_server.go
+├── networking/          netbird_peer.go
+├── observability/       victoria_metrics.go  victoria_logs.go  otel_collector.go  argocd_monitor.go
+├── registry/            harbor.go
+├── secrets/             openbao.go  csi_driver.go
+├── security/            falco.go  keyverno.go  trivy.go
+├── storage/             longhorn.go
 └── support/             reloader.go
 ```
+
+This is the one copy of the tree; other pages link here rather than repeating it.
 
 ## How main.go Works
 
@@ -77,9 +79,9 @@ Running `just synth` executes `go run .` in `workloads/`, which writes all manif
 1. Checkout source
 2. Set up Go
 3. `go run .` — synthesizes all manifests to `app/`
-4. Force-pushes `app/` content to `${branch}-manifests` branch (e.g. `v0.1.5-manifests`)
+4. Force-pushes `app/` content to `${branch}-manifests` branch (e.g. `v0.1.7-manifests`)
 
-The manifests branch is the ArgoCD source. ArgoCD's `ApplicationSet` directory generator watches every top-level directory in `v0.1.5-manifests` and creates an Application for each.
+The manifests branch is the Argo CD source. Argo CD's `ApplicationSet` directory generator watches every top-level directory in `v0.1.7-manifests` and creates an Application for each.
 
 ## Synthesis Flow
 
@@ -87,9 +89,9 @@ The manifests branch is the ArgoCD source. ArgoCD's `ApplicationSet` directory g
 workloads/main.go (Go source)
   → cdk8s.Synth()
   → YAML files per resource in app/<workload>/
-  → CI pushes to v0.1.5-manifests branch
-  → ArgoCD detects new/changed directories
-  → ArgoCD syncs to cluster
+  → CI pushes to v0.1.7-manifests branch
+  → Argo CD detects new/changed directories
+  → Argo CD syncs to cluster
 ```
 
 ## No Secrets in Generated Manifests
@@ -114,7 +116,7 @@ The entire manifests branch can be public (and is) without any security risk.
    myApp.Synth()
    ```
 3. Push — CI synthesizes and publishes the new directory to the manifests branch
-4. ArgoCD detects the new directory and creates an Application automatically
+4. Argo CD detects the new directory and creates an Application automatically
 
 ## Updating Chart Versions
 

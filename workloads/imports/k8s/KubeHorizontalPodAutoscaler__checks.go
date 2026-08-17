@@ -27,6 +27,9 @@ func validateKubeHorizontalPodAutoscaler_IsConstructParameters(x interface{}) er
 }
 
 func validateKubeHorizontalPodAutoscaler_ManifestParameters(props *KubeHorizontalPodAutoscalerProps) error {
+	if props == nil {
+		return fmt.Errorf("parameter props is required, but nil was provided")
+	}
 	if err := _jsii_.ValidateStruct(props, func() string { return "parameter props" }); err != nil {
 		return err
 	}
@@ -51,6 +54,9 @@ func validateNewKubeHorizontalPodAutoscalerParameters(scope constructs.Construct
 		return fmt.Errorf("parameter id is required, but nil was provided")
 	}
 
+	if props == nil {
+		return fmt.Errorf("parameter props is required, but nil was provided")
+	}
 	if err := _jsii_.ValidateStruct(props, func() string { return "parameter props" }); err != nil {
 		return err
 	}

@@ -1,6 +1,6 @@
 +++
 title = "Hetzner Bifrost"
-description = "Hetzner VPS running Traefik v3.3, NetBird v0.66, and Authentik — the automated public edge for the homelab."
+description = "Hetzner VPS running Traefik, NetBird, and Authentik — the automated public edge for the homelab."
 weight = 10
 +++
 
@@ -23,16 +23,18 @@ just core hetzner up
     ├─ generateBifrostDotEnv()       writes .env from SOPS
     ├─ CopyToRemote                  uploads /etc/bifrost/ to VPS
     └─ remote.Command → bootstrap.sh
-           ├─ 1/6  traefik              TLS termination + routing
-           ├─ 2/6  authentik-postgres
-           ├─ 3/6  authentik-server + worker
+           ├─ pre-flight             validate secrets, wait for cloud-init
+           ├─ 1/8  traefik           TLS termination + routing
+           ├─ 2/8  authentik-postgres
+           ├─ 3/8  authentik         DB migrations (one-off, before the servers)
+           ├─ 4/8  authentik-server + authentik-worker
            ├─      process_netbird_config()
            │         sed: substitute ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}
            │         python: bcrypt hash NB_OWNER_PASSWORD → ${NB_OWNER_HASH}
-           ├─ 4/6  netbird-server     management + signal + relay + STUN + embedded Dex
-           ├─      netbird-dashboard  (started in same step)
-           ├─ 5/6  netbird-agent      WireGuard peer (only if NB_BIFROST_SETUP_KEY set)
-           └─ 6/6  netbird-proxy      (only if NB_PROXY_TOKEN set)
+           ├─ 5/8  netbird-server + netbird-dashboard
+           ├─ 6/8  netbird-agent     WireGuard peer (only if NB_BIFROST_SETUP_KEY set)
+           ├─ 7/8  netbird-proxy     (only if NB_PROXY_TOKEN set)
+           └─ 8/8  gatus             uptime monitoring
 ```
 
 > **netbird-server vs netbird-agent on the same host:** These are two distinct roles.
@@ -50,15 +52,19 @@ All services run via `docker compose` from `/etc/bifrost/`:
 
 | Container | Image | Role |
 |-----------|-------|------|
-| `traefik` | `traefik:v3.7.1` | TLS termination, ForwardAuth, routing |
-| `authentik-server` | `ghcr.io/goauthentik/server:2026.5.2` | GitHub OAuth, OIDC, ForwardAuth provider |
-| `authentik-worker` | `ghcr.io/goauthentik/server:2026.5.2` | Background tasks, email, jobs |
-| `authentik-postgres` | `postgres:16.14-alpine` | Authentik database |
-| `netbird-server` | `netbirdio/netbird-server:0.71.4` | Combined: management + signal + relay + STUN + embedded Dex OIDC |
-| `netbird-dashboard` | `netbirdio/dashboard:v2.38.1` | NetBird web UI |
-| `netbird-proxy` | `netbirdio/reverse-proxy:0.71.4` | `*.proxy.madhan.app` TCP passthrough |
-| `netbird-agent` | `netbirdio/netbird:0.71.4` | WireGuard peer, advertises `192.168.1.0/24` |
-| `gatus` | `ghcr.io/twin/gatus:v5.36.0` | Uptime monitoring at `uptime.madhan.app` |
+| `traefik` | `traefik` | TLS termination, ForwardAuth, routing |
+| `authentik-server` | `ghcr.io/goauthentik/server` | GitHub OAuth, OIDC, ForwardAuth provider |
+| `authentik-worker` | `ghcr.io/goauthentik/server` | Background tasks, email, jobs |
+| `authentik-postgres` | `postgres` | Authentik database |
+| `netbird-server` | `netbirdio/netbird-server` | Combined: management + signal + relay + STUN + embedded Dex OIDC |
+| `netbird-dashboard` | `netbirdio/dashboard` | NetBird web UI |
+| `netbird-proxy` | `netbirdio/reverse-proxy` | `*.proxy.madhan.app` TCP passthrough |
+| `netbird-agent` | `netbirdio/netbird` | WireGuard peer, advertises `192.168.1.0/24` |
+| `gatus` | `ghcr.io/twin/gatus` | Uptime monitoring at `uptime.madhan.app` |
+
+Tags are pinned in {{ src(path="core/cloud/bifrost/docker-compose.yml", label="docker-compose.yml") }}
+and listed in the [Software Inventory](@/architecture/software-inventory.md). The four
+NetBird images must move together — mixing versions breaks the management protocol.
 
 All containers share `bifrost_net` (172.30.0.0/24). Traefik is the only container with public ports 80/443.
 
@@ -88,47 +94,8 @@ hetzner:
 
 The bootstrap script runs on the VPS after every config or secret change. It is idempotent — safe to re-run.
 
-{% mermaid() %}
-flowchart TB
-    PF["Preflight<br/>validate 5 required secrets<br/>wait for cloud-init<br/>check docker compose"]
-
-    subgraph S1["Step 1/5"]
-        T["docker compose up -d traefik<br/>wait_healthy 60s"]
-    end
-    subgraph S2["Step 2/5"]
-        AP["docker compose up -d authentik-postgres<br/>wait_healthy 120s"]
-    end
-    subgraph S3["Step 3/5"]
-        AS["docker compose up -d authentik-server authentik-worker<br/>wait_healthy 300s"]
-    end
-
-    subgraph CFG["process_netbird_config()"]
-        SED["sed: replace base64 placeholders<br/>\${NB_RELAY_SECRET}<br/>\${NB_DATA_STORE_KEY}"]
-        PY1["python3: bcrypt.hashpw(NB_OWNER_PASSWORD)<br/>→ owner_hash"]
-        PY2["python3: replace \${NB_OWNER_HASH}<br/>in netbird/config.yaml"]
-        SED --> PY1 --> PY2
-    end
-
-    subgraph S4["Step 4/5"]
-        NS["docker compose up -d netbird-server netbird-dashboard<br/>wait_healthy 120s / 60s"]
-    end
-    subgraph S5["Step 5/6"]
-        NA{"NB_BIFROST_SETUP_KEY set?"}
-        NAY["docker compose up -d netbird-agent<br/>wait_healthy 60s"]
-        NAN["skip — Traefik cannot reach 192.168.1.x!"]
-    end
-    subgraph S6["Step 6/6"]
-        NP{"NB_PROXY_TOKEN set?"}
-        NPY["docker compose up -d netbird-proxy<br/>wait_healthy 60s"]
-        NPN["skip — show setup instructions"]
-    end
-
-    PF --> S1 --> S2 --> S3 --> CFG --> S4 --> S5 --> S6
-    NA -->|Yes| NAY
-    NA -->|No| NAN
-    NP -->|Yes| NPY
-    NP -->|No| NPN
-{% end %}
+The sequence above is the whole of it; each step waits for the previous one to
+report healthy before starting.
 
 ### Health polling
 
@@ -144,7 +111,7 @@ Authentik has an explicit `healthcheck: test: ["CMD-SHELL", "ak healthcheck"]` a
 
 ### netbird/config.yaml template substitution
 
-NetBird v0.66 does not expand `${VAR}` in its config file — the YAML is read verbatim. `bootstrap.sh` substitutes three placeholders before starting `netbird-server`:
+NetBird does not expand `${VAR}` in its config file — the YAML is read verbatim. `bootstrap.sh` substitutes three placeholders before starting `netbird-server`:
 
 | Placeholder | Substituted with | Method |
 |-------------|-----------------|--------|

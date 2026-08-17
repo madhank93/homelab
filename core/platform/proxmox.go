@@ -159,5 +159,10 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 		args.Hostpcis = hostpcis
 	}
 
-	return vm.NewVirtualMachine(ctx, config.Name, args, pulumi.Provider(provider))
+	// Prevent accidental VM replacement; controllers are etcd members.
+	// Unprotect explicitly for intentional rebuilds.
+	return vm.NewVirtualMachine(ctx, config.Name, args,
+		pulumi.Provider(provider),
+		pulumi.Protect(true),
+	)
 }

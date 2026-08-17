@@ -76,7 +76,7 @@ type DeviceRequestV1Beta1 struct {
 	//
 	// This field can only be set when deviceClassName is set and no subrequests are specified in the firstAvailable list.
 	//
-	// This is an alpha field and requires enabling the DRADeviceTaints feature gate.
+	// This is a beta field and requires enabling the DRADeviceTaints feature gate.
 	Tolerations *[]*DeviceTolerationV1Beta1 `field:"optional" json:"tolerations" yaml:"tolerations"`
 }
 

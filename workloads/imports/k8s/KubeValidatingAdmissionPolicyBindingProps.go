@@ -9,11 +9,11 @@ package k8s
 //
 // The CEL expressions of a policy must have a computed CEL cost below the maximum CEL budget. Each evaluation of the policy is given an independent CEL cost budget. Adding/removing policies, bindings, or params can not affect whether a given (policy, binding, param) combination is within its own CEL budget.
 type KubeValidatingAdmissionPolicyBindingProps struct {
-	// Standard object metadata;
+	// spec defines the desired behavior of the ValidatingAdmissionPolicyBinding.
+	Spec *ValidatingAdmissionPolicyBindingSpec `field:"required" json:"spec" yaml:"spec"`
+	// metadata is the standard object metadata;
 	//
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
-	// Specification of the desired behavior of the ValidatingAdmissionPolicyBinding.
-	Spec *ValidatingAdmissionPolicyBindingSpec `field:"optional" json:"spec" yaml:"spec"`
 }
 

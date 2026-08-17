@@ -10,7 +10,6 @@ import (
 // NewComfyUIChart deploys ComfyUI, a node-based Stable Diffusion UI, as a Deployment
 // pinned to the GPU worker node (nvidia.com/gpu.present=true).
 //
-// Image: yanwk/comfyui-boot:cu128-megapak-20260223 (CUDA 12.8, sm_120 Blackwell).
 // A model PVC is mounted at /root so model files persist across pod restarts.
 // An HTTPRoute exposes ComfyUI at comfyui.madhan.app through the homelab Gateway.
 func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -42,7 +41,9 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 		},
 	})
 
-	replicas := float64(0)
+	// Default off: the GPU is shared and unisolated, so the safe resting state
+	// leaves its VRAM free. `just comfyui on|off` rewrites this literal.
+	replicas := float64(0) // comfyui-replicas
 	k8s.NewKubeDeployment(chart, jsii.String("comfyui"), &k8s.KubeDeploymentProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("comfyui"),
@@ -69,8 +70,11 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 					Containers: &[]*k8s.Container{
 						{
 							Name: jsii.String("comfyui"),
-							// cu128-megapak: CUDA 12.8 build matching driver 570.x on Talos.
-							Image:           jsii.String("yanwk/comfyui-boot:cu128-megapak-20260223"),
+							// The cu128-megapak line stopped building in May 2026. cu126 is not
+							// an option: the RTX 5070 Ti is Blackwell (sm_120) and needs CUDA
+							// 12.8+. cu130 + PyTorch 2.11 is the current line, and driver
+							// 595.71.05 reports CUDA 13.2, so it is supported. 12.3 GB image.
+							Image:           jsii.String("yanwk/comfyui-boot:cu130-megapak-pt211-20260812"),
 							ImagePullPolicy: jsii.String("IfNotPresent"),
 							Ports: &[]*k8s.ContainerPort{
 								{ContainerPort: jsii.Number(8188), Name: jsii.String("http"), Protocol: jsii.String("TCP")},
@@ -81,9 +85,14 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 								{Name: jsii.String("CLI_ARGS"), Value: jsii.String("--listen 0.0.0.0 --port 8188")},
 							},
 							Resources: &k8s.ResourceRequirements{
+								// 6Gi so Ollama's 8Gi limit and this one together stay under
+								// worker4's 15.1Gi: a runaway workflow is then OOM-killed on
+								// its own rather than taking the node's other pods with it.
+								// The GPU's 16Gi VRAM is not covered by any of this — no
+								// Kubernetes limit applies to it.
 								Limits: &map[string]k8s.Quantity{
 									"nvidia.com/gpu": k8s.Quantity_FromNumber(jsii.Number(1)),
-									"memory":         k8s.Quantity_FromString(jsii.String("8Gi")),
+									"memory":         k8s.Quantity_FromString(jsii.String("6Gi")),
 									"cpu":            k8s.Quantity_FromString(jsii.String("4000m")),
 								},
 								Requests: &map[string]k8s.Quantity{

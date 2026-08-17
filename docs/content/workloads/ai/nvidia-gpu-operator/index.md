@@ -23,15 +23,17 @@ The standalone device plugin has no validation init containers and works out of 
 
 Three Helm charts are deployed in the `nvidia-gpu-operator` namespace:
 
-| Chart | Version | Purpose |
-|-------|---------|---------|
-| `nvidia-device-plugin` | v0.18.2 | GPU device advertisement + time-slicing config |
-| `dcgm-exporter` | v3.4.2 | GPU metrics (util, VRAM, temp, power) |
-| (NFD/GFD) | bundled with device plugin | Node/GPU feature labels |
+| Chart | Purpose |
+|-------|---------|
+| `nvidia-device-plugin` | GPU device advertisement + time-slicing config |
+| `dcgm-exporter` | GPU metrics (util, VRAM, temp, power) |
+| (NFD/GFD) | Node/GPU feature labels, bundled with the device plugin |
+
+Versions are in the [Software Inventory](@/architecture/software-inventory.md).
 
 A `RuntimeClass` named `nvidia` is also created (handler: `nvidia`), matching the containerd runtime configured by the `nvidia-container-toolkit-production` Talos extension.
 
-Source: [`workloads/hardware/nvidia_gpu_operator.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/hardware/nvidia_gpu_operator.go)
+Source: {{ src(path="workloads/hardware/nvidia_gpu_operator.go") }}
 
 ## Configuration
 
@@ -87,7 +89,7 @@ Talos system extensions (boot time):
 NVIDIA Device Plugin DaemonSet:
   → NFD labels GPU nodes
   → GFD labels GPU capabilities
-  → Advertises nvidia.com/gpu:2 on k8s-worker4
+  → Advertises nvidia.com/gpu:5 on k8s-worker4
 
 Pod with nvidia.com/gpu: 1 + runtimeClassName: nvidia:
   → containerd routes to nvidia-container-runtime
@@ -109,7 +111,7 @@ kubectl get pods -n nvidia-gpu-operator -o wide | grep worker4
 kubectl describe node k8s-worker4 | grep -A5 Allocatable
 
 # Should show:
-# nvidia.com/gpu: 2
+# nvidia.com/gpu: 5
 ```
 
 ### NVML Initialization Failed

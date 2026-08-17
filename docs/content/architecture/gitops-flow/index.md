@@ -28,8 +28,8 @@ flowchart TB
 
     subgraph PULUMI["Pulumi — manual, laptop only"]
         direction LR
-        PUL_T["just core talos up<br/>Proxmox VMs + Talos bootstrap<br/>Cilium + ArgoCD"]
-        PUL_P["just core platform up<br/>Gateway API · HTTPRoutes · cert-manager"]
+        PUL_T["just core talos up<br/>Proxmox VMs + Talos bootstrap"]
+        PUL_P["just core platform up<br/>Cilium · Gateway API · IP pool<br/>cert-manager · Argo CD"]
         PUL_H["just core hetzner up<br/>Hetzner VPS + bootstrap.sh<br/>NetBird + Traefik + Authentik"]
         PUL_A["just core authentik up<br/>OIDC apps · GitHub OAuth<br/>ForwardAuth outpost"]
         PUL_C["just core cloudflare up<br/>DNS records for all services"]
@@ -38,11 +38,11 @@ flowchart TB
     subgraph GITHUB["GitHub"]
         REPO["main branch<br/>code changes"]
         CI["GitHub Actions<br/>CDK8s publish workflow"]
-        MBRANCH["v0.1.5-manifests branch<br/>app/*/  (synthesized manifests)"]
+        MBRANCH["v0.1.7-manifests branch<br/>app/*/  (synthesized manifests)"]
     end
 
     subgraph CLUSTER["Kubernetes Cluster"]
-        ARGO["ArgoCD ApplicationSet<br/>watches manifests branch"]
+        ARGO["Argo CD ApplicationSet<br/>watches manifests branch"]
         APPS["Application pods<br/>Grafana · Harbor · n8n · etc."]
     end
 
@@ -80,8 +80,8 @@ SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
 
 | Stack | Command | Manages |
 |-------|---------|---------|
-| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap, Cilium CNI, ArgoCD |
-| `platform` | `just core platform up` | Gateway API, IP pools, HTTPRoutes, cert-manager |
+| `talos` | `just core talos up` | Proxmox VMs and Talos cluster bootstrap |
+| `platform` | `just core platform up` | Cilium CNI, Gateway API + IP pool, cert-manager, Argo CD |
 | `hetzner` | `just core hetzner up` | Hetzner VPS, Bifrost config, `bootstrap.sh` execution |
 | `authentik` | `just core authentik up` | Authentik OIDC apps, GitHub OAuth, ForwardAuth outpost |
 | `cloudflare` | `just core cloudflare up` | DNS A records for all public hostnames |
@@ -100,7 +100,7 @@ core/
 └── platform/
     ├── talos.go           # VMs + cluster bootstrap
     ├── proxmox.go         # Proxmox provider
-    ├── argocd.go          # ArgoCD Helm + ApplicationSet
+    ├── argocd.go          # Argo CD Helm + ApplicationSet
     ├── cilium.go          # CNI + Gateway API
     └── cert_manager.go    # TLS cert automation
 ```
@@ -117,14 +117,14 @@ just synth
 # → cd workloads && go run . → writes to ../app/
 ```
 
-In CI, a GitHub Actions workflow runs `go run .` and pushes the output to the `v0.1.5-manifests` branch:
+In CI, a GitHub Actions workflow runs `go run .` and pushes the output to the `v0.1.7-manifests` branch:
 
 ```yaml
 # .github/workflows/publish.yml (simplified)
 - run: go run .
   working-directory: workloads
 - run: |
-    git checkout v0.1.5-manifests
+    git checkout v0.1.7-manifests
     cp -r app/* .
     git add . && git commit -m "chore: Synthesize manifests" && git push
 ```
@@ -133,40 +133,21 @@ In CI, a GitHub Actions workflow runs `go run .` and pushes the output to the `v
 
 1. Create `workloads/<category>/<name>.go` with a `Deploy<Name>(app cdk8s.App)` function
 2. Register it in `workloads/main.go`
-3. Push to `main` → CI synthesizes manifests → ArgoCD syncs automatically
+3. Push to `main` → CI synthesizes manifests → Argo CD syncs automatically
 
-### File structure
-
-```
-workloads/
-├── main.go              # registers all apps, calls cdk8s.App.Synth()
-├── go.mod               # module: github.com/madhank93/homelab/workloads
-├── imports/             # generated CDK8s type bindings
-├── ai/                  ollama.go  comfyui.go
-├── automation/          n8n.go
-├── hardware/            nvidia_gpu_operator.go
-├── management/          headlamp.go  fleet_device_manager.go  rancher.go
-├── monitoring/          grafana.go
-├── networking/          netbird_peer.go
-├── observability/       victoria_metrics.go  victoria_logs.go  otel_collector.go  alert_manager.go
-├── registry/            harbor.go
-├── secrets/             openbao.go  csi_driver.go
-├── security/            falco.go  keyverno.go  trivy.go
-├── storage/             longhorn.go
-└── support/             reloader.go
-```
+The `workloads/` layout is mapped in [CDK8s](@/platform/cdk8s/index.md).
 
 ---
 
-## ArgoCD ApplicationSet
+## Argo CD ApplicationSet
 
-One `ApplicationSet` watches the manifests branch. Every top-level directory under `app/` becomes one ArgoCD Application automatically:
+One `ApplicationSet` watches the manifests branch. Every top-level directory under `app/` becomes one Argo CD Application automatically:
 
 ```yaml
 generators:
   - git:
       repoURL: https://github.com/madhank93/homelab.git
-      revision: v0.1.5-manifests
+      revision: v0.1.7-manifests
       directories:
         - path: "*"
 template:
@@ -176,7 +157,7 @@ template:
         - ServerSideApply=true   # required for CRDs >262KB (kube-prometheus-stack)
 ```
 
-> **`Prune=false` on bootstrap Secrets**: `openbao-unseal-key` and `cloudflare-api-token` are created by `just create-secrets`, not by CDK8s. Both carry `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never tries to delete them.
+> **`Prune=false` on bootstrap Secrets**: `openbao-unseal-key` and `cloudflare-api-token` are created by `just create-secrets`, not by CDK8s. Both carry `argocd.argoproj.io/sync-options: Prune=false` so Argo CD never tries to delete them.
 
 ---
 

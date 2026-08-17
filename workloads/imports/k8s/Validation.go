@@ -3,7 +3,7 @@ package k8s
 
 // Validation specifies the CEL expression which is used to apply the validation.
 type Validation struct {
-	// Expression represents the expression which will be evaluated by CEL.
+	// expression represents the expression which will be evaluated by CEL.
 	//
 	// ref: https://github.com/google/cel-spec CEL expressions have access to the contents of the API request/response, organized into CEL variables as well as some other useful variables:
 	//
@@ -32,7 +32,7 @@ type Validation struct {
 	// non-intersecting keys are appended, retaining their partial order.
 	// Required.
 	Expression *string `field:"required" json:"expression" yaml:"expression"`
-	// Message represents the message displayed when validation fails.
+	// message represents the message displayed when validation fails.
 	//
 	// The message is required if the Expression contains line breaks. The message must not contain line breaks. If unset, the message is "failed rule: {Rule}". e.g. "must be a URL with the host matching spec.host" If the Expression contains line breaks. Message is required. The message must not contain line breaks. If unset, the message is "failed Expression: {Expression}".
 	Message *string `field:"optional" json:"message" yaml:"message"`
@@ -40,7 +40,7 @@ type Validation struct {
 	//
 	// Since messageExpression is used as a failure message, it must evaluate to a string. If both message and messageExpression are present on a validation, then messageExpression will be used if validation fails. If messageExpression results in a runtime error, the runtime error is logged, and the validation failure message is produced as if the messageExpression field were unset. If messageExpression evaluates to an empty string, a string with only spaces, or a string that contains line breaks, then the validation failure message will also be produced as if the messageExpression field were unset, and the fact that messageExpression produced an empty string/string with only spaces/string with line breaks will be logged. messageExpression has access to all the same variables as the `expression` except for 'authorizer' and 'authorizer.requestResource'. Example: "object.x must be less than max ("+string(params.max)+")"
 	MessageExpression *string `field:"optional" json:"messageExpression" yaml:"messageExpression"`
-	// Reason represents a machine-readable description of why this validation failed.
+	// reason represents a machine-readable description of why this validation failed.
 	//
 	// If this is the first validation in the list to fail, this reason, as well as the corresponding HTTP response code, are used in the HTTP response to the client. The currently supported reasons are: "Unauthorized", "Forbidden", "Invalid", "RequestEntityTooLarge". If not set, StatusReasonInvalid is used in the response to the client.
 	Reason *string `field:"optional" json:"reason" yaml:"reason"`

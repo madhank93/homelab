@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	talosVersion    = "v1.13.3"
+	talosVersion    = "v1.13.8"
 	clusterEndpoint = "https://192.168.1.210:6443" // VIP
 	vipIP           = "192.168.1.210"
 )
@@ -26,6 +26,9 @@ const (
 // controller, and writes talosconfig + kubeconfig to disk for the platform stack.
 //
 // Run `just core talos up` to apply.
+//
+// Changing the Talos image affects only newly created VMs; upgrade existing
+// nodes with `just talos-upgrade <ip>`.
 func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Initialize Provider & Config
 	provider, cfg, err := NewProxmoxProvider(ctx)
@@ -37,7 +40,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Schematic ID: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b
 	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent
 	baseTalosImage, err := DownloadImage(ctx, provider, "talos-base-image", cfg.NodeName,
-		"https://factory.talos.dev/image/88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b/v1.13.3/nocloud-amd64.raw.gz",
+		"https://factory.talos.dev/image/88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b/v1.13.8/nocloud-amd64.raw.gz",
 		"talos-nocloud-amd64-base.img",
 		"gz",
 	)
@@ -47,9 +50,10 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	// Download GPU Talos Image (with Nvidia extensions)
 	// Schematic ID: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829
-	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent, nvidia-container-toolkit, nvidia-open-gpu-kernel-modules
+	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent,
+	//             nvidia-container-toolkit-production, nvidia-open-gpu-kernel-modules-production
 	gpuTalosImage, err := DownloadImage(ctx, provider, "talos-gpu-image", cfg.NodeName,
-		"https://factory.talos.dev/image/901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829/v1.13.3/nocloud-amd64.raw.gz",
+		"https://factory.talos.dev/image/901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829/v1.13.8/nocloud-amd64.raw.gz",
 		"talos-nocloud-amd64-gpu.img",
 		"gz",
 	)
@@ -172,12 +176,20 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
       - name: nvidia_modeset
 `
 
+	// install.disk is required: these nodes boot with talos.platform=metal, and the
+	// metal installer refuses to run an upgrade without it. sda is the 215 GB virtio
+	// system disk on every node; sdb on the workers is the iSCSI volume Longhorn uses.
+	// install.image is deliberately unset — deprecated in favour of Image Factory,
+	// and `just talos-upgrade` passes the factory installer explicitly.
 	basePatch := `cluster:
   network:
     cni:
       name: none
   proxy:
     disabled: true
+machine:
+  install:
+    disk: /dev/sda
 `
 
 	// Generate Configs
@@ -365,7 +377,6 @@ func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
 
 		if _, hasMachine := doc["machine"]; hasMachine {
 			if machineMap, ok := doc["machine"].(map[string]any); ok {
-				delete(machineMap, "install")
 				if _, hasNetwork := machineMap["network"]; !hasNetwork {
 					machineMap["network"] = make(map[string]any)
 				}

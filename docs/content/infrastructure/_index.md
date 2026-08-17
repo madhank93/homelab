@@ -25,39 +25,8 @@ Kubernetes cluster provisioning lives in [Platform](/platform/) (`core/platform/
 
 ## Cluster Architecture
 
-{% mermaid() %}
-flowchart TD
-    DEV["Developer Laptop<br/>Pulumi + SOPS"]
-
-    subgraph PROX["Proxmox Host"]
-        direction LR
-        CP["k8s-controller1/2/3<br/>192.168.1.211–213<br/>VIP: 192.168.1.210"]
-        W13["k8s-worker1/2/3<br/>192.168.1.221–223"]
-        W4["k8s-worker4<br/>192.168.1.224<br/>NVIDIA RTX 5070 Ti"]
-    end
-
-    subgraph PLATFORM["Platform Layer"]
-        CIL["Cilium CNI<br/>Gateway API L2 LB<br/>192.168.1.220"]
-        ARGO["ArgoCD<br/>ApplicationSet"]
-        CERT["cert-manager<br/>DNS-01 wildcard TLS"]
-    end
-
-    subgraph HETZNER["Hetzner Cloud"]
-        VPS["Bifrost VPS<br/>178.156.199.250<br/>Traefik · NetBird · Authentik"]
-    end
-
-    subgraph CF["Cloudflare"]
-        DNS["DNS zones<br/>*.madhan.app → 192.168.1.220<br/>auth/netbird/grafana → 178.156.199.250"]
-    end
-
-    DEV -->|just core talos up| PROX
-    DEV -->|just core hetzner up| HETZNER
-    DEV -->|just core cloudflare up| CF
-    CP --> CIL
-    CIL --> ARGO & CERT
-    ARGO -->|syncs workloads| W13 & W4
-    VPS <-->|WireGuard mesh| CIL
-{% end %}
+The cluster topology this sits in front of is drawn in
+[Kubernetes Architecture](@/architecture/kubernetes-architecture/index.md).
 
 ---
 
@@ -96,7 +65,7 @@ core/
 └── platform/
     ├── talos.go          # Proxmox VMs + Talos machine configs + bootstrap
     ├── proxmox.go        # Proxmox provider setup
-    ├── argocd.go         # ArgoCD Helm chart + ApplicationSet
+    ├── argocd.go         # Argo CD Helm chart + ApplicationSet
     ├── cilium.go         # Cilium CNI + Gateway API + L2 announcements
     └── cert_manager.go   # cert-manager Helm + ClusterIssuer
 ```

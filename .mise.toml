@@ -1,0 +1,4 @@
+# Must match the `go` directive in go.work and both go.mod files, or gopls
+# fails to load any package. The CLI hides this via GOTOOLCHAIN=auto.
+[tools]
+go = "1.26.5"

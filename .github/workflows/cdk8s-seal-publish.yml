@@ -8,22 +8,32 @@ on:
     paths:
       - 'workloads/**'
       - '.github/workflows/cdk8s-seal-publish.yml'
+  # A new release branch must publish its manifests branch even when its first
+  # commits touch only core/ or docs/. ArgoCD is repointed to <branch>-manifests
+  # by `just core platform up`; if that branch does not exist yet, every
+  # Application loses its source at once.
+  create:
   workflow_dispatch:
 
 jobs:
   publish:
+    # `create` has no branch filter in `on:`, so gate it here — otherwise every
+    # feature branch would publish its own manifests branch.
+    if: >-
+      github.event_name != 'create' ||
+      (github.ref_type == 'branch' && startsWith(github.ref_name, 'v'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
       - name: Checkout source repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache-dependency-path: workloads/go.sum
 
       - name: Synthesize CDK8s manifests
@@ -37,7 +47,7 @@ jobs:
 
       - name: Install kustomize
         run: |
-          KUSTOMIZE_VERSION=v5.8.0
+          KUSTOMIZE_VERSION=v5.8.1
           curl -sLO "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
           tar -xzf kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz
           sudo mv kustomize /usr/local/bin/kustomize

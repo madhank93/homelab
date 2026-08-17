@@ -1,7 +1,8 @@
 +++
 title = "Service Access & Internet Exposure"
-description = "DNS split strategy, public vs internal service routing, and how to expose or restrict services"
+description = "Cloudflare DNS, the publicServices toggle, and how services get exposed to the internet or kept on the LAN"
 weight = 50
+aliases = ["/infrastructure/dns-tls/"]
 +++
 
 ## What is Service Access?
@@ -74,7 +75,8 @@ var publicServices = []PublicService{
 }
 ```
 
-**Step 2**: Run `just core hetzner up` — Pulumi generates the Traefik router and updates Cloudflare DNS automatically. Alternatively, add a Traefik router manually to `core/cloud/bifrost/traefik/dynamic/services.yml`:
+**Step 2**: Run `just core hetzner up` — Pulumi generates the Traefik router. DNS is a
+separate stack; step 3 runs both. Alternatively, add a Traefik router manually to `core/cloud/bifrost/traefik/dynamic/services.yml`:
 
 ```yaml
 http:
@@ -99,12 +101,24 @@ Remove the service from `publicServices` in `cloudflare.go` and remove its route
 
 The Cloudflare A record is deleted. DNS falls back to `*.madhan.app → 192.168.1.220` (private) — service becomes LAN-only again automatically.
 
+## Cloudflare
+
+Cloudflare hosts `madhan.app` and every record is provisioned by Pulumi
+({{ src(path="core/cloud/cloudflare.go") }}, `just core cloudflare up`). Its API
+is also what cert-manager's DNS-01 solver uses to issue the wildcard certificate
+without exposing an HTTP endpoint — see [cert-manager](@/platform/cert-manager/index.md).
+
+All records are **DNS-only** (Proxied: false, orange cloud off). Cloudflare
+resolves specific records before wildcards, so a service with no explicit A
+record falls through to `*.madhan.app` → private IP → unreachable from the
+internet. That fallback is the mechanism behind revoking access below: delete
+the record and the service is LAN-only again, with no other change.
+
 ## DNS Split Strategy
 
 | Domain Pattern | Resolves To | Accessible From |
 |----------------|-------------|-----------------|
 | `*.madhan.app` (wildcard) | `192.168.1.220` | LAN only |
-| `*.internal.madhan.app` | `192.168.1.220` | LAN only (explicit label) |
 | `auth.madhan.app` | `178.156.199.250` | Internet |
 | `netbird.madhan.app` | `178.156.199.250` | Internet |
 | `proxy.madhan.app` | `178.156.199.250` | Internet |

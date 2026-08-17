@@ -6,7 +6,7 @@ weight = 10
 
 ## What is Longhorn?
 
-[Longhorn](https://longhorn.io/) is a lightweight, cloud-native distributed block storage system for Kubernetes. It provides persistent volumes that are automatically replicated across multiple nodes, with a built-in UI for volume management, snapshots, and backups.
+[Longhorn](https://longhorn.io/) provides the cluster's default StorageClass. It replicates each volume across the worker nodes, so a PVC survives losing the node it was scheduled on, and it ships a UI for volumes, snapshots and backups.
 
 ## Why Longhorn?
 
@@ -35,7 +35,7 @@ Longhorn provides the `longhorn` StorageClass used by virtually every stateful w
 
 **RWX volumes** use Longhorn's built-in NFS share-manager — Longhorn automatically provisions an NFS server pod for each RWX volume. This eliminates rolling update deadlocks that occur with RWO volumes when a new pod starts before the old pod releases the volume.
 
-Source: [`workloads/storage/longhorn.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/storage/longhorn.go)
+Source: {{ src(path="workloads/storage/longhorn.go") }}
 
 ## Configuration
 
@@ -47,7 +47,7 @@ Source: [`workloads/storage/longhorn.go`](https://github.com/madhank93/homelab/b
 | `preUpgradeChecker.jobEnabled` | `false` | Disable pre-upgrade hook for GitOps compatibility |
 | Namespace PSA | `privileged` | Longhorn CSI driver requires host mounts |
 
-**Why 300% overprovisioning?** Workers have ~90–95 GiB actually free. At 200% (the previous setting), the 240 GiB scheduling cap was exhausted — there was no room for new 50 GiB AI model replicas. At 300%, each node schedules up to ~285 GiB, providing ~150 GiB of headroom for AI volumes and future growth. Longhorn does not actually allocate all scheduled space immediately; volumes grow on demand.
+**Why 300% overprovisioning?** Workers have ~90–95 GiB actually free. At 200% (the previous setting), the 240 GiB scheduling cap was exhausted — there was no room for new 50 GiB AI model replicas. At 300% each node has roughly 150 GiB of headroom for AI volumes and future growth. Longhorn does not actually allocate all scheduled space immediately; volumes grow on demand.
 
 ## Storage Capacity
 
@@ -115,20 +115,12 @@ kubectl get volumes.longhorn.io -n longhorn-system \
 
 **Why this happens:** RWO (ReadWriteOnce) volumes can only be attached to one node at a time. During a rolling update, the new pod may start on a different node before the old pod fully terminates and releases the volume.
 
-**Fix for Harbor (and similar):**
+**Fix:** scale down the ReplicaSet still holding the volume, then force-delete
+the stuck pod. Harbor hits this most often and the worked example lives on its
+page — see [Harbor](@/workloads/registry/harbor/index.md#rwo-multi-attach-deadlock).
 
-```bash
-# 1. Find the old ReplicaSet
-kubectl get replicasets -n harbor
-
-# 2. Scale down the old RS
-kubectl scale replicaset <old-rs-name> -n harbor --replicas=0
-
-# 3. Force delete any stuck pod
-kubectl delete pod -n harbor <stuck-pod> --grace-period=0 --force
-```
-
-**Long-term fix:** Switch the PVC to `ReadWriteMany` — Harbor's registry and jobservice PVCs are already set to RWX in this homelab for exactly this reason.
+**Long-term fix:** switch the PVC to `ReadWriteMany`. Harbor's registry and
+jobservice PVCs are already RWX for exactly this reason.
 
 ### Checking Volume Health
 

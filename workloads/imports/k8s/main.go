@@ -25,6 +25,10 @@ func init() {
 		reflect.TypeOf((*AppArmorProfile)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.ApplyConfiguration",
+		reflect.TypeOf((*ApplyConfiguration)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.ApplyConfigurationV1Alpha1",
 		reflect.TypeOf((*ApplyConfigurationV1Alpha1)(nil)).Elem(),
 	)
@@ -449,8 +453,16 @@ func init() {
 		reflect.TypeOf((*DeviceTaintRuleSpecV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.DeviceTaintRuleSpecV1Beta2",
+		reflect.TypeOf((*DeviceTaintRuleSpecV1Beta2)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.DeviceTaintSelectorV1Alpha3",
 		reflect.TypeOf((*DeviceTaintSelectorV1Alpha3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.DeviceTaintSelectorV1Beta2",
+		reflect.TypeOf((*DeviceTaintSelectorV1Beta2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.DeviceTaintV1Alpha3",
@@ -621,8 +633,8 @@ func init() {
 		reflect.TypeOf((*ForZone)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.GangSchedulingPolicyV1Alpha1",
-		reflect.TypeOf((*GangSchedulingPolicyV1Alpha1)(nil)).Elem(),
+		"k8s.GangSchedulingPolicyV1Alpha2",
+		reflect.TypeOf((*GangSchedulingPolicyV1Alpha2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.GcePersistentDiskVolumeSource",
@@ -770,6 +782,10 @@ func init() {
 		reflect.TypeOf((*JobTemplateSpec)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.JsonPatch",
+		reflect.TypeOf((*JsonPatch)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.JsonPatchV1Alpha1",
 		reflect.TypeOf((*JsonPatchV1Alpha1)(nil)).Elem(),
 	)
@@ -800,6 +816,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeApiService{}
@@ -822,6 +839,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeApiServiceList{}
@@ -852,6 +870,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeBinding{}
@@ -878,6 +897,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCertificateSigningRequest{}
@@ -900,6 +920,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCertificateSigningRequestList{}
@@ -930,6 +951,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeClusterRole{}
@@ -952,6 +974,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeClusterRoleBinding{}
@@ -974,6 +997,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeClusterRoleBindingList{}
@@ -1004,6 +1028,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeClusterRoleList{}
@@ -1034,6 +1059,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeClusterTrustBundleListV1Alpha1{}
@@ -1060,6 +1086,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeClusterTrustBundleListV1Beta1{}
@@ -1086,6 +1113,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeClusterTrustBundleV1Alpha1{}
@@ -1112,6 +1140,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeClusterTrustBundleV1Beta1{}
@@ -1138,6 +1167,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeComponentStatus{}
@@ -1160,6 +1190,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeComponentStatusList{}
@@ -1190,6 +1221,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeConfigMap{}
@@ -1212,6 +1244,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeConfigMapList{}
@@ -1242,6 +1275,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeControllerRevision{}
@@ -1264,6 +1298,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeControllerRevisionList{}
@@ -1294,6 +1329,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCronJob{}
@@ -1316,6 +1352,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCronJobList{}
@@ -1346,6 +1383,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCsiDriver{}
@@ -1368,6 +1406,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCsiDriverList{}
@@ -1398,6 +1437,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCsiNode{}
@@ -1420,6 +1460,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCsiNodeList{}
@@ -1450,6 +1491,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCsiStorageCapacity{}
@@ -1472,6 +1514,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCsiStorageCapacityList{}
@@ -1502,6 +1545,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCustomResourceDefinition{}
@@ -1524,6 +1568,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeCustomResourceDefinitionList{}
@@ -1554,6 +1599,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDaemonSet{}
@@ -1576,6 +1622,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDaemonSetList{}
@@ -1606,6 +1653,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeployment{}
@@ -1628,6 +1676,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeploymentList{}
@@ -1658,6 +1707,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeviceClass{}
@@ -1680,6 +1730,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeviceClassList{}
@@ -1706,6 +1757,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeviceClassListV1Beta1{}
@@ -1732,6 +1784,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeviceClassListV1Beta2{}
@@ -1762,6 +1815,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeviceClassV1Beta1{}
@@ -1788,6 +1842,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeviceClassV1Beta2{}
@@ -1814,6 +1869,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeviceTaintRuleListV1Alpha3{}
@@ -1824,6 +1880,33 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeDeviceTaintRuleListV1Alpha3Props",
 		reflect.TypeOf((*KubeDeviceTaintRuleListV1Alpha3Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeDeviceTaintRuleListV1Beta2",
+		reflect.TypeOf((*KubeDeviceTaintRuleListV1Beta2)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeDeviceTaintRuleListV1Beta2{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeDeviceTaintRuleListV1Beta2Props",
+		reflect.TypeOf((*KubeDeviceTaintRuleListV1Beta2Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeDeviceTaintRuleV1Alpha3",
@@ -1840,6 +1923,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeDeviceTaintRuleV1Alpha3{}
@@ -1850,6 +1934,33 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeDeviceTaintRuleV1Alpha3Props",
 		reflect.TypeOf((*KubeDeviceTaintRuleV1Alpha3Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeDeviceTaintRuleV1Beta2",
+		reflect.TypeOf((*KubeDeviceTaintRuleV1Beta2)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeDeviceTaintRuleV1Beta2{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeDeviceTaintRuleV1Beta2Props",
+		reflect.TypeOf((*KubeDeviceTaintRuleV1Beta2Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeEndpointSlice",
@@ -1866,6 +1977,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeEndpointSlice{}
@@ -1888,6 +2000,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeEndpointSliceList{}
@@ -1918,6 +2031,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeEndpoints{}
@@ -1940,6 +2054,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeEndpointsList{}
@@ -1970,6 +2085,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeEvent{}
@@ -1992,6 +2108,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeEventList{}
@@ -2022,6 +2139,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeEviction{}
@@ -2048,6 +2166,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeFlowSchema{}
@@ -2070,6 +2189,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeFlowSchemaList{}
@@ -2100,6 +2220,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeHorizontalPodAutoscaler{}
@@ -2122,6 +2243,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeHorizontalPodAutoscalerList{}
@@ -2148,6 +2270,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeHorizontalPodAutoscalerListV2{}
@@ -2178,6 +2301,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeHorizontalPodAutoscalerV2{}
@@ -2204,6 +2328,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeIngress{}
@@ -2226,6 +2351,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeIngressClass{}
@@ -2248,6 +2374,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeIngressClassList{}
@@ -2278,6 +2405,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeIngressList{}
@@ -2308,6 +2436,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeIpAddress{}
@@ -2330,6 +2459,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeIpAddressList{}
@@ -2356,6 +2486,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeIpAddressListV1Beta1{}
@@ -2386,6 +2517,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeIpAddressV1Beta1{}
@@ -2412,6 +2544,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeJob{}
@@ -2434,6 +2567,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeJobList{}
@@ -2464,6 +2598,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLease{}
@@ -2486,6 +2621,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLeaseCandidateListV1Alpha2{}
@@ -2512,6 +2648,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLeaseCandidateListV1Beta1{}
@@ -2538,6 +2675,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLeaseCandidateV1Alpha2{}
@@ -2564,6 +2702,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLeaseCandidateV1Beta1{}
@@ -2590,6 +2729,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLeaseList{}
@@ -2620,6 +2760,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLimitRange{}
@@ -2642,6 +2783,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLimitRangeList{}
@@ -2672,6 +2814,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeLocalSubjectAccessReview{}
@@ -2682,6 +2825,79 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeLocalSubjectAccessReviewProps",
 		reflect.TypeOf((*KubeLocalSubjectAccessReviewProps)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeMutatingAdmissionPolicy",
+		reflect.TypeOf((*KubeMutatingAdmissionPolicy)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeMutatingAdmissionPolicy{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeMutatingAdmissionPolicyBinding",
+		reflect.TypeOf((*KubeMutatingAdmissionPolicyBinding)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeMutatingAdmissionPolicyBinding{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeMutatingAdmissionPolicyBindingList",
+		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingList)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeMutatingAdmissionPolicyBindingList{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeMutatingAdmissionPolicyBindingListProps",
+		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingListProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeMutatingAdmissionPolicyBindingListV1Alpha1",
@@ -2698,6 +2914,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingAdmissionPolicyBindingListV1Alpha1{}
@@ -2724,6 +2941,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingAdmissionPolicyBindingListV1Beta1{}
@@ -2734,6 +2952,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeMutatingAdmissionPolicyBindingListV1Beta1Props",
 		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingListV1Beta1Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeMutatingAdmissionPolicyBindingProps",
+		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeMutatingAdmissionPolicyBindingV1Alpha1",
@@ -2750,6 +2972,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingAdmissionPolicyBindingV1Alpha1{}
@@ -2776,6 +2999,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingAdmissionPolicyBindingV1Beta1{}
@@ -2786,6 +3010,33 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeMutatingAdmissionPolicyBindingV1Beta1Props",
 		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingV1Beta1Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeMutatingAdmissionPolicyList",
+		reflect.TypeOf((*KubeMutatingAdmissionPolicyList)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeMutatingAdmissionPolicyList{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeMutatingAdmissionPolicyListProps",
+		reflect.TypeOf((*KubeMutatingAdmissionPolicyListProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeMutatingAdmissionPolicyListV1Alpha1",
@@ -2802,6 +3053,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingAdmissionPolicyListV1Alpha1{}
@@ -2828,6 +3080,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingAdmissionPolicyListV1Beta1{}
@@ -2838,6 +3091,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeMutatingAdmissionPolicyListV1Beta1Props",
 		reflect.TypeOf((*KubeMutatingAdmissionPolicyListV1Beta1Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeMutatingAdmissionPolicyProps",
+		reflect.TypeOf((*KubeMutatingAdmissionPolicyProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeMutatingAdmissionPolicyV1Alpha1",
@@ -2854,6 +3111,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingAdmissionPolicyV1Alpha1{}
@@ -2880,6 +3138,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingAdmissionPolicyV1Beta1{}
@@ -2906,6 +3165,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingWebhookConfiguration{}
@@ -2928,6 +3188,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeMutatingWebhookConfigurationList{}
@@ -2958,6 +3219,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeNamespace{}
@@ -2980,6 +3242,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeNamespaceList{}
@@ -3010,6 +3273,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeNetworkPolicy{}
@@ -3032,6 +3296,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeNetworkPolicyList{}
@@ -3062,6 +3327,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeNode{}
@@ -3084,6 +3350,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeNodeList{}
@@ -3114,6 +3381,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePersistentVolume{}
@@ -3136,6 +3404,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePersistentVolumeClaim{}
@@ -3158,6 +3427,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePersistentVolumeClaimList{}
@@ -3188,6 +3458,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePersistentVolumeList{}
@@ -3218,6 +3489,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePod{}
@@ -3240,6 +3512,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePodCertificateRequestListV1Beta1{}
@@ -3266,6 +3539,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePodCertificateRequestV1Beta1{}
@@ -3292,6 +3566,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePodDisruptionBudget{}
@@ -3314,6 +3589,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePodDisruptionBudgetList{}
@@ -3330,6 +3606,60 @@ func init() {
 		reflect.TypeOf((*KubePodDisruptionBudgetProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
+		"k8s.KubePodGroupListV1Alpha2",
+		reflect.TypeOf((*KubePodGroupListV1Alpha2)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubePodGroupListV1Alpha2{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubePodGroupListV1Alpha2Props",
+		reflect.TypeOf((*KubePodGroupListV1Alpha2Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubePodGroupV1Alpha2",
+		reflect.TypeOf((*KubePodGroupV1Alpha2)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubePodGroupV1Alpha2{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubePodGroupV1Alpha2Props",
+		reflect.TypeOf((*KubePodGroupV1Alpha2Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
 		"k8s.KubePodList",
 		reflect.TypeOf((*KubePodList)(nil)).Elem(),
 		[]_jsii_.Member{
@@ -3344,6 +3674,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePodList{}
@@ -3374,6 +3705,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePodTemplate{}
@@ -3396,6 +3728,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePodTemplateList{}
@@ -3426,6 +3759,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePriorityClass{}
@@ -3448,6 +3782,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePriorityClassList{}
@@ -3478,6 +3813,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePriorityLevelConfiguration{}
@@ -3500,6 +3836,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubePriorityLevelConfigurationList{}
@@ -3530,6 +3867,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeReplicaSet{}
@@ -3552,6 +3890,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeReplicaSetList{}
@@ -3582,6 +3921,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeReplicationController{}
@@ -3604,6 +3944,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeReplicationControllerList{}
@@ -3634,6 +3975,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaim{}
@@ -3656,6 +3998,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimList{}
@@ -3682,6 +4025,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimListV1Beta1{}
@@ -3708,6 +4052,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimListV1Beta2{}
@@ -3738,6 +4083,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimTemplate{}
@@ -3760,6 +4106,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimTemplateList{}
@@ -3786,6 +4133,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimTemplateListV1Beta1{}
@@ -3812,6 +4160,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimTemplateListV1Beta2{}
@@ -3842,6 +4191,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimTemplateV1Beta1{}
@@ -3868,6 +4218,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimTemplateV1Beta2{}
@@ -3894,6 +4245,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimV1Beta1{}
@@ -3920,6 +4272,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceClaimV1Beta2{}
@@ -3930,6 +4283,60 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeResourceClaimV1Beta2Props",
 		reflect.TypeOf((*KubeResourceClaimV1Beta2Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeResourcePoolStatusRequestListV1Alpha3",
+		reflect.TypeOf((*KubeResourcePoolStatusRequestListV1Alpha3)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeResourcePoolStatusRequestListV1Alpha3{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeResourcePoolStatusRequestListV1Alpha3Props",
+		reflect.TypeOf((*KubeResourcePoolStatusRequestListV1Alpha3Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeResourcePoolStatusRequestV1Alpha3",
+		reflect.TypeOf((*KubeResourcePoolStatusRequestV1Alpha3)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeResourcePoolStatusRequestV1Alpha3{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeResourcePoolStatusRequestV1Alpha3Props",
+		reflect.TypeOf((*KubeResourcePoolStatusRequestV1Alpha3Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeResourceQuota",
@@ -3946,6 +4353,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceQuota{}
@@ -3968,6 +4376,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceQuotaList{}
@@ -3998,6 +4407,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceSlice{}
@@ -4020,6 +4430,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceSliceList{}
@@ -4046,6 +4457,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceSliceListV1Beta1{}
@@ -4072,6 +4484,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceSliceListV1Beta2{}
@@ -4102,6 +4515,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceSliceV1Beta1{}
@@ -4128,6 +4542,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeResourceSliceV1Beta2{}
@@ -4154,6 +4569,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeRole{}
@@ -4176,6 +4592,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeRoleBinding{}
@@ -4198,6 +4615,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeRoleBindingList{}
@@ -4228,6 +4646,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeRoleList{}
@@ -4258,6 +4677,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeRuntimeClass{}
@@ -4280,6 +4700,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeRuntimeClassList{}
@@ -4310,6 +4731,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeScale{}
@@ -4336,6 +4758,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeSecret{}
@@ -4358,6 +4781,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeSecretList{}
@@ -4388,6 +4812,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeSelfSubjectAccessReview{}
@@ -4414,6 +4839,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeSelfSubjectReview{}
@@ -4440,6 +4866,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeSelfSubjectRulesReview{}
@@ -4466,6 +4893,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeService{}
@@ -4488,6 +4916,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeServiceAccount{}
@@ -4510,6 +4939,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeServiceAccountList{}
@@ -4540,6 +4970,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeServiceCidr{}
@@ -4562,6 +4993,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeServiceCidrList{}
@@ -4588,6 +5020,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeServiceCidrListV1Beta1{}
@@ -4618,6 +5051,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeServiceCidrv1Beta1{}
@@ -4644,6 +5078,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeServiceList{}
@@ -4674,6 +5109,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStatefulSet{}
@@ -4696,6 +5132,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStatefulSetList{}
@@ -4726,6 +5163,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStatus{}
@@ -4752,6 +5190,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStorageClass{}
@@ -4774,6 +5213,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStorageClassList{}
@@ -4804,6 +5244,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStorageVersionListV1Alpha1{}
@@ -4830,6 +5271,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStorageVersionMigrationListV1Beta1{}
@@ -4856,6 +5298,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStorageVersionMigrationV1Beta1{}
@@ -4882,6 +5325,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeStorageVersionV1Alpha1{}
@@ -4908,6 +5352,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeSubjectAccessReview{}
@@ -4934,6 +5379,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeTokenRequest{}
@@ -4960,6 +5406,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeTokenReview{}
@@ -4986,6 +5433,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeValidatingAdmissionPolicy{}
@@ -5008,6 +5456,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeValidatingAdmissionPolicyBinding{}
@@ -5030,6 +5479,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeValidatingAdmissionPolicyBindingList{}
@@ -5060,6 +5510,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeValidatingAdmissionPolicyList{}
@@ -5090,6 +5541,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeValidatingWebhookConfiguration{}
@@ -5112,6 +5564,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeValidatingWebhookConfigurationList{}
@@ -5142,6 +5595,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeVolumeAttachment{}
@@ -5164,6 +5618,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeVolumeAttachmentList{}
@@ -5194,6 +5649,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeVolumeAttributesClass{}
@@ -5216,6 +5672,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeVolumeAttributesClassList{}
@@ -5242,6 +5699,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeVolumeAttributesClassListV1Beta1{}
@@ -5272,6 +5730,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_KubeVolumeAttributesClassV1Beta1{}
@@ -5284,8 +5743,8 @@ func init() {
 		reflect.TypeOf((*KubeVolumeAttributesClassV1Beta1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
-		"k8s.KubeWorkloadListV1Alpha1",
-		reflect.TypeOf((*KubeWorkloadListV1Alpha1)(nil)).Elem(),
+		"k8s.KubeWorkloadListV1Alpha2",
+		reflect.TypeOf((*KubeWorkloadListV1Alpha2)(nil)).Elem(),
 		[]_jsii_.Member{
 			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
 			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
@@ -5298,20 +5757,21 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
-			j := jsiiProxy_KubeWorkloadListV1Alpha1{}
+			j := jsiiProxy_KubeWorkloadListV1Alpha2{}
 			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
 			return &j
 		},
 	)
 	_jsii_.RegisterStruct(
-		"k8s.KubeWorkloadListV1Alpha1Props",
-		reflect.TypeOf((*KubeWorkloadListV1Alpha1Props)(nil)).Elem(),
+		"k8s.KubeWorkloadListV1Alpha2Props",
+		reflect.TypeOf((*KubeWorkloadListV1Alpha2Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
-		"k8s.KubeWorkloadV1Alpha1",
-		reflect.TypeOf((*KubeWorkloadV1Alpha1)(nil)).Elem(),
+		"k8s.KubeWorkloadV1Alpha2",
+		reflect.TypeOf((*KubeWorkloadV1Alpha2)(nil)).Elem(),
 		[]_jsii_.Member{
 			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
 			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
@@ -5324,16 +5784,17 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
-			j := jsiiProxy_KubeWorkloadV1Alpha1{}
+			j := jsiiProxy_KubeWorkloadV1Alpha2{}
 			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
 			return &j
 		},
 	)
 	_jsii_.RegisterStruct(
-		"k8s.KubeWorkloadV1Alpha1Props",
-		reflect.TypeOf((*KubeWorkloadV1Alpha1Props)(nil)).Elem(),
+		"k8s.KubeWorkloadV1Alpha2Props",
+		reflect.TypeOf((*KubeWorkloadV1Alpha2Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.LabelSelector",
@@ -5436,12 +5897,20 @@ func init() {
 		reflect.TypeOf((*MetricTargetV2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.MutatingAdmissionPolicyBindingSpec",
+		reflect.TypeOf((*MutatingAdmissionPolicyBindingSpec)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.MutatingAdmissionPolicyBindingSpecV1Alpha1",
 		reflect.TypeOf((*MutatingAdmissionPolicyBindingSpecV1Alpha1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.MutatingAdmissionPolicyBindingSpecV1Beta1",
 		reflect.TypeOf((*MutatingAdmissionPolicyBindingSpecV1Beta1)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.MutatingAdmissionPolicySpec",
+		reflect.TypeOf((*MutatingAdmissionPolicySpec)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.MutatingAdmissionPolicySpecV1Alpha1",
@@ -5454,6 +5923,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.MutatingWebhook",
 		reflect.TypeOf((*MutatingWebhook)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.Mutation",
+		reflect.TypeOf((*Mutation)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.MutationV1Alpha1",
@@ -5506,6 +5979,18 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.NodeAffinity",
 		reflect.TypeOf((*NodeAffinity)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.NodeAllocatableResourceMapping",
+		reflect.TypeOf((*NodeAllocatableResourceMapping)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.NodeAllocatableResourceMappingV1Beta1",
+		reflect.TypeOf((*NodeAllocatableResourceMappingV1Beta1)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.NodeAllocatableResourceMappingV1Beta2",
+		reflect.TypeOf((*NodeAllocatableResourceMappingV1Beta2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.NodeConfigSource",
@@ -5672,12 +6157,28 @@ func init() {
 		reflect.TypeOf((*PodFailurePolicyRule)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.PodGroupPolicyV1Alpha1",
-		reflect.TypeOf((*PodGroupPolicyV1Alpha1)(nil)).Elem(),
+		"k8s.PodGroupResourceClaimV1Alpha2",
+		reflect.TypeOf((*PodGroupResourceClaimV1Alpha2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.PodGroupV1Alpha1",
-		reflect.TypeOf((*PodGroupV1Alpha1)(nil)).Elem(),
+		"k8s.PodGroupSchedulingConstraintsV1Alpha2",
+		reflect.TypeOf((*PodGroupSchedulingConstraintsV1Alpha2)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.PodGroupSchedulingPolicyV1Alpha2",
+		reflect.TypeOf((*PodGroupSchedulingPolicyV1Alpha2)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.PodGroupSpecV1Alpha2",
+		reflect.TypeOf((*PodGroupSpecV1Alpha2)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.PodGroupTemplateReferenceV1Alpha2",
+		reflect.TypeOf((*PodGroupTemplateReferenceV1Alpha2)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.PodGroupTemplateV1Alpha2",
+		reflect.TypeOf((*PodGroupTemplateV1Alpha2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.PodOs",
@@ -5694,6 +6195,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.PodSchedulingGate",
 		reflect.TypeOf((*PodSchedulingGate)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.PodSchedulingGroup",
+		reflect.TypeOf((*PodSchedulingGroup)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.PodSecurityContext",
@@ -5828,6 +6333,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.ResourcePool",
 		reflect.TypeOf((*ResourcePool)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.ResourcePoolStatusRequestSpecV1Alpha3",
+		reflect.TypeOf((*ResourcePoolStatusRequestSpecV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.ResourcePoolV1Beta1",
@@ -5978,6 +6487,10 @@ func init() {
 		reflect.TypeOf((*SessionAffinityConfig)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.ShardInfo",
+		reflect.TypeOf((*ShardInfo)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.SleepAction",
 		reflect.TypeOf((*SleepAction)(nil)).Elem(),
 	)
@@ -6062,6 +6575,10 @@ func init() {
 		reflect.TypeOf((*Toleration)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.TopologyConstraintV1Alpha2",
+		reflect.TypeOf((*TopologyConstraintV1Alpha2)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.TopologySelectorLabelRequirement",
 		reflect.TypeOf((*TopologySelectorLabelRequirement)(nil)).Elem(),
 	)
@@ -6078,8 +6595,8 @@ func init() {
 		reflect.TypeOf((*TypedLocalObjectReference)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.TypedLocalObjectReferenceV1Alpha1",
-		reflect.TypeOf((*TypedLocalObjectReferenceV1Alpha1)(nil)).Elem(),
+		"k8s.TypedLocalObjectReferenceV1Alpha2",
+		reflect.TypeOf((*TypedLocalObjectReferenceV1Alpha2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.TypedObjectReference",
@@ -6174,11 +6691,11 @@ func init() {
 		reflect.TypeOf((*WindowsSecurityContextOptions)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.WorkloadReference",
-		reflect.TypeOf((*WorkloadReference)(nil)).Elem(),
+		"k8s.WorkloadPodGroupTemplateReferenceV1Alpha2",
+		reflect.TypeOf((*WorkloadPodGroupTemplateReferenceV1Alpha2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.WorkloadSpecV1Alpha1",
-		reflect.TypeOf((*WorkloadSpecV1Alpha1)(nil)).Elem(),
+		"k8s.WorkloadSpecV1Alpha2",
+		reflect.TypeOf((*WorkloadSpecV1Alpha2)(nil)).Elem(),
 	)
 }

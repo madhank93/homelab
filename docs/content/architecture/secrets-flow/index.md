@@ -11,7 +11,7 @@ All secrets are managed by exactly two systems. The split is intentional — boo
 | Tier | Tool | When | What's stored |
 |------|------|------|---------------|
 | **Bootstrap** | SOPS + age | One-time setup | OpenBao unseal key, Cloudflare API token, Hetzner token, Authentik keys, NetBird keys |
-| **Runtime** | OpenBao + CSI Driver | Continuously available | All app secrets (Grafana, Harbor, n8n, Rancher, …) |
+| **Runtime** | OpenBao + CSI Driver | Continuously available | All app secrets (Grafana, Harbor, n8n, …) |
 
 **CDK8s generates zero `Secret` resources.** The CI pipeline needs zero GitHub Actions secrets.
 
@@ -120,7 +120,7 @@ just create-secrets
 # → kubectl create secret generic cloudflare-api-token -n cert-manager
 ```
 
-Both secrets carry `argocd.argoproj.io/sync-options: Prune=false` — ArgoCD never deletes them.
+Both secrets carry `argocd.argoproj.io/sync-options: Prune=false` — Argo CD never deletes them.
 
 ---
 
@@ -146,41 +146,22 @@ See [Hetzner Bifrost](/infrastructure/hetzner-bifrost) for the full bootstrap se
 
 ## Runtime Secrets (OpenBao + CSI Driver)
 
-After the cluster is up, all application secrets are managed by [OpenBao](/workloads/secrets/openbao). Apps consume secrets via the Secrets Store CSI Driver — secrets are mounted as files in pods, or synced to k8s Secrets via `secretObjects`.
-
-### Patterns
-
-**Pattern A — file-only** (no k8s Secret created):
-
-```
-Pod → CSI volume mount → /mnt/secrets/ADMIN_PASSWORD
-env: GF_SECURITY_ADMIN_PASSWORD__FILE=/mnt/secrets/ADMIN_PASSWORD
-```
-
-Used by: **Grafana**
-
-**Pattern B — secretObjects sync** (k8s Secret created and kept in sync):
-
-```
-SecretProviderClass.secretObjects → k8s Secret (e.g. harbor-admin)
-Helm chart: existingSecret: harbor-admin
-```
-
-Used by: **Harbor**, **n8n**, **Rancher**, **NetBird peer**
+After the cluster is up, all application secrets are managed by [OpenBao](@/workloads/secrets/openbao/index.md). Apps consume secrets via the Secrets Store CSI Driver — mounted as files in the
+pod, and optionally synced to a k8s Secret via `secretObjects`. The two patterns
+are described in [Secrets](@/platform/secrets/index.md).
 
 ### Apps and their OpenBao paths
 
 | App | OpenBao path | Pattern | k8s Secret |
 |-----|-------------|---------|------------|
-| Grafana | `secret/data/grafana` | A (file) | — |
+| Grafana | `secret/data/grafana` | A + B | `grafana-oauth-secret` |
 | Harbor | `secret/data/harbor` | B (sync) | `harbor-admin` |
-| n8n | `secret/data/n8n` | B (sync) | `n8n-db` |
-| Rancher | `secret/data/rancher` | B (sync) | `rancher-bootstrap` |
+| n8n | `secret/data/n8n` | B (sync) | `n8n-secrets` |
 | NetBird peer | `secret/data/netbird` | B (sync) | `netbird-setup-key` |
 
 ### One-time setup
 
-After first deploy, run `just openbao-setup` to configure K8s auth, policies, roles, and write initial secrets. See [OpenBao](/workloads/secrets/openbao) for details.
+After first deploy, run `just openbao-setup` to configure K8s auth, policies, roles, and write initial secrets. See [OpenBao](@/workloads/secrets/openbao/index.md) for details.
 
 ---
 

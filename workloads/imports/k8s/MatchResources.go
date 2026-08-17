@@ -5,7 +5,7 @@ package k8s
 //
 // The exclude rules take precedence over include rules (if a resource matches both, it is excluded).
 type MatchResources struct {
-	// ExcludeResourceRules describes what operations on what resources/subresources the ValidatingAdmissionPolicy should not care about.
+	// excludeResourceRules describes what operations on what resources/subresources the ValidatingAdmissionPolicy should not care about.
 	//
 	// The exclude rules take precedence over include rules (if a resource matches both, it is excluded).
 	ExcludeResourceRules *[]*NamedRuleWithOperations `field:"optional" json:"excludeResourceRules" yaml:"excludeResourceRules"`
@@ -19,7 +19,7 @@ type MatchResources struct {
 	// Default: Equivalent".
 	//
 	MatchPolicy *string `field:"optional" json:"matchPolicy" yaml:"matchPolicy"`
-	// NamespaceSelector decides whether to run the admission control policy on an object based on whether the namespace for that object matches the selector.
+	// namespaceSelector decides whether to run the admission control policy on an object based on whether the namespace for that object matches the selector.
 	//
 	// If the object itself is a namespace, the matching is performed on object.metadata.labels. If the object is another cluster scoped resource, it never skips the policy.
 	//
@@ -55,13 +55,13 @@ type MatchResources struct {
 	// Default: the empty LabelSelector, which matches everything.
 	//
 	NamespaceSelector *LabelSelector `field:"optional" json:"namespaceSelector" yaml:"namespaceSelector"`
-	// ObjectSelector decides whether to run the validation based on if the object has matching labels.
+	// objectSelector decides whether to run the validation based on if the object has matching labels.
 	//
 	// objectSelector is evaluated against both the oldObject and newObject that would be sent to the cel validation, and is considered to match if either object matches the selector. A null object (oldObject in the case of create, or newObject in the case of delete) or an object that cannot have labels (like a DeploymentRollback or a PodProxyOptions object) is not considered to match. Use the object selector only if the webhook is opt-in, because end users may skip the admission webhook by setting the labels. Default to the empty LabelSelector, which matches everything.
 	// Default: the empty LabelSelector, which matches everything.
 	//
 	ObjectSelector *LabelSelector `field:"optional" json:"objectSelector" yaml:"objectSelector"`
-	// ResourceRules describes what operations on what resources/subresources the ValidatingAdmissionPolicy matches.
+	// resourceRules describes what operations on what resources/subresources the ValidatingAdmissionPolicy matches.
 	//
 	// The policy cares about an operation if it matches _any_ Rule.
 	ResourceRules *[]*NamedRuleWithOperations `field:"optional" json:"resourceRules" yaml:"resourceRules"`

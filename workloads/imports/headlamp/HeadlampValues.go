@@ -16,6 +16,8 @@ type HeadlampValues struct {
 	// Override the full name of the chart.
 	FullnameOverride *string `field:"optional" json:"fullnameOverride" yaml:"fullnameOverride"`
 	Global *map[string]interface{} `field:"optional" json:"global" yaml:"global"`
+	// Host aliases to add to the pod's /etc/hosts file.
+	HostAliases *[]*HeadlampHostAliases `field:"optional" json:"hostAliases" yaml:"hostAliases"`
 	// HTTPRoute configuration for Gateway API.
 	HttpRoute *HeadlampHttpRoute `field:"optional" json:"httpRoute" yaml:"httpRoute"`
 	// Image to deploy.
@@ -35,6 +37,8 @@ type HeadlampValues struct {
 	NamespaceOverride *string `field:"optional" json:"namespaceOverride" yaml:"namespaceOverride"`
 	PersistentVolumeClaim *HeadlampPersistentVolumeClaim `field:"optional" json:"persistentVolumeClaim" yaml:"persistentVolumeClaim"`
 	PodDisruptionBudget *HeadlampPodDisruptionBudget `field:"optional" json:"podDisruptionBudget" yaml:"podDisruptionBudget"`
+	// Probe configuration for liveness and readiness checks.
+	Probes *HeadlampProbes `field:"optional" json:"probes" yaml:"probes"`
 	// Number of replicas to deploy.
 	ReplicaCount *float64 `field:"optional" json:"replicaCount" yaml:"replicaCount"`
 	Service *HeadlampService `field:"optional" json:"service" yaml:"service"`

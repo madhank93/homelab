@@ -61,12 +61,6 @@ path "secret/data/n8n" {
 }
 POLICY
 
-$BAO policy write rancher-policy - <<'POLICY'
-path "secret/data/rancher" {
-  capabilities = ["read"]
-}
-POLICY
-
 $BAO policy write netbird-policy - <<'POLICY'
 path "secret/data/netbird" {
   capabilities = ["read"]
@@ -99,13 +93,6 @@ $BAO write auth/kubernetes/role/n8n \
   policies=n8n-policy \
   ttl=1h
 
-# Rancher: secret-sync SA (dedicated pod; Rancher chart doesn't support extraVolumes)
-$BAO write auth/kubernetes/role/rancher \
-  bound_service_account_names=secret-sync \
-  bound_service_account_namespaces=cattle-system \
-  policies=rancher-policy \
-  ttl=1h
-
 # NetBird peer: uses the default SA in the netbird namespace
 $BAO write auth/kubernetes/role/netbird \
   bound_service_account_names=default \
@@ -121,7 +108,6 @@ echo "→ Writing placeholder secrets (REPLACE THESE with real values)..."
 $BAO kv put -mount=secret grafana  ADMIN_PASSWORD="CHANGEME"
 $BAO kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD="CHANGEME"
 $BAO kv put -mount=secret n8n      DB_PASSWORD="CHANGEME"
-$BAO kv put -mount=secret rancher  BOOTSTRAP_PASSWORD="CHANGEME"
 $BAO kv put -mount=secret netbird  NETBIRD_SETUP_KEY="CHANGEME"
 
 echo ""
@@ -132,7 +118,6 @@ echo "    ROOT_TOKEN=\$(python3 -c \"import json; print(json.load(open('/tmp/ope
 echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret grafana  ADMIN_PASSWORD=<real>"
 echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD=<real>"
 echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret n8n      DB_PASSWORD=<real>"
-echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret rancher  BOOTSTRAP_PASSWORD=<real>"
 echo "    kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=<real>"
 echo ""
 echo "After writing secrets, trigger ArgoCD sync to start app pods."

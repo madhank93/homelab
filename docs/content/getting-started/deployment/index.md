@@ -95,10 +95,10 @@ OPENBAO_UNSEAL_KEY: placeholder                 # replaced in Phase 2 after firs
 # 1. Create bootstrap k8s Secrets (OpenBao unseal key + Cloudflare token)
 just create-secrets
 
-# 2. Provision Proxmox VMs → bootstrap Talos → install Cilium + ArgoCD (~15 min)
+# 2. Provision Proxmox VMs → bootstrap Talos (~15 min)
 just core talos up
 
-# 3. Apply Cilium Gateway API, IP pool, HTTPRoutes
+# 3. Install Cilium, Gateway API + IP pool, cert-manager, Argo CD
 just core platform up
 ```
 
@@ -110,7 +110,7 @@ kubectl get nodes
 kubectl get applications -n argocd
 ```
 
-ArgoCD starts syncing apps from the manifests branch. Most apps will show `Degraded` — that's expected. OpenBao needs to be initialised and unsealed before apps can fetch their secrets.
+Argo CD starts syncing apps from the manifests branch. Most apps will show `Degraded` — that's expected. OpenBao needs to be initialised and unsealed before apps can fetch their secrets.
 
 ---
 
@@ -128,12 +128,14 @@ kubectl get pods -n openbao   # wait for Running
 just openbao-init
 ```
 
-This generates the root token and unseal key, writes them to `/tmp/openbao-init.json`, then unseals OpenBao.
+This generates the root token and unseal key and writes them to
+`/tmp/openbao-init.json`. It does **not** unseal OpenBao — that happens in 2c, once
+the key is in SOPS and the sidecar can read it.
 
 ### 2b. Store the unseal key in SOPS
 
 ```bash
-UNSEAL_KEY=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['keys'][0])")
+UNSEAL_KEY=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['unseal_keys_b64'][0])")
 echo "OPENBAO_UNSEAL_KEY: $UNSEAL_KEY"
 
 # Add to SOPS (replaces the placeholder from Phase 0)
@@ -173,16 +175,12 @@ kubectl exec -n openbao openbao-0 -- bao kv put secret/harbor \
 kubectl exec -n openbao openbao-0 -- bao kv put secret/n8n \
   N8N_ENCRYPTION_KEY="<32-char random — record this, required on every rebuild>"
 
-# Rancher
-kubectl exec -n openbao openbao-0 -- bao kv put secret/rancher \
-  BOOTSTRAP_PASSWORD="<strong password>"
-
 # NetBird — add the setup key after Phase 6
 kubectl exec -n openbao openbao-0 -- bao kv put secret/netbird \
   NETBIRD_SETUP_KEY="placeholder"
 ```
 
-> After writing secrets, ArgoCD syncs and app pods start. Apps will become `Healthy` progressively as their CSI volumes mount.
+> After writing secrets, Argo CD syncs and app pods start. Apps will become `Healthy` progressively as their CSI volumes mount.
 
 ---
 
@@ -259,7 +257,7 @@ This creates in Authentik:
 
 ## Phase 5 — NetBird First Login + Authentik Connector
 
-NetBird v0.66 runs an embedded Dex OIDC provider. On first deploy, no external identity provider is connected — you must log in with the local admin account to wire up Authentik.
+The NetBird combined server runs an embedded Dex OIDC provider. On first deploy, no external identity provider is connected — you must log in with the local admin account to wire up Authentik.
 
 ### 5a. Log in with local admin
 
@@ -378,13 +376,12 @@ Authentik UI → **Directory → Groups → Create** → name: `grafana-admins`
 
 Add yourself to this group for Admin role in Grafana.
 
-### 7d. Update client_id in code
+### 7d. Check the client_id matches
 
-In `workloads/monitoring/grafana.go`, replace:
-```
-"client_id": "REPLACE_WITH_AUTHENTIK_CLIENT_ID",
-```
-with the Client ID from step 7a. Then:
+`workloads/monitoring/grafana.go` sets `"client_id": "grafana-homelab"`. Create the
+Authentik provider with that same Client ID and there is nothing to change here. If
+you used a different one, update the Go value, then:
+
 ```bash
 just synth && git add -A && git commit -m "feat: set Grafana Authentik client_id" && git push
 ```
@@ -402,16 +399,16 @@ Grafana pod will start and SSO will work.
 
 ## Phase 8 — Publish CDK8s Manifests
 
-If you haven't already, synthesize and push the manifests:
+`app/` is gitignored — manifests are never committed from a laptop. CI synthesizes
+them and force-pushes the result to the manifests branch, which is what Argo CD
+watches. Push your source change and let the pipeline run:
 
 ```bash
-just synth
-git add app/
-git commit -m "chore: synth manifests"
-git push
+just synth        # optional: verify it synthesizes cleanly before pushing
+git push          # CI publishes to the manifests branch
 ```
 
-ArgoCD auto-syncs within 3 minutes:
+Argo CD auto-syncs within 3 minutes:
 
 ```bash
 kubectl get applications -n argocd
@@ -467,7 +464,6 @@ kubectl get applications -n argocd
 | `OAUTH_CLIENT_SECRET` (Grafana) | OpenBao `secret/grafana` | Phase 7 | Authentik OIDC client secret |
 | `HARBOR_ADMIN_PASSWORD` | OpenBao `secret/harbor` | Phase 2 | |
 | `N8N_ENCRYPTION_KEY` | OpenBao `secret/n8n` | Phase 2 | **Never rotate** — re-entering workflows |
-| `BOOTSTRAP_PASSWORD` (Rancher) | OpenBao `secret/rancher` | Phase 2 | |
 | `NETBIRD_SETUP_KEY` | OpenBao `secret/netbird` | Phase 6 | k8s-routing-peer setup key |
 
 ---

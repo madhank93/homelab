@@ -25,7 +25,7 @@ netbird-peer-0 (any worker · wt0: 100.109.244.71)
 Grafana / other cluster pod
 ```
 
-Source: [`workloads/networking/netbird_peer.go`](https://github.com/madhank93/homelab/blob/v0.1.6/workloads/networking/netbird_peer.go)
+Source: {{ src(path="workloads/networking/netbird_peer.go") }}
 
 ---
 
@@ -37,7 +37,7 @@ The in-cluster NetBird peer is deployed as a **StatefulSet** (not a Deployment) 
 - Without persistence, every pod restart generates a new private key → new peer registration in NetBird Management → accumulating duplicate peers in the UI
 - StatefulSet + PVC ensures the same peer identity is reused across restarts
 
-A simple Deployment would create a new peer registration on every restart (e.g., every ArgoCD sync that changes the pod spec), filling the NetBird Management UI with ghost peers.
+A simple Deployment would create a new peer registration on every restart (e.g., every Argo CD sync that changes the pod spec), filling the NetBird Management UI with ghost peers.
 
 ---
 
@@ -46,7 +46,7 @@ A simple Deployment would create a new peer registration on every restart (e.g.,
 | Setting | Value | Why |
 |---------|-------|-----|
 | Namespace | `netbird` | Privileged PSA (needs NET_ADMIN, SYS_MODULE) |
-| Image | `netbirdio/netbird:0.71.4` | Pinned to match Bifrost server version |
+| Image | `netbirdio/netbird` | Must match the Bifrost server version — see the [Software Inventory](@/architecture/software-inventory.md) |
 | Kind | `StatefulSet` | Persistent identity across restarts |
 | `hostNetwork: true` | true | WireGuard must manipulate host routing table |
 | `dnsPolicy` | `ClusterFirstWithHostNet` | DNS works with hostNetwork |
@@ -56,7 +56,7 @@ A simple Deployment would create a new peer registration on every restart (e.g.,
 | `NB_HOSTNAME` | `k8s-routing-peer` | Peer name in NetBird UI |
 | `NB_SETUP_KEY` | From OpenBao (Pattern B) | Used only on first registration |
 
-> **Critical:** PVC mount path is `/var/lib/netbird/` — **not** `/etc/netbird/`. NetBird v0.66 stores its private key at `/var/lib/netbird/` regardless of what `NB_CONFIG` points to. Mounting at the wrong path means the key is never persisted.
+> **Critical:** PVC mount path is `/var/lib/netbird/` — **not** `/etc/netbird/`. NetBird stores its private key at `/var/lib/netbird/` regardless of what `NB_CONFIG` points to. Mounting at the wrong path means the key is never persisted.
 
 ---
 
@@ -73,11 +73,14 @@ The setup key is only used on **first registration**. Once the peer is registere
 The StatefulSet includes an `initContainer` that adds an iptables rule before the NetBird agent starts:
 
 ```bash
-iptables -t nat -C POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null \
-  || iptables -t nat -A POSTROUTING -s 100.109.0.0/16 -d 192.168.1.0/24 -j MASQUERADE
+iptables -t nat -C POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null \
+  || iptables -t nat -A POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE
 ```
 
-The `-C` check prevents duplicate rules on pod restart. This rule ensures that traffic from Bifrost's WireGuard IP range (`100.109.x.x`) destined for the cluster LAN gets source-NAT'd to the worker node's IP, allowing cluster nodes to send replies back via normal LAN routing.
+The rule matches on the **outbound interface** (`-o ens18`), not a source range: anything
+leaving the node toward the cluster LAN is source-NAT'd to that node's own IP, so
+replies come back via normal LAN routing instead of trying to find the WireGuard
+overlay. The `-C` check makes it idempotent across pod restarts.
 
 In practice the actual NAT is performed by Cilium's `CILIUM_POST_nat` BPF chain, not the raw iptables rule. Both coexist without conflict.
 
@@ -153,13 +156,39 @@ NODE=$(kubectl get pod -n netbird netbird-peer-0 -o jsonpath='{.spec.nodeName}')
 CILIUM_POD=$(kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium-agent \
   -o wide | grep "$NODE" | awk '{print $1}')
 kubectl exec -n kube-system $CILIUM_POD -c cilium-agent -- cilium-dbg status | grep Devices
-# Must show ens18 only — wt0 must not appear
+# Expect ens18 and eth0 only — wt0 must never appear
 # If wt0 appears: update core/platform/cilium.go and run just core platform up
+
+# Bifrost side: agent connected, route selected, kernel route present
+ssh root@178.156.199.250 'docker exec netbird-agent netbird status'
+# Expect: Management: Connected, Peers count: 1/1 Connected
+ssh root@178.156.199.250 'docker exec netbird-agent netbird routes list'
+# Expect: 192.168.1.0/24  Status: Selected
+ssh root@178.156.199.250 'ip route show table 7120'
+# Expect: 192.168.1.0/24 dev wt0
 
 # Test connectivity to the Cilium LB from Bifrost
 ssh root@178.156.199.250 \
   'curl -sv -H "Host: grafana.madhan.app" --connect-timeout 5 http://192.168.1.220/'
 # Expect: HTTP/1.1 302 Found
+
+# If that times out but a NodePort on another worker answers, the problem is on
+# the routing peer's node — check Cilium there.
+ssh root@178.156.199.250 \
+  'curl -sv -H "Host: grafana.madhan.app" --connect-timeout 3 http://192.168.1.222:32601/'
+```
+
+### wt0 shows 0 bytes — tunnel dead
+
+`NB_SKIP_SOCKET_MARK` must not be set on the StatefulSet. It disables the socket
+fwmark, so management traffic loops back through the WireGuard tunnel and the
+relay connection never establishes.
+
+### netbird-agent not running on Bifrost
+
+```bash
+ssh root@178.156.199.250 'docker ps | grep netbird-agent'
+ssh root@178.156.199.250 'NB_BIFROST_SETUP_KEY=$(grep NB_BIFROST_SETUP_KEY /etc/bifrost/.secrets.env | cut -d= -f2) docker compose -f /etc/bifrost/docker-compose.yml up -d netbird-agent'
 ```
 
 ### MASQUERADE rule not taking effect

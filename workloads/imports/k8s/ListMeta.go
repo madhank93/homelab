@@ -19,5 +19,11 @@ type ListMeta struct {
 	ResourceVersion *string `field:"optional" json:"resourceVersion" yaml:"resourceVersion"`
 	// Deprecated: selfLink is a legacy read-only field that is no longer populated by the system.
 	SelfLink *string `field:"optional" json:"selfLink" yaml:"selfLink"`
+	// shardInfo is set when the list is a filtered subset of the full collection, as selected by a shard selector on the request.
+	//
+	// It echoes back the selector so clients can verify which shard they received and merge sharded responses. Clients should not cache sharded list responses as a full representation of the collection.
+	//
+	// This is an alpha field and requires enabling the ShardedListAndWatch feature gate.
+	ShardInfo *ShardInfo `field:"optional" json:"shardInfo" yaml:"shardInfo"`
 }
 

@@ -31,7 +31,7 @@ Two image variants are downloaded from the Talos image factory:
 ## Cluster Configuration
 
 **Cluster name:** `talos-cluster`
-**Talos version:** v1.12.4
+**Talos version:** see the [Software Inventory](@/architecture/software-inventory.md)
 **API endpoint (VIP):** `https://192.168.1.210:6443`
 
 ### Cluster-Level Patch
@@ -107,13 +107,13 @@ Pulumi performs the full cluster bootstrap in dependency order:
 1. Download Talos images to Proxmox
 2. Create VMs (Proxmox QEMU resources)
 3. Generate Talos machine secrets (PKI, tokens)
-4. Patch per-node configs (hostname, static IP, gateway, DNS)
+4. Patch per-role configs (VIP, kernel modules, node labels and taints)
 5. Apply configs via Talos API (in-band, using QEMU guest agent IP)
 6. Bootstrap etcd on `k8s-controller1`
 7. Wait for the cluster to become healthy
 8. Retrieve kubeconfig → write to `core/kubeconfig`
 
-The kubeconfig is used by downstream platform Pulumi code (Cilium, ArgoCD) via the Kubernetes provider.
+The kubeconfig is used by downstream platform Pulumi code (Cilium, Argo CD) via the Kubernetes provider.
 
 ## Exported Outputs
 

@@ -22,13 +22,13 @@ Kubernetes Secrets have a fundamental security limitation: they are stored as ba
 
 The CSI driver is deployed as a DaemonSet in `kube-system` (one pod per node). It intercepts CSI volume mounts and calls the OpenBao provider to fetch secrets at pod startup.
 
-Source: [`workloads/secrets/csi_driver.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/secrets/csi_driver.go)
+Source: {{ src(path="workloads/secrets/csi_driver.go") }}
 
 ## Configuration
 
 | Setting | Value | Why |
 |---------|-------|-----|
-| Helm chart | `secrets-store-csi-driver` v1.5.6 | Pinned version |
+| Helm chart | `secrets-store-csi-driver` | Version in the [Software Inventory](@/architecture/software-inventory.md) |
 | Namespace | `kube-system` | Must be cluster-wide |
 | `syncSecret.enabled` | `true` | Required for Pattern B (create k8s Secrets from secretObjects) |
 | `enableSecretRotation` | `true` | Poll for updated secrets |
@@ -76,20 +76,16 @@ When a pod mounts the CSI volume referencing `harbor-secrets`:
 4. The driver writes the secret as a file into the pod at the specified mount path
 5. The driver also creates/updates the `harbor-admin` k8s Secret (because `syncSecret.enabled=true`)
 
-## Pattern A vs Pattern B
+## Which pattern to use
 
-| Pattern | Secret as file | k8s Secret created | Used by |
-|---------|---------------|-------------------|---------|
-| A (file-only) | Yes | No | Grafana |
-| B (secretObjects) | Yes | Yes | Harbor, n8n, Rancher, NetBird |
-
-Pattern B is needed for Helm charts that only accept `existingSecret` references and cannot read secrets from file paths.
-
-> **The CSI volume mount is required to trigger secretObjects sync.** If no pod mounts the volume, the k8s Secret is never created or updated.
+Both are explained in [Secrets](@/platform/secrets/index.md). What matters at
+the driver level: the CSI volume mount is what triggers a `secretObjects` sync.
+No pod mounting the volume means no k8s Secret, however correct the
+SecretProviderClass looks.
 
 ## secret-sync Deployments
 
-For Harbor and Rancher, whose Helm charts do not support `extraVolumes` on their component pods, a dedicated `secret-sync` Deployment runs a `pause` container whose only purpose is to mount the CSI volume and trigger secretObjects sync:
+For Harbor, whose Helm chart does not support `extraVolumes` on its component pods, a dedicated `secret-sync` Deployment runs a `pause` container whose only purpose is to mount the CSI volume and trigger secretObjects sync:
 
 ```go
 // workloads/registry/harbor.go
@@ -136,7 +132,7 @@ kubectl describe pod <pod-name> -n <namespace>
 kubectl get secretproviderclass -n <namespace>
 ```
 
-**Fix:** The `SecretProviderClass` must exist in the same namespace as the pod. Check ArgoCD sync status.
+**Fix:** The `SecretProviderClass` must exist in the same namespace as the pod. Check Argo CD sync status.
 
 ### Secret Not Updating After Change
 

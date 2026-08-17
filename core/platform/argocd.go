@@ -8,28 +8,36 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// InstallArgoCD installs ArgoCD via Helm and configures the GitOps bootstrap.
+// InstallArgoCD installs ArgoCD and the ApplicationSet that drives every
+// workload deployment. Run `just core platform up` to apply.
 //
-// It creates:
-//   - ArgoCD Helm release (chart argo-cd, namespace argocd) in insecure mode (HTTP :80)
-//   - HTTPRoute for argocd.local + argocd.madhan.app (homelab-gateway, port 80)
-//   - ApplicationSet "cots-applications" watching the v0.1.6-manifests branch
-//
-// TLS cert for argocd.madhan.app is managed via CDK8s (workloads/observability/argocd_monitor.go).
-// The gateway HTTPS listener terminates TLS using that cert before proxying to ArgoCD :80.
-//
-// The ApplicationSet drives all workload deployments via GitOps. Run
-// `just core platform up` to apply.
+// ArgoCD serves plain HTTP; the gateway terminates TLS using a certificate
+// owned by CDK8s in workloads/observability/argocd_monitor.go.
 func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	chart, err := helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 		Chart:   pulumi.String("argo-cd"),
-		Version: pulumi.String("9.5.15"),
+		Version: pulumi.String("10.3.2"),
 		RepositoryOpts: &helm.RepositoryOptsArgs{
 			Repo: pulumi.String("https://argoproj.github.io/argo-helm"),
 		},
 		Namespace:       pulumi.String("argocd"),
 		CreateNamespace: pulumi.Bool(true),
 		Values: pulumi.Map{
+			// Chart 10.0.0 flipped this default to true. Cilium enforces the
+			// resulting policies, and ArgoCD is what would surface a breakage
+			// anywhere else, so keep them off until they are reviewed on their own.
+			"global": pulumi.Map{
+				"networkPolicy": pulumi.Map{
+					"create": pulumi.Bool(false),
+				},
+				// Chart 10.3.2 still pins v3.5.0. 3.5.1 stops server-side diff
+				// leaking Secret data into last-applied-configuration and closes a
+				// mask-spoofing hole in the same path; this cluster runs
+				// ServerSideApply everywhere. Drop once a chart ships it.
+				"image": pulumi.Map{
+					"tag": pulumi.String("v3.5.1"),
+				},
+			},
 			"repoServer": pulumi.Map{
 				// Kustomize 5.x has a hardcoded 27s git fetch timeout for remote bases.
 				// KUSTOMIZE_REMOTE_FETCH_TIMEOUT overrides it so large repos (e.g. kubeflow/manifests)
@@ -139,7 +147,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return err
 	}
 
-	// 5. Create ApplicationSet to Bootstrap GitOps (Watch v0.1.6-manifests)
+	// 5. Create ApplicationSet to Bootstrap GitOps (Watch v0.1.7-manifests)
 	_, err = apiextensions.NewCustomResource(ctx, "bootstrap-appset", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("argoproj.io/v1alpha1"),
 		Kind:       pulumi.String("ApplicationSet"),
@@ -153,7 +161,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 					{
 						"git": map[string]any{
 							"repoURL":  "https://github.com/madhank93/homelab.git",
-							"revision": "v0.1.6-manifests", // Watch the manifests branch
+							"revision": "v0.1.7-manifests", // Watch the manifests branch
 							"directories": []map[string]any{
 								{"path": "*"}, // Apps are at the root of the manifests branch
 							},
@@ -168,7 +176,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						"project": "default",
 						"source": map[string]any{
 							"repoURL":        "https://github.com/madhank93/homelab.git",
-							"targetRevision": "v0.1.6-manifests",
+							"targetRevision": "v0.1.7-manifests",
 							"path":           "{{path}}",
 						},
 						"destination": map[string]any{

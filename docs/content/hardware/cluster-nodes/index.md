@@ -31,7 +31,7 @@ Workers use 200 GiB disks to provide ~90–95 GiB of usable Longhorn storage per
 
 ## Talos Version
 
-**Talos v1.12.4** — cluster name `talos-cluster`.
+**Talos Linux** — cluster name `talos-cluster`; version in the [Software Inventory](@/architecture/software-inventory.md).
 
 ### Talos Images
 
@@ -42,7 +42,7 @@ Two Talos image variants are used:
 - Used by: control plane nodes + k8s-worker1–3
 
 **GPU image** (schematic `901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829`):
-- Extensions: all base extensions + `nvidia-container-toolkit`, `nvidia-open-gpu-kernel-modules`
+- Extensions: all base extensions + `nvidia-container-toolkit-production`, `nvidia-open-gpu-kernel-modules-production`
 - Used by: k8s-worker4
 
 ## Worker Node Kernel Modules
@@ -61,24 +61,20 @@ nvidia, nvidia_uvm, nvidia_drm, nvidia_modeset
 
 ## Network Configuration
 
-Each node is assigned a static IP via Talos machine config (patched by Pulumi at provision time):
+Nodes take their address by **DHCP**, not static machine config. The addresses in
+this document are DHCP reservations on the router — Talos itself just asks:
 
 ```yaml
 machine:
   network:
-    hostname: k8s-worker1
     interfaces:
       - deviceSelector:
           physical: true
-        dhcp: false
-        addresses:
-          - 192.168.1.221/24
-        routes:
-          - gateway: 192.168.1.254
-    nameservers:
-      - 1.1.1.1
-      - 192.168.1.254
+        dhcp: true
 ```
+
+Changing a node's IP therefore means changing the reservation, not the Talos config.
+Control planes additionally get the shared VIP on the same interface.
 
 ## Longhorn Node Labels
 

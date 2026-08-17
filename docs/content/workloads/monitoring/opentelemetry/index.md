@@ -25,7 +25,7 @@ Both export:
 - **Metrics** → VictoriaMetrics via Prometheus remote-write
 - **Logs** → VictoriaLogs via OTLP/HTTP
 
-Source: [`workloads/observability/otel_collector.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/observability/otel_collector.go)
+Source: {{ src(path="workloads/observability/otel_collector.go") }}
 
 ## Agent DaemonSet Configuration
 
@@ -45,7 +45,7 @@ pipelines:
   logs:
     receivers:  [filelog]
     processors: [memory_limiter, k8sattributes, batch]
-    exporters:  [otlphttp/logs]     # → VictoriaLogs
+    exporters:  [otlp_http/logs]     # → VictoriaLogs
   metrics:
     receivers:  [kubeletstats, hostmetrics]
     processors: [memory_limiter, k8sattributes, batch]
@@ -75,15 +75,15 @@ pipelines:
   logs:
     receivers:  [k8sobjects]
     processors: [memory_limiter, batch]
-    exporters:  [otlphttp/logs]
+    exporters:  [otlp_http/logs]
 ```
 
 ## Exporter Endpoints
 
 | Exporter | Endpoint | Data |
 |----------|----------|------|
-| `prometheusremotewrite` | `http://victoria-metrics-victoria-metrics-cluster-vminsert.victoria-metrics.svc.cluster.local:8480/insert/0/prometheus/api/v1/write` | Metrics |
-| `otlphttp/logs` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry` | Logs |
+| `prometheusremotewrite` | `http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428/api/v1/write` | Metrics |
+| `otlp_http/logs` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry` | Logs |
 
 ## Common Processors
 
@@ -130,8 +130,8 @@ kubectl logs -n opentelemetry -l app.kubernetes.io/name=otel-agent --tail=50
 # Check remote-write errors
 kubectl logs -n opentelemetry -l app.kubernetes.io/name=otel-agent | grep "remote_write\|error"
 
-# Verify vminsert is reachable
+# Verify vmsingle is reachable
 kubectl exec -n opentelemetry <agent-pod> -- \
   curl -s -o /dev/null -w "%{http_code}" \
-  http://victoria-metrics-victoria-metrics-cluster-vminsert.victoria-metrics.svc.cluster.local:8480
+  http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428
 ```

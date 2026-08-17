@@ -1,6 +1,6 @@
 +++
 title = "NetBird VPN"
-description = "NetBird v0.66 combined server — WireGuard mesh for remote cluster access, with embedded Dex OIDC and Authentik as the upstream identity connector."
+description = "NetBird combined server — WireGuard mesh for remote cluster access, with embedded Dex OIDC and Authentik as the upstream identity connector."
 weight = 30
 +++
 
@@ -14,7 +14,7 @@ NetBird eliminates the need to manage WireGuard configs manually — peers regis
 
 ## How It's Used Here
 
-The NetBird combined server runs on Bifrost alongside a `netbird-agent` WireGuard peer. A `netbird-peer` StatefulSet on Kubernetes worker1 joins the mesh and advertises `192.168.1.0/24`, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.
+The NetBird combined server runs on Bifrost alongside a `netbird-agent` WireGuard peer. A `netbird-peer` StatefulSet joins the mesh from whichever worker it lands on and advertises `192.168.1.0/24`, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.
 
 ```
 Your laptop (NetBird client)
@@ -26,7 +26,7 @@ Bifrost VPS
     │
     └─ WireGuard mesh ──────────────────────────────────┐
                                                          ▼
-                                          K8s: netbird-peer pod (worker1)
+                                          K8s: netbird-peer pod (any worker)
                                                hostNetwork · wt0: 100.109.244.71
                                                routes 192.168.1.0/24
                                                          │  IP forward + MASQUERADE
@@ -60,7 +60,7 @@ flowchart LR
         RE["NetBird TURN/STUN<br/>via netbird-server<br/>UDP 3478 / TCP 5349"]
     end
 
-    subgraph K8S["Kubernetes · worker1 · 192.168.1.221"]
+    subgraph K8S["Kubernetes · routing-peer node"]
         NBPEER["netbird-peer-0<br/>hostNetwork · wt0: 100.109.244.71<br/>routes 192.168.1.0/24"]
         MASQ["CILIUM_POST_nat<br/>MASQUERADE<br/>100.109.x → 192.168.1.221"]
         CILBPF["Cilium BPF (other node eth0)<br/>L7LB DNAT → Envoy :13507"]
@@ -92,7 +92,7 @@ flowchart LR
 
 ## Embedded Dex OIDC — Key Design Constraint
 
-NetBird v0.66 combined server **always** runs an embedded [Dex](https://dexidp.io/) OIDC provider. This is hardcoded in the Go source (`Enabled: true` in `ToManagementConfig()`) and cannot be disabled via configuration.
+The NetBird combined server **always** runs an embedded [Dex](https://dexidp.io/) OIDC provider. This is hardcoded in the Go source (`Enabled: true` in `ToManagementConfig()`) and cannot be disabled via configuration.
 
 **Consequence:** all JWT tokens that NetBird validates are issued by embedded Dex — not by Authentik directly. Pointing `auth.issuer` to Authentik's URL would cause Dex to claim to be Authentik while signing tokens with its own SQLite-stored keys, producing a JWKS mismatch and `unable to find appropriate key` errors.
 
@@ -148,7 +148,7 @@ This connector is registered in NetBird via the UI after first login (see [First
 | `reverseProxy.trustedHTTPProxies` | `172.30.0.10/32` | Traefik IP in bifrost_net (static) |
 | `store.engine` | `sqlite` | static |
 
-> **Note:** The `auth.audience` field and `server.idp` section are silently ignored by NetBird v0.66's combined server config parser — the audience is hardcoded to `"netbird-dashboard"` in Go, and the idp section is not part of `ServerConfig`.
+> **Note:** The `auth.audience` field and `server.idp` section are silently ignored by the combined server's config parser — the audience is hardcoded to `"netbird-dashboard"` in Go, and the idp section is not part of `ServerConfig`.
 
 ---
 
@@ -212,19 +212,8 @@ The Bifrost VPS runs both the NetBird **server** and a NetBird **agent**. These 
 
 Without `netbird-agent`, Traefik has no route to `192.168.1.0/24`. Every proxy request to the cluster returns **504 Gateway Timeout**. The agent receives the `192.168.1.0/24` route advertised by `k8s-routing-peer` and sets up a WireGuard tunnel:
 
-```
-External user
-    ↓ HTTPS
-Traefik (Bifrost)
-    ↓ http://192.168.1.220
-netbird-agent (Bifrost) ←── WireGuard ───→ k8s-routing-peer (worker1 · 192.168.1.221)
-                                                    ↓ kernel IP forward
-                                              CILIUM_POST_nat MASQUERADE
-                                                    ↓
-                                            192.168.1.220 (Cilium gateway)
-                                                    ↓
-                                              cluster pods
-```
+The full packet path — including the kernel forward and MASQUERADE hop — is drawn
+once in [Network Flow](@/architecture/network-flow/index.md#public-request-packet-level-detail).
 
 `netbird-agent` uses `network_mode: host` so WireGuard routes are created on the Bifrost host directly, making them reachable from all Docker containers (including Traefik in `bifrost_net`).
 
@@ -243,7 +232,8 @@ Both keys can share the same **Reusable** setup key value from the NetBird UI �
 
 ## K8s Routing Peer
 
-The `netbird-peer` StatefulSet in the `netbird` namespace runs on **worker1** (`192.168.1.221`), connects to the WireGuard mesh, and advertises `192.168.1.0/24` as a route. This makes all cluster services reachable from any NetBird-connected device.
+The `netbird-peer` StatefulSet in the `netbird` namespace has no `nodeSelector` — it
+floats to any available worker for resilience. It connects to the WireGuard mesh, and advertises `192.168.1.0/24` as a route. This makes all cluster services reachable from any NetBird-connected device.
 
 See [NetBird Peer](/workloads/networking/netbird-peer/) for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium `wt0` constraint.
 
@@ -342,23 +332,11 @@ ssh root@178.156.199.250 'curl -sv -H "Host: grafana.madhan.app" --connect-timeo
 
 ## Troubleshooting
 
-### 504 from public URL — netbird-agent not running
+Problems on the tunnel and routing side — 504s, routes not distributing, a dead
+`wt0` — are covered in one place on
+[NetBird Peer](@/workloads/networking/netbird-peer/index.md#troubleshooting).
 
-```bash
-ssh root@178.156.199.250 'docker ps | grep netbird-agent'
-# If not running:
-ssh root@178.156.199.250 'NB_BIFROST_SETUP_KEY=$(grep NB_BIFROST_SETUP_KEY /etc/bifrost/.secrets.env | cut -d= -f2) docker compose -f /etc/bifrost/docker-compose.yml up -d netbird-agent'
-```
-
-### Routes not distributed to bifrost-agent
-
-```bash
-# On Bifrost
-docker exec netbird-agent netbird routes list
-# If "Networks: -" or route missing:
-# Check it's in the "All" distribution group in NetBird UI → Network Routes
-```
-
-### Tunnel dead — wt0: 0 bytes
-
-`NB_SKIP_SOCKET_MARK` must not be set on the `netbird-peer` StatefulSet — it disables the socket fwmark, causing management traffic to loop through the WireGuard tunnel and breaking the relay connection.
+For the server itself, the usual causes are the embedded-Dex constraint above
+and a stale peer entry: if the `netbird-peer` pod was recreated after the
+Network Route was configured, the route still points at the old peer. Delete the
+disconnected duplicates under **Peers** and re-assign the route.

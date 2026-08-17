@@ -6,7 +6,7 @@ weight = 10
 
 ## What is Harbor?
 
-[Harbor](https://goharbor.io/) is an open-source cloud-native container registry that provides role-based access control, vulnerability scanning (via Trivy), image signing, content trust, and pull-through proxy caching. It is CNCF Graduated status.
+[Harbor](https://goharbor.io/) is the cluster's own container registry. Two of its features earn it a place here beyond storing images: a pull-through proxy cache, so repeated pulls of upstream images do not leave the LAN, and vulnerability scanning of what it holds.
 
 ## Why Harbor?
 
@@ -16,7 +16,7 @@ Harbor is the most feature-complete self-hosted registry available. Alternatives
 
 Harbor stores private container images built for this homelab and provides pull-through proxy caches for Docker Hub, GHCR, and other public registries. Images are pushed to `harbor.madhan.app` and pulled into cluster deployments.
 
-Source: [`workloads/registry/harbor.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/registry/harbor.go)
+Source: {{ src(path="workloads/registry/harbor.go") }}
 
 ## Configuration
 
@@ -83,7 +83,7 @@ Secret sync:
 
 ## Troubleshooting
 
-### RWO Multi-Attach Deadlock (Legacy)
+### RWO Multi-Attach Deadlock
 
 > This was the original issue before switching to RWX PVCs. Documented for reference.
 
@@ -133,7 +133,7 @@ kubectl exec -n openbao openbao-0 -- bao kv get secret/harbor
 
 ### Configuring Pull-Through Proxy
 
-1. Log in to `http://harbor.madhan.app` as admin
+1. Log in to `https://harbor.madhan.app` as admin
 2. Go to **Administration → Registries → New Endpoint**
 3. Add Docker Hub, GHCR, or other registries
 4. Create a proxy project pointing to the registry endpoint

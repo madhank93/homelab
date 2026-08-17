@@ -34,43 +34,79 @@ OpenBao (ns: openbao, port 8200)
   │     ├── secret/data/grafana   ADMIN_PASSWORD
   │     ├── secret/data/harbor    HARBOR_ADMIN_PASSWORD
   │     ├── secret/data/n8n       ENCRYPTION_KEY
-  │     ├── secret/data/rancher   BOOTSTRAP_PASSWORD
   │     └── secret/data/netbird   NETBIRD_SETUP_KEY
   └── Kubernetes Auth method
         └── per-app roles → bound to app ServiceAccount + namespace
 
 Secrets Store CSI Driver (ns: kube-system)
   └── SecretProviderClass (per app ns)
-        └── CSI volume in pod → mounts secrets as files
-              └── secretObjects → syncs to k8s Secret (Pattern B only)
 ```
+
+## What happens at pod start
+
+{% mermaid() %}
+flowchart TB
+    SPC["SecretProviderClass<br/>(app namespace)"]
+    SA["Pod ServiceAccount<br/>token"]
+    BAO["OpenBao<br/>Kubernetes auth → role → policy"]
+    VOL["CSI volume<br/>mounted in the pod"]
+    FILE["/mnt/secrets/KEY<br/>Pattern A — file only"]
+    SEC["k8s Secret<br/>Pattern B — secretObjects"]
+    ENV["Container env var"]
+
+    SA --> BAO
+    SPC --> BAO
+    BAO -->|"secret value"| VOL
+    VOL --> FILE
+    VOL -->|"only if secretObjects is set"| SEC
+    SEC --> ENV
+{% end %}
+
+The arrow that catches people is the one from the volume: **the mount is what
+drives everything**. A SecretProviderClass on its own fetches nothing, and a
+`secretObjects` block on its own creates nothing. If no pod mounts the volume,
+the k8s Secret never appears — which is why Harbor runs a `pause` container
+whose only job is to hold the mount open.
 
 ## Pattern A — File-only (no k8s Secret)
 
-Used by: **Grafana**
+The secret is mounted as a file at `/mnt/secrets/<KEY>` and the app reads it via
+an env var naming that path — `GF_SECURITY_ADMIN_PASSWORD__FILE`, for instance.
 
-Secret is mounted as a file at `/mnt/secrets/<KEY>`. The app reads it via an env var pointing to the file path (e.g. `GF_SECURITY_ADMIN_PASSWORD__FILE`).
-
-No k8s Secret is created. The secret value never appears in `kubectl get secret` output.
+No k8s Secret is created, so the value never appears in `kubectl get secret`.
+Prefer this whenever the app can read a file.
 
 ## Pattern B — secretObjects sync (k8s Secret created)
 
-Used by: **Harbor**, **n8n**, **Rancher**, **NetBird**
+Used by **Harbor**, **n8n**, **NetBird**, and Grafana's OIDC client secret.
 
-The CSI volume mount triggers the SecretProviderClass `secretObjects` block, which creates a k8s Secret in the app's namespace. This is required for Helm charts that only accept `existingSecret` references.
+The CSI volume mount triggers the SecretProviderClass `secretObjects` block,
+which creates a k8s Secret in the app's namespace. Needed when a Helm chart only
+accepts an `existingSecret` reference, or when the app can read the value only
+from an env var rather than a file.
 
-> The CSI volume mount is **required** to trigger the sync — if no pod mounts the volume, the k8s Secret is never created.
+> The CSI volume mount is **required** to trigger the sync — if no pod mounts
+> the volume, the k8s Secret is never created. This is the single most common
+> cause of "the Secret was never created".
+
+Harbor's chart has no `extraVolumes` support at all, so a dedicated
+`secret-sync` Deployment running a `pause` container mounts the CSI volume
+purely to trigger the sync.
+
+An app can use both: Grafana's admin password is file-only (Pattern A) while its
+OIDC client secret is synced (Pattern B), because Grafana reads that one from a
+`GF_` env var.
 
 ## Bootstrap Secrets
 
-Only two Secrets are created by the bootstrap script and never managed by ArgoCD:
+Only two Secrets are created by the bootstrap script and never managed by Argo CD:
 
 | Secret | Namespace | Keys | Purpose |
 |--------|-----------|------|---------|
 | `openbao-unseal-key` | `openbao` | `unseal-key` | Unseals OpenBao on pod startup via sidecar |
 | `cloudflare-api-token` | `cert-manager` | `CLOUDFLARE_API_TOKEN` | DNS-01 ACME challenge for wildcard cert |
 
-Both carry `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never deletes them.
+Both carry `argocd.argoproj.io/sync-options: Prune=false` so Argo CD never deletes them.
 
 ## SOPS + age Setup
 
@@ -91,7 +127,7 @@ source ~/.zshrc
 
 # 4. Register public key in .sops.yaml at repo root
 # creation_rules:
-#   - path_regex: secrets/.*\.sops$
+#   - path_regex: ^secrets/
 #     age: age1abc123...
 
 # 5. Populate the bootstrap secrets file
@@ -126,8 +162,6 @@ kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
 kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
   bao kv put -mount=secret n8n      ENCRYPTION_KEY=<real>
 kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv put -mount=secret rancher  BOOTSTRAP_PASSWORD=<real>
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
   bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=<real>
 ```
 
@@ -135,14 +169,13 @@ kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
 
 | App | OpenBao Path | Secret keys fetched | k8s Secret created | Pattern |
 |-----|-------------|--------------------|--------------------|---------|
-| Grafana | `secret/data/grafana` | `ADMIN_PASSWORD` | none | A (file) |
+| Grafana | `secret/data/grafana` | `ADMIN_PASSWORD`, `OAUTH_CLIENT_SECRET` | `grafana-oauth-secret` | A **and** B |
 | Harbor | `secret/data/harbor` | `HARBOR_ADMIN_PASSWORD` | `harbor-admin` | B |
 | n8n | `secret/data/n8n` | `ENCRYPTION_KEY` | `n8n-secrets` | B |
-| Rancher | `secret/data/rancher` | `BOOTSTRAP_PASSWORD` | `rancher-bootstrap` | B |
 | NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` | `netbird-setup-key` | B |
 
 > n8n DB password is **not** in OpenBao — it is auto-managed by the CloudNativePG operator (`n8n-pg-app` Secret).
 
 ## CDK8s Generates Zero Secrets
 
-The CI pipeline synthesizes CDK8s manifests to the `v0.1.5-manifests` branch. It requires **zero GitHub Actions secrets** — CDK8s never generates any `Secret` resources. All runtime secrets are pulled by the in-cluster CSI driver at mount time.
+The CI pipeline synthesizes CDK8s manifests to the `v0.1.7-manifests` branch. It requires **zero GitHub Actions secrets** — CDK8s never generates any `Secret` resources. All runtime secrets are pulled by the in-cluster CSI driver at mount time.

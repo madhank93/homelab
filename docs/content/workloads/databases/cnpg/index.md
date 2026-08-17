@@ -4,29 +4,28 @@ description = "CloudNativePG operator — Postgres lifecycle management for stat
 weight = 10
 +++
 
-## What is CloudNativePG?
+[CloudNativePG](https://cloudnative-pg.io/) runs as an operator in `cnpg-system`
+and turns a Postgres cluster into a single `Cluster` custom resource — replication,
+failover, backups and rolling updates included.
 
-[CloudNativePG](https://cloudnative-pg.io/) is a Kubernetes operator that manages the full lifecycle of PostgreSQL clusters — provisioning, configuration, backup, failover, and rolling updates — through a `Cluster` custom resource. It is the CNCF-recommended approach for running Postgres on Kubernetes.
+It exists here for one reason: **n8n's database**. Rather than accept the Postgres
+subchart bundled with the n8n Helm chart, n8n's database is a CNPG `Cluster` in the
+`n8n` namespace. That makes the database independently upgradable, gives it real
+failover, and puts its credentials under the operator's control instead of in a
+values file — CNPG generates the `n8n-pg-app` Secret itself, which is why the n8n
+database password is the one secret **not** stored in OpenBao.
 
-## Why CloudNativePG?
-
-Managing stateful Postgres directly with StatefulSets requires manual handling of replication, failover, connection pooling, and backup. CNPG encapsulates all of that into a single `Cluster` CR, keeps Postgres configuration as code, and integrates with Kubernetes storage (Longhorn PVCs) and monitoring (ServiceMonitor).
-
-## How It's Used Here
-
-CNPG runs as an operator in the `cnpg-system` namespace. It is used by n8n to provision a dedicated Postgres cluster — rather than bundling a Postgres sidecar in the n8n Helm chart, n8n's database is a first-class CNPG `Cluster` resource managed separately in the `n8n` namespace.
-
-See [n8n](/workloads/automation/n8n/) for the Cluster CR definition and how n8n connects to it.
+See [n8n](@/workloads/automation/n8n/index.md) for the Cluster CR and how n8n
+connects to it.
 
 ## Configuration
 
 | Setting | Value | Why |
 |---------|-------|-----|
-| Helm chart | `cloudnative-pg` v0.27.1 | Pinned version |
-| Namespace | `cnpg-system` | Operator runs cluster-wide |
-| Chart repo | `cloudnative-pg.github.io/charts` | Official CNPG chart repo |
+| Namespace | `cnpg-system` | Operator watches all namespaces from here |
+| Chart | `cloudnative-pg` | Version in the [Software Inventory](@/architecture/software-inventory.md) |
 
-Source: [`workloads/databases/cnpg.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/databases/cnpg.go)
+Source: {{ src(path="workloads/databases/cnpg.go") }}
 
 ## Troubleshooting
 
@@ -34,7 +33,7 @@ Source: [`workloads/databases/cnpg.go`](https://github.com/madhank93/homelab/blo
 
 ```bash
 kubectl get cluster -n n8n
-kubectl describe cluster n8n-db -n n8n
+kubectl describe cluster n8n-pg -n n8n
 kubectl logs -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg
 ```
 

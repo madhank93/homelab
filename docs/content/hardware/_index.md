@@ -24,6 +24,9 @@ The cluster runs on 7 virtual machines provisioned by Pulumi on a single Proxmox
 
 | Node | vCPUs | RAM | Disk | Special |
 |------|-------|-----|------|---------|
-| k8s-controller1–3 | 4 | 6 GiB | 30 GiB | VIP on eth0 |
-| k8s-worker1–3 | 4 | 6 GiB | 125 GiB | Longhorn storage |
-| k8s-worker4 | 4 | 6 GiB | 125 GiB | NVIDIA RTX 5070 Ti GPU (PCIe passthrough) |
+| k8s-controller1–3 | 4 | 8 GiB | 50 GiB | Talos built-in VIP |
+| k8s-worker1–3 | 4 | 14 GiB | 200 GiB | Longhorn storage |
+| k8s-worker4 | 8 | 16 GiB | 250 GiB | RTX 5070 Ti (PCIe passthrough), `dedicated=ai` taint |
+
+Totals: 32 vCPU, 82 GiB RAM, 1000 GiB disk. Sized in
+{{ src(path="core/platform/talos.go") }}.

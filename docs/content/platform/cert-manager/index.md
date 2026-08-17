@@ -1,20 +1,15 @@
 +++
 title = "cert-manager"
-description = "Wildcard TLS certificate for *.madhan.app via Let's Encrypt DNS-01 challenge and Cloudflare."
+description = "One wildcard certificate for *.madhan.app, issued via Let's Encrypt DNS-01 and mirrored to Cilium for TLS termination."
 weight = 55
 +++
 
-## What is cert-manager?
+[cert-manager](https://cert-manager.io/) issues and renews the TLS certificate
+that terminates HTTPS for every `*.madhan.app` service. A DNS-01 challenge
+through Cloudflare means the cluster needs no public HTTP endpoint — only write
+access to the DNS zone.
 
-[cert-manager](https://cert-manager.io/) is a Kubernetes controller that automates the issuance and renewal of TLS certificates from ACME providers like Let's Encrypt. It supports DNS-01 challenges, which allow issuing wildcard certificates without requiring public HTTP access.
-
-## Why cert-manager?
-
-DNS-01 challenge via Cloudflare lets cert-manager obtain a wildcard `*.madhan.app` certificate for a private cluster that has no public HTTP endpoint — the only requirement is write access to the Cloudflare DNS zone.
-
-## How It's Used Here
-
-cert-manager issues and renews a single wildcard certificate (`wildcard-madhan-app-tls`) stored in `kube-system`, which the shared Cilium Gateway uses for HTTPS termination across all services. Managed by Pulumi (`core/platform/cert_manager.go`, stack: `platform`):
+Managed by Pulumi (`core/platform/cert_manager.go`, stack `platform`):
 
 ```bash
 just core platform up
@@ -23,69 +18,90 @@ just core platform up
 ## Chart
 
 | Setting | Value |
-|---------|-------|
-| Chart | `cert-manager` |
-| Repo | `https://charts.jetstack.io` |
-| Version | `v1.19.3` |
+|---|---|
+| Chart | `cert-manager` (`https://charts.jetstack.io`) |
 | Namespace | `cert-manager` |
 | CRDs | Bundled (`installCRDs: true`) |
 
 ## ClusterIssuers
 
-| Name | Type | Used For |
-|------|------|---------|
-| `letsencrypt-prod` | ACME DNS-01 via Cloudflare | Wildcard `*.madhan.app` certificate |
+| Name | Type | Used for |
+|---|---|---|
+| `letsencrypt-prod` | ACME DNS-01 via Cloudflare | The wildcard certificate |
 | `homelab-ca` | Self-signed | Internal / testing certificates |
 
-## Wildcard Certificate
+## One certificate, mirrored
+
+There is exactly **one** Certificate for these names:
 
 | Setting | Value |
-|---------|-------|
+|---|---|
 | Name | `wildcard-madhan-app` |
 | Namespace | `kube-system` |
 | Secret | `wildcard-madhan-app-tls` |
 | DNS names | `madhan.app`, `*.madhan.app` |
-| Issuer | `letsencrypt-prod` |
 
-The certificate lives in `kube-system` so the `homelab-gateway` HTTPS listener can reference it across namespaces.
+Cilium's Envoy reads TLS material from its own namespace, `cilium-secrets`, so
+it mirrors that secret there itself — `gatewayAPI.secretsNamespace.sync: true`
+in `core/platform/cilium.go`. The copy appears as
+`cilium-sync-secret-<hash>` and Cilium owns it.
 
-## Cloudflare API Token
-
-The DNS-01 solver requires a Cloudflare API token scoped to `madhan.app`:
-
-| Permission | Purpose |
-|------------|---------|
-| Zone → Zone → Read | Resolve domain to Cloudflare Zone ID |
-| Zone → DNS → Edit | Create/delete `_acme-challenge` TXT records |
-
-The token is stored in the `cert-manager/cloudflare-api-token` Secret (key: `CLOUDFLARE_API_TOKEN`), created by `just create-secrets` from SOPS. It carries `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never deletes it.
-
-## Bootstrap Dependency
-
-cert-manager needs the `cloudflare-api-token` Secret before it can issue certificates:
-
-```bash
-just create-secrets   # creates the Secret from SOPS
-just core platform up # deploys cert-manager + ClusterIssuer
+```
+cert-manager                Cilium                      Envoy
+─────────────               ──────                      ─────
+kube-system/                cilium-secrets/             HTTPS listener
+wildcard-madhan-app-tls ──> cilium-sync-secret-<hash> ─> homelab-gateway
 ```
 
-## Current Status
+> **Never add a second Certificate for the same DNS names.** Let's Encrypt caps
+> issuance at 5 per *exact set of identifiers* per 168h. A second Certificate
+> writing into `cilium-secrets` shares that budget, and because the namespace
+> belongs to Cilium the secret gets removed and reissued repeatedly until the
+> limit is hit. When that happens there is no certificate at all and **every**
+> `*.madhan.app` HTTPS endpoint resets, while plain HTTP through the same
+> Gateway keeps returning 200. Let Cilium do the copying.
 
-> The HTTPS Gateway listener is currently **disabled** pending `wildcard-madhan-app-tls` creation. All app URLs use HTTP.
->
-> Once the certificate exists in `kube-system`, re-enable the HTTPS listener in `core/platform/cilium.go` and run `just core platform up`.
+## Cloudflare API token
+
+The DNS-01 solver needs a token scoped to `madhan.app`:
+
+| Permission | Purpose |
+|---|---|
+| Zone → Zone → Read | Resolve the domain to a Zone ID |
+| Zone → DNS → Edit | Create and delete `_acme-challenge` TXT records |
+
+Stored in the `cert-manager/cloudflare-api-token` Secret (key
+`CLOUDFLARE_API_TOKEN`), created by `just create-secrets` from SOPS. It carries
+`argocd.argoproj.io/sync-options: Prune=false` so Argo CD never deletes it.
+
+cert-manager cannot issue anything until that Secret exists:
+
+```bash
+just create-secrets    # from SOPS
+just core platform up  # cert-manager + ClusterIssuer
+```
 
 ## Troubleshooting
 
 ```bash
-# Watch Certificate status
+# Is the certificate healthy? Expect Ready=True.
+kubectl get certificate -A
+
+# Why not? Look at the Issuing condition, not just Ready.
 kubectl describe certificate wildcard-madhan-app -n kube-system
 
-# Watch CertificateRequest and Order objects
-kubectl get certificaterequests,orders -n kube-system
+# Did Cilium mirror it?
+kubectl get secret -n cilium-secrets
 
-# Check cert-manager logs for Cloudflare API errors
+# Cloudflare API errors
 kubectl logs -n cert-manager deployment/cert-manager | grep -i cloudflare
 ```
 
-A successful issuance shows: `Status: True  Type: Ready  Message: Certificate is up to date and has not expired`
+**`429 ... too many certificates already issued for this exact set of
+identifiers`** means the weekly budget is gone; the message includes the retry
+time. Do not delete and recreate the Certificate — that consumes more budget.
+Find what is issuing duplicates first.
+
+**A high `Revision:` on a Certificate** (dozens) means something keeps deleting
+its Secret and cert-manager keeps reissuing. That is the shape of the failure
+above.

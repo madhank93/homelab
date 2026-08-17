@@ -7,7 +7,7 @@ type ResourceAttributes struct {
 	//
 	// It can only limit access, not broaden it.
 	FieldSelector *FieldSelectorAttributes `field:"optional" json:"fieldSelector" yaml:"fieldSelector"`
-	// Group is the API Group of the Resource.
+	// group is the API Group of the Resource.
 	//
 	// "*" means all.
 	Group *string `field:"optional" json:"group" yaml:"group"`
@@ -15,27 +15,27 @@ type ResourceAttributes struct {
 	//
 	// It can only limit access, not broaden it.
 	LabelSelector *LabelSelectorAttributes `field:"optional" json:"labelSelector" yaml:"labelSelector"`
-	// Name is the name of the resource being requested for a "get" or deleted for a "delete".
+	// name is the name of the resource being requested for a "get" or deleted for a "delete".
 	//
 	// "" (empty) means all.
 	Name *string `field:"optional" json:"name" yaml:"name"`
-	// Namespace is the namespace of the action being requested.
+	// namespace is the namespace of the action being requested.
 	//
 	// Currently, there is no distinction between no namespace and all namespaces "" (empty) is defaulted for LocalSubjectAccessReviews "" (empty) is empty for cluster-scoped resources "" (empty) means "all" for namespace scoped resources from a SubjectAccessReview or SelfSubjectAccessReview.
 	Namespace *string `field:"optional" json:"namespace" yaml:"namespace"`
-	// Resource is one of the existing resource types.
+	// resource is one of the existing resource types.
 	//
 	// "*" means all.
 	Resource *string `field:"optional" json:"resource" yaml:"resource"`
-	// Subresource is one of the existing resource types.
+	// subresource is one of the existing resource types.
 	//
 	// "" means none.
 	Subresource *string `field:"optional" json:"subresource" yaml:"subresource"`
-	// Verb is a kubernetes resource API verb, like: get, list, watch, create, update, delete, proxy.
+	// verb is a kubernetes resource API verb, like: get, list, watch, create, update, delete, proxy.
 	//
 	// "*" means all.
 	Verb *string `field:"optional" json:"verb" yaml:"verb"`
-	// Version is the API Version of the Resource.
+	// version is the API Version of the Resource.
 	//
 	// "*" means all.
 	Version *string `field:"optional" json:"version" yaml:"version"`

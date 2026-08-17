@@ -27,7 +27,6 @@ OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Po
 | Grafana | `grafana` (default) | `grafana` | `grafana-policy` |
 | Harbor | `secret-sync` | `harbor` | `harbor-policy` |
 | n8n | `n8n` (default) | `n8n` | `n8n-policy` |
-| Rancher | `secret-sync` | `cattle-system` | `rancher-policy` |
 | NetBird | `netbird-peer` | `netbird` | `netbird-policy` |
 
 **Secret paths (KV v2):**
@@ -37,37 +36,22 @@ OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Po
 | Grafana | `secret/data/grafana` | `ADMIN_PASSWORD`, `OAUTH_CLIENT_SECRET` |
 | Harbor | `secret/data/harbor` | `HARBOR_ADMIN_PASSWORD` |
 | n8n | `secret/data/n8n` | `ENCRYPTION_KEY` |
-| Rancher | `secret/data/rancher` | `BOOTSTRAP_PASSWORD` |
 | NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` |
 
-Source: [`workloads/secrets/openbao.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/secrets/openbao.go)
+Source: {{ src(path="workloads/secrets/openbao.go") }}
 
 ## Secrets Patterns
 
-### Pattern A — File-only (Grafana)
-
-Secret is mounted as a file at `/mnt/secrets/ADMIN_PASSWORD`. The app reads it via an env var pointing to the file path:
-
-```yaml
-env:
-  GF_SECURITY_ADMIN_PASSWORD__FILE: /mnt/secrets/ADMIN_PASSWORD
-```
-
-No k8s Secret is created. The secret value never appears in `kubectl get secret` output.
-
-### Pattern B — secretObjects sync (Harbor, n8n, Rancher, NetBird)
-
-The CSI volume mount triggers the SecretProviderClass `secretObjects` block, which creates a k8s Secret in the app's namespace. Required for Helm charts that only accept `existingSecret` references.
-
-> The CSI volume mount is **required** to trigger the sync — if no pod mounts the volume, the k8s Secret is never created.
-
-For Harbor and Rancher (whose Helm charts do not support `extraVolumes`), a dedicated `secret-sync` Deployment with a `pause` container mounts the CSI volume just to trigger the secretObjects sync.
+Apps consume OpenBao secrets as mounted files, optionally synced to a k8s Secret.
+Both patterns are explained once in [Secrets](@/platform/secrets/index.md) — the
+short version is that the CSI volume mount is what triggers the sync, so a
+SecretProviderClass with no pod mounting it produces nothing.
 
 ## Configuration
 
 | Setting | Value | Why |
 |---------|-------|-----|
-| Helm chart | `openbao` v0.25.6 | Pinned version |
+| Helm chart | `openbao` | Version in the [Software Inventory](@/architecture/software-inventory.md) |
 | Storage | `10Gi` Longhorn | Persistent secrets storage |
 | Storage backend | `file` | Simple, no Consul dependency |
 | CSI provider | enabled | Bridges OpenBao → CSI driver |
@@ -84,7 +68,7 @@ OpenBao starts in a sealed state after every pod restart. An `unseal` sidecar co
 "extraContainers": []map[string]any{
     {
         "name":  "unseal",
-        "image": "openbao/openbao:2.5.1",
+        "image": "openbao/openbao:<version>",   // matches the server image
         "command": []string{"sh", "-c", `
 while true; do
   STATUS=$(bao status -format=json 2>/dev/null || echo '{"sealed":true}')
@@ -99,7 +83,7 @@ done`},
 
 > **Why `extraContainers` and not `extraInitContainers`?** Init containers must complete before the main container starts, but OpenBao must be running before it can accept an unseal request. A sidecar container runs alongside the main container and can poll until the server is ready.
 
-The `openbao-unseal-key` Secret is created by `just create-secrets` from `secrets/bootstrap.sops.yaml`. It carries `argocd.argoproj.io/sync-options: Prune=false` so ArgoCD never deletes it.
+The `openbao-unseal-key` Secret is created by `just create-secrets` from `secrets/bootstrap.sops.yaml`. It carries `argocd.argoproj.io/sync-options: Prune=false` so Argo CD never deletes it.
 
 ## How It Connects
 
@@ -233,5 +217,5 @@ kubectl get secretproviderclass -n <namespace>
 kubectl describe secretproviderclass <name> -n <namespace>
 ```
 
-**Fix:** Ensure the `SecretProviderClass` exists in the same namespace as the pod. CDK8s should create it — check if ArgoCD has synced the namespace.
+**Fix:** Ensure the `SecretProviderClass` exists in the same namespace as the pod. CDK8s should create it — check if Argo CD has synced the namespace.
 

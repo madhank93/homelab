@@ -5,10 +5,6 @@ package k8s
 //
 // The value can be any valid integer.
 type KubePriorityClassProps struct {
-	// value represents the integer value of this priority class.
-	//
-	// This is the actual priority that pods receive when they have the name of this class in their pod spec.
-	Value *float64 `field:"required" json:"value" yaml:"value"`
 	// description is an arbitrary string that usually provides guidelines on when this priority class should be used.
 	Description *string `field:"optional" json:"description" yaml:"description"`
 	// globalDefault specifies whether this PriorityClass should be considered as the default priority for pods that do not have any priority class.
@@ -25,5 +21,9 @@ type KubePriorityClassProps struct {
 	// Default: PreemptLowerPriority if unset.
 	//
 	PreemptionPolicy *string `field:"optional" json:"preemptionPolicy" yaml:"preemptionPolicy"`
+	// value represents the integer value of this priority class.
+	//
+	// This is the actual priority that pods receive when they have the name of this class in their pod spec.
+	Value *float64 `field:"optional" json:"value" yaml:"value"`
 }
 

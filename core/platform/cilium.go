@@ -13,21 +13,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// InstallCilium installs Cilium as the cluster CNI and kube-proxy replacement.
+// InstallCilium installs Cilium as the cluster CNI and kube-proxy replacement,
+// plus an HTTPRoute for hubble.madhan.app.
 //
-// Configuration highlights:
-//   - kubeProxyReplacement: true — full eBPF data plane; kube-proxy is disabled in Talos
-//   - k8sServiceHost/Port: VIP 192.168.1.210:6443 — Cilium contacts API server directly
-//   - devices: [ens18, eth0] — covers Talos ≤v1.12 (ens18) and v1.13+ (eth0); wt0 excluded
-//     (NOARP/POINTOPOINT — TC BPF silently drops non-Ethernet frames)
-//   - l2Announcements + gatewayAPI: bare-metal LoadBalancer IPs and Gateway API support
-//   - Hubble relay + UI: network flow observability
-//
-// An HTTPRoute for hubble.madhan.app → hubble-ui:80 is created after the chart.
+// devices must never include wt0: it is NOARP/POINTOPOINT, and Cilium's TC BPF
+// silently drops non-Ethernet frames. NetBird traffic reaches Cilium by kernel
+// IP forwarding to eth0 on another node.
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
 		Chart:   pulumi.String("cilium"),
-		Version: pulumi.String("1.18.10"), // Pinned: 1.19.x regression blocks host TCP on eth0 nodes (cilium/cilium#44430)
+		// Held on 1.18.x: 1.19.x breaks host TCP on eth0 nodes (cilium/cilium#44430,
+		// #46010). Fixed in 1.20.0, which needs its own change window — a bad
+		// upgrade takes out the Talos API too.
+		Version: pulumi.String("1.18.12"),
 		RepositoryOpts: &helm.RepositoryOptsArgs{
 			Repo: pulumi.String("https://helm.cilium.io/"),
 		},
@@ -82,10 +80,14 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			"gatewayAPI": pulumi.Map{
 				"enabled": pulumi.Bool(true),
 				"secretsNamespace": pulumi.Map{
-					// cert-manager writes kube-system-wildcard-madhan-app-tls directly into
-					// cilium-secrets (see cert_manager.go). Disable sync so Cilium does not
-					// race with cert-manager over ownership of that secret.
-					"sync": pulumi.Bool(false),
+					// Cilium copies the Gateway's TLS secret into cilium-secrets for Envoy
+					// SDS. It must own that copy: cilium-secrets is Cilium's own namespace,
+					// so a foreign secret parked there gets removed, and if cert-manager is
+					// what recreates it, every removal costs a fresh ACME order. That loop
+					// exhausted Let's Encrypt's 5-per-168h duplicate-certificate limit and
+					// took down HTTPS on every route. One Certificate in kube-system, one
+					// owner for the copy.
+					"sync": pulumi.Bool(true),
 				},
 			},
 			// Both ens18 (existing VMs, Talos ≤v1.12 predictable naming) and eth0
@@ -154,9 +156,16 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 // InstallGateway creates the shared Gateway resource for the cluster
 func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 
-	// Install Gateway API CRDs (Experimental v1.2.1 - Required for Cilium 1.16+)
+	// Gateway API CRDs (experimental channel v1.2.1) — required by Cilium 1.16+.
+	//
+	// Vendored rather than fetched from the GitHub release URL: that fetch ran on
+	// every apply, so a rate limit or a blip failed the whole stack with an opaque
+	// "cannot unmarshal string into Go value of type map[string]interface{}" —
+	// GitHub's error page parsed as a bare string. The version is now pinned in
+	// git like every other dependency. Re-vendor to upgrade; do not point this
+	// back at a URL.
 	crds, err := yaml.NewConfigFile(ctx, "gateway-api-crds", &yaml.ConfigFileArgs{
-		File: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml",
+		File: "platform/manifests/gateway-api-v1.2.1-experimental-install.yaml",
 	}, pulumi.Provider(k8sProvider))
 	if err != nil {
 		return err

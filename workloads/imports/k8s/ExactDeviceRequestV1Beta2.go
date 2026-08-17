@@ -52,7 +52,7 @@ type ExactDeviceRequestV1Beta2 struct {
 	//
 	// The maximum number of tolerations is 16.
 	//
-	// This is an alpha field and requires enabling the DRADeviceTaints feature gate.
+	// This is a beta field and requires enabling the DRADeviceTaints feature gate.
 	Tolerations *[]*DeviceTolerationV1Beta2 `field:"optional" json:"tolerations" yaml:"tolerations"`
 }
 

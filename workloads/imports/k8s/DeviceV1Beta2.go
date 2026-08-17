@@ -31,7 +31,7 @@ type DeviceV1Beta2 struct {
 	//
 	// The conditions must be a valid condition type string.
 	//
-	// This is an alpha field and requires enabling the DRADeviceBindingConditions and DRAResourceClaimDeviceStatus feature gates.
+	// This is a beta field and requires enabling the DRADeviceBindingConditions and DRAResourceClaimDeviceStatus feature gates.
 	BindingConditions *[]*string `field:"optional" json:"bindingConditions" yaml:"bindingConditions"`
 	// BindingFailureConditions defines the conditions for binding failure.
 	//
@@ -41,13 +41,13 @@ type DeviceV1Beta2 struct {
 	//
 	// The conditions must be a valid condition type string.
 	//
-	// This is an alpha field and requires enabling the DRADeviceBindingConditions and DRAResourceClaimDeviceStatus feature gates.
+	// This is a beta field and requires enabling the DRADeviceBindingConditions and DRAResourceClaimDeviceStatus feature gates.
 	BindingFailureConditions *[]*string `field:"optional" json:"bindingFailureConditions" yaml:"bindingFailureConditions"`
 	// BindsToNode indicates if the usage of an allocation involving this device has to be limited to exactly the node that was chosen when allocating the claim.
 	//
 	// If set to true, the scheduler will set the ResourceClaim.Status.Allocation.NodeSelector to match the node where the allocation was made.
 	//
-	// This is an alpha field and requires enabling the DRADeviceBindingConditions and DRAResourceClaimDeviceStatus feature gates.
+	// This is a beta field and requires enabling the DRADeviceBindingConditions and DRAResourceClaimDeviceStatus feature gates.
 	BindsToNode *bool `field:"optional" json:"bindsToNode" yaml:"bindsToNode"`
 	// Capacity defines the set of capacities for this device.
 	//
@@ -61,6 +61,10 @@ type DeviceV1Beta2 struct {
 	//
 	// The maximum number of device counter consumptions per device is 2.
 	ConsumesCounters *[]*DeviceCounterConsumptionV1Beta2 `field:"optional" json:"consumesCounters" yaml:"consumesCounters"`
+	// NodeAllocatableResourceMappings defines the mapping of node resources that are managed by the DRA driver exposing this device.
+	//
+	// This includes resources currently reported in v1.Node `status.allocatable` that are not extended resources (see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#extended-resources). Examples include "cpu", "memory", "ephemeral-storage", and hugepages. In addition to standard requests made through the Pod `spec`, these resources can also be requested through claims and allocated by the DRA driver. For example, a CPU DRA driver might allocate exclusive CPUs or auxiliary node memory dependencies of an accelerator device. The keys of this map are the node-allocatable resource names (e.g., "cpu", "memory"). Extended resource names are not permitted as keys.
+	NodeAllocatableResourceMappings *map[string]*NodeAllocatableResourceMappingV1Beta2 `field:"optional" json:"nodeAllocatableResourceMappings" yaml:"nodeAllocatableResourceMappings"`
 	// NodeName identifies the node where the device is available.
 	//
 	// Must only be set if Spec.PerDeviceNodeSelection is set to true. At most one of NodeName, NodeSelector and AllNodes can be set.
@@ -75,7 +79,7 @@ type DeviceV1Beta2 struct {
 	//
 	// The maximum number of taints is 16. If taints are set for any device in a ResourceSlice, then the maximum number of allowed devices per ResourceSlice is 64 instead of 128.
 	//
-	// This is an alpha field and requires enabling the DRADeviceTaints feature gate.
+	// This is a beta field and requires enabling the DRADeviceTaints feature gate.
 	Taints *[]*DeviceTaintV1Beta2 `field:"optional" json:"taints" yaml:"taints"`
 }
 

@@ -7,6 +7,8 @@ type HeadlampConfigOidcExternalSecret struct {
 	AdditionalValues *map[string]interface{} `field:"optional" json:"additionalValues" yaml:"additionalValues"`
 	// Enable the external secret.
 	Enabled *bool `field:"optional" json:"enabled" yaml:"enabled"`
+	// Set to true if the external secret contains an OIDC_SCOPES key.
+	HasScopes *bool `field:"optional" json:"hasScopes" yaml:"hasScopes"`
 	// Name of the external secret.
 	Name *string `field:"optional" json:"name" yaml:"name"`
 }

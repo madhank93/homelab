@@ -15,6 +15,7 @@ func init() {
 			_jsii_.MemberProperty{JsiiProperty: "helm", GoGetter: "Helm"},
 			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+			_jsii_.MemberMethod{JsiiMethod: "with", GoMethod: "With"},
 		},
 		func() interface{} {
 			j := jsiiProxy_Headlamp{}
@@ -31,6 +32,14 @@ func init() {
 		reflect.TypeOf((*HeadlampConfig)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"headlamp.HeadlampConfigClusterInventory",
+		reflect.TypeOf((*HeadlampConfigClusterInventory)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampConfigClusterInventoryPlugins",
+		reflect.TypeOf((*HeadlampConfigClusterInventoryPlugins)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"headlamp.HeadlampConfigOidc",
 		reflect.TypeOf((*HeadlampConfigOidc)(nil)).Elem(),
 	)
@@ -43,8 +52,36 @@ func init() {
 		reflect.TypeOf((*HeadlampConfigOidcSecret)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"headlamp.HeadlampConfigStaticPlugins",
+		reflect.TypeOf((*HeadlampConfigStaticPlugins)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"headlamp.HeadlampEnv",
 		reflect.TypeOf((*HeadlampEnv)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampEnvValueFrom",
+		reflect.TypeOf((*HeadlampEnvValueFrom)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampEnvValueFromConfigMapKeyRef",
+		reflect.TypeOf((*HeadlampEnvValueFromConfigMapKeyRef)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampEnvValueFromFieldRef",
+		reflect.TypeOf((*HeadlampEnvValueFromFieldRef)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampEnvValueFromResourceFieldRef",
+		reflect.TypeOf((*HeadlampEnvValueFromResourceFieldRef)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampEnvValueFromSecretKeyRef",
+		reflect.TypeOf((*HeadlampEnvValueFromSecretKeyRef)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampHostAliases",
+		reflect.TypeOf((*HeadlampHostAliases)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"headlamp.HeadlampHttpRoute",
@@ -147,6 +184,26 @@ func init() {
 	_jsii_.RegisterStruct(
 		"headlamp.HeadlampPodDisruptionBudget",
 		reflect.TypeOf((*HeadlampPodDisruptionBudget)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampProbes",
+		reflect.TypeOf((*HeadlampProbes)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampProbesLivenessProbe",
+		reflect.TypeOf((*HeadlampProbesLivenessProbe)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"headlamp.HeadlampProbesReadinessProbe",
+		reflect.TypeOf((*HeadlampProbesReadinessProbe)(nil)).Elem(),
+	)
+	_jsii_.RegisterEnum(
+		"headlamp.HeadlampProbesScheme",
+		reflect.TypeOf((*HeadlampProbesScheme)(nil)).Elem(),
+		map[string]interface{}{
+			"HTTP": HeadlampProbesScheme_HTTP,
+			"HTTPS": HeadlampProbesScheme_HTTPS,
+		},
 	)
 	_jsii_.RegisterStruct(
 		"headlamp.HeadlampProps",

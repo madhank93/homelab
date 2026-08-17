@@ -18,11 +18,11 @@ Grafana is the primary observability UI for the cluster. It visualizes:
 - Node and pod metrics from VictoriaMetrics
 - Container logs from VictoriaLogs
 - GPU metrics from DCGM Exporter
-- ArgoCD application health
+- Argo CD application health
 - Longhorn volume status
 - Falco security events
 
-Source: [`workloads/monitoring/grafana.go`](https://github.com/madhank93/homelab/blob/v0.1.5/workloads/monitoring/grafana.go)
+Source: {{ src(path="workloads/monitoring/grafana.go") }}
 
 ## Configuration
 
@@ -202,7 +202,7 @@ kubectl describe pod -n grafana -l app.kubernetes.io/name=grafana | grep -A5 "op
 
 **Symptoms:** Clicking "GitHub via Authentik" on LAN completes successfully, but from the internet Authentik returns a `redirect_uri mismatch` or `invalid_grant` error.
 
-**Root cause:** Without `root_url` set, Grafana detects its scheme from the incoming request. TLS terminates at Bifrost/Traefik, which proxies to the cluster as plain HTTP. Grafana sees an HTTP request and constructs the OAuth callback as `http://grafana.madhan.app/login/generic_oauth`. Authentik has `https://...` registered — the mismatch causes OAuth to fail. On LAN, the request is plain HTTP end-to-end, so `http://` is correct and it works.
+**Root cause:** Without `root_url` set, Grafana detects its scheme from the incoming request. TLS terminates at Bifrost/Traefik, which proxies to the cluster as plain HTTP. Grafana sees an HTTP request and constructs the OAuth callback as `https://grafana.madhan.app/login/generic_oauth`. Authentik has `https://...` registered — the mismatch causes OAuth to fail. On LAN, the request is plain HTTP end-to-end, so `http://` is correct and it works.
 
 **Fix:** `root_url = https://grafana.madhan.app` is set in `[server]` in `grafana.ini` (already applied). This forces Grafana to always construct the correct `https://` callback URL regardless of the incoming request scheme.
 

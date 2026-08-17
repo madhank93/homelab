@@ -56,8 +56,17 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 		"falcosidekick": map[string]any{
 			"enabled": true,
 			"webui": map[string]any{
-				"enabled":  true,
-				"replicas": 1,
+				"enabled": true,
+				// Chart key is replicaCount; "replicas" is silently ignored and
+				// leaves the chart default of 2.
+				"replicaCount": 1,
+				// Without a TTL the UI keeps every event forever on a fixed 1Gi
+				// volume. Redis writes a full temp copy before renaming it over
+				// dump.rdb, so once the dataset passes half the volume no save can
+				// ever complete: it fails with "No space left on device", leaves the
+				// partial temp file behind, and answers MISCONF instead of PONG —
+				// which blocks the UI's wait-redis init container permanently.
+				"ttl": "7d",
 				"resources": map[string]any{
 					"limits":   map[string]any{"cpu": "200m", "memory": "128Mi"},
 					"requests": map[string]any{"cpu": "50m", "memory": "64Mi"},

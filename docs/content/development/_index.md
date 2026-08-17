@@ -5,7 +5,9 @@ weight = 30
 sort_by = "weight"
 +++
 
-The homelab repo ships a devcontainer for a consistent, reproducible development environment.
+The homelab repo ships a devcontainer for a consistent, reproducible development
+environment. This section also covers how the documentation site itself is
+built and published.
 
 ## Quick Start
 

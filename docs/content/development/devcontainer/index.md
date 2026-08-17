@@ -43,6 +43,10 @@ The devcontainer mounts several host paths into the container:
 | `~/.ssh/id_ed25519` | `/home/vscode/.ssh/id_ed25519` | SSH key for Hetzner VPS access (read-only) |
 | `~/.ssh/id_ed25519.pub` | `/home/vscode/.ssh/id_ed25519.pub` | (read-only) |
 | `~/.kube` | `/home/vscode/.kube` | kubeconfig for kubectl access |
+| `~/.claude.json` | `/home/vscode/.claude.json` | Claude Code config |
+| `~/.claude/settings.json` | `/home/vscode/.claude/settings.json` | Claude Code settings |
+| `~/.claude/projects` | `/home/vscode/.claude/projects` | Claude Code project history |
+| `vscode-claude-plugins` (Docker volume) | `/home/vscode/.claude/plugins` | Claude Code plugins |
 | `vscode-go-modules` (Docker volume) | `/home/vscode/go/pkg/mod` | Go module cache (persists across rebuilds) |
 
 ## Environment Variables
@@ -58,11 +62,8 @@ The devcontainer mounts several host paths into the container:
 
 ## Post-Create Command
 
-After container creation, the following runs to verify tooling:
-
-```bash
-sudo usermod -aG docker vscode && cdk8s --version && pulumi version && talosctl version --client
-```
+Container creation runs {{ src(path=".devcontainer/postCreate.sh") }}, which adds
+`vscode` to the docker group and verifies the toolchain is present.
 
 ## Host Requirements
 

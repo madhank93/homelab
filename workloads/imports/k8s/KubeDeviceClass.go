@@ -12,8 +12,6 @@ import (
 // DeviceClass is a vendor- or admin-provided resource that contains device configuration and selectors.
 //
 // It can be referenced in the device requests of a claim to apply these presets. Cluster scoped.
-//
-// This is an alpha type and requires enabling the DynamicResourceAllocation feature gate.
 type KubeDeviceClass interface {
 	cdk8s.ApiObject
 	// The group portion of the API version (e.g. `authorization.k8s.io`).
@@ -49,6 +47,15 @@ type KubeDeviceClass interface {
 	ToJson() interface{}
 	// Returns a string representation of this construct.
 	ToString() *string
+	// Applies one or more mixins to this construct.
+	//
+	// Mixins are applied in order. The list of constructs is captured at the
+	// start of the call, so constructs added by a mixin will not be visited.
+	// Use multiple `with()` calls if subsequent mixins should apply to added
+	// constructs.
+	//
+	// Returns: This construct for chaining.
+	With(mixins ...constructs.IMixin) constructs.IConstruct
 }
 
 // The jsii proxy struct for KubeDeviceClass
@@ -313,6 +320,24 @@ func (k *jsiiProxy_KubeDeviceClass) ToString() *string {
 		k,
 		"toString",
 		nil, // no parameters
+		&returns,
+	)
+
+	return returns
+}
+
+func (k *jsiiProxy_KubeDeviceClass) With(mixins ...constructs.IMixin) constructs.IConstruct {
+	args := []interface{}{}
+	for _, a := range mixins {
+		args = append(args, a)
+	}
+
+	var returns constructs.IConstruct
+
+	_jsii_.Invoke(
+		k,
+		"with",
+		args,
 		&returns,
 	)
 
