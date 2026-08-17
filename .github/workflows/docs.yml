@@ -3,16 +3,18 @@ name: Deploy Docs
 on:
   push:
     branches:
-      - main
-      - 'v*'  # Release branches, so a version cut does not strand the docs
+      - main   # guard + build only; the deploy step skips it
+      - 'v*'   # release branches: these are what the live site is built from
     paths:
       - 'docs/**'
       - 'scripts/docs-version-check.sh'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
-# main and any v* branch publish to the same gh-pages with keep_files: false.
-# Serialise them so a slow run cannot overwrite a newer deploy.
+# Only the current release branch publishes. main still builds and runs the
+# version guard, but does not deploy: two branches publishing to the same
+# gh-pages with keep_files: false made the live site depend on which run
+# finished last.
 concurrency:
   group: docs-deploy
   cancel-in-progress: false
@@ -47,6 +49,10 @@ jobs:
         run: zola build
 
       - name: Deploy to GitHub Pages
+        # Release branches only. docs/config.toml pins source_ref and edit_url
+        # to the release being documented, so that branch is what the site
+        # should show.
+        if: startsWith(github.ref, 'refs/heads/v')
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
