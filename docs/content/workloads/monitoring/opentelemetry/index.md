@@ -45,7 +45,7 @@ pipelines:
   logs:
     receivers:  [filelog]
     processors: [memory_limiter, k8sattributes, batch]
-    exporters:  [otlphttp/logs]     # → VictoriaLogs
+    exporters:  [otlp_http/logs]     # → VictoriaLogs
   metrics:
     receivers:  [kubeletstats, hostmetrics]
     processors: [memory_limiter, k8sattributes, batch]
@@ -75,7 +75,7 @@ pipelines:
   logs:
     receivers:  [k8sobjects]
     processors: [memory_limiter, batch]
-    exporters:  [otlphttp/logs]
+    exporters:  [otlp_http/logs]
 ```
 
 ## Exporter Endpoints
@@ -83,7 +83,7 @@ pipelines:
 | Exporter | Endpoint | Data |
 |----------|----------|------|
 | `prometheusremotewrite` | `http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428/api/v1/write` | Metrics |
-| `otlphttp/logs` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry` | Logs |
+| `otlp_http/logs` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry` | Logs |
 
 ## Common Processors
 

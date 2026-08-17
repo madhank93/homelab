@@ -42,7 +42,7 @@ Two Talos image variants are used:
 - Used by: control plane nodes + k8s-worker1–3
 
 **GPU image** (schematic `901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829`):
-- Extensions: all base extensions + `nvidia-container-toolkit`, `nvidia-open-gpu-kernel-modules`
+- Extensions: all base extensions + `nvidia-container-toolkit-production`, `nvidia-open-gpu-kernel-modules-production`
 - Used by: k8s-worker4
 
 ## Worker Node Kernel Modules

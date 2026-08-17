@@ -35,7 +35,6 @@ Source: {{ src(path="workloads/ai/ollama.go") }}
 | CPU limit | `4000m` | Ollama + ComfyUI both CPU-hungry at inference |
 | RAM request | `4Gi` | Host RAM for model metadata + process |
 | RAM limit | `8Gi` | With ComfyUI's 6Gi, stays under worker4's ~15.1Gi allocatable |
-| Model PVC | `100Gi` Longhorn | Stores downloaded model weights |
 
 > **Note:** `memory` here is the host RAM cgroup limit, **not** GPU VRAM. Nothing in
 > Kubernetes limits VRAM — `nvidia.com/gpu: 1` grants one time-sliced share of the

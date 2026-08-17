@@ -29,7 +29,7 @@ flowchart TB
     subgraph PULUMI["Pulumi — manual, laptop only"]
         direction LR
         PUL_T["just core talos up<br/>Proxmox VMs + Talos bootstrap"]
-        PUL_P["just core platform up<br/>Gateway API · HTTPRoutes · cert-manager"]
+        PUL_P["just core platform up<br/>Cilium · Gateway API · IP pool<br/>cert-manager · Argo CD"]
         PUL_H["just core hetzner up<br/>Hetzner VPS + bootstrap.sh<br/>NetBird + Traefik + Authentik"]
         PUL_A["just core authentik up<br/>OIDC apps · GitHub OAuth<br/>ForwardAuth outpost"]
         PUL_C["just core cloudflare up<br/>DNS records for all services"]
@@ -80,8 +80,8 @@ SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
 
 | Stack | Command | Manages |
 |-------|---------|---------|
-| `talos` | `just core talos up` | Proxmox VMs, Talos bootstrap, Cilium CNI, Argo CD |
-| `platform` | `just core platform up` | Gateway API, IP pools, HTTPRoutes, cert-manager |
+| `talos` | `just core talos up` | Proxmox VMs and Talos cluster bootstrap |
+| `platform` | `just core platform up` | Cilium CNI, Gateway API + IP pool, cert-manager, Argo CD |
 | `hetzner` | `just core hetzner up` | Hetzner VPS, Bifrost config, `bootstrap.sh` execution |
 | `authentik` | `just core authentik up` | Authentik OIDC apps, GitHub OAuth, ForwardAuth outpost |
 | `cloudflare` | `just core cloudflare up` | DNS A records for all public hostnames |

@@ -50,7 +50,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	// Download GPU Talos Image (with Nvidia extensions)
 	// Schematic ID: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829
-	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent, nvidia-container-toolkit, nvidia-open-gpu-kernel-modules
+	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent,
+	//             nvidia-container-toolkit-production, nvidia-open-gpu-kernel-modules-production
 	gpuTalosImage, err := DownloadImage(ctx, provider, "talos-gpu-image", cfg.NodeName,
 		"https://factory.talos.dev/image/901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829/v1.13.8/nocloud-amd64.raw.gz",
 		"talos-nocloud-amd64-gpu.img",

@@ -1,7 +1,7 @@
 +++
 title = "Management"
 description = "Cluster management tools: Headlamp."
-weight = 40
+weight = 65
 sort_by = "weight"
 +++
 

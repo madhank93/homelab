@@ -1,7 +1,7 @@
 +++
 title = "Storage"
 description = "Distributed block storage: Longhorn."
-weight = 70
+weight = 45
 sort_by = "weight"
 +++
 

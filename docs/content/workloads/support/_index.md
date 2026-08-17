@@ -1,7 +1,7 @@
 +++
 title = "Support Tools"
 description = "Cluster-wide support services: automatic pod reloading on ConfigMap/Secret changes."
-weight = 50
+weight = 70
 sort_by = "weight"
 +++
 

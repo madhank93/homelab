@@ -1,7 +1,7 @@
 +++
 title = "Networking"
 description = "Cluster-internal networking workloads: NetBird peer for VPN mesh routing."
-weight = 70
+weight = 55
 sort_by = "weight"
 +++
 

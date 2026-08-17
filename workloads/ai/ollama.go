@@ -35,7 +35,7 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 					"nvidia.com/gpu": 1,
 					// memory here is host RAM (cgroup limit), NOT GPU VRAM.
 					// GPU VRAM (16GB) is fully available via nvidia.com/gpu: 1.
-					// host RAM cgroup limit (worker4 ~15.6Gi); 8Gi headroom for 14b model load.
+					// host RAM cgroup limit (worker4 allocatable ~15.1Gi); 8Gi headroom for 14b model load.
 					"memory": "8Gi",
 					"cpu":    "4000m",
 				},
