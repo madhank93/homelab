@@ -14,7 +14,7 @@ OpenBao's Kubernetes auth method allows pods to authenticate using their Service
 
 ## First-Time Setup
 
-Initial bootstrap (init, unseal, K8s auth configuration, writing app secrets) is covered in **[Deployment Guide — Phase 2](/getting-started/deployment/#phase-2--openbao-init--k8s-auth--write-app-secrets)**.
+Initial bootstrap (init, unseal, K8s auth configuration, writing app secrets) is covered in **[Deployment Guide — Phase 2](/getting-started/deployment/#phase-2-openbao-init-k8s-auth-write-app-secrets)**.
 
 ## How It's Used Here
 
