@@ -7,9 +7,9 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/part-of: opentelemetry-collector
-    app.kubernetes.io/version: 0.152.0
+    app.kubernetes.io/version: 0.158.0
     component: standalone-collector
-    helm.sh/chart: opentelemetry-collector-0.156.2
+    helm.sh/chart: opentelemetry-collector-0.169.0
   name: otel-gateway-opentelemetry-collector
   namespace: opentelemetry
 spec:

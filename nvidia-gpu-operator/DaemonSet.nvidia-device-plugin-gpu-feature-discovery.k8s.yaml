@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: nvidia-device-plugin
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: nvidia-device-plugin
-    app.kubernetes.io/version: 0.19.1
-    helm.sh/chart: nvidia-device-plugin-0.19.1
+    app.kubernetes.io/version: 0.19.3
+    helm.sh/chart: nvidia-device-plugin-0.19.3
   name: nvidia-device-plugin-gpu-feature-discovery
   namespace: nvidia-gpu-operator
 spec:
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 9ab357b27cd8258f626a172451de8e54001ec9129cfbc5de97f35e69284208d9
+        checksum/config: 5b0eb70ba9b6beaff6205c573ff457f25ef04a47a3105e019f28f708ab780403
       labels:
         app.kubernetes.io/instance: nvidia-device-plugin
         app.kubernetes.io/name: nvidia-device-plugin
@@ -69,7 +69,7 @@ spec:
               value: "1"
             - name: PROCESS_TO_SIGNAL
               value: gpu-feature-discovery
-          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.1
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.3
           name: gpu-feature-discovery-sidecar
           securityContext:
             privileged: true
@@ -97,7 +97,7 @@ spec:
               value: /config/config.yaml
             - name: NVIDIA_MIG_MONITOR_DEVICES
               value: all
-          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.1
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.3
           imagePullPolicy: IfNotPresent
           name: gpu-feature-discovery-ctr
           securityContext:
@@ -139,7 +139,7 @@ spec:
               value: ""
             - name: PROCESS_TO_SIGNAL
               value: ""
-          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.1
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.19.3
           name: gpu-feature-discovery-init
           volumeMounts:
             - mountPath: /available-configs

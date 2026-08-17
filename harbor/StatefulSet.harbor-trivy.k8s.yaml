@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.15.0
+    app.kubernetes.io/version: 2.15.2
     chart: harbor
     component: trivy
     heritage: Helm
@@ -26,7 +26,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/secret: e55f99a1f481a3051a72bd0abf7023dcbf949aa8432f82c84da627eab650cf01
+        checksum/secret: fb929ffe7b132e8a7f60c9f203ce99bbaa38d74c0ad32cc1bef3ce8ec00fdd43
       labels:
         app: harbor
         app.kubernetes.io/component: trivy
@@ -34,7 +34,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.15.0
+        app.kubernetes.io/version: 2.15.2
         chart: harbor
         component: trivy
         heritage: Helm
@@ -101,7 +101,7 @@ spec:
                 secretKeyRef:
                   key: redisURL
                   name: harbor-trivy
-          image: docker.io/goharbor/trivy-adapter-photon:v2.15.0
+          image: docker.io/goharbor/trivy-adapter-photon:v2.15.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10

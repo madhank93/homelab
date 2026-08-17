@@ -7,8 +7,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/part-of: opentelemetry-collector
-    app.kubernetes.io/version: 0.152.0
-    helm.sh/chart: opentelemetry-collector-0.156.2
+    app.kubernetes.io/version: 0.158.0
+    helm.sh/chart: opentelemetry-collector-0.169.0
   name: otel-agent-opentelemetry-collector-agent
   namespace: opentelemetry
 spec:
@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 77800324ef43431c86b9500e7ea1acd58f10c006160b93b2672a54de5828fbfd
+        checksum/config: 98e5b63b280ead5cd3834ef4b804de679689023ef9fe513045fa7955ed8b471e
         reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/instance: otel-agent
@@ -71,7 +71,7 @@ spec:
                   fieldPath: status.hostIP
             - name: GOMEMLIMIT
               value: 409MiB
-          image: otel/opentelemetry-collector-contrib:0.152.0
+          image: otel/opentelemetry-collector-contrib:0.158.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

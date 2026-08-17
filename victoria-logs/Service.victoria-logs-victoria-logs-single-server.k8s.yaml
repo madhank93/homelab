@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: victoria-logs
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-logs-single
-    app.kubernetes.io/version: v1.50.0
-    helm.sh/chart: victoria-logs-single-0.12.5
+    app.kubernetes.io/version: v1.52.0
+    helm.sh/chart: victoria-logs-single-0.13.9
   name: victoria-logs-victoria-logs-single-server
   namespace: victoria-logs
 spec:

@@ -12,7 +12,7 @@ metadata:
   name: falco-falcosidekick-ui
   namespace: falco
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/component: ui
@@ -33,6 +33,8 @@ spec:
         - args:
             - -r
             - falco-falcosidekick-ui-redis:6379
+            - -t
+            - 7d
             - -l
             - info
           envFrom:

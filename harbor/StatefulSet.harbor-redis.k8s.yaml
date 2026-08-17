@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.15.0
+    app.kubernetes.io/version: 2.15.2
     chart: harbor
     component: redis
     heritage: Helm
@@ -32,7 +32,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.15.0
+        app.kubernetes.io/version: 2.15.2
         chart: harbor
         component: redis
         heritage: Helm
@@ -40,7 +40,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: docker.io/goharbor/redis-photon:v2.15.0
+        - image: docker.io/goharbor/valkey-photon:v2.15.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3

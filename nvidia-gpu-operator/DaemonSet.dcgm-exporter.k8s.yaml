@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: dcgm-exporter
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: dcgm-exporter
-    app.kubernetes.io/version: 4.8.2
-    helm.sh/chart: dcgm-exporter-4.8.2
+    app.kubernetes.io/version: 4.8.3
+    helm.sh/chart: dcgm-exporter-4.8.3
   name: dcgm-exporter
   namespace: nvidia-gpu-operator
 spec:
@@ -34,19 +34,20 @@ spec:
                       - "true"
       automountServiceAccountToken: false
       containers:
-        - args:
-            - -f
-            - /etc/dcgm-exporter/default-counters.csv
-          env:
+        - env:
             - name: DCGM_EXPORTER_KUBERNETES
               value: "true"
             - name: DCGM_EXPORTER_LISTEN
               value: :9400
+            - name: DCGM_EXPORTER_WEB_READ_TIMEOUT
+              value: 10s
+            - name: DCGM_EXPORTER_WEB_WRITE_TIMEOUT
+              value: 30s
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          image: nvcr.io/nvidia/k8s/dcgm-exporter:4.5.3-4.8.2-distroless
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:4.6.0-4.8.3-distroless
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

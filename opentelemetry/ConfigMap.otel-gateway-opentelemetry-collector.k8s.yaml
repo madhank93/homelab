@@ -7,8 +7,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/part-of: opentelemetry-collector
-    app.kubernetes.io/version: 0.152.0
-    helm.sh/chart: opentelemetry-collector-0.156.2
+    app.kubernetes.io/version: 0.158.0
+    helm.sh/chart: opentelemetry-collector-0.169.0
   name: otel-gateway-opentelemetry-collector
   namespace: opentelemetry
 data:
@@ -29,7 +29,7 @@ data:
     processors:
       batch:
         timeout: 10s
-      k8sattributes:
+      k8s_attributes:
         extract:
           metadata:
           - k8s.namespace.name
@@ -112,7 +112,7 @@ data:
           exporters:
           - otlp_http/logs
           processors:
-          - k8sattributes
+          - k8s_attributes
           - memory_limiter
           - batch
           receivers:
@@ -122,7 +122,7 @@ data:
           - prometheusremotewrite
           processors:
           - memory_limiter
-          - k8sattributes
+          - k8s_attributes
           - batch
           receivers:
           - k8s_cluster
@@ -130,7 +130,7 @@ data:
           exporters:
           - debug
           processors:
-          - k8sattributes
+          - k8s_attributes
           - memory_limiter
           - batch
           receivers:

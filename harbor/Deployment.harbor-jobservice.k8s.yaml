@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.15.0
+    app.kubernetes.io/version: 2.15.2
     chart: harbor
     component: jobservice
     heritage: Helm
@@ -28,10 +28,10 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: 435f09b971816cd6f647a4918a7de2fef77ef76625ab4c20c6b1ae58d2a8ea94
-        checksum/configmap-env: 666ae9b14338f5d8d3f791e8aa89044a18855084b33750fa9a848c9d90cbba5d
-        checksum/secret: c83206fba7fc66bdbe0998d27c206b5f5b39d474fb0a8ea4b895b394666f5c7f
-        checksum/secret-core: 1b76c2717519f8206cf1de3fced2243d7583239227f0075a45c406e3c148cf3b
+        checksum/configmap: b04d67e6a152c09ecd1aed311dc2096f4666307a3c52e28861120c4dac7f22e9
+        checksum/configmap-env: 0b71479deff197634f4b5cee6aa832ce98b33f5f02977a17f1193b850db1ad34
+        checksum/secret: 59740378da84d74b476bb8eb78693ac08096a5053624c3fa4debdb82bb3466ce
+        checksum/secret-core: 0aef747a79fa30f4a28a91308df760872cbd46eeb5cf76c73d6423217a20c6df
       labels:
         app: harbor
         app.kubernetes.io/component: jobservice
@@ -39,7 +39,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.15.0
+        app.kubernetes.io/version: 2.15.2
         chart: harbor
         component: jobservice
         heritage: Helm
@@ -58,7 +58,7 @@ spec:
                 name: harbor-jobservice-env
             - secretRef:
                 name: harbor-jobservice
-          image: docker.io/goharbor/harbor-jobservice:v2.15.0
+          image: docker.io/goharbor/harbor-jobservice:v2.15.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3

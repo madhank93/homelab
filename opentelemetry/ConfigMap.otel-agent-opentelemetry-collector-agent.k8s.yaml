@@ -7,8 +7,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/part-of: opentelemetry-collector
-    app.kubernetes.io/version: 0.152.0
-    helm.sh/chart: opentelemetry-collector-0.156.2
+    app.kubernetes.io/version: 0.158.0
+    helm.sh/chart: opentelemetry-collector-0.169.0
   name: otel-agent-opentelemetry-collector-agent
   namespace: opentelemetry
 data:
@@ -31,7 +31,7 @@ data:
     processors:
       batch:
         timeout: 10s
-      k8sattributes:
+      k8s_attributes:
         extract:
           labels:
           - from: pod
@@ -79,7 +79,7 @@ data:
         limit_percentage: 80
         spike_limit_percentage: 25
     receivers:
-      filelog:
+      file_log:
         exclude:
         - /var/log/pods/opentelemetry_otel-agent-opentelemetry-collector*_*/opentelemetry-collector/*.log
         include:
@@ -129,13 +129,13 @@ data:
             exclude_mount_points:
               match_type: regexp
               mount_points:
-              - /dev/*
-              - /proc/*
-              - /sys/*
-              - /run/k3s/containerd/*
-              - /var/lib/docker/*
-              - /var/lib/kubelet/*
-              - /snap/*
+              - ^/dev($|/)
+              - ^/proc($|/)
+              - ^/sys($|/)
+              - ^/run/k3s/containerd($|/)
+              - ^/var/lib/docker($|/)
+              - ^/var/lib/kubelet($|/)
+              - ^/snap($|/)
           load: null
           memory: null
           network: null
@@ -178,16 +178,16 @@ data:
           - otlp_http/logs
           processors:
           - memory_limiter
-          - k8sattributes
+          - k8s_attributes
           - batch
           receivers:
-          - filelog
+          - file_log
         metrics:
           exporters:
           - prometheusremotewrite
           processors:
           - memory_limiter
-          - k8sattributes
+          - k8s_attributes
           - batch
           receivers:
           - kubeletstats
@@ -196,7 +196,7 @@ data:
           exporters:
           - debug
           processors:
-          - k8sattributes
+          - k8s_attributes
           - memory_limiter
           - batch
           receivers:

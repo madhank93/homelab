@@ -26,7 +26,7 @@ spec:
           env:
             - name: VAULT_ADDR
               value: unix:///var/run/vault/agent.sock
-          image: quay.io/openbao/openbao-csi-provider:2.0.2
+          image: quay.io/openbao/openbao-csi-provider:2.0.3
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 2
@@ -47,22 +47,36 @@ spec:
             periodSeconds: 5
             successThreshold: 1
             timeoutSeconds: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /provider
               name: providervol
             - mountPath: /var/run/vault
               name: agent-unix-socket
         - args:
+            - |
+              umask 0007
+              exec bao "$@"
+            - bao
             - agent
             - -config=/etc/vault/config.hcl
           command:
-            - bao
+            - /bin/sh
+            - -ec
           env:
             - name: BAO_LOG_LEVEL
               value: info
             - name: BAO_LOG_FORMAT
               value: standard
-          image: quay.io/openbao/openbao:2.5.4
+          image: quay.io/openbao/openbao:2.6.1
           imagePullPolicy: IfNotPresent
           name: openbao-agent
           ports:

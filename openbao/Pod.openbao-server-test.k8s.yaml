@@ -30,7 +30,16 @@ spec:
       env:
         - name: VAULT_ADDR
           value: http://openbao.openbao.svc:8200
-      image: quay.io/openbao/openbao:2.5.4
+      image: quay.io/openbao/openbao:2.6.1
       imagePullPolicy: IfNotPresent
       name: openbao-server-test
+      securityContext:
+        allowPrivilegeEscalation: false
   restartPolicy: Never
+  securityContext:
+    fsGroup: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile:
+      type: RuntimeDefault
