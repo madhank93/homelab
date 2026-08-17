@@ -599,6 +599,7 @@
 <p>Pulumi is intentionally manual — infrastructure changes are high-risk and require human judgment. CDK8s synthesis is safe to automate since it only generates Kubernetes manifests.</p>
 <hr />
 <h2 id="architecture-diagram">Architecture Diagram</h2>
+
 <pre class="mermaid border border-gray-500/15">
  flowchart TB
     subgraph LOCAL[&quot;Developer Laptop&quot;]
@@ -642,6 +643,34 @@
     MBRANCH --&gt;|ApplicationSet detects dirs| ARGO
     ARGO --&gt;|kubectl apply SSA| APPS
 </pre>
+<script>
+(function () {
+  var pre = document.currentScript.previousElementSibling;
+  (window.__mermaidSources = window.__mermaidSources || []).push([pre, pre.textContent]);
+
+  if (window.__mermaidThemeSync) return;
+  window.__mermaidThemeSync = true;
+
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('theme-controller')) return;
+    // The toggle writes localStorage after this event; re-read on the next tick.
+    setTimeout(function () {
+      if (typeof mermaid === 'undefined') return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: localStorage.getItem('theme') === 'goyo-light' ? 'light' : 'dark'
+      });
+      mermaid.run({
+        nodes: window.__mermaidSources.map(function (entry) {
+          entry[0].removeAttribute('data-processed');
+          entry[0].textContent = entry[1];
+          return entry[0];
+        })
+      });
+    }, 50);
+  }, true);
+})();
+</script>
 <hr />
 <h2 id="infra-path-pulumi">Infra Path (Pulumi)</h2>
 <p>Pulumi is run from the developer's laptop. Secrets are never stored in environment variables permanently — they're injected per-command via <code>sops exec-env</code>:</p>
@@ -979,6 +1008,12 @@
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -986,12 +1021,6 @@
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

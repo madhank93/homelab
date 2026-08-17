@@ -597,7 +597,7 @@
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
 <p>Argo CD is bootstrapped once by Pulumi (<code>core/platform/argocd.go</code>) and then self-manages via GitOps from the <code>v0.1.7-manifests</code> branch. A single <code>ApplicationSet</code> watches every top-level directory on that branch and creates one Application per directory, with <code>prune=true</code> and <code>selfHeal=true</code> enforcing git as the single source of truth.</p>
 <p><strong>Code:</strong> 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;argocd.go"><code>core&amp;#x2F;platform&amp;#x2F;argocd.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;argocd.go"><code>core&#x2F;platform&#x2F;argocd.go</code></a>
  · <strong>Namespace:</strong> <code>argocd</code> · <strong>Versions:</strong> <a href="https://homelab.madhan.app/architecture/software-inventory/">Software Inventory</a></p>
 <h2 id="screenshots">Screenshots</h2>
 <p><img src="/assets/screenshots/argocd/app-list.png" alt="Argo CD application list showing all workloads with sync status and health indicators" /></p>
@@ -1003,6 +1003,12 @@ is nothing for a passthrough route to attach to.</p>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1010,12 +1016,6 @@ is nothing for a passthrough route to attach to.</p>
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

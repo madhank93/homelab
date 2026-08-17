@@ -599,6 +599,7 @@
 <p><strong>CDK8s generates zero <code>Secret</code> resources.</strong> The CI pipeline needs zero GitHub Actions secrets.</p>
 <hr />
 <h2 id="architecture-diagram">Architecture Diagram</h2>
+
 <pre class="mermaid border border-gray-500/15">
  flowchart TB
     subgraph SOPSFILE[&quot;secrets&#x2F;bootstrap.sops.yaml&lt;br&#x2F;&gt;age-encrypted · safe to commit to git&quot;]
@@ -650,6 +651,34 @@
     CSI --&gt;|fetches secrets| SPC
     SPC --&gt;|mounts files or syncs Secret| POD
 </pre>
+<script>
+(function () {
+  var pre = document.currentScript.previousElementSibling;
+  (window.__mermaidSources = window.__mermaidSources || []).push([pre, pre.textContent]);
+
+  if (window.__mermaidThemeSync) return;
+  window.__mermaidThemeSync = true;
+
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('theme-controller')) return;
+    // The toggle writes localStorage after this event; re-read on the next tick.
+    setTimeout(function () {
+      if (typeof mermaid === 'undefined') return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: localStorage.getItem('theme') === 'goyo-light' ? 'light' : 'dark'
+      });
+      mermaid.run({
+        nodes: window.__mermaidSources.map(function (entry) {
+          entry[0].removeAttribute('data-processed');
+          entry[0].textContent = entry[1];
+          return entry[0];
+        })
+      });
+    }, 50);
+  }, true);
+})();
+</script>
 <hr />
 <h2 id="bootstrap-secrets-sops-age">Bootstrap Secrets (SOPS + age)</h2>
 <p><code>secrets/bootstrap.sops.yaml</code> is age-encrypted and committed to git. It contains every secret needed to provision infrastructure. Decryption requires the age private key (<code>~/.config/sops/age/keys.txt</code>).</p>
@@ -997,6 +1026,12 @@ are described in <a href="https://homelab.madhan.app/platform/secrets/">Secrets<
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1004,12 +1039,6 @@ are described in <a href="https://homelab.madhan.app/platform/secrets/">Secrets<
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

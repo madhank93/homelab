@@ -616,6 +616,7 @@
 <span class="giallo-l"><span>                                          Cluster services  192.168.1.220–230</span></span></code></pre>
 <hr />
 <h2 id="architecture-diagram">Architecture Diagram</h2>
+
 <pre class="mermaid border border-gray-500/15">
  flowchart LR
     subgraph CLIENTS[&quot;NetBird Clients&quot;]
@@ -662,6 +663,34 @@
     ENV --&gt; PODS
     LAP --&gt;|&quot;192.168.1.x via mesh&quot;| NBPEER
 </pre>
+<script>
+(function () {
+  var pre = document.currentScript.previousElementSibling;
+  (window.__mermaidSources = window.__mermaidSources || []).push([pre, pre.textContent]);
+
+  if (window.__mermaidThemeSync) return;
+  window.__mermaidThemeSync = true;
+
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('theme-controller')) return;
+    // The toggle writes localStorage after this event; re-read on the next tick.
+    setTimeout(function () {
+      if (typeof mermaid === 'undefined') return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: localStorage.getItem('theme') === 'goyo-light' ? 'light' : 'dark'
+      });
+      mermaid.run({
+        nodes: window.__mermaidSources.map(function (entry) {
+          entry[0].removeAttribute('data-processed');
+          entry[0].textContent = entry[1];
+          return entry[0];
+        })
+      });
+    }, 50);
+  }, true);
+})();
+</script>
 <hr />
 <h2 id="embedded-dex-oidc-key-design-constraint">Embedded Dex OIDC — Key Design Constraint</h2>
 <p>The NetBird combined server <strong>always</strong> runs an embedded <a rel="external" href="https://dexidp.io/">Dex</a> OIDC provider. This is hardcoded in the Go source (<code>Enabled: true</code> in <code>ToManagementConfig()</code>) and cannot be disabled via configuration.</p>
@@ -1205,6 +1234,12 @@ disconnected duplicates under <strong>Peers</strong> and re-assign the route.</p
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1212,12 +1247,6 @@ disconnected duplicates under <strong>Peers</strong> and re-assign the route.</p
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

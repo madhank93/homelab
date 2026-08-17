@@ -613,6 +613,7 @@
 </blockquote>
 <hr />
 <h2 id="high-level-traffic-diagram">High-Level Traffic Diagram</h2>
+
 <pre class="mermaid border border-gray-500/15">
  flowchart TB
     subgraph INET[&quot;Internet&quot;]
@@ -662,9 +663,38 @@
     LANCLI --&gt;|&quot;DNS → 192.168.1.220&lt;br&#x2F;&gt;direct&quot;| CILIUMETH
     CILIUMETH --&gt; ENV
 </pre>
+<script>
+(function () {
+  var pre = document.currentScript.previousElementSibling;
+  (window.__mermaidSources = window.__mermaidSources || []).push([pre, pre.textContent]);
+
+  if (window.__mermaidThemeSync) return;
+  window.__mermaidThemeSync = true;
+
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('theme-controller')) return;
+    // The toggle writes localStorage after this event; re-read on the next tick.
+    setTimeout(function () {
+      if (typeof mermaid === 'undefined') return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: localStorage.getItem('theme') === 'goyo-light' ? 'light' : 'dark'
+      });
+      mermaid.run({
+        nodes: window.__mermaidSources.map(function (entry) {
+          entry[0].removeAttribute('data-processed');
+          entry[0].textContent = entry[1];
+          return entry[0];
+        })
+      });
+    }, 50);
+  }, true);
+})();
+</script>
 <hr />
 <h2 id="public-request-packet-level-detail">Public Request — Packet-Level Detail</h2>
 <p>When a user opens <code>https://grafana.madhan.app</code>, the request traverses seven distinct hops before reaching the Grafana pod.</p>
+
 <pre class="mermaid border border-gray-500/15">
  sequenceDiagram
     actor Browser
@@ -712,6 +742,34 @@
     NA--&gt;&gt;TR: HTTP 302
     TR--&gt;&gt;Browser: HTTPS 302 (TLS wrapped)
 </pre>
+<script>
+(function () {
+  var pre = document.currentScript.previousElementSibling;
+  (window.__mermaidSources = window.__mermaidSources || []).push([pre, pre.textContent]);
+
+  if (window.__mermaidThemeSync) return;
+  window.__mermaidThemeSync = true;
+
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('theme-controller')) return;
+    // The toggle writes localStorage after this event; re-read on the next tick.
+    setTimeout(function () {
+      if (typeof mermaid === 'undefined') return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: localStorage.getItem('theme') === 'goyo-light' ? 'light' : 'dark'
+      });
+      mermaid.run({
+        nodes: window.__mermaidSources.map(function (entry) {
+          entry[0].removeAttribute('data-processed');
+          entry[0].textContent = entry[1];
+          return entry[0];
+        })
+      });
+    }, 50);
+  }, true);
+})();
+</script>
 <hr />
 <h2 id="ip-address-transformation-at-each-hop">IP Address Transformation at Each Hop</h2>
 <table><thead><tr><th>Hop</th><th>Interface</th><th>Source IP</th><th>Destination IP</th><th>What changes</th></tr></thead><tbody>
@@ -1024,6 +1082,12 @@ Cilium device list, and the MASQUERADE rule — is on
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1031,12 +1095,6 @@ Cilium device list, and the MASQUERADE rule — is on
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

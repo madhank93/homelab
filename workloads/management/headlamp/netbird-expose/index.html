@@ -627,7 +627,7 @@
 <h2 id="step-2-register-the-expose-redirect-uri-in-authentik-code-change">Step 2 — Register the Expose Redirect URI in Authentik (Code Change)</h2>
 <p>NetBird's SSO flow for exposed services redirects to <code>https://netbird.madhan.app/api/v1/sso/callback</code> after authentication. This must be added to the <strong>NetBird OIDC app</strong> in Authentik.</p>
 <p><strong>File to change:</strong> 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;cloud&#x2F;authentik.go"><code>core&amp;#x2F;cloud&amp;#x2F;authentik.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;cloud&#x2F;authentik.go"><code>core&#x2F;cloud&#x2F;authentik.go</code></a>
 </p>
 <p>Find the <code>createOIDCApp</code> call for the NetBird app (around line 265) and add the expose callback redirect:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// BEFORE</span></span>
@@ -648,7 +648,7 @@
 <h2 id="step-3-modify-the-netbird-peer-deployment-to-run-expose-code-change">Step 3 — Modify the netbird-peer Deployment to Run <code>expose</code> (Code Change)</h2>
 <p>The existing <code>k8s-routing-peer</code> deployment runs <code>netbird up --advertise-routes=192.168.1.0/24</code>. You need to run <code>netbird expose</code> as a <strong>second container (sidecar)</strong> in the same pod — it uses the same WireGuard interface already established by the primary container.</p>
 <p><strong>File to change:</strong> 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;networking&#x2F;netbird_peer.go"><code>workloads&amp;#x2F;networking&amp;#x2F;netbird_peer.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;networking&#x2F;netbird_peer.go"><code>workloads&#x2F;networking&#x2F;netbird_peer.go</code></a>
 </p>
 <p>Add a sidecar container to the existing Deployment's container list:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// Add after the existing netbird container in Containers slice:</span></span>
@@ -1107,6 +1107,12 @@
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1114,12 +1120,6 @@
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

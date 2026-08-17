@@ -598,7 +598,7 @@ running. <code>just docs-check</code> enforces both halves of that rule.</p>
 <h2 id="infrastructure">Infrastructure</h2>
 <table><thead><tr><th>Software</th><th>Version</th><th>Managed by</th><th>Pinned in</th></tr></thead><tbody>
 <tr><td>Talos Linux</td><td>v1.13.8</td><td>Pulumi</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&amp;#x2F;platform&amp;#x2F;talos.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&#x2F;platform&#x2F;talos.go</code></a>
 </td></tr>
 <tr><td>Kubernetes API types</td><td>1.36.0</td><td>CDK8s</td><td>
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
@@ -614,7 +614,7 @@ CDK8s generates Go structs from, which must stay aligned with the cluster.</p>
 terminates here.</p>
 <table><thead><tr><th>Software</th><th>Version</th><th>Pinned in</th></tr></thead><tbody>
 <tr><td>Traefik</td><td>v3.7.10</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;cloud&#x2F;bifrost&#x2F;docker-compose.yml"><code>core&amp;#x2F;cloud&amp;#x2F;bifrost&amp;#x2F;docker-compose.yml</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;cloud&#x2F;bifrost&#x2F;docker-compose.yml"><code>core&#x2F;cloud&#x2F;bifrost&#x2F;docker-compose.yml</code></a>
 </td></tr>
 <tr><td>NetBird (server, agent, proxy)</td><td>0.76.3</td><td>same</td></tr>
 <tr><td>NetBird dashboard</td><td>v2.90.10</td><td>same</td></tr>
@@ -627,17 +627,17 @@ terminates here.</p>
 everything else. Applied with <code>just core platform up</code>.</p>
 <table><thead><tr><th>Software</th><th>Version</th><th>Pinned in</th></tr></thead><tbody>
 <tr><td>Cilium</td><td>1.18.12</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cilium.go"><code>core&amp;#x2F;platform&amp;#x2F;cilium.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cilium.go"><code>core&#x2F;platform&#x2F;cilium.go</code></a>
 </td></tr>
 <tr><td>Gateway API CRDs</td><td>v1.2.1</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;manifests&#x2F;gateway-api-v1.2.1-experimental-install.yaml"><code>core&amp;#x2F;platform&amp;#x2F;manifests&amp;#x2F;gateway-api-v1.2.1-experimental-install.yaml</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;manifests&#x2F;gateway-api-v1.2.1-experimental-install.yaml"><code>core&#x2F;platform&#x2F;manifests&#x2F;gateway-api-v1.2.1-experimental-install.yaml</code></a>
 </td></tr>
 <tr><td>Argo CD (chart)</td><td>10.3.2</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;argocd.go"><code>core&amp;#x2F;platform&amp;#x2F;argocd.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;argocd.go"><code>core&#x2F;platform&#x2F;argocd.go</code></a>
 </td></tr>
 <tr><td>Argo CD (image)</td><td>v3.5.1</td><td>same — runs ahead of the chart, see <a href="https://homelab.madhan.app/platform/">Platform</a></td></tr>
 <tr><td>cert-manager</td><td>v1.21.1</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cert_manager.go"><code>core&amp;#x2F;platform&amp;#x2F;cert_manager.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cert_manager.go"><code>core&#x2F;platform&#x2F;cert_manager.go</code></a>
 </td></tr>
 </tbody></table>
 <p>The Gateway API CRDs are vendored into the repo rather than fetched from GitHub
@@ -654,23 +654,23 @@ the rest are pinned at their call site.</p>
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
 </td></tr>
 <tr><td>CloudNativePG</td><td>0.29.0</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;databases&#x2F;cnpg.go"><code>workloads&amp;#x2F;databases&amp;#x2F;cnpg.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;databases&#x2F;cnpg.go"><code>workloads&#x2F;databases&#x2F;cnpg.go</code></a>
 </td></tr>
 </tbody></table>
 <h3 id="secrets">Secrets</h3>
 <table><thead><tr><th>Software</th><th>Version</th><th>Pinned in</th></tr></thead><tbody>
 <tr><td>OpenBao (chart)</td><td>0.29.0</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;secrets&#x2F;openbao.go"><code>workloads&amp;#x2F;secrets&amp;#x2F;openbao.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;secrets&#x2F;openbao.go"><code>workloads&#x2F;secrets&#x2F;openbao.go</code></a>
 </td></tr>
 <tr><td>OpenBao (image)</td><td>2.6.1</td><td>same — unseal sidecar</td></tr>
 <tr><td>Secrets Store CSI Driver</td><td>1.6.0</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;secrets&#x2F;csi_driver.go"><code>workloads&amp;#x2F;secrets&amp;#x2F;csi_driver.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;secrets&#x2F;csi_driver.go"><code>workloads&#x2F;secrets&#x2F;csi_driver.go</code></a>
 </td></tr>
 </tbody></table>
 <h3 id="observability">Observability</h3>
 <table><thead><tr><th>Software</th><th>Chart</th><th>Pinned in</th></tr></thead><tbody>
 <tr><td>VictoriaMetrics k8s-stack</td><td>0.72.4</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&amp;#x2F;observability&amp;#x2F;victoria_metrics.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&#x2F;observability&#x2F;victoria_metrics.go</code></a>
 </td></tr>
 <tr><td>VictoriaLogs</td><td>0.13.9</td><td>
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
@@ -679,13 +679,13 @@ the rest are pinned at their call site.</p>
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
 </td></tr>
 <tr><td>OpenTelemetry Collector</td><td>0.169.0</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;otel_collector.go"><code>workloads&amp;#x2F;observability&amp;#x2F;otel_collector.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;otel_collector.go"><code>workloads&#x2F;observability&#x2F;otel_collector.go</code></a>
 </td></tr>
 <tr><td>Metrics Server</td><td>3.13.1</td><td>
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
 </td></tr>
 <tr><td>kube-prometheus-stack CRDs</td><td>82.0.1</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&amp;#x2F;observability&amp;#x2F;victoria_metrics.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&#x2F;observability&#x2F;victoria_metrics.go</code></a>
 </td></tr>
 </tbody></table>
 <p>VMAlertmanager ships inside the VictoriaMetrics k8s-stack chart; it has no
@@ -693,7 +693,7 @@ separate pin.</p>
 <h3 id="security">Security</h3>
 <table><thead><tr><th>Software</th><th>Chart</th><th>Pinned in</th></tr></thead><tbody>
 <tr><td>Falco</td><td>8.0.5</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;security&#x2F;falco.go"><code>workloads&amp;#x2F;security&amp;#x2F;falco.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;security&#x2F;falco.go"><code>workloads&#x2F;security&#x2F;falco.go</code></a>
 </td></tr>
 <tr><td>Kyverno</td><td>3.8.2</td><td>
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
@@ -702,7 +702,7 @@ separate pin.</p>
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
 </td></tr>
 <tr><td>Trivy Operator (CRD bundle)</td><td>0.32.0</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;security&#x2F;trivy.go"><code>workloads&amp;#x2F;security&amp;#x2F;trivy.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;security&#x2F;trivy.go"><code>workloads&#x2F;security&#x2F;trivy.go</code></a>
 </td></tr>
 </tbody></table>
 <p>Trivy is the one component with two deliberately different pins: the chart comes
@@ -717,20 +717,20 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
 </td></tr>
 <tr><td>n8n (chart)</td><td>2.0.1</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;automation&#x2F;n8n.go"><code>workloads&amp;#x2F;automation&amp;#x2F;n8n.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;automation&#x2F;n8n.go"><code>workloads&#x2F;automation&#x2F;n8n.go</code></a>
 </td></tr>
 <tr><td>n8n (image)</td><td>1.78.0</td><td>same</td></tr>
 <tr><td>Reloader</td><td>2.2.16</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;support&#x2F;reloader.go"><code>workloads&amp;#x2F;support&amp;#x2F;reloader.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;support&#x2F;reloader.go"><code>workloads&#x2F;support&#x2F;reloader.go</code></a>
 </td></tr>
 <tr><td>NetBird peer</td><td>0.76.3</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;networking&#x2F;netbird_peer.go"><code>workloads&amp;#x2F;networking&amp;#x2F;netbird_peer.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;networking&#x2F;netbird_peer.go"><code>workloads&#x2F;networking&#x2F;netbird_peer.go</code></a>
 </td></tr>
 <tr><td>Kubeflow</td><td>v1.11.0</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;ai&#x2F;kubeflow&#x2F;kustomization.yaml"><code>workloads&amp;#x2F;ai&amp;#x2F;kubeflow&amp;#x2F;kustomization.yaml</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;ai&#x2F;kubeflow&#x2F;kustomization.yaml"><code>workloads&#x2F;ai&#x2F;kubeflow&#x2F;kustomization.yaml</code></a>
 </td></tr>
 <tr><td>notebook-gateway-controller</td><td>v1</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;ai&#x2F;notebook_gateway_controller.go"><code>workloads&amp;#x2F;ai&amp;#x2F;notebook_gateway_controller.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;ai&#x2F;notebook_gateway_controller.go"><code>workloads&#x2F;ai&#x2F;notebook_gateway_controller.go</code></a>
 </td></tr>
 </tbody></table>
 <h3 id="ai-and-gpu">AI and GPU</h3>
@@ -739,11 +739,11 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;cdk8s.yaml"><code>cdk8s.yaml</code></a>
 </td></tr>
 <tr><td>NVIDIA Device Plugin</td><td>0.19.3</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;hardware&#x2F;nvidia_gpu_operator.go"><code>workloads&amp;#x2F;hardware&amp;#x2F;nvidia_gpu_operator.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;hardware&#x2F;nvidia_gpu_operator.go"><code>workloads&#x2F;hardware&#x2F;nvidia_gpu_operator.go</code></a>
 </td></tr>
 <tr><td>DCGM Exporter</td><td>4.8.3</td><td>same</td></tr>
 <tr><td>ComfyUI</td><td>cu130-megapak-pt211-20260812</td><td>
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;ai&#x2F;comfyui.go"><code>workloads&amp;#x2F;ai&amp;#x2F;comfyui.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;ai&#x2F;comfyui.go"><code>workloads&#x2F;ai&#x2F;comfyui.go</code></a>
 </td></tr>
 </tbody></table>
 <p>Ollama's image tag is deliberately unset so it tracks the chart's appVersion —
@@ -1093,6 +1093,12 @@ named in the last column, and fails if the number here is no longer in that file
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1100,12 +1106,6 @@ named in the last column, and fails if the number here is no longer in that file
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

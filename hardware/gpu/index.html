@@ -625,6 +625,7 @@ runaway workload is OOM-killed on its own rather than taking its neighbours down
 VRAM after a run and does not release it, so with both running Ollama fails to
 load a model — and the error surfaces on the Ollama side, which makes it look
 like an Ollama problem.</p>
+
 <pre class="mermaid border border-gray-500/15">
  flowchart TB
     subgraph CARD[&quot;RTX 5070 Ti · 16 GB VRAM · not partitioned&quot;]
@@ -644,6 +645,34 @@ like an Ollama problem.</p>
     CFY --&gt; VRAM
     NB --&gt; VRAM
 </pre>
+<script>
+(function () {
+  var pre = document.currentScript.previousElementSibling;
+  (window.__mermaidSources = window.__mermaidSources || []).push([pre, pre.textContent]);
+
+  if (window.__mermaidThemeSync) return;
+  window.__mermaidThemeSync = true;
+
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('theme-controller')) return;
+    // The toggle writes localStorage after this event; re-read on the next tick.
+    setTimeout(function () {
+      if (typeof mermaid === 'undefined') return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: localStorage.getItem('theme') === 'goyo-light' ? 'light' : 'dark'
+      });
+      mermaid.run({
+        nodes: window.__mermaidSources.map(function (entry) {
+          entry[0].removeAttribute('data-processed');
+          entry[0].textContent = entry[1];
+          return entry[0];
+        })
+      });
+    }, 50);
+  }, true);
+})();
+</script>
 <p>Time-slicing divides GPU <em>time</em>, and the <code>nvidia.com/gpu: 5</code> count is a count of
 those slices — it says nothing about memory. Three pods can each hold a slice and
 still collectively exhaust the 16 GB, at which point the next allocation fails.</p>
@@ -654,7 +683,7 @@ still collectively exhaust the 16 GB, at which point the next allocation fails.<
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #AAD94C;"> https://ollama.madhan.app/api/generate</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> &#39;{&quot;model&quot;: &quot;llama3.2&quot;, &quot;keep_alive&quot;: 0}&#39;</span></span></code></pre><h2 id="the-dedicated-ai-taint">The <code>dedicated=ai</code> taint</h2>
 <p>worker4 carries <code>dedicated=ai:NoSchedule</code>, set in the GPU machine patch
 (
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&amp;#x2F;platform&amp;#x2F;talos.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&#x2F;platform&#x2F;talos.go</code></a>
 ) so that ordinary workloads do not drift
 onto the GPU node and compete for its CPU during inference.</p>
 <p>Every pod that belongs on worker4 must therefore carry the matching toleration —
@@ -1025,6 +1054,12 @@ is still invisible inside the container, which is a confusing failure to debug.<
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1032,12 +1067,6 @@ is still invisible inside the container, which is a confusing failure to debug.<
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

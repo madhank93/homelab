@@ -598,7 +598,7 @@ needs <code>git submodule update --init --recursive</code>.</p>
 <span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> docs-check</span><span style="color: #5A6673;font-style: italic;">     # version drift guard, same one CI runs</span></span></code></pre>
 <p>Run the local Zola at the same version CI uses — it is set once as
 <code>ZOLA_VERSION</code> in 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/.github&#x2F;workflows&#x2F;docs.yml"><code>.github&amp;#x2F;workflows&amp;#x2F;docs.yml</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/.github&#x2F;workflows&#x2F;docs.yml"><code>.github&#x2F;workflows&#x2F;docs.yml</code></a>
  and mirrored by a
 comment in <code>docs/config.toml</code>. This matters more than it sounds: 0.21 renamed
 <code>[markdown] highlight_code</code> to the <code>[markdown.highlighting]</code> table and removed
@@ -636,7 +636,7 @@ made <code>/etc</code> read-only. Those cannot drift. Mark the line:</p>
 <ol>
 <li><code>extra.source_ref</code> and <code>edit_url</code> in <code>docs/config.toml</code></li>
 <li>The manifests branch in 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;argocd.go"><code>core&amp;#x2F;platform&amp;#x2F;argocd.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;argocd.go"><code>core&#x2F;platform&#x2F;argocd.go</code></a>
  — the check
 compares it against every branch name the docs mention</li>
 <li>Any version that actually changed, in the Software Inventory</li>
@@ -940,6 +940,12 @@ compares it against every branch name the docs mention</li>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -947,12 +953,6 @@ compares it against every branch name the docs mention</li>
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

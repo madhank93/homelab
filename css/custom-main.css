@@ -51,3 +51,45 @@
     display: none;
   }
 }
+
+/* Wide tables pushed the whole page sideways on a phone — the reader had to
+   scroll the article horizontally to reach the sidebar and the text. Let the
+   table keep its natural column widths and scroll inside its own box instead.
+   `width: max-content` is what preserves those widths once display is block. */
+.prose table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* A grid item defaults to min-width:auto, so the max-content table above would
+   widen the article column instead of scrolling inside it. */
+main.prose,
+main.prose > * {
+  min-width: 0;
+}
+
+/* Inline code carries unbreakable strings — Talos schematic IDs, image digests,
+   64-char hashes — which have no break opportunity and so widen the page on a
+   phone. Fenced blocks keep their own horizontal scroll. */
+.prose :not(pre) > code {
+  overflow-wrap: anywhere;
+}
+
+/* A fenced block nested in a list item sized itself to its longest line and
+   dragged the page with it; its own scrollbar only works if it is capped to
+   the column first. */
+.prose pre {
+  max-width: 100%;
+}
+
+.prose li {
+  min-width: 0;
+}
+
+/* Bare URLs in prose are single unbreakable tokens and stretched the page on a
+   phone the same way the hashes did. */
+.prose {
+  overflow-wrap: break-word;
+}

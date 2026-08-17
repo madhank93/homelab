@@ -753,7 +753,7 @@ of it.</p>
 <span class="giallo-l"><span style="color: #AAD94C;">&quot;image&quot;</span><span>:</span><span style="color: #AAD94C;"> &quot;openbao/openbao:2.X.Y&quot;</span><span>,</span></span></code></pre><pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># workloads/cdk8s.yaml</span></span>
 <span class="giallo-l"><span>-</span><span style="color: #AAD94C;"> helm:https://openbao.github.io/openbao-helm/openbao@0.X.Y</span></span>
 <span class="giallo-l"><span>-</span><span style="color: #AAD94C;"> helm:https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts/secrets-store-csi-driver@1.X.Y</span></span></code></pre>
-<p>Helm chart version and image tag must be compatible — check OpenBao <a rel="external" href="https://github.com/openbao/openbao/releases">release notes</a>.</p>
+<p>Helm chart version and image tag must be compatible — check the OpenBao <a rel="external" href="https://github.com/openbao/openbao/tags">tags</a>.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> synth</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #59C2FF;"> git</span><span style="color: #AAD94C;"> push</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> logs</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao</span><span style="color: #95E6CB;"> -l</span><span style="color: #AAD94C;"> app.kubernetes.io/name=openbao</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> unseal</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao status</span><span style="color: #5A6673;font-style: italic;">  # sealed: false</span></span>
@@ -862,7 +862,7 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
 <span class="giallo-l"><span>Image: jsii.</span><span style="color: #FFB454;">String</span><span>(</span><span style="color: #AAD94C;">&quot;netbirdio/netbird:0.X.Y&quot;</span><span>),</span></span></code></pre>
 <p>Must match Bifrost docker-compose NetBird version exactly. Upgrade Bifrost and k8s peer in the same commit.</p>
 <h3 id="kubeflow">Kubeflow</h3>
-<p>Kubeflow is deployed via Kustomize from <code>kubeflow/manifests</code>, not a Helm chart. Upgrade by updating the <code>ref</code> on each base in <code>workloads/ai/kubeflow/kustomization.yaml</code>. Check the <a rel="external" href="https://github.com/kubeflow/manifests/releases">kubeflow/manifests releases</a> for the version compatible with the current k8s version.</p>
+<p>Kubeflow is deployed via Kustomize from <code>kubeflow/manifests</code>, not a Helm chart. Upgrade by updating the <code>ref</code> on each base in <code>workloads/ai/kubeflow/kustomization.yaml</code>. Check the <a rel="external" href="https://github.com/kubeflow/manifests/tags">kubeflow/manifests tags</a> for the version compatible with the current k8s version.</p>
 <hr />
 <h2 id="cdk8s-import-regeneration">cdk8s Import Regeneration</h2>
 <p>After changing any chart version in <code>cdk8s.yaml</code>, regenerate typed Go bindings:</p>
@@ -1358,6 +1358,12 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1365,12 +1371,6 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

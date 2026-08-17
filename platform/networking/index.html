@@ -611,13 +611,13 @@
 <h2 id="cilium-as-kube-proxy-replacement">Cilium as kube-proxy Replacement</h2>
 <p>Standard Kubernetes uses <code>kube-proxy</code> as a DaemonSet to manage <code>iptables</code> rules for Service-to-Pod routing. This homelab replaces kube-proxy entirely with Cilium's eBPF data plane.</p>
 <p><strong>How it's disabled in Talos</strong> (from 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&amp;#x2F;platform&amp;#x2F;talos.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&#x2F;platform&#x2F;talos.go</code></a>
 ):</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">cluster</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">  proxy</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">    disabled</span><span style="color: #BFBDB6B3;">:</span><span style="color: #D2A6FF;"> true</span></span></code></pre>
 <p><strong>How Cilium takes over</strong> (from 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cilium.go"><code>core&amp;#x2F;platform&amp;#x2F;cilium.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cilium.go"><code>core&#x2F;platform&#x2F;cilium.go</code></a>
 ):</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #AAD94C;">&quot;kubeProxyReplacement&quot;</span><span>: pulumi.</span><span style="color: #FFB454;">Bool</span><span>(</span><span style="color: #D2A6FF;">true</span><span>),</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">&quot;k8sServiceHost&quot;</span><span>:       pulumi.</span><span style="color: #FFB454;">String</span><span>(</span><span style="color: #AAD94C;">&quot;192.168.1.210&quot;</span><span>),</span><span style="color: #5A6673;font-style: italic;">  // VIP</span></span>
@@ -638,7 +638,7 @@
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># KubeProxyReplacement: True</span></span></code></pre><h2 id="l2-announcements-and-loadbalancer-ips">L2 Announcements and LoadBalancer IPs</h2>
 <p>Bare-metal clusters have no cloud provider to assign LoadBalancer IPs. Cilium's L2 announcement feature fills this role using ARP.</p>
 <p><strong>IP Pool</strong> (from 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cilium.go"><code>core&amp;#x2F;platform&amp;#x2F;cilium.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cilium.go"><code>core&#x2F;platform&#x2F;cilium.go</code></a>
 ):</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// IPs: 192.168.1.220 through 192.168.1.230 (11 addresses, each as /32)</span></span>
 <span class="giallo-l"><span style="color: #FF8F40;">for</span><span> i</span><span style="color: #F29668;"> :=</span><span style="color: #D2A6FF;"> 220</span><span style="color: #BFBDB6B3;">;</span><span> i</span><span style="color: #F29668;"> &lt;=</span><span style="color: #D2A6FF;"> 230</span><span style="color: #BFBDB6B3;">;</span><span> i</span><span style="color: #F29668;">++</span><span> {</span></span>
@@ -673,7 +673,7 @@
 <p>The CRDs are <strong>not</strong> bundled with the Cilium chart. They are vendored into the
 repo at
 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;manifests&#x2F;gateway-api-v1.2.1-experimental-install.yaml"><code>core&#x2F;platform&#x2F;manifests&#x2F;</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;manifests&#x2F;gateway-api-v1.2.1-experimental-install.yaml"><code>core/platform/manifests/</code></a>
 
 and applied by <code>InstallGateway</code> before the Gateway itself.</p>
 <p>They used to be fetched from the upstream GitHub release URL on every <code>pulumi up</code>. One rate-limited fetch returned an HTML error page, which the YAML decoder
@@ -685,7 +685,7 @@ dependency.</p>
 <span class="giallo-l"><span style="color: #AAD94C;">  https://github.com/kubernetes-sigs/gateway-api/releases/download/</span><span style="color: #F29668;">&lt;</span><span style="color: #AAD94C;">versio</span><span>n</span><span style="color: #F29668;">&gt;</span><span style="color: #AAD94C;">/experimental-install.yaml</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># then update the File: path in core/platform/cilium.go and the Software Inventory</span></span></code></pre>
 <p><strong>The shared Gateway</strong> (from 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cilium.go"><code>core&amp;#x2F;platform&amp;#x2F;cilium.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;cilium.go"><code>core&#x2F;platform&#x2F;cilium.go</code></a>
 ):</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">apiVersion</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> gateway.networking.k8s.io/v1</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">kind</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> Gateway</span></span>
@@ -1064,6 +1064,12 @@ certificate into that namespace by hand. See
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -1071,12 +1077,6 @@ certificate into that namespace by hand. See
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

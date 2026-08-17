@@ -607,6 +607,7 @@
 </tbody></table>
 <hr />
 <h2 id="cluster-diagram">Cluster Diagram</h2>
+
 <pre class="mermaid border border-gray-500/15">
  flowchart TB
     subgraph LAN[&quot;On-Prem LAN · 192.168.1.0&#x2F;24&quot;]
@@ -632,6 +633,34 @@
     CP --&gt; WORKERS
     CP --&gt; GPU
 </pre>
+<script>
+(function () {
+  var pre = document.currentScript.previousElementSibling;
+  (window.__mermaidSources = window.__mermaidSources || []).push([pre, pre.textContent]);
+
+  if (window.__mermaidThemeSync) return;
+  window.__mermaidThemeSync = true;
+
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('theme-controller')) return;
+    // The toggle writes localStorage after this event; re-read on the next tick.
+    setTimeout(function () {
+      if (typeof mermaid === 'undefined') return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: localStorage.getItem('theme') === 'goyo-light' ? 'light' : 'dark'
+      });
+      mermaid.run({
+        nodes: window.__mermaidSources.map(function (entry) {
+          entry[0].removeAttribute('data-processed');
+          entry[0].textContent = entry[1];
+          return entry[0];
+        })
+      });
+    }, 50);
+  }, true);
+})();
+</script>
 <p>The three control planes share a VIP provided by Talos itself. Workers 1–3 carry
 the general workloads and Longhorn replicas; worker4 is tainted so only GPU work
 lands on it — see <a href="https://homelab.madhan.app/hardware/gpu/">GPU</a>.</p>
@@ -651,7 +680,7 @@ See <a href="https://homelab.madhan.app/architecture/gitops-flow/">GitOps Flow</
 <tr><td><code>gpuWorkerPatch</code></td><td>—</td><td>—</td><td>✓</td></tr>
 </tbody></table>
 <p>These are inline Go strings in 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&amp;#x2F;platform&amp;#x2F;talos.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&#x2F;platform&#x2F;talos.go</code></a>
 , not
 separate YAML files.</p>
 <p><strong>Talos image schematics</strong> (from factory.talos.dev):</p>
@@ -940,6 +969,12 @@ version of everything named above.</p>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -947,12 +982,6 @@ version of everything named above.</p>
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             

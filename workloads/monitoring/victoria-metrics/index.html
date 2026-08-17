@@ -617,7 +617,7 @@ the extra moving parts, and everything lands on one endpoint:</p>
 <p><code>fullnameOverride: "vm-stack"</code> keeps that name short on purpose: the default naming
 pushes VMAlertmanager's generated pod labels past Kubernetes' 63-byte limit.</p>
 <p>Source: 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&amp;#x2F;observability&amp;#x2F;victoria_metrics.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&#x2F;observability&#x2F;victoria_metrics.go</code></a>
 </p>
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
@@ -644,7 +644,7 @@ deployment and no separate namespace — it runs as <code>vmalertmanager-vm-stac
 <span class="giallo-l"><span>  -</span><span style="color: #39BAE6;"> name</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> blackhole</span></span></code></pre>
 <p>Add a real receiver under <code>alertmanager.config.receivers</code> in
 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&amp;#x2F;observability&amp;#x2F;victoria_metrics.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&#x2F;observability&#x2F;victoria_metrics.go</code></a>
  to get
 notifications out.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #AAD94C;"> https://alertmanager.madhan.app/api/v2/alerts</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> jq</span><span style="color: #AAD94C;"> .</span></span>
@@ -681,7 +681,7 @@ the cluster-mode path and 404s here.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> victoria-metrics vmsingle-vm-stack-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> df</span><span style="color: #95E6CB;"> -h</span><span style="color: #AAD94C;"> /storage</span></span></code></pre>
 <p>Expand the PVC via the Longhorn UI, or raise the <code>vmsingle</code> storage request in
 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&amp;#x2F;observability&amp;#x2F;victoria_metrics.go</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&#x2F;observability&#x2F;victoria_metrics.go</code></a>
  and re-sync.</p>
 
 
@@ -950,6 +950,12 @@ the cluster-mode path and 404s here.</p>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
 
@@ -957,12 +963,6 @@ the cluster-mode path and 404s here.</p>
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
