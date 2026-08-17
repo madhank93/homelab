@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -607,24 +640,26 @@
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 1. Create bootstrap k8s Secrets (OpenBao unseal key + Cloudflare token)</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> create-secrets</span></span>
 <span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 2. Provision Proxmox VMs → bootstrap Talos → install Cilium + ArgoCD (~15 min)</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 2. Provision Proxmox VMs → bootstrap Talos (~15 min)</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> core talos up</span></span>
 <span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 3. Apply Cilium Gateway API, IP pool, HTTPRoutes</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 3. Install Cilium, Gateway API + IP pool, cert-manager, Argo CD</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> core platform up</span></span></code></pre>
 <p><strong>Verify the cluster:</strong></p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">talosctl</span><span style="color: #AAD94C;"> health</span><span style="color: #95E6CB;"> --nodes</span><span style="color: #D2A6FF;"> 192.168.1.211</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get nodes</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get applications</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> argocd</span></span></code></pre>
-<p>ArgoCD starts syncing apps from the manifests branch. Most apps will show <code>Degraded</code> — that's expected. OpenBao needs to be initialised and unsealed before apps can fetch their secrets.</p>
+<p>Argo CD starts syncing apps from the manifests branch. Most apps will show <code>Degraded</code> — that's expected. OpenBao needs to be initialised and unsealed before apps can fetch their secrets.</p>
 <hr />
 <h2 id="phase-2-openbao-init-k8s-auth-write-app-secrets">Phase 2 — OpenBao Init + K8s Auth + Write App Secrets</h2>
 <p>Wait for OpenBao to be running (but sealed) after Phase 1:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao</span><span style="color: #5A6673;font-style: italic;">   # wait for Running</span></span></code></pre><h3 id="2a-initialise-openbao-one-time">2a. Initialise OpenBao (one-time)</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-init</span></span></code></pre>
-<p>This generates the root token and unseal key, writes them to <code>/tmp/openbao-init.json</code>, then unseals OpenBao.</p>
+<p>This generates the root token and unseal key and writes them to
+<code>/tmp/openbao-init.json</code>. It does <strong>not</strong> unseal OpenBao — that happens in 2c, once
+the key is in SOPS and the sidecar can read it.</p>
 <h3 id="2b-store-the-unseal-key-in-sops">2b. Store the unseal key in SOPS</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span>UNSEAL_KEY</span><span style="color: #F29668;">=</span><span>$(</span><span style="color: #59C2FF;">python3</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> &quot;import json; print(json.load(open(&#39;/tmp/openbao-init.json&#39;))[&#39;keys&#39;][0])&quot;</span><span>)</span></span>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span>UNSEAL_KEY</span><span style="color: #F29668;">=</span><span>$(</span><span style="color: #59C2FF;">python3</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> &quot;import json; print(json.load(open(&#39;/tmp/openbao-init.json&#39;))[&#39;unseal_keys_b64&#39;][0])&quot;</span><span>)</span></span>
 <span class="giallo-l"><span style="color: #F07178;">echo</span><span style="color: #AAD94C;"> &quot;OPENBAO_UNSEAL_KEY: </span><span>$UNSEAL_KEY</span><span style="color: #AAD94C;">&quot;</span></span>
 <span class="giallo-l"></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Add to SOPS (replaces the placeholder from Phase 0)</span></span>
@@ -653,7 +688,7 @@
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao kv put secret/netbird</span><span style="color: #95E6CB;"> \</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">  NETBIRD_SETUP_KEY=&quot;placeholder&quot;</span></span></code></pre>
 <blockquote>
-<p>After writing secrets, ArgoCD syncs and app pods start. Apps will become <code>Healthy</code> progressively as their CSI volumes mount.</p>
+<p>After writing secrets, Argo CD syncs and app pods start. Apps will become <code>Healthy</code> progressively as their CSI volumes mount.</p>
 </blockquote>
 <hr />
 <h2 id="phase-3-bifrost-vps-deploy-fully-automated">Phase 3 — Bifrost VPS Deploy (Fully Automated)</h2>
@@ -777,22 +812,22 @@
 <h3 id="7c-create-grafana-admins-group">7c. Create grafana-admins group</h3>
 <p>Authentik UI → <strong>Directory → Groups → Create</strong> → name: <code>grafana-admins</code></p>
 <p>Add yourself to this group for Admin role in Grafana.</p>
-<h3 id="7d-update-client-id-in-code">7d. Update client_id in code</h3>
-<p>In <code>workloads/monitoring/grafana.go</code>, replace:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>&quot;client_id&quot;: &quot;REPLACE_WITH_AUTHENTIK_CLIENT_ID&quot;,</span></span></code></pre>
-<p>with the Client ID from step 7a. Then:</p>
+<h3 id="7d-check-the-client-id-matches">7d. Check the client_id matches</h3>
+<p><code>workloads/monitoring/grafana.go</code> sets <code>"client_id": "grafana-homelab"</code>. Create the
+Authentik provider with that same Client ID and there is nothing to change here. If
+you used a different one, update the Go value, then:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> synth</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #59C2FF;"> git</span><span style="color: #AAD94C;"> add</span><span style="color: #95E6CB;"> -A</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #59C2FF;"> git</span><span style="color: #AAD94C;"> commit</span><span style="color: #95E6CB;"> -m</span><span style="color: #AAD94C;"> &quot;feat: set Grafana Authentik client_id&quot;</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #59C2FF;"> git</span><span style="color: #AAD94C;"> push</span></span></code></pre><h3 id="7e-write-client-secret-to-openbao">7e. Write client secret to OpenBao</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao kv patch secret/grafana</span><span style="color: #95E6CB;"> \</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">  OAUTH_CLIENT_SECRET=&quot;&lt;client-secret-from-7a&gt;&quot;</span></span></code></pre>
 <p>Grafana pod will start and SSO will work.</p>
 <hr />
 <h2 id="phase-8-publish-cdk8s-manifests">Phase 8 — Publish CDK8s Manifests</h2>
-<p>If you haven't already, synthesize and push the manifests:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> synth</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">git</span><span style="color: #AAD94C;"> add app/</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">git</span><span style="color: #AAD94C;"> commit</span><span style="color: #95E6CB;"> -m</span><span style="color: #AAD94C;"> &quot;chore: synth manifests&quot;</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">git</span><span style="color: #AAD94C;"> push</span></span></code></pre>
-<p>ArgoCD auto-syncs within 3 minutes:</p>
+<p><code>app/</code> is gitignored — manifests are never committed from a laptop. CI synthesizes
+them and force-pushes the result to the manifests branch, which is what Argo CD
+watches. Push your source change and let the pipeline run:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> synth</span><span style="color: #5A6673;font-style: italic;">        # optional: verify it synthesizes cleanly before pushing</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">git</span><span style="color: #AAD94C;"> push</span><span style="color: #5A6673;font-style: italic;">          # CI publishes to the manifests branch</span></span></code></pre>
+<p>Argo CD auto-syncs within 3 minutes:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get applications</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> argocd</span></span></code></pre>
 <hr />
 <h2 id="phase-9-end-to-end-verification">Phase 9 — End-to-End Verification</h2>
@@ -1176,7 +1211,7 @@
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#7d-update-client-id-in-code" class="toc-link">7d. Update client_id in code</a>
+                                    <a href="https://homelab.madhan.app/getting-started/deployment/#7d-check-the-client-id-matches" class="toc-link">7d. Check the client_id matches</a>
                                 </li>
                             
                                 <li>
@@ -1323,7 +1358,19 @@
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1432,7 +1479,7 @@
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1495,7 +1542,7 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1647,11 +1694,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1663,11 +1710,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

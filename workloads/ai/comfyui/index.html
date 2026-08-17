@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -544,7 +577,7 @@
         <p class="text-gray-500">Node-based image generation UI for Stable Diffusion and Flux models.</p>
     </div>
     <h2 id="what-is-comfyui">What is ComfyUI?</h2>
-<p><a rel="external" href="https://github.com/comfyanonymous/ComfyUI">ComfyUI</a> is a powerful, modular, node-based GUI for Stable Diffusion and Flux image generation models. It allows building complex image generation pipelines by connecting nodes (samplers, models, VAEs, ControlNets, LoRAs, etc.) in a visual graph editor.</p>
+<p><a rel="external" href="https://github.com/comfyanonymous/ComfyUI">ComfyUI</a> is the image-generation front end on the GPU node. Workflows are built as a node graph — samplers, checkpoints, VAEs, ControlNets, LoRAs wired together — which is what makes it worth running over a form-based UI like Automatic1111.</p>
 <h2 id="why-comfyui">Why ComfyUI?</h2>
 <p>ComfyUI is the most flexible and performance-oriented frontend for diffusion models. Unlike Automatic1111 (which uses a form-based interface), ComfyUI exposes every parameter of the generation pipeline as a connectable node, enabling complex workflows that would be impossible in simpler UIs.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
@@ -580,7 +613,7 @@ unrelated Ollama error, so turn it off when finished.</p>
 <tr><td><code>NVIDIA_VISIBLE_DEVICES</code></td><td><code>all</code></td><td>Make all GPU devices visible</td></tr>
 <tr><td><code>nvidia.com/gpu</code> limit</td><td><code>1</code></td><td>One time-sliced virtual GPU</td></tr>
 <tr><td>Node selector</td><td><code>nvidia.com/gpu.present: "true"</code></td><td>Schedule on GPU node</td></tr>
-<tr><td>Toleration</td><td><code>dedicated=ai:NoSchedule</code></td><td>Vestigial — worker4 carries no matching taint</td></tr>
+<tr><td>Toleration</td><td><code>dedicated=ai:NoSchedule</code></td><td><strong>Required</strong> — worker4 is tainted, see <a href="https://homelab.madhan.app/hardware/gpu/#the-dedicated-ai-taint">GPU</a></td></tr>
 <tr><td>CPU limit</td><td><code>4000m</code></td><td>CPU-hungry during inference</td></tr>
 <tr><td>RAM request</td><td><code>1Gi</code></td><td>Host RAM for process</td></tr>
 <tr><td>Replicas</td><td><code>0</code></td><td>Default off — see above</td></tr>
@@ -914,7 +947,19 @@ still holds VRAM from an earlier run. <code>just comfyui off</code> releases it.
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1023,7 +1068,7 @@ still holds VRAM from an earlier run. <code>just comfyui off</code> releases it.
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1086,7 +1131,7 @@ still holds VRAM from an earlier run. <code>just comfyui off</code> releases it.
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1238,11 +1283,11 @@ still holds VRAM from an earlier run. <code>just comfyui off</code> releases it.
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1254,11 +1299,11 @@ still holds VRAM from an earlier run. <code>just comfyui off</code> releases it.
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

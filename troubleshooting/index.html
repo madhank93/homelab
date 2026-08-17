@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="Two-tier OTel collection pipeline: DaemonSet agent per node and Gateway deployment." />
+            <meta name="description" content="Start from the symptom. Every entry links to the page with the full runbook." />
         
     
 
-    <title>OpenTelemetry | Homelab</title>
+    <title>Troubleshooting | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="OpenTelemetry | Homelab" />
-      <meta property="og:description" content="Two-tier OTel collection pipeline: DaemonSet agent per node and Gateway deployment." />
+      <meta property="og:title" content="Troubleshooting | Homelab" />
+      <meta property="og:description" content="Start from the symptom. Every entry links to the page with the full runbook." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="OpenTelemetry" />
-      <meta name="twitter:description" content="Two-tier OTel collection pipeline: DaemonSet agent per node and Gateway deployment." />
+      <meta name="twitter:title" content="Troubleshooting" />
+      <meta name="twitter:description" content="Start from the symptom. Every entry links to the page with the full runbook." />
       
       
       
@@ -571,101 +571,53 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            OpenTelemetry
+            Troubleshooting
             
         </h1>
-        <p class="text-gray-500">Two-tier OTel collection pipeline: DaemonSet agent per node and Gateway deployment.</p>
+        <p class="text-gray-500">Start from the symptom. Every entry links to the page with the full runbook.</p>
     </div>
-    <h2 id="what-is-opentelemetry">What is OpenTelemetry?</h2>
-<p><a rel="external" href="https://opentelemetry.io/">OpenTelemetry</a> (OTel) is a vendor-neutral observability framework for collecting metrics, logs, and traces. The <a rel="external" href="https://opentelemetry.io/docs/collector/">OpenTelemetry Collector</a> is a configurable pipeline that receives telemetry data, processes it, and exports it to backends.</p>
-<h2 id="why-opentelemetry">Why OpenTelemetry?</h2>
-<p>OTel provides a unified collection pipeline for both metrics and logs, replacing separate tools like Fluent Bit and Prometheus exporters. Using the <code>otel/opentelemetry-collector-contrib</code> image provides access to all Kubernetes-specific receivers (kubeletstats, k8s_cluster, filelog, k8sobjects) in a single binary.</p>
-<h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Two OTel Collector instances work together:</p>
-<table><thead><tr><th>Instance</th><th>Mode</th><th>Purpose</th></tr></thead><tbody>
-<tr><td><code>otel-agent</code></td><td>DaemonSet</td><td>Runs on every node; collects container logs, kubelet metrics, host metrics</td></tr>
-<tr><td><code>otel-gateway</code></td><td>Deployment</td><td>Cluster-scoped; collects k8s resource metrics and events</td></tr>
+    <p>Twenty-odd pages carry a Troubleshooting section, which is only useful if you
+already know which component is at fault. Start here instead — find the symptom,
+follow the link.</p>
+<h2 id="something-is-unreachable">Something is unreachable</h2>
+<table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Where to look</th></tr></thead><tbody>
+<tr><td><code>504 Gateway Timeout</code> on a public URL</td><td>Traefik cannot reach the cluster — NetBird tunnel or route</td><td><a href="https://homelab.madhan.app/workloads/networking/netbird-peer/#troubleshooting">NetBird Peer</a></td></tr>
+<tr><td>Every LoadBalancer IP goes dark after a Cilium restart</td><td>Stale L2 announcement lease; the holder renews but stops answering ARP</td><td><a href="https://homelab.madhan.app/upgrade-guide/">Upgrade Guide</a>, then <code>just gateway-repair-l2</code></td></tr>
+<tr><td>A <code>*.madhan.app</code> host resolves but nothing answers</td><td>Service is LAN-only and you are off the LAN and off the VPN</td><td><a href="https://homelab.madhan.app/infrastructure/access/">Service Access</a></td></tr>
+<tr><td>TLS certificate errors on a service</td><td>Wildcard cert or the Cilium secret mirror</td><td><a href="https://homelab.madhan.app/platform/cert-manager/">cert-manager</a></td></tr>
+<tr><td>Argo CD UI loads but lists no applications</td><td>Usually a stale aggregated APIService breaking API discovery — check <code>kubectl api-resources</code> for errors</td><td><a href="https://homelab.madhan.app/platform/argocd/">Argo CD</a></td></tr>
 </tbody></table>
-<p>Both export:</p>
-<ul>
-<li><strong>Metrics</strong> → VictoriaMetrics via Prometheus remote-write</li>
-<li><strong>Logs</strong> → VictoriaLogs via OTLP/HTTP</li>
-</ul>
-<p>Source: 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;otel_collector.go"><code>workloads&amp;#x2F;observability&amp;#x2F;otel_collector.go</code></a>
-</p>
-<h2 id="agent-daemonset-configuration">Agent DaemonSet Configuration</h2>
-<p>Runs on <strong>every node</strong> (including control plane, via <code>tolerations: [{operator: Exists}]</code>).</p>
-<table><thead><tr><th>Preset</th><th>What it configures</th></tr></thead><tbody>
-<tr><td><code>logsCollection</code></td><td><code>filelog</code> receiver watching <code>/var/log/pods/</code>; enriches with k8s metadata</td></tr>
-<tr><td><code>kubeletMetrics</code></td><td>Node, pod, container, volume metrics from kubelet <code>/stats/summary</code></td></tr>
-<tr><td><code>hostMetrics</code></td><td>CPU, memory, disk, network from the host OS</td></tr>
-<tr><td><code>kubernetesAttributes</code></td><td>Enriches all telemetry with <code>k8s.pod.name</code>, <code>k8s.namespace.name</code>, <code>k8s.node.name</code>, etc.</td></tr>
+<h2 id="a-pod-will-not-start">A pod will not start</h2>
+<table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Where to look</th></tr></thead><tbody>
+<tr><td>GPU pod stays <code>Pending</code> with no clear reason</td><td>Missing the <code>dedicated=ai</code> toleration — worker4 is tainted</td><td><a href="https://homelab.madhan.app/hardware/gpu/#the-dedicated-ai-taint">GPU</a></td></tr>
+<tr><td>GPU pod runs but CUDA is invisible</td><td>Missing <code>runtimeClassName: nvidia</code></td><td><a href="https://homelab.madhan.app/hardware/gpu/#gpu-workload-configuration">GPU</a></td></tr>
+<tr><td><code>Multi-Attach error for volume</code></td><td>RWO volume still held by the old pod during a rollout</td><td><a href="https://homelab.madhan.app/workloads/registry/harbor/#rwo-multi-attach-deadlock">Harbor</a></td></tr>
+<tr><td>PVC stuck <code>Pending</code>, pod stuck <code>ContainerCreating</code></td><td>Longhorn volume cannot attach</td><td><a href="https://homelab.madhan.app/workloads/storage/longhorn/#volume-stuck-attaching">Longhorn</a></td></tr>
+<tr><td>No Longhorn volume on a node will attach after a Talos upgrade</td><td>New open-iscsi rejects a record its predecessor wrote</td><td><code>just longhorn-repair-iscsi</code> — <a href="https://homelab.madhan.app/upgrade-guide/">Upgrade Guide</a></td></tr>
+<tr><td>Pod cannot find its k8s Secret</td><td>Nothing mounts the CSI volume, so the sync never fires</td><td><a href="https://homelab.madhan.app/platform/secrets/">Secrets</a></td></tr>
+<tr><td>ComfyUI returns 503</td><td>It ships scaled to zero</td><td><code>just comfyui on</code> — <a href="https://homelab.madhan.app/workloads/ai/comfyui/">ComfyUI</a></td></tr>
 </tbody></table>
-<p><strong>Pipelines:</strong></p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">pipelines</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  logs</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    receivers</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">filelog</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    processors</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">memory_limiter</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> k8sattributes</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> batch</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    exporters</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">otlphttp/logs</span><span>]</span><span style="color: #5A6673;font-style: italic;">     # → VictoriaLogs</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  metrics</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    receivers</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">kubeletstats</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> hostmetrics</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    processors</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">memory_limiter</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> k8sattributes</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> batch</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    exporters</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">prometheusremotewrite</span><span>]</span><span style="color: #5A6673;font-style: italic;">   # → VictoriaMetrics</span></span></code></pre>
-<p><strong>Namespace pod security:</strong> <code>privileged</code> — required for host metric collection and <code>/var/log/pods</code> access on Talos.</p>
-<h2 id="gateway-deployment-configuration">Gateway Deployment Configuration</h2>
-<p>Runs as a single-replica Deployment (cluster-scoped receivers don't need multiple instances).</p>
-<table><thead><tr><th>Preset</th><th>What it configures</th></tr></thead><tbody>
-<tr><td><code>clusterMetrics</code></td><td><code>k8s_cluster</code> receiver: node/pod/deployment/namespace resource metrics</td></tr>
-<tr><td><code>kubernetesEvents</code></td><td><code>k8sobjects</code> receiver: Kubernetes events forwarded as log records</td></tr>
-<tr><td><code>kubernetesAttributes</code></td><td>Enriches with k8s metadata</td></tr>
+<h2 id="something-is-missing-or-wrong">Something is missing or wrong</h2>
+<table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Where to look</th></tr></thead><tbody>
+<tr><td><code>kubectl top</code> says <code>Metrics API not available</code></td><td>Metrics Server</td><td><a href="https://homelab.madhan.app/workloads/monitoring/metrics-server/">Metrics Server</a></td></tr>
+<tr><td>Metrics missing from Grafana</td><td>VMAgent is not scraping the target</td><td><a href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics/#troubleshooting">VictoriaMetrics</a></td></tr>
+<tr><td>Ollama cannot load a model</td><td>ComfyUI is holding VRAM, and the error surfaces on Ollama</td><td><a href="https://homelab.madhan.app/hardware/gpu/#sharing-the-16-gb-of-vram">GPU</a></td></tr>
+<tr><td>Grafana OIDC login loops or errors</td><td><code>root_url</code> / redirect URI mismatch</td><td><a href="https://homelab.madhan.app/workloads/monitoring/grafana/">Grafana</a></td></tr>
+<tr><td>Falco UI never becomes ready</td><td>Redis wedged with <code>MISCONF</code> — TTL and volume size</td><td><a href="https://homelab.madhan.app/workloads/security/falco/#falcosidekick-ui-retention">Falco</a></td></tr>
+<tr><td>App stuck <code>OutOfSync</code> in Argo CD</td><td>Sync wave, hook failure, or SSA ownership conflict</td><td><a href="https://homelab.madhan.app/platform/argocd/#app-stuck-syncing">Argo CD</a></td></tr>
+<tr><td>A manual <code>kubectl</code> change reverted itself</td><td><code>selfHeal=true</code> — this is intended</td><td><a href="https://homelab.madhan.app/platform/argocd/">Argo CD</a></td></tr>
 </tbody></table>
-<p><strong>Pipelines:</strong></p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">pipelines</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  metrics</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    receivers</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">k8s_cluster</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    processors</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">memory_limiter</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> k8sattributes</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> batch</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    exporters</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">prometheusremotewrite</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  logs</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    receivers</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">k8sobjects</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    processors</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">memory_limiter</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> batch</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    exporters</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">otlphttp/logs</span><span>]</span></span></code></pre><h2 id="exporter-endpoints">Exporter Endpoints</h2>
-<table><thead><tr><th>Exporter</th><th>Endpoint</th><th>Data</th></tr></thead><tbody>
-<tr><td><code>prometheusremotewrite</code></td><td><code>http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428/api/v1/write</code></td><td>Metrics</td></tr>
-<tr><td><code>otlphttp/logs</code></td><td><code>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry</code></td><td>Logs</td></tr>
+<h2 id="a-node-is-in-trouble">A node is in trouble</h2>
+<table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Where to look</th></tr></thead><tbody>
+<tr><td>Node will not reboot after a Cilium problem</td><td>Unmount blocks on an NFS share-manager ClusterIP it can no longer reach</td><td><a href="https://homelab.madhan.app/upgrade-guide/">Upgrade Guide</a> — powercycle</td></tr>
+<tr><td>Talos upgrade hangs draining a node</td><td>Longhorn and single-instance CNPG PDBs allow zero disruptions</td><td><code>just talos-upgrade &lt;ip&gt; &lt;schematic&gt; false</code></td></tr>
+<tr><td>Cluster health check fails between node upgrades</td><td>Stop and fix before continuing</td><td><code>just talos-health</code></td></tr>
 </tbody></table>
-<h2 id="common-processors">Common Processors</h2>
-<table><thead><tr><th>Processor</th><th>Config</th><th>Purpose</th></tr></thead><tbody>
-<tr><td><code>batch</code></td><td><code>timeout: 10s</code></td><td>Batch telemetry to reduce write pressure</td></tr>
-<tr><td><code>memory_limiter</code></td><td><code>limit: 80%</code>, <code>spike: 25%</code></td><td>Prevent OOM</td></tr>
-</tbody></table>
-<h2 id="falco-integration">Falco Integration</h2>
-<p>Falco outputs JSON alerts to stdout. The OTel Agent's <code>filelog</code> receiver collects these from the Falco DaemonSet pod logs (<code>/var/log/pods/falco_*/**/*.log</code>) and forwards them to VictoriaLogs. This allows querying Falco security events in Grafana alongside application logs.</p>
-<h2 id="how-it-connects">How It Connects</h2>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Every node (Agent DaemonSet)</span></span>
-<span class="giallo-l"><span>  ← Container logs from /var/log/pods/</span></span>
-<span class="giallo-l"><span>  ← kubelet metrics from :10250/stats/summary</span></span>
-<span class="giallo-l"><span>  ← Host metrics (CPU, memory, disk, network)</span></span>
-<span class="giallo-l"><span>  → VictoriaMetrics (metrics)</span></span>
-<span class="giallo-l"><span>  → VictoriaLogs (logs)</span></span>
-<span class="giallo-l"></span>
-<span class="giallo-l"><span>One node (Gateway Deployment)</span></span>
-<span class="giallo-l"><span>  ← Kubernetes API (cluster metrics, events)</span></span>
-<span class="giallo-l"><span>  → VictoriaMetrics (k8s resource metrics)</span></span>
-<span class="giallo-l"><span>  → VictoriaLogs (k8s events as logs)</span></span></code></pre><h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="agent-not-collecting-logs">Agent Not Collecting Logs</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Check agent is running on all nodes</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> opentelemetry</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> wide</span></span>
-<span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Check for file permission errors</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> logs</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> opentelemetry</span><span style="color: #95E6CB;"> -l</span><span style="color: #AAD94C;"> app.kubernetes.io/name=otel-agent</span><span style="color: #95E6CB;"> --tail=50</span></span></code></pre><h3 id="missing-metrics-in-victoriametrics">Missing Metrics in VictoriaMetrics</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Check remote-write errors</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> logs</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> opentelemetry</span><span style="color: #95E6CB;"> -l</span><span style="color: #AAD94C;"> app.kubernetes.io/name=otel-agent</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #AAD94C;"> &quot;remote_write\|error&quot;</span></span>
-<span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Verify vmsingle is reachable</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> opentelemetry</span><span style="color: #F29668;"> &lt;</span><span style="color: #AAD94C;">agent-po</span><span>d</span><span style="color: #F29668;">&gt;</span><span style="color: #95E6CB;"> -- \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  curl</span><span style="color: #95E6CB;"> -s -o</span><span style="color: #AAD94C;"> /dev/null</span><span style="color: #95E6CB;"> -w</span><span style="color: #AAD94C;"> &quot;%{http_code}&quot;</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428</span></span></code></pre>
+<h2 id="first-commands">First commands</h2>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-health</span><span style="color: #5A6673;font-style: italic;">                       # cluster-level health</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get applications</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> argocd</span><span style="color: #5A6673;font-style: italic;">      # what Argo CD thinks is wrong</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> api-resources</span><span style="color: #F29668;"> 2&gt;&amp;1 &gt;</span><span style="color: #AAD94C;">/dev/null</span><span style="color: #5A6673;font-style: italic;">   # any output here means broken discovery</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get events</span><span style="color: #95E6CB;"> -A --sort-by=.lastTimestamp</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> tail</span><span style="color: #95E6CB;"> -30</span></span></code></pre>
 
     <!--  Errata section  -->
     
@@ -677,7 +629,7 @@
     
         <div class="my-8 pt-6 border-t border-gray-500/15">
             <div class="flex flex-wrap items-center gap-4">
-                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;v0.1.7&#x2F;docs/content/workloads&#x2F;monitoring&#x2F;opentelemetry&#x2F;index.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
+                <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab&#x2F;edit&#x2F;v0.1.7&#x2F;docs/content/troubleshooting.md" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
@@ -709,7 +661,7 @@
                                     
     
         
-        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/workloads/monitoring/">
+        <a class="nav-button nav-button-prev group" href="https://homelab.madhan.app/">
             <div class="nav-button-content">
                 <div class="nav-button-direction">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -717,7 +669,7 @@
                     </svg>
                     <span class="nav-button-label">Back to</span>
                 </div>
-                <div class="nav-button-title">Monitoring</div>
+                <div class="nav-button-title">Homelab</div>
             </div>
         </a>
     
@@ -726,17 +678,79 @@
                                 <div class="next-nav-item">
                                     
     
-        <a class="nav-button nav-button-next group" href="https://homelab.madhan.app/workloads/monitoring/metrics-server/">
-            <div class="nav-button-content">
-                <div class="nav-button-direction">
-                    <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                    <span class="nav-button-label">Next</span>
-                </div>
-                <div class="nav-button-title">Metrics Server</div>
-            </div>
-        </a>
+        
+        
+        
+            
+            
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
+            
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+                
+            
+        
+            
+            
+            
+        
     
 
                                 </div>
@@ -754,76 +768,31 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#what-is-opentelemetry" class="toc-link">What is OpenTelemetry?</a>
+                    <a href="https://homelab.madhan.app/troubleshooting/#something-is-unreachable" class="toc-link">Something is unreachable</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#why-opentelemetry" class="toc-link">Why OpenTelemetry?</a>
+                    <a href="https://homelab.madhan.app/troubleshooting/#a-pod-will-not-start" class="toc-link">A pod will not start</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    <a href="https://homelab.madhan.app/troubleshooting/#something-is-missing-or-wrong" class="toc-link">Something is missing or wrong</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#agent-daemonset-configuration" class="toc-link">Agent DaemonSet Configuration</a>
+                    <a href="https://homelab.madhan.app/troubleshooting/#a-node-is-in-trouble" class="toc-link">A node is in trouble</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#gateway-deployment-configuration" class="toc-link">Gateway Deployment Configuration</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#exporter-endpoints" class="toc-link">Exporter Endpoints</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#common-processors" class="toc-link">Common Processors</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#falco-integration" class="toc-link">Falco Integration</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#how-it-connects" class="toc-link">How It Connects</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#troubleshooting" class="toc-link">Troubleshooting</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#agent-not-collecting-logs" class="toc-link">Agent Not Collecting Logs</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/workloads/monitoring/opentelemetry/#missing-metrics-in-victoriametrics" class="toc-link">Missing Metrics in VictoriaMetrics</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
+                    <a href="https://homelab.madhan.app/troubleshooting/#first-commands" class="toc-link">First commands</a>
                     
                 </li>
             
@@ -938,7 +907,7 @@
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+            <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
         
 
             
@@ -1128,7 +1097,7 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-logs">VictoriaLogs</a></li>
                                                 
-                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/opentelemetry">OpenTelemetry</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/metrics-server">Metrics Server</a></li>
                                                 

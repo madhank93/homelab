@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -561,7 +594,7 @@
 
     subgraph PULUMI[&quot;Pulumi — manual, laptop only&quot;]
         direction LR
-        PUL_T[&quot;just core talos up&lt;br&#x2F;&gt;Proxmox VMs + Talos bootstrap&lt;br&#x2F;&gt;Cilium + ArgoCD&quot;]
+        PUL_T[&quot;just core talos up&lt;br&#x2F;&gt;Proxmox VMs + Talos bootstrap&quot;]
         PUL_P[&quot;just core platform up&lt;br&#x2F;&gt;Gateway API · HTTPRoutes · cert-manager&quot;]
         PUL_H[&quot;just core hetzner up&lt;br&#x2F;&gt;Hetzner VPS + bootstrap.sh&lt;br&#x2F;&gt;NetBird + Traefik + Authentik&quot;]
         PUL_A[&quot;just core authentik up&lt;br&#x2F;&gt;OIDC apps · GitHub OAuth&lt;br&#x2F;&gt;ForwardAuth outpost&quot;]
@@ -575,7 +608,7 @@
     end
 
     subgraph CLUSTER[&quot;Kubernetes Cluster&quot;]
-        ARGO[&quot;ArgoCD ApplicationSet&lt;br&#x2F;&gt;watches manifests branch&quot;]
+        ARGO[&quot;Argo CD ApplicationSet&lt;br&#x2F;&gt;watches manifests branch&quot;]
         APPS[&quot;Application pods&lt;br&#x2F;&gt;Grafana · Harbor · n8n · etc.&quot;]
     end
 
@@ -603,7 +636,7 @@
 <span class="giallo-l"><span style="color: #AAD94C;">  sops exec-env secrets/bootstrap.sops.yaml</span><span style="color: #95E6CB;"> \</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">  &#39;pulumi stack select &lt;stack&gt; &amp;&amp; pulumi up --yes&#39;</span></span></code></pre><h3 id="stacks">Stacks</h3>
 <table><thead><tr><th>Stack</th><th>Command</th><th>Manages</th></tr></thead><tbody>
-<tr><td><code>talos</code></td><td><code>just core talos up</code></td><td>Proxmox VMs, Talos bootstrap, Cilium CNI, ArgoCD</td></tr>
+<tr><td><code>talos</code></td><td><code>just core talos up</code></td><td>Proxmox VMs, Talos bootstrap, Cilium CNI, Argo CD</td></tr>
 <tr><td><code>platform</code></td><td><code>just core platform up</code></td><td>Gateway API, IP pools, HTTPRoutes, cert-manager</td></tr>
 <tr><td><code>hetzner</code></td><td><code>just core hetzner up</code></td><td>Hetzner VPS, Bifrost config, <code>bootstrap.sh</code> execution</td></tr>
 <tr><td><code>authentik</code></td><td><code>just core authentik up</code></td><td>Authentik OIDC apps, GitHub OAuth, ForwardAuth outpost</td></tr>
@@ -621,7 +654,7 @@
 <span class="giallo-l"><span>└── platform/</span></span>
 <span class="giallo-l"><span>    ├── talos.go           # VMs + cluster bootstrap</span></span>
 <span class="giallo-l"><span>    ├── proxmox.go         # Proxmox provider</span></span>
-<span class="giallo-l"><span>    ├── argocd.go          # ArgoCD Helm + ApplicationSet</span></span>
+<span class="giallo-l"><span>    ├── argocd.go          # Argo CD Helm + ApplicationSet</span></span>
 <span class="giallo-l"><span>    ├── cilium.go          # CNI + Gateway API</span></span>
 <span class="giallo-l"><span>    └── cert_manager.go    # TLS cert automation</span></span></code></pre>
 <hr />
@@ -641,12 +674,12 @@
 <ol>
 <li>Create <code>workloads/&lt;category&gt;/&lt;name&gt;.go</code> with a <code>Deploy&lt;Name&gt;(app cdk8s.App)</code> function</li>
 <li>Register it in <code>workloads/main.go</code></li>
-<li>Push to <code>main</code> → CI synthesizes manifests → ArgoCD syncs automatically</li>
+<li>Push to <code>main</code> → CI synthesizes manifests → Argo CD syncs automatically</li>
 </ol>
 <p>The <code>workloads/</code> layout is mapped in <a href="https://homelab.madhan.app/platform/cdk8s/">CDK8s</a>.</p>
 <hr />
-<h2 id="argocd-applicationset">ArgoCD ApplicationSet</h2>
-<p>One <code>ApplicationSet</code> watches the manifests branch. Every top-level directory under <code>app/</code> becomes one ArgoCD Application automatically:</p>
+<h2 id="argo-cd-applicationset">Argo CD ApplicationSet</h2>
+<p>One <code>ApplicationSet</code> watches the manifests branch. Every top-level directory under <code>app/</code> becomes one Argo CD Application automatically:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">generators</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span>  -</span><span style="color: #39BAE6;"> git</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">      repoURL</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> https://github.com/madhank93/homelab.git</span></span>
@@ -659,7 +692,7 @@
 <span class="giallo-l"><span style="color: #39BAE6;">      syncOptions</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span>        -</span><span style="color: #AAD94C;"> ServerSideApply=true</span><span style="color: #5A6673;font-style: italic;">   # required for CRDs &gt;262KB (kube-prometheus-stack)</span></span></code></pre>
 <blockquote>
-<p><strong><code>Prune=false</code> on bootstrap Secrets</strong>: <code>openbao-unseal-key</code> and <code>cloudflare-api-token</code> are created by <code>just create-secrets</code>, not by CDK8s. Both carry <code>argocd.argoproj.io/sync-options: Prune=false</code> so ArgoCD never tries to delete them.</p>
+<p><strong><code>Prune=false</code> on bootstrap Secrets</strong>: <code>openbao-unseal-key</code> and <code>cloudflare-api-token</code> are created by <code>just create-secrets</code>, not by CDK8s. Both carry <code>argocd.argoproj.io/sync-options: Prune=false</code> so Argo CD never tries to delete them.</p>
 </blockquote>
 <hr />
 <h2 id="what-changes-what">What Changes What</h2>
@@ -811,7 +844,7 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/architecture/gitops-flow/#argocd-applicationset" class="toc-link">ArgoCD ApplicationSet</a>
+                    <a href="https://homelab.madhan.app/architecture/gitops-flow/#argo-cd-applicationset" class="toc-link">Argo CD ApplicationSet</a>
                     
                 </li>
             
@@ -932,7 +965,19 @@
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1041,7 +1086,7 @@
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1104,7 +1149,7 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1256,11 +1301,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1272,11 +1317,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

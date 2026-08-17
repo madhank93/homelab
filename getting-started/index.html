@@ -466,6 +466,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -564,8 +597,8 @@
 <p>The homelab is organized in four layers. Each layer is managed by a specific tool:</p>
 <p><img src="/images/architecture.png" alt="Architecture Diagram" /></p>
 <table><thead><tr><th>Layer</th><th>What's in it</th><th>Managed by</th></tr></thead><tbody>
-<tr><td><strong>Apps</strong></td><td>ComfyUI, Ollama, Grafana, Harbor, n8n, Falco, …</td><td>ArgoCD + CDK8s</td></tr>
-<tr><td><strong>Platform</strong></td><td>Talos K8s, Cilium CNI, Gateway API, ArgoCD, cert-manager</td><td>Pulumi</td></tr>
+<tr><td><strong>Apps</strong></td><td>ComfyUI, Ollama, Grafana, Harbor, n8n, Falco, …</td><td>Argo CD + CDK8s</td></tr>
+<tr><td><strong>Platform</strong></td><td>Talos K8s, Cilium CNI, Gateway API, Argo CD, cert-manager</td><td>Pulumi</td></tr>
 <tr><td><strong>Infrastructure</strong></td><td>Proxmox VMs (7 nodes), Hetzner VPS (Bifrost edge)</td><td>Pulumi</td></tr>
 <tr><td><strong>Hardware</strong></td><td>Proxmox host, NVIDIA RTX 5070 Ti</td><td>Manual</td></tr>
 </tbody></table>
@@ -575,7 +608,7 @@
 to install them by hand: <code>pulumi</code>, <code>talosctl</code>, <code>kubectl</code>, <code>just</code>, <code>sops</code>, <code>age</code>,
 <code>cdk8s</code> (<code>npm i -g cdk8s-cli</code>) and Go — the toolchain version is pinned in
 <code>.mise.toml</code> and the devcontainer image.</p>
-<p>The Proxmox host needs headroom for 7 VMs (≈28 vCPU, 42 GiB, ~900 GiB disk),
+<p>The Proxmox host needs headroom for 7 VMs (32 vCPU, 82 GiB, 1000 GiB disk),
 API access for the Pulumi provider, and an NVIDIA GPU to pass through to
 <code>k8s-worker4</code>.</p>
 <p>Before any Pulumi command, set up the SOPS age key and populate the secrets file
@@ -588,8 +621,8 @@ whole build from bare Proxmox to a synced cluster.</p>
 <p><strong>Provisioning</strong></p>
 <table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>just create-secrets</code></td><td>Create bootstrap k8s Secrets from SOPS</td></tr>
-<tr><td><code>just core talos up</code></td><td>Provision cluster (Talos + Cilium + ArgoCD)</td></tr>
-<tr><td><code>just core platform up</code></td><td>Apply Gateway API + cert-manager config</td></tr>
+<tr><td><code>just core talos up</code></td><td>Provision Proxmox VMs and bootstrap Talos</td></tr>
+<tr><td><code>just core platform up</code></td><td>Install Cilium, Gateway API, cert-manager, and Argo CD</td></tr>
 <tr><td><code>just core hetzner up</code></td><td>Deploy Bifrost VPS + automated bootstrap</td></tr>
 <tr><td><code>just core authentik up</code></td><td>Create OIDC apps + ForwardAuth in Authentik</td></tr>
 <tr><td><code>just core cloudflare up</code></td><td>Create/update DNS records</td></tr>
@@ -605,13 +638,13 @@ whole build from bare Proxmox to a synced cluster.</p>
 <tr><td><code>just openbao-revoke &lt;token&gt;</code></td><td>Revoke a root token when finished</td></tr>
 <tr><td><code>just openbao-sa-token &lt;sa&gt; &lt;ns&gt; &lt;role&gt;</code></td><td>Mint a token as an app's ServiceAccount</td></tr>
 <tr><td><code>just openbao-sa-get &lt;sa&gt; &lt;ns&gt; &lt;role&gt; &lt;path&gt; [field]</code></td><td>Read a secret as that app — checks a policy actually works</td></tr>
-<tr><td><code>just sops-view &lt;file&gt;</code></td><td>Decrypt a SOPS file to stdout</td></tr>
-<tr><td><code>just sops-decrypt &lt;file&gt;</code></td><td>Decrypt a SOPS file in place</td></tr>
+<tr><td><code>just sops-view &lt;file&gt;</code></td><td>Open a SOPS file in <code>$EDITOR</code></td></tr>
+<tr><td><code>just sops-decrypt &lt;file&gt;</code></td><td>Decrypt a SOPS file to stdout</td></tr>
 </tbody></table>
 <p><strong>Operations</strong></p>
 <table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>just talos-health</code></td><td>Cluster health — must be clean before upgrading a node</td></tr>
-<tr><td><code>just talos-versions</code></td><td>Talos and Kubernetes version on every node</td></tr>
+<tr><td><code>just talos-versions</code></td><td>Talos version reported by every node</td></tr>
 <tr><td><code>just talos-upgrade &lt;node&gt; [schematic] [drain]</code></td><td>Upgrade one node</td></tr>
 <tr><td><code>just talos-upgrade-k8s &lt;version&gt;</code></td><td>Upgrade Kubernetes (separate from Talos)</td></tr>
 <tr><td><code>just longhorn-repair-iscsi</code></td><td>Recover volumes after an iSCSI parameter rejection</td></tr>
@@ -861,7 +894,19 @@ whole build from bare Proxmox to a synced cluster.</p>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -970,7 +1015,7 @@ whole build from bare Proxmox to a synced cluster.</p>
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1033,7 +1078,7 @@ whole build from bare Proxmox to a synced cluster.</p>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1185,11 +1230,11 @@ whole build from bare Proxmox to a synced cluster.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1201,11 +1246,11 @@ whole build from bare Proxmox to a synced cluster.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

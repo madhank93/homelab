@@ -100,25 +100,25 @@
 
     
         
-            <meta name="description" content="Headless metrics Services and ServiceMonitors for ArgoCD component scraping by VMAgent." />
+            <meta name="description" content="Headless metrics Services and ServiceMonitors for Argo CD component scraping by VMAgent." />
         
     
 
-    <title>ArgoCD Monitor | Homelab</title>
+    <title>Argo CD Monitor | Homelab</title>
 
     
     
 
       <!-- SEO: Open Graph / Twitter Card -->
-      <meta property="og:title" content="ArgoCD Monitor | Homelab" />
-      <meta property="og:description" content="Headless metrics Services and ServiceMonitors for ArgoCD component scraping by VMAgent." />
+      <meta property="og:title" content="Argo CD Monitor | Homelab" />
+      <meta property="og:description" content="Headless metrics Services and ServiceMonitors for Argo CD component scraping by VMAgent." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="ArgoCD Monitor" />
-      <meta name="twitter:description" content="Headless metrics Services and ServiceMonitors for ArgoCD component scraping by VMAgent." />
+      <meta name="twitter:title" content="Argo CD Monitor" />
+      <meta name="twitter:description" content="Headless metrics Services and ServiceMonitors for Argo CD component scraping by VMAgent." />
       
       
       
@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -538,24 +571,24 @@
                         
     <div class="mb-12 pb-4 border-b border-gray-500/15">
         <h1 class="flex items-center gap-3">
-            ArgoCD Monitor
+            Argo CD Monitor
             
         </h1>
-        <p class="text-gray-500">Headless metrics Services and ServiceMonitors for ArgoCD component scraping by VMAgent.</p>
+        <p class="text-gray-500">Headless metrics Services and ServiceMonitors for Argo CD component scraping by VMAgent.</p>
     </div>
-    <h2 id="what-is-argocd-monitor">What is ArgoCD Monitor?</h2>
-<p>ArgoCD Monitor is a small CDK8s chart that creates the missing metrics plumbing for ArgoCD. ArgoCD's Helm chart does not expose metrics Services by default, so VMAgent cannot scrape any ArgoCD component. This chart fills that gap.</p>
-<h2 id="why-argocd-monitor">Why ArgoCD Monitor?</h2>
-<p>ArgoCD is deployed by Pulumi in the platform layer. Its Helm chart disables metrics services by default. Rather than forking the Helm values or patching the platform layer, this workloads-layer chart adds the four headless metrics Services and matching ServiceMonitors so VMAgent discovers and scrapes them without any changes to the ArgoCD deployment itself.</p>
+    <h2 id="what-is-argo-cd-monitor">What is Argo CD Monitor?</h2>
+<p>Argo CD Monitor is a small CDK8s chart that creates the missing metrics plumbing for Argo CD. Argo CD's Helm chart does not expose metrics Services by default, so VMAgent cannot scrape any Argo CD component. This chart fills that gap.</p>
+<h2 id="why-argo-cd-monitor">Why Argo CD Monitor?</h2>
+<p>Argo CD is deployed by Pulumi in the platform layer. Its Helm chart disables metrics services by default. Rather than forking the Helm values or patching the platform layer, this workloads-layer chart adds the four headless metrics Services and matching ServiceMonitors so VMAgent discovers and scrapes them without any changes to the Argo CD deployment itself.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Four ArgoCD components are scraped:</p>
+<p>Four Argo CD components are scraped:</p>
 <table><thead><tr><th>Component</th><th>Metrics Port</th></tr></thead><tbody>
 <tr><td><code>argocd-application-controller</code></td><td>8082</td></tr>
 <tr><td><code>argocd-server</code></td><td>8083</td></tr>
 <tr><td><code>argocd-repo-server</code></td><td>8084</td></tr>
 <tr><td><code>argocd-applicationset-controller</code></td><td>8085</td></tr>
 </tbody></table>
-<p>For each component, a <code>Service</code> and a <code>ServiceMonitor</code> are created in the <code>argocd</code> namespace. The Service selects ArgoCD pods by <code>app.kubernetes.io/name</code>, and the ServiceMonitor selects the Service by a <code>-metrics</code> label suffix.</p>
+<p>For each component, a <code>Service</code> and a <code>ServiceMonitor</code> are created in the <code>argocd</code> namespace. The Service selects Argo CD pods by <code>app.kubernetes.io/name</code>, and the ServiceMonitor selects the Service by a <code>-metrics</code> label suffix.</p>
 <p>Source: 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;argocd_monitor.go"><code>workloads&amp;#x2F;observability&amp;#x2F;argocd_monitor.go</code></a>
 </p>
@@ -573,7 +606,7 @@
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Check Services exist and have endpoints</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get svc</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> argocd</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #AAD94C;"> metrics</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get endpoints</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> argocd</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #AAD94C;"> metrics</span></span></code></pre>
-<p>If endpoints are empty, the Service selector does not match any pods — check the ArgoCD pod labels:</p>
+<p>If endpoints are empty, the Service selector does not match any pods — check the Argo CD pod labels:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> argocd</span><span style="color: #95E6CB;"> --show-labels</span></span></code></pre>
 
     <!--  Errata section  -->
@@ -663,13 +696,13 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor/#what-is-argocd-monitor" class="toc-link">What is ArgoCD Monitor?</a>
+                    <a href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor/#what-is-argo-cd-monitor" class="toc-link">What is Argo CD Monitor?</a>
                     
                 </li>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor/#why-argocd-monitor" class="toc-link">Why ArgoCD Monitor?</a>
+                    <a href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor/#why-argo-cd-monitor" class="toc-link">Why Argo CD Monitor?</a>
                     
                 </li>
             
@@ -813,7 +846,19 @@
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -922,7 +967,7 @@
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -985,7 +1030,7 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1137,11 +1182,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1153,11 +1198,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

@@ -37,6 +37,9 @@
         <loc>https://homelab.madhan.app/getting-started/deployment/</loc>
     </url>
     <url>
+        <loc>https://homelab.madhan.app/glossary/</loc>
+    </url>
+    <url>
         <loc>https://homelab.madhan.app/hardware/</loc>
     </url>
     <url>
@@ -83,6 +86,9 @@
     </url>
     <url>
         <loc>https://homelab.madhan.app/platform/secrets/</loc>
+    </url>
+    <url>
+        <loc>https://homelab.madhan.app/troubleshooting/</loc>
     </url>
     <url>
         <loc>https://homelab.madhan.app/upgrade-guide/</loc>

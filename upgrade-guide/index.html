@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -555,7 +588,7 @@ so there is nothing to keep in sync.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Talos</span></span>
 <span class="giallo-l"><span>  └─► Cilium  (CNI must be compatible with Talos k8s version)</span></span>
 <span class="giallo-l"><span>        └─► Gateway API CRDs  (vendored in core/platform/manifests/)</span></span>
-<span class="giallo-l"><span>              └─► ArgoCD  (GitOps engine)</span></span>
+<span class="giallo-l"><span>              └─► Argo CD  (GitOps engine)</span></span>
 <span class="giallo-l"><span>                    └─► cert-manager</span></span>
 <span class="giallo-l"><span>                          └─► OpenBao + CSI Driver  (secrets layer; all apps depend on this)</span></span>
 <span class="giallo-l"><span>                                └─► Longhorn + CNPG  (storage; stateful apps depend on this)</span></span>
@@ -653,7 +686,7 @@ survives the shutdown sequence. Skip the graceful path:</p>
 <p><strong>Rules:</strong></p>
 <ul>
 <li>Verify compatibility with new Talos k8s version: https://docs.cilium.io/en/stable/network/kubernetes/compatibility/</li>
-<li><code>wt0</code> must <strong>not</strong> be added to Cilium devices — keep only <code>eth0</code> in <code>cilium.go</code>. See <a href="../infrastructure/#netbird">NetBird routing notes</a>.</li>
+<li>Never add <code>wt0</code> to Cilium's <code>devices</code> list in <code>cilium.go</code> — it stays <code>["ens18", "eth0"]</code>. See <a href="https://homelab.madhan.app/workloads/networking/netbird-peer/">NetBird Peer</a>.</li>
 <li>After upgrade check the <code>CiliumLoadBalancerIPPool</code> and <code>CiliumL2AnnouncementPolicy</code> CR specs in <code>cilium.go</code> for field renames</li>
 </ul>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> core platform up</span></span>
@@ -673,7 +706,7 @@ are never counted there.</p>
 reached every node on the new image. Fix the node, then re-run
 <code>just core platform up</code> — it is idempotent.</p>
 <hr />
-<h2 id="phase-3-argocd">Phase 3 — ArgoCD</h2>
+<h2 id="phase-3-argo-cd">Phase 3 — Argo CD</h2>
 <p><strong>Risk:</strong> Medium — GitOps engine downtime during pod restart.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// core/platform/argocd.go — Version on the argo-cd Release</span></span>
 <span class="giallo-l"><span>Version: pulumi.</span><span style="color: #FFB454;">String</span><span>(</span><span style="color: #AAD94C;">&quot;X.Y.Z&quot;</span><span>),</span></span></code></pre>
@@ -728,15 +761,19 @@ of it.</p>
 <hr />
 <h2 id="phase-7-bifrost-docker-compose">Phase 7 — Bifrost Docker Compose</h2>
 <p><strong>Risk:</strong> Low — independent of k8s cluster.</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># core/cloud/bifrost/docker-compose.yml</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">traefik:vX.Y</span><span style="color: #5A6673;font-style: italic;">                               # line 35</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">netbirdio/netbird-server:0.X.Y</span><span style="color: #5A6673;font-style: italic;">             # line 59</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">netbirdio/dashboard:0.X.Y</span><span style="color: #5A6673;font-style: italic;">                  # line 73  (was: latest)</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">netbirdio/reverse-proxy:0.X.Y</span><span style="color: #5A6673;font-style: italic;">             # line 82  (was: latest)</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">netbirdio/netbird:0.X.Y</span><span style="color: #5A6673;font-style: italic;">                    # line 94</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">ghcr.io/goauthentik/server:20XX.X.X</span><span style="color: #5A6673;font-style: italic;">        # lines 137, 168</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">postgres:16.X-alpine</span><span style="color: #5A6673;font-style: italic;">                       # line 115  (minor bumps only)</span></span></code></pre>
-<p><strong>NetBird rule:</strong> All four NetBird components (<code>server</code>, <code>dashboard</code>, <code>reverse-proxy</code>, agent on Bifrost) <strong>must be on the same version</strong>. Also update both image tags in <code>workloads/networking/netbird_peer.go</code> — the
+<p>All image tags live in <code>core/cloud/bifrost/docker-compose.yml</code>:</p>
+<table><thead><tr><th>Image</th><th>Note</th></tr></thead><tbody>
+<tr><td><code>traefik</code></td><td></td></tr>
+<tr><td><code>netbirdio/netbird-server</code></td><td></td></tr>
+<tr><td><code>netbirdio/reverse-proxy</code></td><td></td></tr>
+<tr><td><code>netbirdio/netbird</code></td><td>agent</td></tr>
+<tr><td><code>netbirdio/dashboard</code></td><td><strong>separate version line</strong> — see below</td></tr>
+<tr><td><code>ghcr.io/goauthentik/server</code></td><td>two services: server and worker</td></tr>
+<tr><td><code>postgres</code></td><td>minor bumps only</td></tr>
+</tbody></table>
+<p><strong>NetBird rule:</strong> <code>netbird-server</code>, <code>reverse-proxy</code> and the agent <strong>must be on the
+same version</strong>. The dashboard is versioned independently (<code>v2.x</code>) and does not
+follow them. Also update both image tags in <code>workloads/networking/netbird_peer.go</code> — the
 <code>setup-iptables</code> init container and the main container.</p>
 <p><strong>Authentik migration race (fixed in bootstrap.sh):</strong> On Authentik upgrades, <code>bootstrap.sh</code> now runs <code>ak migrate</code> explicitly (via a one-off server container) before starting <code>authentik-server</code> and <code>authentik-worker</code>. This prevents a crash-loop where the server queries new ORM columns that haven't been added yet. If <code>just core hetzner up</code> fails at the Authentik health check step, SSH in and run:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">docker</span><span style="color: #AAD94C;"> exec authentik-server ak migrate</span></span>
@@ -764,9 +801,10 @@ of it.</p>
 <hr />
 <h2 id="phase-9-workloads-medium-risk">Phase 9 — Workloads: Medium Risk</h2>
 <h3 id="victoriametrics-victorialogs">VictoriaMetrics + VictoriaLogs</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># workloads/cdk8s.yaml</span></span>
-<span class="giallo-l"><span>-</span><span style="color: #AAD94C;"> helm:https://victoriametrics.github.io/helm-charts/victoria-metrics-k8s-stack@0.X.Y</span></span>
-<span class="giallo-l"><span>-</span><span style="color: #AAD94C;"> helm:https://victoriametrics.github.io/helm-charts/victoria-logs-single@0.X.Y</span></span></code></pre>
+<p><code>victoria-logs-single</code> is pinned in <code>workloads/cdk8s.yaml</code>:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span>-</span><span style="color: #AAD94C;"> helm:https://victoriametrics.github.io/helm-charts/victoria-logs-single@0.X.Y</span></span></code></pre>
+<p><code>victoria-metrics-k8s-stack</code> is <strong>not</strong> in <code>cdk8s.yaml</code> — it is pinned at its call
+site, on the chart Version in <code>workloads/observability/victoria_metrics.go</code>.</p>
 <p>Also update the chart Version in <code>workloads/observability/victoria_metrics.go</code>. Run <code>helm diff upgrade</code> first — the values schema changes frequently between minor versions.</p>
 <h3 id="grafana">Grafana</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># workloads/cdk8s.yaml</span></span>
@@ -777,9 +815,14 @@ of it.</p>
 <span class="giallo-l"><span>-</span><span style="color: #AAD94C;"> helm:https://helm.goharbor.io/harbor@1.X.Y</span></span></code></pre>
 <p>Minor bumps only. After upgrade verify <code>harbor:80</code> routing still works (Harbor nginx proxy quirk — route must target <code>harbor:80</code>, not <code>harbor-core:80</code>).</p>
 <h3 id="nvidia-gpu-operator">NVIDIA GPU Operator</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># workloads/cdk8s.yaml</span></span>
-<span class="giallo-l"><span>-</span><span style="color: #AAD94C;"> helm:https://helm.ngc.nvidia.com/nvidia/gpu-operator@X.Y.Z</span></span></code></pre>
-<p>Also update the device plugin and DCGM exporter versions in <code>workloads/hardware/nvidia_gpu_operator.go</code>. Verify RTX 5070 Ti (sm_120, Blackwell) still supported in the new operator release — Blackwell support was added in 570.x driver series.</p>
+<p>The full GPU Operator is deliberately not used. Two charts are pinned at their call
+site in <code>workloads/hardware/nvidia_gpu_operator.go</code>:</p>
+<ul>
+<li><code>nvidia-device-plugin</code> from <code>https://nvidia.github.io/k8s-device-plugin</code></li>
+<li><code>dcgm-exporter</code></li>
+</ul>
+<p>Verify the RTX 5070 Ti (sm_120, Blackwell) is still supported by the new release —
+Blackwell support arrived in the 570.x driver series.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> ollama deploy/ollama</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> nvidia-smi</span></span></code></pre>
 <hr />
 <h2 id="phase-10-workloads-complex">Phase 10 — Workloads: Complex</h2>
@@ -813,13 +856,13 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
 <span class="giallo-l"><span style="color: #59C2FF;">cdk8s</span><span style="color: #AAD94C;"> import</span><span style="color: #5A6673;font-style: italic;">        # regenerates workloads/imports/*</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">go</span><span style="color: #AAD94C;"> mod tidy</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> synth</span><span style="color: #5A6673;font-style: italic;">          # verify no compile errors before pushing</span></span></code></pre>
-<p>If Talos upgrades the embedded k8s version, also update the <code>k8s@1.30.0</code> import at the top of <code>cdk8s.yaml</code>.</p>
+<p>If Talos upgrades the embedded k8s version, also update the <code>k8s@X.Y.Z</code> import at the top of <code>cdk8s.yaml</code>.</p>
 <hr />
 <h2 id="post-upgrade-verification">Post-Upgrade Verification</h2>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Cluster health</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">talosctl</span><span style="color: #95E6CB;"> --talosconfig</span><span style="color: #AAD94C;"> ~/.talos/config health</span><span style="color: #95E6CB;"> --nodes</span><span style="color: #D2A6FF;"> 192.168.1.210</span></span>
 <span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># All ArgoCD apps synced</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># All Argo CD apps synced</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get applications</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> argocd</span></span>
 <span class="giallo-l"></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Secrets layer</span></span>
@@ -1061,7 +1104,7 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-3-argocd" class="toc-link">Phase 3 — ArgoCD</a>
+                    <a href="https://homelab.madhan.app/upgrade-guide/#phase-3-argo-cd" class="toc-link">Phase 3 — Argo CD</a>
                     
                 </li>
             
@@ -1301,7 +1344,19 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1410,7 +1465,7 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1473,7 +1528,7 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1625,11 +1680,11 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1641,11 +1696,11 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

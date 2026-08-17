@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -585,7 +618,7 @@
         RELAY[&quot;NetBird Relay&lt;br&#x2F;&gt;TURN&#x2F;STUN via Bifrost&quot;]
     end
 
-    subgraph K8S[&quot;Talos Cluster · worker1 · 192.168.1.221&quot;]
+    subgraph K8S[&quot;Talos Cluster · routing-peer node&quot;]
         NBPEER[&quot;netbird-peer pod&lt;br&#x2F;&gt;hostNetwork · wt0: 100.109.244.71&lt;br&#x2F;&gt;routes 192.168.1.0&#x2F;24&quot;]
         MASQ[&quot;iptables MASQUERADE&lt;br&#x2F;&gt;src 100.109.x → 192.168.1.221&quot;]
         CILIUMETH[&quot;Cilium BPF · eth0&lt;br&#x2F;&gt;L7LB DNAT → Envoy :13507&quot;]
@@ -626,7 +659,7 @@
     participant AU as Authentik&lt;br&#x2F;&gt;auth.madhan.app
     participant NA as netbird-agent&lt;br&#x2F;&gt;wt0:100.109.47.211
     participant RE as NetBird Relay&lt;br&#x2F;&gt;rels:&#x2F;&#x2F;netbird.madhan.app:443
-    participant NP as netbird-peer&lt;br&#x2F;&gt;wt0:100.109.244.71&lt;br&#x2F;&gt;worker1 eth0:192.168.1.221
+    participant NP as netbird-peer&lt;br&#x2F;&gt;wt0:100.109.x.x&lt;br&#x2F;&gt;node eth0:192.168.1.22x
     participant GW as Cilium Gateway&lt;br&#x2F;&gt;192.168.1.220
     participant GR as Grafana pod
 
@@ -672,8 +705,8 @@
 <tr><td>Traefik → netbird-agent</td><td>Docker bridge <code>bifrost_net</code></td><td><code>172.30.0.10</code> (Traefik)</td><td><code>192.168.1.220</code></td><td>Nothing — Docker routes to host</td></tr>
 <tr><td>netbird-agent wt0 → relay</td><td>WireGuard encapsulated</td><td><code>100.109.47.211</code></td><td><code>100.109.244.71</code></td><td>Original IP hidden inside WireGuard</td></tr>
 <tr><td>relay → netbird-peer wt0</td><td>decapsulated WireGuard</td><td><code>100.109.47.211</code></td><td><code>192.168.1.220</code></td><td>Original packet restored</td></tr>
-<tr><td>wt0 → eth0 (kernel fwd)</td><td>worker1</td><td><code>100.109.47.211</code></td><td><code>192.168.1.220</code></td><td>IP forwarding only</td></tr>
-<tr><td>MASQUERADE (CILIUM_POST_nat)</td><td>worker1 eth0</td><td><strong><code>192.168.1.221</code></strong></td><td><code>192.168.1.220</code></td><td>Source NAT — cluster can reply</td></tr>
+<tr><td>wt0 → eth0 (kernel fwd)</td><td>peer node</td><td><code>100.109.x.x</code></td><td><code>192.168.1.220</code></td><td>IP forwarding only</td></tr>
+<tr><td>MASQUERADE (CILIUM_POST_nat)</td><td>peer node eth0</td><td><strong>that node's IP</strong></td><td><code>192.168.1.220</code></td><td>Source NAT — cluster can reply</td></tr>
 <tr><td>eth0 → Cilium LB</td><td>another worker's eth0</td><td><code>192.168.1.221</code></td><td><strong>Envoy :13507</strong></td><td>L7LB DNAT by Cilium BPF</td></tr>
 <tr><td>Envoy → Grafana pod</td><td>pod overlay</td><td>pod IP</td><td>Grafana pod IP</td><td>L7 routing by HTTPRoute</td></tr>
 </tbody></table>
@@ -977,7 +1010,19 @@ Cilium device list, and the MASQUERADE rule — is on
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1086,7 +1131,7 @@ Cilium device list, and the MASQUERADE rule — is on
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1149,7 +1194,7 @@ Cilium device list, and the MASQUERADE rule — is on
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1301,11 +1346,11 @@ Cilium device list, and the MASQUERADE rule — is on
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1317,11 +1362,11 @@ Cilium device list, and the MASQUERADE rule — is on
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -555,16 +588,18 @@
 <span class="giallo-l"><span>    ├─ generateBifrostDotEnv()       writes .env from SOPS</span></span>
 <span class="giallo-l"><span>    ├─ CopyToRemote                  uploads /etc/bifrost/ to VPS</span></span>
 <span class="giallo-l"><span>    └─ remote.Command → bootstrap.sh</span></span>
-<span class="giallo-l"><span>           ├─ 1/6  traefik              TLS termination + routing</span></span>
-<span class="giallo-l"><span>           ├─ 2/6  authentik-postgres</span></span>
-<span class="giallo-l"><span>           ├─ 3/6  authentik-server + worker</span></span>
+<span class="giallo-l"><span>           ├─ pre-flight             validate secrets, wait for cloud-init</span></span>
+<span class="giallo-l"><span>           ├─ 1/8  traefik           TLS termination + routing</span></span>
+<span class="giallo-l"><span>           ├─ 2/8  authentik-postgres</span></span>
+<span class="giallo-l"><span>           ├─ 3/8  authentik         DB migrations (one-off, before the servers)</span></span>
+<span class="giallo-l"><span>           ├─ 4/8  authentik-server + authentik-worker</span></span>
 <span class="giallo-l"><span>           ├─      process_netbird_config()</span></span>
 <span class="giallo-l"><span>           │         sed: substitute ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}</span></span>
 <span class="giallo-l"><span>           │         python: bcrypt hash NB_OWNER_PASSWORD → ${NB_OWNER_HASH}</span></span>
-<span class="giallo-l"><span>           ├─ 4/6  netbird-server     management + signal + relay + STUN + embedded Dex</span></span>
-<span class="giallo-l"><span>           ├─      netbird-dashboard  (started in same step)</span></span>
-<span class="giallo-l"><span>           ├─ 5/6  netbird-agent      WireGuard peer (only if NB_BIFROST_SETUP_KEY set)</span></span>
-<span class="giallo-l"><span>           └─ 6/6  netbird-proxy      (only if NB_PROXY_TOKEN set)</span></span></code></pre>
+<span class="giallo-l"><span>           ├─ 5/8  netbird-server + netbird-dashboard</span></span>
+<span class="giallo-l"><span>           ├─ 6/8  netbird-agent     WireGuard peer (only if NB_BIFROST_SETUP_KEY set)</span></span>
+<span class="giallo-l"><span>           ├─ 7/8  netbird-proxy     (only if NB_PROXY_TOKEN set)</span></span>
+<span class="giallo-l"><span>           └─ 8/8  gatus             uptime monitoring</span></span></code></pre>
 <blockquote>
 <p><strong>netbird-server vs netbird-agent on the same host:</strong> These are two distinct roles.
 <code>netbird-server</code> is the coordination plane — it manages the mesh, assigns WireGuard keys,
@@ -608,47 +643,8 @@ NetBird images must move together — mixing versions breaks the management prot
 <h2 id="bootstrap-automation">Bootstrap Automation</h2>
 <h3 id="what-bootstrap-sh-does">What <code>bootstrap.sh</code> does</h3>
 <p>The bootstrap script runs on the VPS after every config or secret change. It is idempotent — safe to re-run.</p>
-<pre class="mermaid border border-gray-500/15">
- flowchart TB
-    PF[&quot;Preflight&lt;br&#x2F;&gt;validate 5 required secrets&lt;br&#x2F;&gt;wait for cloud-init&lt;br&#x2F;&gt;check docker compose&quot;]
-
-    subgraph S1[&quot;Step 1&#x2F;5&quot;]
-        T[&quot;docker compose up -d traefik&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
-    end
-    subgraph S2[&quot;Step 2&#x2F;5&quot;]
-        AP[&quot;docker compose up -d authentik-postgres&lt;br&#x2F;&gt;wait_healthy 120s&quot;]
-    end
-    subgraph S3[&quot;Step 3&#x2F;5&quot;]
-        AS[&quot;docker compose up -d authentik-server authentik-worker&lt;br&#x2F;&gt;wait_healthy 300s&quot;]
-    end
-
-    subgraph CFG[&quot;process_netbird_config()&quot;]
-        SED[&quot;sed: replace base64 placeholders&lt;br&#x2F;&gt;\${NB_RELAY_SECRET}&lt;br&#x2F;&gt;\${NB_DATA_STORE_KEY}&quot;]
-        PY1[&quot;python3: bcrypt.hashpw(NB_OWNER_PASSWORD)&lt;br&#x2F;&gt;→ owner_hash&quot;]
-        PY2[&quot;python3: replace \${NB_OWNER_HASH}&lt;br&#x2F;&gt;in netbird&#x2F;config.yaml&quot;]
-        SED --&gt; PY1 --&gt; PY2
-    end
-
-    subgraph S4[&quot;Step 4&#x2F;5&quot;]
-        NS[&quot;docker compose up -d netbird-server netbird-dashboard&lt;br&#x2F;&gt;wait_healthy 120s &#x2F; 60s&quot;]
-    end
-    subgraph S5[&quot;Step 5&#x2F;6&quot;]
-        NA{&quot;NB_BIFROST_SETUP_KEY set?&quot;}
-        NAY[&quot;docker compose up -d netbird-agent&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
-        NAN[&quot;skip — Traefik cannot reach 192.168.1.x!&quot;]
-    end
-    subgraph S6[&quot;Step 6&#x2F;6&quot;]
-        NP{&quot;NB_PROXY_TOKEN set?&quot;}
-        NPY[&quot;docker compose up -d netbird-proxy&lt;br&#x2F;&gt;wait_healthy 60s&quot;]
-        NPN[&quot;skip — show setup instructions&quot;]
-    end
-
-    PF --&gt; S1 --&gt; S2 --&gt; S3 --&gt; CFG --&gt; S4 --&gt; S5 --&gt; S6
-    NA --&gt;|Yes| NAY
-    NA --&gt;|No| NAN
-    NP --&gt;|Yes| NPY
-    NP --&gt;|No| NPN
-</pre>
+<p>The sequence above is the whole of it; each step waits for the previous one to
+report healthy before starting.</p>
 <h3 id="health-polling">Health polling</h3>
 <p>Each <code>wait_healthy &lt;container&gt;</code> call polls <code>docker inspect</code> every 5 seconds:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>state=running + health=healthy  →  ready ✓</span></span>
@@ -1042,7 +1038,19 @@ NetBird images must move together — mixing versions breaks the management prot
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1151,7 +1159,7 @@ NetBird images must move together — mixing versions breaks the management prot
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1214,7 +1222,7 @@ NetBird images must move together — mixing versions breaks the management prot
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1366,11 +1374,11 @@ NetBird images must move together — mixing versions breaks the management prot
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1382,11 +1390,11 @@ NetBird images must move together — mixing versions breaks the management prot
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

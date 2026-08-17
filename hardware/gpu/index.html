@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -578,25 +611,69 @@ runaway workload is OOM-killed on its own rather than taking its neighbours down
 VRAM after a run and does not release it, so with both running Ollama fails to
 load a model — and the error surfaces on the Ollama side, which makes it look
 like an Ollama problem.</p>
+<pre class="mermaid border border-gray-500/15">
+ flowchart TB
+    subgraph CARD[&quot;RTX 5070 Ti · 16 GB VRAM · not partitioned&quot;]
+        VRAM[&quot;one shared pool&quot;]
+    end
+
+    subgraph SLICES[&quot;Device plugin advertises nvidia.com&#x2F;gpu: 5&quot;]
+        S[&quot;5 time-slices of GPU *compute*&quot;]
+    end
+
+    OLL[&quot;Ollama&lt;br&#x2F;&gt;evictable: keep_alive 0&quot;]
+    CFY[&quot;ComfyUI&lt;br&#x2F;&gt;holds VRAM after a run&quot;]
+    NB[&quot;Kubeflow notebooks&lt;br&#x2F;&gt;hold until deleted&quot;]
+
+    S --&gt; OLL &amp; CFY &amp; NB
+    OLL --&gt; VRAM
+    CFY --&gt; VRAM
+    NB --&gt; VRAM
+</pre>
+<p>Time-slicing divides GPU <em>time</em>, and the <code>nvidia.com/gpu: 5</code> count is a count of
+those slices — it says nothing about memory. Three pods can each hold a slice and
+still collectively exhaust the 16 GB, at which point the next allocation fails.</p>
 <p>ComfyUI therefore ships scaled to zero and is turned on only when needed:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> comfyui on</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> comfyui off</span></span></code></pre>
 <p>Ollama's model can be evicted without a restart:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #AAD94C;"> https://ollama.madhan.app/api/generate</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> &#39;{&quot;model&quot;: &quot;llama3.2&quot;, &quot;keep_alive&quot;: 0}&#39;</span></span></code></pre>
-<p>Kubeflow notebooks requesting <code>nvidia.com/gpu</code> compete for the same pool, and
-<strong>must</strong> set <code>runtimeClassName: nvidia</code> — without it the NVIDIA container hook
-never fires and CUDA is invisible even though the resource was granted.</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #AAD94C;"> https://ollama.madhan.app/api/generate</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> &#39;{&quot;model&quot;: &quot;llama3.2&quot;, &quot;keep_alive&quot;: 0}&#39;</span></span></code></pre><h2 id="the-dedicated-ai-taint">The <code>dedicated=ai</code> taint</h2>
+<p>worker4 carries <code>dedicated=ai:NoSchedule</code>, set in the GPU machine patch
+(
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&amp;#x2F;platform&amp;#x2F;talos.go</code></a>
+) so that ordinary workloads do not drift
+onto the GPU node and compete for its CPU during inference.</p>
+<p>Every pod that belongs on worker4 must therefore carry the matching toleration —
+Ollama, ComfyUI, the NVIDIA device plugin, DCGM exporter, and any Kubeflow notebook
+requesting a GPU. Without it the pod stays <code>Pending</code> with no obvious cause:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">tolerations</span><span style="color: #BFBDB6B3;">:</span></span>
+<span class="giallo-l"><span>  -</span><span style="color: #39BAE6;"> key</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> dedicated</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">    operator</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> Equal</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">    value</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> ai</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">    effect</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> NoSchedule</span></span></code></pre>
+<p>The taint controls <em>scheduling</em>; <code>nodeSelector: nvidia.com/gpu.present: "true"</code>
+(a label from GPU Feature Discovery) is what selects the node. Both are needed —
+the selector alone will not get a pod past the taint.</p>
 <h2 id="gpu-workload-configuration">GPU Workload Configuration</h2>
-<p>All GPU workloads use <code>nodeSelector: nvidia.com/gpu.present: "true"</code> to pin to <code>k8s-worker4</code>. <code>runtimeClassName: nvidia</code> is required — without it the NVIDIA container hook does not fire and CUDA is inaccessible even with the <code>nvidia.com/gpu</code> resource requested.</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">runtimeClassName</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> nvidia</span></span>
+<p>Every GPU pod needs all four of these. Miss <code>runtimeClassName</code> and the NVIDIA
+container hook never fires — the pod schedules, the resource is granted, and CUDA
+is still invisible inside the container, which is a confusing failure to debug.</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">runtimeClassName</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> nvidia</span><span style="color: #5A6673;font-style: italic;">            # or CUDA is not visible in the container</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">nodeSelector</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  nvidia.com/gpu.present</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &quot;true&quot;</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">  nvidia.com/gpu.present</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &quot;true&quot;</span><span style="color: #5A6673;font-style: italic;">    # GPU Feature Discovery label</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">tolerations</span><span style="color: #BFBDB6B3;">:</span><span style="color: #5A6673;font-style: italic;">                        # worker4 is tainted — see above</span></span>
+<span class="giallo-l"><span>  -</span><span style="color: #39BAE6;"> key</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> dedicated</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">    operator</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> Equal</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">    value</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> ai</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">    effect</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> NoSchedule</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">resources</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">  limits</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">    nvidia.com/gpu</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &quot;1&quot;</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">env</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span>  -</span><span style="color: #39BAE6;"> name</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> NVIDIA_VISIBLE_DEVICES</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    value</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> all</span></span></code></pre><h2 id="kernel-modules">Kernel Modules</h2>
+<span class="giallo-l"><span style="color: #39BAE6;">    value</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> all</span></span></code></pre>
+<p>This applies to Kubeflow notebooks too — they request the same pool.</p>
+<h2 id="kernel-modules">Kernel Modules</h2>
 <p>The GPU worker's Talos machine patch loads these modules at boot:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>nvidia</span></span>
 <span class="giallo-l"><span>nvidia_uvm</span></span>
@@ -605,7 +682,7 @@ never fires and CUDA is invisible even though the resource was granted.</p>
 <p>A DCGM Exporter DaemonSet runs on the GPU node to export GPU metrics (utilisation, VRAM usage, temperature, power draw) to VictoriaMetrics via VMAgent. It also creates a Grafana dashboard ConfigMap.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Check GPU metrics in Grafana: look for the DCGM dashboard</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Or query directly:</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> nvidia-gpu-operator</span><span style="color: #95E6CB;"> -l</span><span style="color: #AAD94C;"> app=dcgm-exporter</span></span></code></pre>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> nvidia-gpu-operator</span><span style="color: #95E6CB;"> -l</span><span style="color: #AAD94C;"> app.kubernetes.io/name=dcgm-exporter</span></span></code></pre>
 
     <!--  Errata section  -->
     
@@ -801,6 +878,12 @@ never fires and CUDA is invisible even though the resource was granted.</p>
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/hardware/gpu/#the-dedicated-ai-taint" class="toc-link">The dedicated=ai taint</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <a href="https://homelab.madhan.app/hardware/gpu/#gpu-workload-configuration" class="toc-link">GPU Workload Configuration</a>
                     
                 </li>
@@ -928,7 +1011,19 @@ never fires and CUDA is invisible even though the resource was granted.</p>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1037,7 +1132,7 @@ never fires and CUDA is invisible even though the resource was granted.</p>
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1100,7 +1195,7 @@ never fires and CUDA is invisible even though the resource was granted.</p>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1252,11 +1347,11 @@ never fires and CUDA is invisible even though the resource was granted.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1268,11 +1363,11 @@ never fires and CUDA is invisible even though the resource was granted.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Time-series metrics storage, Prometheus-compatible, cluster mode." />
+            <meta name="description" content="Time-series metrics storage for the cluster: VMSingle, VMAgent, VMAlert and Alertmanager from one chart." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="VictoriaMetrics | Homelab" />
-      <meta property="og:description" content="Time-series metrics storage, Prometheus-compatible, cluster mode." />
+      <meta property="og:description" content="Time-series metrics storage for the cluster: VMSingle, VMAgent, VMAlert and Alertmanager from one chart." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="VictoriaMetrics" />
-      <meta name="twitter:description" content="Time-series metrics storage, Prometheus-compatible, cluster mode." />
+      <meta name="twitter:description" content="Time-series metrics storage for the cluster: VMSingle, VMAgent, VMAlert and Alertmanager from one chart." />
       
       
       
@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -541,10 +574,10 @@
             VictoriaMetrics
             
         </h1>
-        <p class="text-gray-500">Time-series metrics storage, Prometheus-compatible, cluster mode.</p>
+        <p class="text-gray-500">Time-series metrics storage for the cluster: VMSingle, VMAgent, VMAlert and Alertmanager from one chart.</p>
     </div>
     <h2 id="what-is-victoriametrics">What is VictoriaMetrics?</h2>
-<p><a rel="external" href="https://victoriametrics.com/">VictoriaMetrics</a> is a fast, resource-efficient time-series database and monitoring solution that is fully compatible with the Prometheus remote-write protocol and PromQL query language. It offers significantly lower memory and storage usage compared to Prometheus, with better compression and faster ingestion.</p>
+<p><a rel="external" href="https://victoriametrics.com/">VictoriaMetrics</a> is where every metric in the cluster ends up. It speaks Prometheus remote-write and PromQL, so anything that would have targeted Prometheus works unchanged — at noticeably lower memory and disk cost, which is the reason it is here rather than Prometheus.</p>
 <h2 id="why-victoriametrics">Why VictoriaMetrics?</h2>
 <table><thead><tr><th>Feature</th><th>Prometheus</th><th>VictoriaMetrics</th></tr></thead><tbody>
 <tr><td>Memory usage</td><td>High</td><td>Low (3–7x less)</td></tr>
@@ -552,22 +585,23 @@
 <tr><td>Ingestion speed</td><td>Good</td><td>Faster</td></tr>
 <tr><td>Query language</td><td>PromQL</td><td>MetricsQL (superset of PromQL)</td></tr>
 <tr><td>Long-term storage</td><td>Requires Thanos/Cortex</td><td>Built-in</td></tr>
-<tr><td>Cluster mode</td><td>Manual</td><td>Native</td></tr>
 </tbody></table>
 <p>VictoriaMetrics is a drop-in Prometheus replacement that works with any PromQL-compatible client (Grafana, etc.) while using fewer resources — important for a homelab running many workloads on limited hardware.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>VictoriaMetrics runs in <strong>cluster mode</strong> with three components:</p>
-<table><thead><tr><th>Component</th><th>Replicas</th><th>Role</th></tr></thead><tbody>
-<tr><td><code>vminsert</code></td><td>1</td><td>Receives prometheus remote-write from VMAgent and OTel collectors</td></tr>
-<tr><td><code>vmselect</code></td><td>1</td><td>Serves PromQL queries from Grafana</td></tr>
-<tr><td><code>vmstorage</code></td><td>1</td><td>Stores time-series data to a 100 Gi Longhorn PVC</td></tr>
+<p>One chart (<code>victoria-metrics-k8s-stack</code>) brings up the whole metrics pipeline in the
+<code>victoria-metrics</code> namespace:</p>
+<table><thead><tr><th>Component</th><th>Role</th></tr></thead><tbody>
+<tr><td><code>vmsingle</code></td><td>Stores and serves everything — ingest, query, and a 100 Gi Longhorn PVC</td></tr>
+<tr><td><code>vmagent</code></td><td>Scrapes the cluster and remote-writes into vmsingle</td></tr>
+<tr><td><code>vmalert</code></td><td>Evaluates PrometheusRules and VMRules</td></tr>
+<tr><td><code>vmalertmanager</code></td><td>Groups and routes the resulting alerts</td></tr>
 </tbody></table>
-<p><strong>VMAgent</strong> (a separate lightweight agent) scrapes metrics across the cluster and remote-writes to vminsert:</p>
-<ul>
-<li>Discovers <code>ServiceMonitor</code> resources across all namespaces</li>
-<li>Discovers <code>PodMonitor</code> resources across all namespaces (required for CNPG)</li>
-<li>Remote-writes to <code>vminsert:8480</code></li>
-</ul>
+<p><strong>Single-node, not cluster mode.</strong> <code>vmcluster.enabled: false</code> — there is no
+<code>vminsert</code>/<code>vmselect</code>/<code>vmstorage</code> split. One node's worth of metrics does not justify
+the extra moving parts, and everything lands on one endpoint:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428</span></span></code></pre>
+<p><code>fullnameOverride: "vm-stack"</code> keeps that name short on purpose: the default naming
+pushes VMAlertmanager's generated pod labels past Kubernetes' 63-byte limit.</p>
 <p>Source: 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&amp;#x2F;observability&amp;#x2F;victoria_metrics.go</code></a>
 </p>
@@ -575,27 +609,25 @@
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
 <tr><td>Namespace</td><td><code>victoria-metrics</code></td><td>Isolated namespace</td></tr>
 <tr><td>Retention</td><td><code>30d</code></td><td>30 days of metrics</td></tr>
-<tr><td>vmstorage PVC</td><td><code>100Gi</code> Longhorn</td><td>Long-term metrics storage</td></tr>
-<tr><td>vminsert resources</td><td><code>500m</code> / <code>512Mi</code></td><td>Lightweight write path</td></tr>
-<tr><td>vmselect resources</td><td><code>500m</code> / <code>1Gi</code></td><td>Query path needs more memory</td></tr>
-<tr><td>vmstorage resources</td><td><code>1000m</code> / <code>1Gi</code></td><td>Storage is most resource-intensive</td></tr>
-<tr><td>VMAgent</td><td>Ships inside the k8s-stack chart</td><td>No separate pin</td></tr>
+<tr><td>vmsingle PVC</td><td><code>100Gi</code> Longhorn</td><td>Metrics storage</td></tr>
+<tr><td>vmsingle limits</td><td><code>1000m</code> / <code>2Gi</code></td><td>Ingest and query in one process</td></tr>
+<tr><td>vmagent limits</td><td><code>500m</code> / <code>512Mi</code></td><td>Scrape path only</td></tr>
+<tr><td>vmalert / alertmanager limits</td><td><code>200m</code> / <code>256Mi</code> each</td><td>Both are light</td></tr>
+<tr><td>Scrape interval</td><td><code>30s</code></td><td></td></tr>
 </tbody></table>
 <h2 id="alertmanager">Alertmanager</h2>
 <p>VMAlertmanager ships inside the same k8s-stack chart, so there is no separate
 deployment and no separate namespace — it runs as <code>vmalertmanager-vm-stack</code> in
 <code>victoria-metrics</code> and is reachable at <code>https://alertmanager.madhan.app</code>.</p>
-<p>The chart also installs the Prometheus Operator CRDs (<code>PrometheusRule</code>,
-<code>ServiceMonitor</code>, <code>PodMonitor</code>), which is why charts that ship their own
-ServiceMonitors work here without a Prometheus anywhere in the cluster.</p>
-<p>Routing is still a placeholder — a webhook receiver with no target:</p>
+<p>Alerts currently go nowhere on purpose — the only receiver is a blackhole:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">route</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  group_by</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">alertname</span><span>]</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">  group_by</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">alertname</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> namespace</span><span>]</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">  group_wait</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> 10s</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">  group_interval</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> 10m</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">  repeat_interval</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> 1h</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  receiver</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> web.hook</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">  receiver</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> blackhole</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">receivers</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span>  -</span><span style="color: #39BAE6;"> name</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> web.hook</span></span></code></pre>
+<span class="giallo-l"><span>  -</span><span style="color: #39BAE6;"> name</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> blackhole</span></span></code></pre>
 <p>Add a real receiver under <code>alertmanager.config.receivers</code> in
 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&amp;#x2F;observability&amp;#x2F;victoria_metrics.go</code></a>
@@ -603,35 +635,40 @@ ServiceMonitors work here without a Prometheus anywhere in the cluster.</p>
 notifications out.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #AAD94C;"> https://alertmanager.madhan.app/api/v2/alerts</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> jq</span><span style="color: #AAD94C;"> .</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #AAD94C;"> https://alertmanager.madhan.app/api/v2/silences</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> jq</span><span style="color: #AAD94C;"> .</span></span></code></pre><h2 id="how-vmagent-discovers-metrics">How VMAgent Discovers Metrics</h2>
-<p>VMAgent uses <code>serviceMonitorSelector: {}</code> and <code>podMonitorSelector: {}</code> (empty = match all), meaning it discovers every ServiceMonitor and PodMonitor across every namespace:</p>
+<p>VMAgent runs with <code>selectAllByDefault: true</code>, so it picks up every ServiceMonitor and
+PodMonitor in every namespace with no per-app configuration:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Every app with a ServiceMonitor is automatically scraped</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Examples:</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># - OpenBao: /v1/sys/metrics (Prometheus format)</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># - Falco sidekick: :2801/metrics</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># - DCGM Exporter: GPU metrics</span></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># - ArgoCD components: :8082-8085/metrics</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># - Argo CD components: :8082-8085/metrics</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># - Longhorn: via ServiceMonitor</span></span></code></pre><h2 id="httproute">HTTPRoute</h2>
-<p>VictoriaMetrics vmselect is accessible at <code>https://vmselect.madhan.app</code>. Browsing to the root redirects to <code>/select/0/vmui/</code> — the vmui web interface.</p>
+<p>Reachable at <code>https://vmselect.madhan.app</code> (the hostname predates the move to
+single-node). The root redirects to <code>/vmui/</code> — <strong>not</strong> <code>/select/0/vmui/</code>, which is
+the cluster-mode path and 404s here.</p>
+<p>OpenBao has no ServiceMonitor, so it is scraped by an <code>inlineScrapeConfig</code> against
+<code>/v1/sys/metrics</code> instead.</p>
 <h2 id="how-it-connects">How It Connects</h2>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>All cluster apps (ServiceMonitor/PodMonitor)</span></span>
 <span class="giallo-l"><span>  → VMAgent (scrapes every 30s)</span></span>
-<span class="giallo-l"><span>  → vminsert:8480 (prometheus remote-write)</span></span>
-<span class="giallo-l"><span>  → vmstorage (100Gi Longhorn PVC)</span></span>
-<span class="giallo-l"><span>  → vmselect:8481</span></span>
+<span class="giallo-l"><span>  → vmsingle-vm-stack:8428 (remote-write, storage, query — 100Gi Longhorn PVC)</span></span>
 <span class="giallo-l"><span>  → Grafana (Prometheus datasource)</span></span>
-<span class="giallo-l"><span>  → VMAlertmanager:9093 (rule evaluation, grouping, routing)</span></span></code></pre><h2 id="troubleshooting">Troubleshooting</h2>
+<span class="giallo-l"><span>  → VMAlert (rule evaluation) → VMAlertmanager:9093 (grouping, routing)</span></span></code></pre><h2 id="troubleshooting">Troubleshooting</h2>
 <h3 id="vmagent-not-scraping">VMAgent Not Scraping</h3>
 <p><strong>Symptoms:</strong> Missing metrics in Grafana.</p>
 <p><strong>Diagnosis:</strong></p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Check VMAgent targets</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> port-forward</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> victoria-metrics svc/vmagent 8429:8429</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> port-forward</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> victoria-metrics svc/vmagent-vm-stack 8429:8429</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Open http://localhost:8429/targets</span></span></code></pre>
 <p><strong>Fix:</strong> If a target is down, check the ServiceMonitor selector matches the service labels. If the ServiceMonitor itself is missing, the app chart may not deploy it.</p>
 <h3 id="storage-full">Storage Full</h3>
-<p><strong>Symptoms:</strong> vminsert returns errors, no new data ingested.</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> victoria-metrics victoria-metrics-victoria-metrics-cluster-vmstorage-0</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #95E6CB;">  --</span><span style="color: #AAD94C;"> df</span><span style="color: #95E6CB;"> -h</span><span style="color: #AAD94C;"> /storage</span></span></code></pre>
-<p>Expand the PVC via Longhorn UI or increase <code>vmstorage.persistentVolume.size</code> and re-sync.</p>
+<p><strong>Symptoms:</strong> writes fail, no new data ingested.</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> victoria-metrics vmsingle-vm-stack-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> df</span><span style="color: #95E6CB;"> -h</span><span style="color: #AAD94C;"> /storage</span></span></code></pre>
+<p>Expand the PVC via the Longhorn UI, or raise the <code>vmsingle</code> storage request in
+
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;victoria_metrics.go"><code>workloads&amp;#x2F;observability&amp;#x2F;victoria_metrics.go</code></a>
+ and re-sync.</p>
 
 
     <!--  Errata section  -->
@@ -899,7 +936,19 @@ notifications out.</p>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1008,7 +1057,7 @@ notifications out.</p>
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1071,7 +1120,7 @@ notifications out.</p>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1223,11 +1272,11 @@ notifications out.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1239,11 +1288,11 @@ notifications out.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

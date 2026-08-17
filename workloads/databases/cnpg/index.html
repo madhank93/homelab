@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -543,18 +576,21 @@
         </h1>
         <p class="text-gray-500">CloudNativePG operator — Postgres lifecycle management for stateful workloads.</p>
     </div>
-    <h2 id="what-is-cloudnativepg">What is CloudNativePG?</h2>
-<p><a rel="external" href="https://cloudnative-pg.io/">CloudNativePG</a> is a Kubernetes operator that manages the full lifecycle of PostgreSQL clusters — provisioning, configuration, backup, failover, and rolling updates — through a <code>Cluster</code> custom resource. It is the CNCF-recommended approach for running Postgres on Kubernetes.</p>
-<h2 id="why-cloudnativepg">Why CloudNativePG?</h2>
-<p>Managing stateful Postgres directly with StatefulSets requires manual handling of replication, failover, connection pooling, and backup. CNPG encapsulates all of that into a single <code>Cluster</code> CR, keeps Postgres configuration as code, and integrates with Kubernetes storage (Longhorn PVCs) and monitoring (ServiceMonitor).</p>
-<h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>CNPG runs as an operator in the <code>cnpg-system</code> namespace. It is used by n8n to provision a dedicated Postgres cluster — rather than bundling a Postgres sidecar in the n8n Helm chart, n8n's database is a first-class CNPG <code>Cluster</code> resource managed separately in the <code>n8n</code> namespace.</p>
-<p>See <a href="/workloads/automation/n8n/">n8n</a> for the Cluster CR definition and how n8n connects to it.</p>
+    <p><a rel="external" href="https://cloudnative-pg.io/">CloudNativePG</a> runs as an operator in <code>cnpg-system</code>
+and turns a Postgres cluster into a single <code>Cluster</code> custom resource — replication,
+failover, backups and rolling updates included.</p>
+<p>It exists here for one reason: <strong>n8n's database</strong>. Rather than accept the Postgres
+subchart bundled with the n8n Helm chart, n8n's database is a CNPG <code>Cluster</code> in the
+<code>n8n</code> namespace. That makes the database independently upgradable, gives it real
+failover, and puts its credentials under the operator's control instead of in a
+values file — CNPG generates the <code>n8n-pg-app</code> Secret itself, which is why the n8n
+database password is the one secret <strong>not</strong> stored in OpenBao.</p>
+<p>See <a href="https://homelab.madhan.app/workloads/automation/n8n/">n8n</a> for the Cluster CR and how n8n
+connects to it.</p>
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
-<tr><td>Helm chart</td><td><code>cloudnative-pg</code></td><td>Version in the <a href="https://homelab.madhan.app/architecture/software-inventory/">Software Inventory</a></td></tr>
-<tr><td>Namespace</td><td><code>cnpg-system</code></td><td>Operator runs cluster-wide</td></tr>
-<tr><td>Chart repo</td><td><code>cloudnative-pg.github.io/charts</code></td><td>Official CNPG chart repo</td></tr>
+<tr><td>Namespace</td><td><code>cnpg-system</code></td><td>Operator watches all namespaces from here</td></tr>
+<tr><td>Chart</td><td><code>cloudnative-pg</code></td><td>Version in the <a href="https://homelab.madhan.app/architecture/software-inventory/">Software Inventory</a></td></tr>
 </tbody></table>
 <p>Source: 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;databases&#x2F;cnpg.go"><code>workloads&amp;#x2F;databases&amp;#x2F;cnpg.go</code></a>
@@ -562,7 +598,7 @@
 <h2 id="troubleshooting">Troubleshooting</h2>
 <h3 id="cluster-stuck-in-creating">Cluster Stuck in <code>Creating</code></h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get cluster</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> describe cluster n8n-db</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> describe cluster n8n-pg</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> logs</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> cnpg-system</span><span style="color: #95E6CB;"> -l</span><span style="color: #AAD94C;"> app.kubernetes.io/name=cloudnative-pg</span></span></code></pre><h3 id="pod-won-t-schedule-pvc-pending">Pod Won't Schedule (PVC Pending)</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pvc</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> describe pvc</span><span style="color: #F29668;"> &lt;</span><span style="color: #AAD94C;">pvc-nam</span><span>e</span><span style="color: #F29668;">&gt;</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n</span></span></code></pre>
@@ -718,24 +754,6 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/databases/cnpg/#what-is-cloudnativepg" class="toc-link">What is CloudNativePG?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/databases/cnpg/#why-cloudnativepg" class="toc-link">Why CloudNativePG?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/databases/cnpg/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
-                    
-                </li>
-            
-                <li>
-                    
                     <a href="https://homelab.madhan.app/workloads/databases/cnpg/#configuration" class="toc-link">Configuration</a>
                     
                 </li>
@@ -872,7 +890,19 @@
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -981,7 +1011,7 @@
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1044,7 +1074,7 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1196,11 +1226,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1212,11 +1242,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

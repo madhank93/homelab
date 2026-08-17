@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -548,7 +581,7 @@
 <h2 id="why-netbird">Why NetBird?</h2>
 <p>NetBird eliminates the need to manage WireGuard configs manually — peers register via a setup key, routes are distributed automatically, and OIDC login replaces static keys for user authentication. A single setup key puts the k8s routing peer into the mesh and gives Traefik on Bifrost a tunnel path to all cluster services.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>The NetBird combined server runs on Bifrost alongside a <code>netbird-agent</code> WireGuard peer. A <code>netbird-peer</code> StatefulSet on Kubernetes worker1 joins the mesh and advertises <code>192.168.1.0/24</code>, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.</p>
+<p>The NetBird combined server runs on Bifrost alongside a <code>netbird-agent</code> WireGuard peer. A <code>netbird-peer</code> StatefulSet joins the mesh from whichever worker it lands on and advertises <code>192.168.1.0/24</code>, making all cluster services reachable from Bifrost's Traefik and from any connected laptop or phone.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Your laptop (NetBird client)</span></span>
 <span class="giallo-l"><span>    │  WireGuard encrypted tunnel</span></span>
 <span class="giallo-l"><span>    │</span></span>
@@ -558,7 +591,7 @@
 <span class="giallo-l"><span>    │</span></span>
 <span class="giallo-l"><span>    └─ WireGuard mesh ──────────────────────────────────┐</span></span>
 <span class="giallo-l"><span>                                                         ▼</span></span>
-<span class="giallo-l"><span>                                          K8s: netbird-peer pod (worker1)</span></span>
+<span class="giallo-l"><span>                                          K8s: netbird-peer pod (any worker)</span></span>
 <span class="giallo-l"><span>                                               hostNetwork · wt0: 100.109.244.71</span></span>
 <span class="giallo-l"><span>                                               routes 192.168.1.0/24</span></span>
 <span class="giallo-l"><span>                                                         │  IP forward + MASQUERADE</span></span>
@@ -588,7 +621,7 @@
         RE[&quot;NetBird TURN&#x2F;STUN&lt;br&#x2F;&gt;via netbird-server&lt;br&#x2F;&gt;UDP 3478 &#x2F; TCP 5349&quot;]
     end
 
-    subgraph K8S[&quot;Kubernetes · worker1 · 192.168.1.221&quot;]
+    subgraph K8S[&quot;Kubernetes · routing-peer node&quot;]
         NBPEER[&quot;netbird-peer-0&lt;br&#x2F;&gt;hostNetwork · wt0: 100.109.244.71&lt;br&#x2F;&gt;routes 192.168.1.0&#x2F;24&quot;]
         MASQ[&quot;CILIUM_POST_nat&lt;br&#x2F;&gt;MASQUERADE&lt;br&#x2F;&gt;100.109.x → 192.168.1.221&quot;]
         CILBPF[&quot;Cilium BPF (other node eth0)&lt;br&#x2F;&gt;L7LB DNAT → Envoy :13507&quot;]
@@ -702,17 +735,8 @@
 <tr><td><code>netbird-agent</code></td><td>WireGuard peer — joins the mesh, receives routes, routes traffic</td><td><strong>Yes</strong></td></tr>
 </tbody></table>
 <p>Without <code>netbird-agent</code>, Traefik has no route to <code>192.168.1.0/24</code>. Every proxy request to the cluster returns <strong>504 Gateway Timeout</strong>. The agent receives the <code>192.168.1.0/24</code> route advertised by <code>k8s-routing-peer</code> and sets up a WireGuard tunnel:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>External user</span></span>
-<span class="giallo-l"><span>    ↓ HTTPS</span></span>
-<span class="giallo-l"><span>Traefik (Bifrost)</span></span>
-<span class="giallo-l"><span>    ↓ http://192.168.1.220</span></span>
-<span class="giallo-l"><span>netbird-agent (Bifrost) ←── WireGuard ───→ k8s-routing-peer (worker1 · 192.168.1.221)</span></span>
-<span class="giallo-l"><span>                                                    ↓ kernel IP forward</span></span>
-<span class="giallo-l"><span>                                              CILIUM_POST_nat MASQUERADE</span></span>
-<span class="giallo-l"><span>                                                    ↓</span></span>
-<span class="giallo-l"><span>                                            192.168.1.220 (Cilium gateway)</span></span>
-<span class="giallo-l"><span>                                                    ↓</span></span>
-<span class="giallo-l"><span>                                              cluster pods</span></span></code></pre>
+<p>The full packet path — including the kernel forward and MASQUERADE hop — is drawn
+once in <a href="https://homelab.madhan.app/architecture/network-flow/#public-request-packet-level-detail">Network Flow</a>.</p>
 <p><code>netbird-agent</code> uses <code>network_mode: host</code> so WireGuard routes are created on the Bifrost host directly, making them reachable from all Docker containers (including Traefik in <code>bifrost_net</code>).</p>
 <h3 id="setup-key-storage">Setup Key Storage</h3>
 <p>Two peers, two setup keys, two storage locations — matching where each consumer reads secrets:</p>
@@ -723,7 +747,8 @@
 <p>Both keys can share the same <strong>Reusable</strong> setup key value from the NetBird UI — they just live in different stores because each consumer has different access patterns.</p>
 <hr />
 <h2 id="k8s-routing-peer">K8s Routing Peer</h2>
-<p>The <code>netbird-peer</code> StatefulSet in the <code>netbird</code> namespace runs on <strong>worker1</strong> (<code>192.168.1.221</code>), connects to the WireGuard mesh, and advertises <code>192.168.1.0/24</code> as a route. This makes all cluster services reachable from any NetBird-connected device.</p>
+<p>The <code>netbird-peer</code> StatefulSet in the <code>netbird</code> namespace has no <code>nodeSelector</code> — it
+floats to any available worker for resilience. It connects to the WireGuard mesh, and advertises <code>192.168.1.0/24</code> as a route. This makes all cluster services reachable from any NetBird-connected device.</p>
 <p>See <a href="/workloads/networking/netbird-peer/">NetBird Peer</a> for full configuration details, PVC persistence notes, MASQUERADE initContainer, and the Cilium <code>wt0</code> constraint.</p>
 <hr />
 <h2 id="netbird-reverse-proxy-proxy-madhan-app">NetBird Reverse Proxy (<code>*.proxy.madhan.app</code>)</h2>
@@ -1166,7 +1191,19 @@ disconnected duplicates under <strong>Peers</strong> and re-assign the route.</p
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1275,7 +1312,7 @@ disconnected duplicates under <strong>Peers</strong> and re-assign the route.</p
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1338,7 +1375,7 @@ disconnected duplicates under <strong>Peers</strong> and re-assign the route.</p
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1490,11 +1527,11 @@ disconnected duplicates under <strong>Peers</strong> and re-assign the route.</p
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1506,11 +1543,11 @@ disconnected duplicates under <strong>Peers</strong> and re-assign the route.</p
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

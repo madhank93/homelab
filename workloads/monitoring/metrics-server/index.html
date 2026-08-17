@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -543,21 +576,22 @@
         </h1>
         <p class="text-gray-500">Kubernetes Metrics Server — required for kubectl top, HPA, and Headlamp resource views.</p>
     </div>
-    <h2 id="what-is-metrics-server">What is Metrics Server?</h2>
-<p><a rel="external" href="https://github.com/kubernetes-sigs/metrics-server">Metrics Server</a> is a cluster-wide aggregator of resource usage data. It collects CPU and memory metrics from kubelets and exposes them via the Kubernetes Metrics API (<code>metrics.k8s.io</code>).</p>
-<p>Metrics Server is <strong>not</strong> a monitoring solution — it only keeps the most recent data point per pod/node and does not persist history. For historical metrics, VictoriaMetrics is used.</p>
-<h2 id="why-it-s-needed">Why It's Needed</h2>
-<p>Several Kubernetes features depend on the Metrics API:</p>
-<table><thead><tr><th>Feature</th><th>Needs Metrics Server</th></tr></thead><tbody>
-<tr><td><code>kubectl top nodes</code></td><td>Yes</td></tr>
-<tr><td><code>kubectl top pods</code></td><td>Yes</td></tr>
-<tr><td>HPA (Horizontal Pod Autoscaler)</td><td>Yes</td></tr>
-<tr><td>Headlamp resource views</td><td>Yes</td></tr>
-<tr><td>VPA (Vertical Pod Autoscaler)</td><td>Yes</td></tr>
+    <p><a rel="external" href="https://github.com/kubernetes-sigs/metrics-server">Metrics Server</a> serves the
+Kubernetes Metrics API (<code>metrics.k8s.io</code>) by scraping CPU and memory from the
+kubelets. It keeps only the latest data point and stores no history — anything
+historical comes from
+<a href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics/">VictoriaMetrics</a> instead.</p>
+<p>Without it, <code>kubectl top</code> returns <code>error: Metrics API not available</code>, Headlamp
+shows no resource usage, and any HPA or VPA has nothing to scale on.</p>
+<p>It is deployed as a CDK8s chart into <code>kube-system</code> with two flags that Talos
+specifically requires:</p>
+<table><thead><tr><th>Flag</th><th>Why</th></tr></thead><tbody>
+<tr><td><code>--kubelet-insecure-tls</code></td><td>Talos kubelets serve self-signed certificates, which the default config rejects</td></tr>
+<tr><td><code>--kubelet-preferred-address-types=InternalIP</code></td><td>Node hostnames do not resolve in-cluster</td></tr>
 </tbody></table>
-<p>Without Metrics Server, <code>kubectl top</code> returns <code>error: Metrics API not available</code> and Headlamp cannot show pod CPU/memory usage.</p>
-<h2 id="how-it-s-deployed">How It's Deployed</h2>
-<p>Metrics Server is typically deployed via the Talos cluster bootstrap or as a separate workload. On Talos Linux, the default installation may need the <code>--kubelet-insecure-tls</code> flag because Talos kubelets use self-signed certificates.</p>
+<p>Source: 
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;monitoring&#x2F;metrics_server.go"><code>workloads&amp;#x2F;monitoring&amp;#x2F;metrics_server.go</code></a>
+</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Verify Metrics Server is running</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get deployment metrics-server</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system</span></span>
 <span class="giallo-l"></span>
@@ -723,24 +757,6 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/metrics-server/#what-is-metrics-server" class="toc-link">What is Metrics Server?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/monitoring/metrics-server/#why-it-s-needed" class="toc-link">Why It&#x27;s Needed</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/monitoring/metrics-server/#how-it-s-deployed" class="toc-link">How It&#x27;s Deployed</a>
-                    
-                </li>
-            
-                <li>
-                    
                     <a href="https://homelab.madhan.app/workloads/monitoring/metrics-server/#relationship-to-observability-stack" class="toc-link">Relationship to Observability Stack</a>
                     
                 </li>
@@ -856,7 +872,19 @@
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -965,7 +993,7 @@
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1028,7 +1056,7 @@
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1180,11 +1208,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1196,11 +1224,11 @@
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

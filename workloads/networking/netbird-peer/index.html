@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -570,7 +603,7 @@
 <li>Without persistence, every pod restart generates a new private key → new peer registration in NetBird Management → accumulating duplicate peers in the UI</li>
 <li>StatefulSet + PVC ensures the same peer identity is reused across restarts</li>
 </ul>
-<p>A simple Deployment would create a new peer registration on every restart (e.g., every ArgoCD sync that changes the pod spec), filling the NetBird Management UI with ghost peers.</p>
+<p>A simple Deployment would create a new peer registration on every restart (e.g., every Argo CD sync that changes the pod spec), filling the NetBird Management UI with ghost peers.</p>
 <hr />
 <h2 id="configuration">Configuration</h2>
 <table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody>
@@ -595,9 +628,12 @@
 <hr />
 <h2 id="masquerade-initcontainer">MASQUERADE initContainer</h2>
 <p>The StatefulSet includes an <code>initContainer</code> that adds an iptables rule before the NetBird agent starts:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">iptables</span><span style="color: #95E6CB;"> -t</span><span style="color: #AAD94C;"> nat</span><span style="color: #95E6CB;"> -C</span><span style="color: #AAD94C;"> POSTROUTING</span><span style="color: #95E6CB;"> -s</span><span style="color: #AAD94C;"> 100.109.0.0/16</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> 192.168.1.0/24</span><span style="color: #95E6CB;"> -j</span><span style="color: #AAD94C;"> MASQUERADE</span><span style="color: #F29668;"> 2&gt;</span><span style="color: #AAD94C;">/dev/null</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #F29668;">  ||</span><span style="color: #59C2FF;"> iptables</span><span style="color: #95E6CB;"> -t</span><span style="color: #AAD94C;"> nat</span><span style="color: #95E6CB;"> -A</span><span style="color: #AAD94C;"> POSTROUTING</span><span style="color: #95E6CB;"> -s</span><span style="color: #AAD94C;"> 100.109.0.0/16</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> 192.168.1.0/24</span><span style="color: #95E6CB;"> -j</span><span style="color: #AAD94C;"> MASQUERADE</span></span></code></pre>
-<p>The <code>-C</code> check prevents duplicate rules on pod restart. This rule ensures that traffic from Bifrost's WireGuard IP range (<code>100.109.x.x</code>) destined for the cluster LAN gets source-NAT'd to the worker node's IP, allowing cluster nodes to send replies back via normal LAN routing.</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">iptables</span><span style="color: #95E6CB;"> -t</span><span style="color: #AAD94C;"> nat</span><span style="color: #95E6CB;"> -C</span><span style="color: #AAD94C;"> POSTROUTING</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> ens18</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> 192.168.1.0/24</span><span style="color: #95E6CB;"> -j</span><span style="color: #AAD94C;"> MASQUERADE</span><span style="color: #F29668;"> 2&gt;</span><span style="color: #AAD94C;">/dev/null</span><span style="color: #95E6CB;"> \</span></span>
+<span class="giallo-l"><span style="color: #F29668;">  ||</span><span style="color: #59C2FF;"> iptables</span><span style="color: #95E6CB;"> -t</span><span style="color: #AAD94C;"> nat</span><span style="color: #95E6CB;"> -A</span><span style="color: #AAD94C;"> POSTROUTING</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> ens18</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> 192.168.1.0/24</span><span style="color: #95E6CB;"> -j</span><span style="color: #AAD94C;"> MASQUERADE</span></span></code></pre>
+<p>The rule matches on the <strong>outbound interface</strong> (<code>-o ens18</code>), not a source range: anything
+leaving the node toward the cluster LAN is source-NAT'd to that node's own IP, so
+replies come back via normal LAN routing instead of trying to find the WireGuard
+overlay. The <code>-C</code> check makes it idempotent across pod restarts.</p>
 <p>In practice the actual NAT is performed by Cilium's <code>CILIUM_POST_nat</code> BPF chain, not the raw iptables rule. Both coexist without conflict.</p>
 <hr />
 <h2 id="cilium-constraint-wt0-must-not-be-in-devices">Cilium Constraint — wt0 Must NOT Be in Devices</h2>
@@ -1020,7 +1056,19 @@ relay connection never establishes.</p>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1129,7 +1177,7 @@ relay connection never establishes.</p>
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1192,7 +1240,7 @@ relay connection never establishes.</p>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1344,11 +1392,11 @@ relay connection never establishes.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1360,11 +1408,11 @@ relay connection never establishes.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

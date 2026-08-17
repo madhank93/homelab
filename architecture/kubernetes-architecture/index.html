@@ -468,6 +468,39 @@
     
     
     <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/troubleshooting">
+          
+
+
+
+<span class="icon " aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc. --><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8l0 378.1C394 378 431.1 230.1 432 141.4L256 66.8s0 0 0 0z"/></svg>
+  </span>
+
+
+          Troubleshooting
+        </a>
+    </li>
+    
+    
+    
+    <li>
+        <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/glossary">
+          
+
+
+
+<span class="icon " aria-hidden="true"
+    style="-webkit-mask-image: url('https://homelab.madhan.app/icons/book.svg'); mask-image: url('https://homelab.madhan.app/icons/book.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; display: inline-block; width: 1em; height: 1em;"></span>
+
+
+          Glossary
+        </a>
+    </li>
+    
+    
+    
+    <li>
         <a class="btn btn-ghost hover:no-underline justify-end w-full" href="https://homelab.madhan.app/development">
           
 
@@ -544,7 +577,7 @@
         <p class="text-gray-500">Node layout, CNI, platform services, and workload placement on the Talos cluster.</p>
     </div>
     <h2 id="overview">Overview</h2>
-<p>Three Talos control-plane nodes sit behind a KubeVIP virtual IP. Four worker nodes run all workloads. <strong>Cilium</strong> handles CNI, Gateway API ingress, and L2 LoadBalancer announcements. <strong>ArgoCD</strong> syncs all apps via GitOps.</p>
+<p>Three Talos control-plane nodes share a virtual IP. Four worker nodes run all workloads. <strong>Cilium</strong> handles CNI, Gateway API ingress, and L2 LoadBalancer announcements. <strong>Argo CD</strong> syncs all apps via GitOps.</p>
 <hr />
 <h2 id="node-inventory">Node Inventory</h2>
 <table><thead><tr><th>Name</th><th>Role</th><th>IP</th><th>CPU</th><th>RAM</th><th>Storage</th></tr></thead><tbody>
@@ -555,103 +588,64 @@
 <tr><td><code>k8s-worker2</code></td><td>Worker</td><td>192.168.1.222</td><td>4 vCPU</td><td>14 GiB</td><td>200 GiB</td></tr>
 <tr><td><code>k8s-worker3</code></td><td>Worker</td><td>192.168.1.223</td><td>4 vCPU</td><td>14 GiB</td><td>200 GiB</td></tr>
 <tr><td><code>k8s-worker4</code></td><td>Worker + GPU</td><td>192.168.1.224</td><td>8 vCPU</td><td>16 GiB</td><td>250 GiB + RTX 5070 Ti</td></tr>
-<tr><td><strong>KubeVIP</strong></td><td>Virtual IP</td><td>192.168.1.210</td><td>—</td><td>—</td><td>Floats across control-plane nodes</td></tr>
+<tr><td><strong>Talos VIP</strong></td><td>Virtual IP</td><td>192.168.1.210</td><td>—</td><td>—</td><td>Floats across control-plane nodes</td></tr>
 <tr><td><strong>Cilium L2 LB</strong></td><td>LoadBalancer pool</td><td>192.168.1.220–230</td><td>—</td><td>—</td><td>Assigned per LoadBalancer Service</td></tr>
 </tbody></table>
 <hr />
 <h2 id="cluster-diagram">Cluster Diagram</h2>
 <pre class="mermaid border border-gray-500/15">
  flowchart TB
-    subgraph INTERNET[&quot;Internet&quot;]
-        USER[&quot;Browser &#x2F; Client&quot;]
-        GH[&quot;GitHub\nrepo: madhank93&#x2F;homelab&quot;]
-        CF[&quot;Cloudflare DNS\n*.madhan.app&quot;]
-    end
-
-    subgraph BIFROST[&quot;Bifrost VPS · Hetzner · 178.156.199.250&quot;]
-        TRF[&quot;Traefik\nTLS termination + ForwardAuth&quot;]
-        AUTH[&quot;Authentik\nOIDC &#x2F; SSO broker&quot;]
-        NBS[&quot;NetBird\nManagement + Signal + Relay&quot;]
-        NBA[&quot;netbird-agent\nWireGuard routing peer\n→ advertises 192.168.1.0&#x2F;24&quot;]
-    end
-
     subgraph LAN[&quot;On-Prem LAN · 192.168.1.0&#x2F;24&quot;]
         subgraph CP[&quot;Control Plane · Talos&quot;]
-            VIP[&quot;KubeVIP\n192.168.1.210:6443&quot;]
-            CP1[&quot;controller1\n.211&quot;]
-            CP2[&quot;controller2\n.212&quot;]
-            CP3[&quot;controller3\n.213&quot;]
+            VIP[&quot;Talos VIP&lt;br&#x2F;&gt;192.168.1.210:6443&quot;]
+            CP1[&quot;controller1 · .211&quot;]
+            CP2[&quot;controller2 · .212&quot;]
+            CP3[&quot;controller3 · .213&quot;]
             VIP --- CP1 &amp; CP2 &amp; CP3
         end
 
-        subgraph PLT[&quot;Platform Layer&quot;]
-            CIL[&quot;Cilium\nCNI · kube-proxy replacement\nL2 LB 192.168.1.220–230\nGateway API&quot;]
-            CERT[&quot;cert-manager\nCloudflare DNS-01\nwildcard TLS&quot;]
-            ARGO[&quot;Argo CD\nApplicationSet → v0.1.7-manifests&quot;]
-        end
-
-        subgraph SECRETS[&quot;Secrets Layer&quot;]
-            OB[&quot;OpenBao\nVault-compatible KV&quot;]
-            CSI[&quot;CSI Secrets Store\nfile mounts + k8s Secrets&quot;]
-        end
-
-        subgraph STORAGE[&quot;Storage&quot;]
-            LONG[&quot;Longhorn\nReplicated block storage&quot;]
-            CNPG[&quot;CloudNativePG\nPostgreSQL operator&quot;]
-        end
-
         subgraph WORKERS[&quot;Workers · k8s-worker1–3&quot;]
-            OBS[&quot;Observability\nVictoriaMetrics · VictoriaLogs\nGrafana · OTel&quot;]
-            SEC[&quot;Security\nFalco · Kyverno · Trivy&quot;]
-            APPS[&quot;Applications\nn8n · Harbor · Headlamp\nOpenBao · NetBird peer&quot;]
+            W1[&quot;worker1 · .221&quot;]
+            W2[&quot;worker2 · .222&quot;]
+            W3[&quot;worker3 · .223&quot;]
         end
 
-        subgraph GPU[&quot;k8s-worker4 · RTX 5070 Ti&quot;]
-            AI[&quot;AI Workloads\nOllama · ComfyUI\nKubeflow&quot;]
-            NVIDIA[&quot;NVIDIA Device Plugin\nDCGM Exporter&quot;]
+        subgraph GPU[&quot;GPU node · k8s-worker4 · .224&quot;]
+            W4[&quot;RTX 5070 Ti&lt;br&#x2F;&gt;dedicated=ai:NoSchedule&quot;]
         end
     end
 
-    subgraph GITOPS[&quot;GitOps · GitHub&quot;]
-        SRC[&quot;release branch\nPulumi + CDK8s source&quot;]
-        MFST[&quot;v0.1.7-manifests branch\nSynthesized YAML&quot;]
-        GHA[&quot;GitHub Actions\ncdk8s synth + publish&quot;]
-    end
-
-    USER --&gt;|&quot;HTTPS&quot;| CF
-    CF --&gt;|&quot;public services\nauth&#x2F;netbird&#x2F;grafana&quot;| TRF
-    CF --&gt;|&quot;LAN services via VPN\nharbor&#x2F;headlamp&#x2F;etc&quot;| CIL
-    TRF --&gt;|&quot;ForwardAuth&quot;| AUTH
-    TRF --&gt;|&quot;proxy via NetBird\nWireGuard tunnel&quot;| CIL
-    NBA &lt;--&gt;|&quot;WireGuard mesh&quot;| APPS
-    NBS --- NBA
-    GH --- SRC
-    SRC --&gt;|&quot;push triggers&quot;| GHA
-    GHA --&gt;|&quot;publishes&quot;| MFST
-    MFST --&gt;|&quot;ArgoCD watches&quot;| ARGO
-    ARGO --&gt;|&quot;syncs&quot;| WORKERS &amp; GPU &amp; SECRETS &amp; STORAGE
-    VIP --&gt; CIL
-    CIL --&gt; WORKERS &amp; GPU
-    CERT --&gt;|&quot;ACME DNS-01&quot;| CF
-    OB --&gt; CSI
-    CSI --&gt;|&quot;volume mounts&quot;| WORKERS &amp; GPU &amp; APPS
-    LONG --&gt; WORKERS &amp; GPU
-    CNPG --&gt; WORKERS
+    CP --&gt; WORKERS
+    CP --&gt; GPU
 </pre>
+<p>The three control planes share a VIP provided by Talos itself. Workers 1–3 carry
+the general workloads and Longhorn replicas; worker4 is tainted so only GPU work
+lands on it — see <a href="https://homelab.madhan.app/hardware/gpu/">GPU</a>.</p>
+<p>Two flows cross this topology, each drawn in full on its own page:</p>
+<ul>
+<li><strong>Inbound requests</strong> — Cloudflare → Bifrost or the LAN gateway → Cilium → pod.
+See <a href="https://homelab.madhan.app/architecture/network-flow/">Network Flow</a>.</li>
+<li><strong>Deployments</strong> — source branch → GitHub Actions → manifests branch → Argo CD.
+See <a href="https://homelab.madhan.app/architecture/gitops-flow/">GitOps Flow</a>.</li>
+</ul>
 <hr />
 <h2 id="talos-configuration">Talos Configuration</h2>
 <p>Talos Linux is provisioned by Pulumi (<code>core/platform/talos.go</code>). Each role gets a machine config with role-specific patches:</p>
 <table><thead><tr><th>Patch</th><th>Controller</th><th>Worker</th><th>Worker4 (GPU)</th></tr></thead><tbody>
-<tr><td><code>controlplane.patch.yaml</code></td><td>✓</td><td>—</td><td>—</td></tr>
-<tr><td><code>worker.patch.yaml</code></td><td>—</td><td>✓</td><td>✓</td></tr>
-<tr><td><code>nvidia.patch.yaml</code></td><td>—</td><td>—</td><td>✓</td></tr>
+<tr><td><code>cpPatch</code></td><td>✓</td><td>—</td><td>—</td></tr>
+<tr><td><code>workerPatch</code></td><td>—</td><td>✓</td><td>—</td></tr>
+<tr><td><code>gpuWorkerPatch</code></td><td>—</td><td>—</td><td>✓</td></tr>
 </tbody></table>
+<p>These are inline Go strings in 
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;talos.go"><code>core&amp;#x2F;platform&amp;#x2F;talos.go</code></a>
+, not
+separate YAML files.</p>
 <p><strong>Talos image schematics</strong> (from factory.talos.dev):</p>
 <table><thead><tr><th>Schematic</th><th>Extensions</th><th>Used by</th></tr></thead><tbody>
-<tr><td>Base</td><td><code>iscsi-tools</code>, <code>qemu-guest-agent</code></td><td>All nodes</td></tr>
-<tr><td>GPU</td><td>Base + <code>nvidia-container-toolkit</code></td><td><code>k8s-worker4</code></td></tr>
+<tr><td>Base</td><td><code>iscsi-tools</code>, <code>util-linux-tools</code>, <code>qemu-guest-agent</code></td><td>All nodes</td></tr>
+<tr><td>GPU</td><td>Base + <code>nvidia-container-toolkit</code>, <code>nvidia-open-gpu-kernel-modules</code></td><td><code>k8s-worker4</code></td></tr>
 </tbody></table>
-<p>The cluster endpoint is <code>https://192.168.1.210:6443</code> (KubeVIP).</p>
+<p>The cluster endpoint is <code>https://192.168.1.210:6443</code> (Talos VIP).</p>
 <hr />
 <h2 id="cilium-gateway-api">Cilium + Gateway API</h2>
 <p>Cilium handles both CNI and north-south ingress via the Gateway API:</p>
@@ -932,7 +926,19 @@ version of everything named above.</p>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
@@ -1041,7 +1047,7 @@ version of everything named above.</p>
                         <ul>
                             
                             
-                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">ArgoCD</a></li>
+                                <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/argocd">Argo CD</a></li>
                             
                                 <li ><a class="hover:no-underline" href="https://homelab.madhan.app/platform/cdk8s">CDK8s</a></li>
                             
@@ -1104,7 +1110,7 @@ version of everything named above.</p>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/grafana">Grafana</a></li>
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">ArgoCD Monitor</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor">Argo CD Monitor</a></li>
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/monitoring/victoria-metrics">VictoriaMetrics</a></li>
                                                 
@@ -1256,11 +1262,11 @@ version of everything named above.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
                                                 
                                                 
                                             </ul>
@@ -1272,11 +1278,11 @@ version of everything named above.</p>
                                 <li>
                                     
                                         <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
                                             <ul>
                                                 
                                                 
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
