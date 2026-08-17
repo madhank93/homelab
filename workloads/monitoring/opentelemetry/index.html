@@ -607,7 +607,7 @@
 <span class="giallo-l"><span style="color: #39BAE6;">  logs</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">    receivers</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">filelog</span><span>]</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">    processors</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">memory_limiter</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> k8sattributes</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> batch</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    exporters</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">otlphttp/logs</span><span>]</span><span style="color: #5A6673;font-style: italic;">     # → VictoriaLogs</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">    exporters</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">otlp_http/logs</span><span>]</span><span style="color: #5A6673;font-style: italic;">     # → VictoriaLogs</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">  metrics</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">    receivers</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">kubeletstats</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> hostmetrics</span><span>]</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">    processors</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">memory_limiter</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> k8sattributes</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> batch</span><span>]</span></span>
@@ -629,10 +629,10 @@
 <span class="giallo-l"><span style="color: #39BAE6;">  logs</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">    receivers</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">k8sobjects</span><span>]</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">    processors</span><span style="color: #BFBDB6B3;">:</span><span> [</span><span style="color: #AAD94C;">memory_limiter</span><span style="color: #BFBDB6B3;">,</span><span style="color: #AAD94C;"> batch</span><span>]</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">    exporters</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">otlphttp/logs</span><span>]</span></span></code></pre><h2 id="exporter-endpoints">Exporter Endpoints</h2>
+<span class="giallo-l"><span style="color: #39BAE6;">    exporters</span><span style="color: #BFBDB6B3;">:</span><span>  [</span><span style="color: #AAD94C;">otlp_http/logs</span><span>]</span></span></code></pre><h2 id="exporter-endpoints">Exporter Endpoints</h2>
 <table><thead><tr><th>Exporter</th><th>Endpoint</th><th>Data</th></tr></thead><tbody>
 <tr><td><code>prometheusremotewrite</code></td><td><code>http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428/api/v1/write</code></td><td>Metrics</td></tr>
-<tr><td><code>otlphttp/logs</code></td><td><code>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry</code></td><td>Logs</td></tr>
+<tr><td><code>otlp_http/logs</code></td><td><code>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry</code></td><td>Logs</td></tr>
 </tbody></table>
 <h2 id="common-processors">Common Processors</h2>
 <table><thead><tr><th>Processor</th><th>Config</th><th>Purpose</th></tr></thead><tbody>
@@ -1196,6 +1196,70 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1231,70 +1295,6 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

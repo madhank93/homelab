@@ -100,7 +100,7 @@
 
     
         
-            <meta name="description" content="Headless metrics Services and ServiceMonitors for Argo CD component scraping by VMAgent." />
+            <meta name="description" content="Metrics Services, ServiceMonitors, and the TLS certificate that Argo CD&#x27;s own chart does not ship." />
         
     
 
@@ -111,14 +111,14 @@
 
       <!-- SEO: Open Graph / Twitter Card -->
       <meta property="og:title" content="Argo CD Monitor | Homelab" />
-      <meta property="og:description" content="Headless metrics Services and ServiceMonitors for Argo CD component scraping by VMAgent." />
+      <meta property="og:description" content="Metrics Services, ServiceMonitors, and the TLS certificate that Argo CD&#x27;s own chart does not ship." />
       <meta property="og:url" content="https://homelab.madhan.app" />
       <meta property="og:type" content="website" />
       
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Argo CD Monitor" />
-      <meta name="twitter:description" content="Headless metrics Services and ServiceMonitors for Argo CD component scraping by VMAgent." />
+      <meta name="twitter:description" content="Metrics Services, ServiceMonitors, and the TLS certificate that Argo CD&#x27;s own chart does not ship." />
       
       
       
@@ -574,12 +574,12 @@
             Argo CD Monitor
             
         </h1>
-        <p class="text-gray-500">Headless metrics Services and ServiceMonitors for Argo CD component scraping by VMAgent.</p>
+        <p class="text-gray-500">Metrics Services, ServiceMonitors, and the TLS certificate that Argo CD&#x27;s own chart does not ship.</p>
     </div>
-    <h2 id="what-is-argo-cd-monitor">What is Argo CD Monitor?</h2>
-<p>Argo CD Monitor is a small CDK8s chart that creates the missing metrics plumbing for Argo CD. Argo CD's Helm chart does not expose metrics Services by default, so VMAgent cannot scrape any Argo CD component. This chart fills that gap.</p>
-<h2 id="why-argo-cd-monitor">Why Argo CD Monitor?</h2>
-<p>Argo CD is deployed by Pulumi in the platform layer. Its Helm chart disables metrics services by default. Rather than forking the Helm values or patching the platform layer, this workloads-layer chart adds the four headless metrics Services and matching ServiceMonitors so VMAgent discovers and scrapes them without any changes to the Argo CD deployment itself.</p>
+    <p>A small CDK8s chart that supplies two things Argo CD's own Helm chart does not.</p>
+<p>Argo CD is installed by Pulumi in the platform layer, and its chart ships no
+metrics Services, so VMAgent has nothing to scrape. Adding them from the workloads
+layer avoids forking the Helm values or touching the platform stack.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
 <p>Four Argo CD components are scraped:</p>
 <table><thead><tr><th>Component</th><th>Metrics Port</th></tr></thead><tbody>
@@ -588,7 +588,15 @@
 <tr><td><code>argocd-repo-server</code></td><td>8084</td></tr>
 <tr><td><code>argocd-applicationset-controller</code></td><td>8085</td></tr>
 </tbody></table>
-<p>For each component, a <code>Service</code> and a <code>ServiceMonitor</code> are created in the <code>argocd</code> namespace. The Service selects Argo CD pods by <code>app.kubernetes.io/name</code>, and the ServiceMonitor selects the Service by a <code>-metrics</code> label suffix.</p>
+<p>For each component, a <code>Service</code> and a <code>ServiceMonitor</code> are created in the <code>argocd</code>
+namespace. The Service selects Argo CD pods by <code>app.kubernetes.io/name</code>, and the
+ServiceMonitor selects the Service by a <code>-metrics</code> label suffix.</p>
+<h2 id="tls-certificate">TLS certificate</h2>
+<p>The same chart requests a cert-manager <code>Certificate</code> named <code>argocd-server-tls</code>
+(letsencrypt-prod, DNS-01 via Cloudflare, for <code>argocd.madhan.app</code>). Argo CD
+auto-detects a Secret of that name and serves it instead of its self-signed
+certificate, which clears the browser TLS warning without exposing Argo CD
+publicly.</p>
 <p>Source: 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;observability&#x2F;argocd_monitor.go"><code>workloads&amp;#x2F;observability&amp;#x2F;argocd_monitor.go</code></a>
 </p>
@@ -696,19 +704,13 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor/#what-is-argo-cd-monitor" class="toc-link">What is Argo CD Monitor?</a>
-                    
-                </li>
-            
-                <li>
-                    
-                    <a href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor/#why-argo-cd-monitor" class="toc-link">Why Argo CD Monitor?</a>
-                    
-                </li>
-            
-                <li>
-                    
                     <a href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor/#how-it-s-used-here" class="toc-link">How It&#x27;s Used Here</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/workloads/monitoring/argocd-monitor/#tls-certificate" class="toc-link">TLS certificate</a>
                     
                 </li>
             
@@ -1104,6 +1106,70 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1139,70 +1205,6 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>

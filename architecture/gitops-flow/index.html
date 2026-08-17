@@ -595,7 +595,7 @@
     subgraph PULUMI[&quot;Pulumi — manual, laptop only&quot;]
         direction LR
         PUL_T[&quot;just core talos up&lt;br&#x2F;&gt;Proxmox VMs + Talos bootstrap&quot;]
-        PUL_P[&quot;just core platform up&lt;br&#x2F;&gt;Gateway API · HTTPRoutes · cert-manager&quot;]
+        PUL_P[&quot;just core platform up&lt;br&#x2F;&gt;Cilium · Gateway API · IP pool&lt;br&#x2F;&gt;cert-manager · Argo CD&quot;]
         PUL_H[&quot;just core hetzner up&lt;br&#x2F;&gt;Hetzner VPS + bootstrap.sh&lt;br&#x2F;&gt;NetBird + Traefik + Authentik&quot;]
         PUL_A[&quot;just core authentik up&lt;br&#x2F;&gt;OIDC apps · GitHub OAuth&lt;br&#x2F;&gt;ForwardAuth outpost&quot;]
         PUL_C[&quot;just core cloudflare up&lt;br&#x2F;&gt;DNS records for all services&quot;]
@@ -636,8 +636,8 @@
 <span class="giallo-l"><span style="color: #AAD94C;">  sops exec-env secrets/bootstrap.sops.yaml</span><span style="color: #95E6CB;"> \</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">  &#39;pulumi stack select &lt;stack&gt; &amp;&amp; pulumi up --yes&#39;</span></span></code></pre><h3 id="stacks">Stacks</h3>
 <table><thead><tr><th>Stack</th><th>Command</th><th>Manages</th></tr></thead><tbody>
-<tr><td><code>talos</code></td><td><code>just core talos up</code></td><td>Proxmox VMs, Talos bootstrap, Cilium CNI, Argo CD</td></tr>
-<tr><td><code>platform</code></td><td><code>just core platform up</code></td><td>Gateway API, IP pools, HTTPRoutes, cert-manager</td></tr>
+<tr><td><code>talos</code></td><td><code>just core talos up</code></td><td>Proxmox VMs and Talos cluster bootstrap</td></tr>
+<tr><td><code>platform</code></td><td><code>just core platform up</code></td><td>Cilium CNI, Gateway API + IP pool, cert-manager, Argo CD</td></tr>
 <tr><td><code>hetzner</code></td><td><code>just core hetzner up</code></td><td>Hetzner VPS, Bifrost config, <code>bootstrap.sh</code> execution</td></tr>
 <tr><td><code>authentik</code></td><td><code>just core authentik up</code></td><td>Authentik OIDC apps, GitHub OAuth, ForwardAuth outpost</td></tr>
 <tr><td><code>cloudflare</code></td><td><code>just core cloudflare up</code></td><td>DNS A records for all public hostnames</td></tr>
@@ -1223,6 +1223,70 @@
                                 <li>
                                     
                                         <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
                                             <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/management">Management</a></summary>
                                             <ul>
                                                 
@@ -1258,70 +1322,6 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry">Registry</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/registry/harbor">Harbor</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation">Automation</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/automation/n8n">n8n</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage">Storage</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/storage/longhorn">Longhorn</a></li>
-                                                
-                                                
-                                            </ul>
-                                        </details>
-                                    
-                                </li>
-                            
-                                
-                                <li>
-                                    
-                                        <details open>
-                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking">Networking</a></summary>
-                                            <ul>
-                                                
-                                                
-                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/networking/netbird-peer">NetBird Peer</a></li>
                                                 
                                                 
                                             </ul>
