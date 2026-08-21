@@ -595,7 +595,7 @@
 <h2 id="why-ollama">Why Ollama?</h2>
 <p>Ollama is the simplest way to run local LLMs on a GPU. It handles model quantization, GPU memory management, and serves an OpenAI-compatible API that works with any client that supports the OpenAI SDK (Python, TypeScript, etc.). The Helm chart provides native Kubernetes integration.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Ollama runs on k8s-worker4 (the GPU node, <code>192.168.1.224</code>) using the RTX 5070 Ti for inference. It stores downloaded model files on a 100 Gi Longhorn PVC.</p>
+<p>Ollama runs on k8s-worker4 (the GPU node, <code>192.168.1.224</code>) using the RTX 5070 Ti for inference. It stores downloaded model files on a 40 Gi Longhorn PVC.</p>
 <p>Source: 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;ai&#x2F;ollama.go"><code>workloads&#x2F;ai&#x2F;ollama.go</code></a>
 </p>
@@ -605,7 +605,8 @@
 <tr><td>Image</td><td><code>ollama/ollama</code></td><td>Tag deliberately unset — tracks the chart's appVersion</td></tr>
 <tr><td>HTTPRoute</td><td><code>ollama.madhan.app</code> → <code>ollama:11434</code></td><td>Gateway API</td></tr>
 <tr><td>Service type</td><td><code>LoadBalancer</code></td><td>Also gets an IP from the Cilium L2 pool, for clients that cannot use the hostname</td></tr>
-<tr><td>Model PVC</td><td><code>100Gi</code></td><td>Pulled models survive pod and PVC recreation</td></tr>
+<tr><td>Model PVC</td><td><code>40Gi</code> on <code>longhorn-model-cache</code></td><td>Pulled models survive pod restarts</td></tr>
+<tr><td>PVC replicas</td><td><code>1</code>, <code>dataLocality: strict-local</code></td><td>Model blobs are a re-pullable cache; the single replica sits on the GPU node's own disk</td></tr>
 <tr><td><code>runtimeClassName</code></td><td><code>nvidia</code></td><td>Routes through nvidia-container-runtime</td></tr>
 <tr><td><code>NVIDIA_VISIBLE_DEVICES</code></td><td><code>all</code></td><td>Make all GPU devices visible</td></tr>
 <tr><td><code>nvidia.com/gpu</code> limit</td><td><code>1</code></td><td>One time-sliced virtual GPU</td></tr>
@@ -613,7 +614,7 @@
 <tr><td>Toleration</td><td><code>dedicated=ai:NoSchedule</code></td><td><strong>Required</strong> — worker4 is tainted, see <a href="https://homelab.madhan.app/hardware/gpu/#the-dedicated-ai-taint">GPU</a></td></tr>
 <tr><td>CPU limit</td><td><code>4000m</code></td><td>Ollama + ComfyUI both CPU-hungry at inference</td></tr>
 <tr><td>RAM request</td><td><code>4Gi</code></td><td>Host RAM for model metadata + process</td></tr>
-<tr><td>RAM limit</td><td><code>8Gi</code></td><td>With ComfyUI's 6Gi, stays under worker4's ~15.1Gi allocatable</td></tr>
+<tr><td>RAM limit</td><td><code>12Gi</code></td><td>The executor's 13.8 GB GGUF is mmap'd on load and charged to this cgroup. ComfyUI rests at 0 replicas, so worker4's ~15.1Gi allocatable absorbs it</td></tr>
 </tbody></table>
 <blockquote>
 <p><strong>Note:</strong> <code>memory</code> here is the host RAM cgroup limit, <strong>not</strong> GPU VRAM. Nothing in
@@ -645,11 +646,15 @@ which is why ComfyUI ships scaled to zero. See
 <p>The otwld chart pulls models on boot, so a fresh pod arrives with the model
 already present rather than waiting on a manual <code>/api/pull</code>:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #AAD94C;">&quot;ollama&quot;</span><span>:</span><span style="color: #FF8F40;"> map</span><span>[</span><span style="color: #39BAE6;">string</span><span>]</span><span style="color: #59C2FF;">any</span><span>{</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">    &quot;models&quot;</span><span>:</span><span style="color: #FF8F40;"> map</span><span>[</span><span style="color: #39BAE6;">string</span><span>]</span><span style="color: #59C2FF;">any</span><span>{</span><span style="color: #AAD94C;">&quot;pull&quot;</span><span>: []</span><span style="color: #39BAE6;">string</span><span>{</span><span style="color: #AAD94C;">&quot;qwen2.5-coder:14b&quot;</span><span>}},</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">    &quot;models&quot;</span><span>:</span><span style="color: #FF8F40;"> map</span><span>[</span><span style="color: #39BAE6;">string</span><span>]</span><span style="color: #59C2FF;">any</span><span>{</span><span style="color: #AAD94C;">&quot;pull&quot;</span><span>: []</span><span style="color: #39BAE6;">string</span><span>{executorBaseModel}},</span></span>
 <span class="giallo-l"><span>},</span></span></code></pre>
-<p>It is idempotent and writes into the 100 Gi PVC, so it survives pod restarts.
-Add models by extending that list rather than pulling them by hand — a hand
-pulled model is lost the moment the PVC is recreated.</p>
+<p>It is idempotent and writes into the PVC, so it survives pod restarts. Add
+models by extending that list rather than pulling them by hand — a hand pulled
+model is lost the moment the PVC is recreated.</p>
+<p>The list can only <em>pull</em> published models. The <code>executor</code> model that the aider
+offload workflow targets is an <code>ollama create</code> layered on these base weights,
+and its Modelfile lives in the <code>local-ai-setup</code> repo — see
+<a href="https://homelab.madhan.app/workloads/ai/ollama/#local-model-offload">Local model offload</a> below.</p>
 <p>Ollama will fail to load a model while ComfyUI is holding VRAM. If a pull or a
 first inference fails for no clear reason, check whether ComfyUI is running —
 see <a href="https://homelab.madhan.app/hardware/gpu/#sharing-the-16-gb-of-vram">GPU</a>.</p>
@@ -659,8 +664,26 @@ see <a href="https://homelab.madhan.app/hardware/gpu/#sharing-the-16-gb-of-vram"
 <span class="giallo-l"><span>  → Ollama pod on k8s-worker4</span></span>
 <span class="giallo-l"><span>  → nvidia-container-runtime (GPU injection)</span></span>
 <span class="giallo-l"><span>  → RTX 5070 Ti (VRAM for model weights)</span></span>
-<span class="giallo-l"><span>  → 100Gi Longhorn PVC (model file storage)</span></span></code></pre><h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="model-pull-fails-oom">Model Pull Fails / OOM</h3>
+<span class="giallo-l"><span>  → 40Gi Longhorn PVC (model file storage)</span></span></code></pre><h2 id="local-model-offload">Local model offload</h2>
+<p><code>executor</code> is the model that aider targets from a laptop (<code>ollama/executor</code>,
+configured in <code>local-ai-setup</code>). It is not on the chart's pull list because it
+is built, not pulled:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># from the local-ai-setup repo, with OLLAMA_API_BASE pointing at this cluster</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">./ollama/sync-models.sh</span><span style="color: #95E6CB;"> --force</span></span></code></pre>
+<p>That runs <code>ollama create executor</code> against the base weights already in the PVC.
+It is a one-time step per volume — the built model persists like any other.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="models-disappear-after-a-pod-restart">Models Disappear After a Pod Restart</h3>
+<p><strong>Symptoms:</strong> <code>/api/tags</code> returns an empty list, or only the models named in the
+chart's <code>pull:</code> list. Anything built with <code>ollama create</code> is gone.</p>
+<p>The model directory is not on a PVC. The chart's key is <code>persistentVolume</code>, and
+an unrecognised key such as <code>persistence</code> is silently dropped — the chart then
+falls back to its default <code>emptyDir</code>, which is discarded with the pod.</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Must return a bound PVC, not &quot;No resources found&quot;</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> ollama get pvc</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Must be a PVC, not emptyDir</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> ollama get deploy ollama</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> jsonpath=&#39;{.spec.template.spec.volumes}&#39;</span></span></code></pre><h3 id="model-pull-fails-oom">Model Pull Fails / OOM</h3>
 <p><strong>Symptoms:</strong> Model pull command hangs or returns OOM error.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Check disk space on PVC</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> ollama</span><span style="color: #95E6CB;"> -l</span><span style="color: #AAD94C;"> app.kubernetes.io/name=ollama</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> df</span><span style="color: #95E6CB;"> -h</span><span style="color: #AAD94C;"> /root/.ollama</span></span>
@@ -810,11 +833,21 @@ see <a href="https://homelab.madhan.app/hardware/gpu/#sharing-the-16-gb-of-vram"
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/workloads/ai/ollama/#local-model-offload" class="toc-link">Local model offload</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <details class="toc-details" >
                         <summary>
                             <a href="https://homelab.madhan.app/workloads/ai/ollama/#troubleshooting" class="toc-link">Troubleshooting</a>
                         </summary>
                         <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/workloads/ai/ollama/#models-disappear-after-a-pod-restart" class="toc-link">Models Disappear After a Pod Restart</a>
+                                </li>
                             
                                 <li>
                                     <a href="https://homelab.madhan.app/workloads/ai/ollama/#model-pull-fails-oom" class="toc-link">Model Pull Fails &#x2F; OOM</a>
