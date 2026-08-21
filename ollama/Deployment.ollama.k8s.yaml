@@ -45,7 +45,7 @@ spec:
                       sleep 5
                     done
 
-                    /bin/ollama pull  qwen2.5-coder:14b
+                    /bin/ollama pull  hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q3_K_XL
           livenessProbe:
             failureThreshold: 6
             httpGet:
@@ -72,7 +72,7 @@ spec:
           resources:
             limits:
               cpu: 4000m
-              memory: 8Gi
+              memory: 12Gi
               nvidia.com/gpu: 1
             requests:
               cpu: 1000m
@@ -93,5 +93,6 @@ spec:
           operator: Equal
           value: ai
       volumes:
-        - emptyDir: {}
-          name: ollama-data
+        - name: ollama-data
+          persistentVolumeClaim:
+            claimName: ollama

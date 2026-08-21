@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/instance: ollama
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/version: 0.32.9
+    helm.sh/chart: ollama-1.74.0
+  name: ollama
+  namespace: ollama
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 40Gi
+  storageClassName: longhorn-model-cache
