@@ -14,7 +14,7 @@ Ollama is the simplest way to run local LLMs on a GPU. It handles model quantiza
 
 ## How It's Used Here
 
-Ollama runs on k8s-worker4 (the GPU node, `192.168.1.224`) using the RTX 5070 Ti for inference. It stores downloaded model files on a 100 Gi Longhorn PVC.
+Ollama runs on k8s-worker4 (the GPU node, `192.168.1.224`) using the RTX 5070 Ti for inference. It stores downloaded model files on a 40 Gi Longhorn PVC.
 
 Source: {{ src(path="workloads/ai/ollama.go") }}
 
@@ -26,7 +26,8 @@ Source: {{ src(path="workloads/ai/ollama.go") }}
 | Image | `ollama/ollama` | Tag deliberately unset — tracks the chart's appVersion |
 | HTTPRoute | `ollama.madhan.app` → `ollama:11434` | Gateway API |
 | Service type | `LoadBalancer` | Also gets an IP from the Cilium L2 pool, for clients that cannot use the hostname |
-| Model PVC | `100Gi` | Pulled models survive pod and PVC recreation |
+| Model PVC | `40Gi` on `longhorn-model-cache` | Pulled models survive pod restarts |
+| PVC replicas | `1`, `dataLocality: strict-local` | Model blobs are a re-pullable cache; the single replica sits on the GPU node's own disk |
 | `runtimeClassName` | `nvidia` | Routes through nvidia-container-runtime |
 | `NVIDIA_VISIBLE_DEVICES` | `all` | Make all GPU devices visible |
 | `nvidia.com/gpu` limit | `1` | One time-sliced virtual GPU |
@@ -34,7 +35,7 @@ Source: {{ src(path="workloads/ai/ollama.go") }}
 | Toleration | `dedicated=ai:NoSchedule` | **Required** — worker4 is tainted, see [GPU](@/hardware/gpu/index.md#the-dedicated-ai-taint) |
 | CPU limit | `4000m` | Ollama + ComfyUI both CPU-hungry at inference |
 | RAM request | `4Gi` | Host RAM for model metadata + process |
-| RAM limit | `8Gi` | With ComfyUI's 6Gi, stays under worker4's ~15.1Gi allocatable |
+| RAM limit | `12Gi` | The executor's 13.8 GB GGUF is mmap'd on load and charged to this cgroup. ComfyUI rests at 0 replicas, so worker4's ~15.1Gi allocatable absorbs it |
 
 > **Note:** `memory` here is the host RAM cgroup limit, **not** GPU VRAM. Nothing in
 > Kubernetes limits VRAM — `nvidia.com/gpu: 1` grants one time-sliced share of the
@@ -76,13 +77,18 @@ already present rather than waiting on a manual `/api/pull`:
 
 ```go
 "ollama": map[string]any{
-    "models": map[string]any{"pull": []string{"qwen2.5-coder:14b"}},
+    "models": map[string]any{"pull": []string{executorBaseModel}},
 },
 ```
 
-It is idempotent and writes into the 100 Gi PVC, so it survives pod restarts.
-Add models by extending that list rather than pulling them by hand — a hand
-pulled model is lost the moment the PVC is recreated.
+It is idempotent and writes into the PVC, so it survives pod restarts. Add
+models by extending that list rather than pulling them by hand — a hand pulled
+model is lost the moment the PVC is recreated.
+
+The list can only *pull* published models. The `executor` model that the aider
+offload workflow targets is an `ollama create` layered on these base weights,
+and its Modelfile lives in the `local-ai-setup` repo — see
+[Local model offload](#local-model-offload) below.
 
 Ollama will fail to load a model while ComfyUI is holding VRAM. If a pull or a
 first inference fails for no clear reason, check whether ComfyUI is running —
@@ -96,10 +102,41 @@ Browser / API client → ollama.madhan.app
   → Ollama pod on k8s-worker4
   → nvidia-container-runtime (GPU injection)
   → RTX 5070 Ti (VRAM for model weights)
-  → 100Gi Longhorn PVC (model file storage)
+  → 40Gi Longhorn PVC (model file storage)
 ```
 
+## Local model offload
+
+`executor` is the model that aider targets from a laptop (`ollama/executor`,
+configured in `local-ai-setup`). It is not on the chart's pull list because it
+is built, not pulled:
+
+```bash
+# from the local-ai-setup repo, with OLLAMA_API_BASE pointing at this cluster
+./ollama/sync-models.sh --force
+```
+
+That runs `ollama create executor` against the base weights already in the PVC.
+It is a one-time step per volume — the built model persists like any other.
+
 ## Troubleshooting
+
+### Models Disappear After a Pod Restart
+
+**Symptoms:** `/api/tags` returns an empty list, or only the models named in the
+chart's `pull:` list. Anything built with `ollama create` is gone.
+
+The model directory is not on a PVC. The chart's key is `persistentVolume`, and
+an unrecognised key such as `persistence` is silently dropped — the chart then
+falls back to its default `emptyDir`, which is discarded with the pod.
+
+```bash
+# Must return a bound PVC, not "No resources found"
+kubectl -n ollama get pvc
+
+# Must be a PVC, not emptyDir
+kubectl -n ollama get deploy ollama -o jsonpath='{.spec.template.spec.volumes}'
+```
 
 ### Model Pull Fails / OOM
 

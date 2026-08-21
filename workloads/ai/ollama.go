@@ -4,8 +4,19 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/workloads/imports/k8s"
 	"github.com/madhank93/homelab/workloads/imports/ollama"
 )
+
+// Base weights for the `executor` model used by the aider offload workflow.
+// Kept in sync with FROM in local-ai-setup/ollama/models/executor.Modelfile.
+const executorBaseModel = "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q3_K_XL"
+
+// Storage class for the Ollama model directory. Model blobs are a re-pullable
+// cache, so one local replica beats Longhorn's default three-way replication:
+// it keeps ~20GB off the other nodes' disks and keeps a 13.8GB model load off
+// the iSCSI path.
+const modelCacheStorageClass = "longhorn-model-cache"
 
 // NewOllamaChart deploys Ollama LLM inference server via the official Helm chart.
 //
@@ -23,6 +34,24 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 		"nvidia.com/gpu.present": "true",
 	}
 
+	k8s.NewKubeStorageClass(chart, jsii.String("model-cache-storageclass"), &k8s.KubeStorageClassProps{
+		Metadata: &k8s.ObjectMeta{
+			Name: jsii.String(modelCacheStorageClass),
+		},
+		Provisioner:          jsii.String("driver.longhorn.io"),
+		ReclaimPolicy:        jsii.String("Delete"),
+		AllowVolumeExpansion: jsii.Bool(true),
+		VolumeBindingMode:    jsii.String("Immediate"),
+		Parameters: &map[string]*string{
+			"numberOfReplicas": jsii.String("1"),
+			// strict-local pins the single replica to the pod's node, so the GPU
+			// node reads model files from its own disk.
+			"dataLocality":        jsii.String("strict-local"),
+			"staleReplicaTimeout": jsii.String("30"),
+			"fsType":              jsii.String("ext4"),
+		},
+	})
+
 	ollama.NewOllama(chart, jsii.String("ollama-release"), &ollama.OllamaProps{
 		ReleaseName: jsii.String("ollama"),
 		Namespace:   jsii.String(namespace),
@@ -35,8 +64,9 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 					"nvidia.com/gpu": 1,
 					// memory here is host RAM (cgroup limit), NOT GPU VRAM.
 					// GPU VRAM (16GB) is fully available via nvidia.com/gpu: 1.
-					// host RAM cgroup limit (worker4 allocatable ~15.1Gi); 8Gi headroom for 14b model load.
-					"memory": "8Gi",
+					// host RAM cgroup limit (worker4 allocatable ~15.1Gi). The executor's
+					// 13.8GB GGUF is mmap'd on load and those pages are charged here.
+					"memory": "12Gi",
 					"cpu":    "4000m",
 				},
 				"requests": map[string]any{
@@ -44,9 +74,14 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 					"cpu":    "1000m",
 				},
 			},
-			"persistence": map[string]any{
-				"enabled": true,
-				"size":    "100Gi",
+			// The chart's key is persistentVolume. An unrecognised key is silently
+			// dropped, and the model directory then falls back to the chart's default
+			// emptyDir — which wipes every model on pod restart.
+			"persistentVolume": map[string]any{
+				"enabled":      true,
+				"size":         "40Gi",
+				"storageClass": modelCacheStorageClass,
+				"accessModes":  []string{"ReadWriteOnce"},
 			},
 			"service": map[string]any{
 				"type": "LoadBalancer",
@@ -62,11 +97,13 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 			"extraEnv": []map[string]any{
 				{"name": "NVIDIA_VISIBLE_DEVICES", "value": "all"},
 			},
-			// Declarative model pull (otwld chart): pulled on boot into the 100Gi
-			// PVC, idempotent, survives pod/PVC recreation.
+			// Declarative pull of the executor's base weights into the PVC. The
+			// `executor` model itself is an `ollama create` layered on top of this
+			// base (Modelfile in the local-ai-setup repo); Helm values can pull a
+			// model but cannot build one.
 			"ollama": map[string]any{
 				"models": map[string]any{
-					"pull": []string{"qwen2.5-coder:14b"},
+					"pull": []string{executorBaseModel},
 				},
 			},
 		},
