@@ -96,6 +96,12 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 			"runtimeClassName": "nvidia",
 			"extraEnv": []map[string]any{
 				{"name": "NVIDIA_VISIBLE_DEVICES", "value": "all"},
+				// The KV cache is the only part of the footprint that grows with
+				// context, and on a 16GB card it is what decides how large a
+				// prompt the executor can take. q8_0 halves it; flash attention
+				// is what makes a quantised KV cache usable at all.
+				{"name": "OLLAMA_FLASH_ATTENTION", "value": "1"},
+				{"name": "OLLAMA_KV_CACHE_TYPE", "value": "q8_0"},
 			},
 			// Declarative pull of the executor's base weights into the PVC. The
 			// `executor` model itself is an `ollama create` layered on top of this
