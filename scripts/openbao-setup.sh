@@ -67,6 +67,12 @@ path "secret/data/netbird" {
 }
 POLICY
 
+$BAO policy write falco-policy - <<'POLICY'
+path "secret/data/falco" {
+  capabilities = ["read"]
+}
+POLICY
+
 # ---------------------------------------------------------------------------
 # K8s auth roles — bind ServiceAccount + namespace → policy
 # ---------------------------------------------------------------------------
@@ -100,6 +106,13 @@ $BAO write auth/kubernetes/role/netbird \
   policies=netbird-policy \
   ttl=1h
 
+# Falco: secret-sync pod that mirrors the falcosidekick UI login into a Secret
+$BAO write auth/kubernetes/role/falco \
+  bound_service_account_names=secret-sync \
+  bound_service_account_namespaces=falco \
+  policies=falco-policy \
+  ttl=1h
+
 # ---------------------------------------------------------------------------
 # Placeholder secrets — replace with real values before apps are deployed
 # ---------------------------------------------------------------------------
@@ -109,6 +122,9 @@ $BAO kv put -mount=secret grafana  ADMIN_PASSWORD="CHANGEME"
 $BAO kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD="CHANGEME"
 $BAO kv put -mount=secret n8n      DB_PASSWORD="CHANGEME"
 $BAO kv put -mount=secret netbird  NETBIRD_SETUP_KEY="CHANGEME"
+# Generated, never a placeholder: the UI is reachable on the LAN. Read it back with
+# `bao kv get -mount=secret falco`.
+$BAO kv put -mount=secret falco FALCOSIDEKICK_UI_USER="admin:$(openssl rand -base64 24 | tr -d '/+=')"
 
 echo ""
 echo "✅  OpenBao setup complete."

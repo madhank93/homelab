@@ -28,6 +28,92 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 		},
 	})
 
+	// The UI login comes from OpenBao, never from chart values: the chart renders
+	// webui.user into a Secret, and synth output is published to a public branch.
+	cdk8s.NewApiObject(chart, jsii.String("falco-spc"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
+		Kind:       jsii.String("SecretProviderClass"),
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("falco-secrets"),
+			Namespace: jsii.String(namespace),
+		},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+		"provider": "openbao",
+		"parameters": map[string]any{
+			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
+			"roleName":     "falco",
+			"objects": `- objectName: "FALCOSIDEKICK_UI_USER"
+  secretPath: "secret/data/falco"
+  secretKey: "FALCOSIDEKICK_UI_USER"`,
+		},
+		"secretObjects": []map[string]any{
+			{
+				"secretName": "falcosidekick-ui-auth",
+				"type":       "Opaque",
+				"data": []map[string]any{
+					{"objectName": "FALCOSIDEKICK_UI_USER", "key": "FALCOSIDEKICK_UI_USER"},
+				},
+			},
+		},
+	}))
+
+	k8s.NewKubeServiceAccount(chart, jsii.String("falco-secret-sync-sa"), &k8s.KubeServiceAccountProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("secret-sync"),
+			Namespace: jsii.String(namespace),
+		},
+	})
+
+	// The falcosidekick UI chart has no extraVolumes, so this pod mounts the CSI
+	// volume to trigger the secretObjects sync.
+	replicas := float64(1)
+	k8s.NewKubeDeployment(chart, jsii.String("falco-secret-sync"), &k8s.KubeDeploymentProps{
+		Metadata: &k8s.ObjectMeta{
+			Name:      jsii.String("secret-sync"),
+			Namespace: jsii.String(namespace),
+		},
+		Spec: &k8s.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &k8s.LabelSelector{
+				MatchLabels: &map[string]*string{"app": jsii.String("secret-sync")},
+			},
+			Template: &k8s.PodTemplateSpec{
+				Metadata: &k8s.ObjectMeta{
+					Labels:      &map[string]*string{"app": jsii.String("secret-sync")},
+					Annotations: &map[string]*string{"reloader.stakater.com/auto": jsii.String("true")},
+				},
+				Spec: &k8s.PodSpec{
+					ServiceAccountName: jsii.String("secret-sync"),
+					Volumes: &[]*k8s.Volume{
+						{
+							Name: jsii.String("openbao-secrets"),
+							Csi: &k8s.CsiVolumeSource{
+								Driver:   jsii.String("secrets-store.csi.k8s.io"),
+								ReadOnly: jsii.Bool(true),
+								VolumeAttributes: &map[string]*string{
+									"secretProviderClass": jsii.String("falco-secrets"),
+								},
+							},
+						},
+					},
+					Containers: &[]*k8s.Container{
+						{
+							Name:  jsii.String("pause"),
+							Image: jsii.String("registry.k8s.io/pause:3.10"),
+							VolumeMounts: &[]*k8s.VolumeMount{
+								{
+									Name:      jsii.String("openbao-secrets"),
+									MountPath: jsii.String("/mnt/secrets"),
+									ReadOnly:  jsii.Bool(true),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
 	values := map[string]any{
 		"podAnnotations": map[string]any{
 			"reloader.stakater.com/auto": "true",
@@ -67,6 +153,14 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 				// partial temp file behind, and answers MISCONF instead of PONG —
 				// which blocks the UI's wait-redis init container permanently.
 				"ttl": "7d",
+				// Empty user keeps the chart's admin:admin default out of the
+				// rendered Secret; the login comes from falcosidekick-ui-auth.
+				"user":           "",
+				"existingSecret": "falcosidekick-ui-auth",
+				// The UI restarts when the synced login changes.
+				"podAnnotations": map[string]any{
+					"reloader.stakater.com/auto": "true",
+				},
 				"resources": map[string]any{
 					"limits":   map[string]any{"cpu": "200m", "memory": "128Mi"},
 					"requests": map[string]any{"cpu": "50m", "memory": "64Mi"},
