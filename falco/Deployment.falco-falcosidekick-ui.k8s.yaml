@@ -20,6 +20,8 @@ spec:
       app.kubernetes.io/name: falcosidekick
   template:
     metadata:
+      annotations:
+        reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/component: ui
         app.kubernetes.io/instance: falco
@@ -40,6 +42,8 @@ spec:
           envFrom:
             - secretRef:
                 name: falco-falcosidekick-ui
+            - secretRef:
+                name: falcosidekick-ui-auth
           image: docker.io/falcosecurity/falcosidekick-ui:2.2.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -74,6 +78,8 @@ spec:
           envFrom:
             - secretRef:
                 name: falco-falcosidekick-ui
+            - secretRef:
+                name: falcosidekick-ui-auth
           image: docker.io/redis/redis-stack:7.2.0-v11
           name: wait-redis
           volumeMounts:
