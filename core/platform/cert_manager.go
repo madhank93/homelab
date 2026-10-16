@@ -17,12 +17,13 @@ import (
 func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 
 	// Install cert-manager via Helm (CRDs bundled via installCRDs: true)
+	cm := config.HelmChart("cert-manager")
 	chart, err := helm.NewRelease(ctx, "cert-manager", &helm.ReleaseArgs{
 		Name:    pulumi.String("cert-manager"),
 		Chart:   pulumi.String("cert-manager"),
-		Version: pulumi.String("v1.21.1"),
+		Version: pulumi.String(cm.Version),
 		RepositoryOpts: &helm.RepositoryOptsArgs{
-			Repo: pulumi.String("https://charts.jetstack.io"),
+			Repo: pulumi.String(cm.Repo),
 		},
 		Namespace:       pulumi.String("cert-manager"),
 		CreateNamespace: pulumi.Bool(true),

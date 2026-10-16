@@ -4,6 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 )
 
 // NewReloaderChart deploys Stakater Reloader, which watches ConfigMaps and Secrets
@@ -14,10 +15,11 @@ func NewReloaderChart(scope constructs.Construct, id string, namespace string) c
 		Namespace: jsii.String(namespace),
 	})
 
+	reloader := config.HelmChart("reloader")
 	cdk8s.NewHelm(chart, jsii.String("reloader"), &cdk8s.HelmProps{
 		Chart:       jsii.String("reloader"),
-		Repo:        jsii.String("https://stakater.github.io/stakater-charts"),
-		Version:     jsii.String("2.2.16"),
+		Repo:        jsii.String(reloader.Repo),
+		Version:     jsii.String(reloader.Version),
 		ReleaseName: jsii.String("reloader"),
 		Namespace:   jsii.String(namespace),
 	})

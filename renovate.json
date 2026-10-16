@@ -1,0 +1,262 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":dependencyDashboard"
+  ],
+  "enabledManagers": [
+    "gomod",
+    "github-actions",
+    "docker-compose",
+    "dockerfile",
+    "devcontainer",
+    "mise",
+    "custom.regex"
+  ],
+  "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "description": "Batch every minor/patch/digest bump into one PR.",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "groupName": "non-major dependencies",
+      "groupSlug": "non-major"
+    },
+    {
+      "description": "Majors get their own PR, opened only after approval on the dashboard.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Go toolchain: go.mod directives and .mise.toml must move together (go.work is not tracked; bump it by hand).",
+      "matchDepNames": ["go", "golang"],
+      "groupName": "go toolchain"
+    },
+    {
+      "description": "Talos image (config/versions.yaml) and talosctl (devcontainer) move together.",
+      "matchPackageNames": ["siderolabs/talos"],
+      "groupName": "talos"
+    },
+    {
+      "description": "Held on Helm 3: cdk8s renders charts via `helm template`.",
+      "matchPackageNames": ["helm/helm"],
+      "allowedVersions": "<4"
+    },
+    {
+      "description": "Tag encodes CUDA (major) / PyTorch (minor) / build date (patch).",
+      "matchPackageNames": ["yanwk/comfyui-boot"],
+      "versioning": "regex:^cu(?<major>\\d+)-megapak-pt(?<minor>\\d+)-(?<patch>\\d+)$"
+    },
+    {
+      "description": "cdk8s typed imports are generated code.",
+      "matchFileNames": ["workloads/cdk8s.yaml"],
+      "prBodyNotes": ["Regenerate the typed imports before merging: `cd workloads && cdk8s import`."]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "config/versions.yaml: Helm charts from HTTP(S) repos",
+      "managerFilePatterns": ["/^config/versions\\.yaml$/"],
+      "matchStrings": [
+        "\\n\\s+(?<depName>[\\w.-]+): \\{repo: (?<registryUrl>https?://[^,\\s]+), version: (?<currentValue>[^}\\s]+)\\}"
+      ],
+      "datasourceTemplate": "helm"
+    },
+    {
+      "customType": "regex",
+      "description": "config/versions.yaml: Helm charts from OCI registries",
+      "managerFilePatterns": ["/^config/versions\\.yaml$/"],
+      "matchStrings": [
+        "\\n\\s+(?<depName>[\\w.-]+): \\{repo: oci://(?<packageName>[^,\\s]+), version: (?<currentValue>[^}\\s]+)\\}"
+      ],
+      "packageNameTemplate": "{{{packageName}}}/{{{depName}}}",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "config/versions.yaml: container images",
+      "managerFilePatterns": ["/^config/versions\\.yaml$/"],
+      "matchStrings": [
+        "\\n\\s+[\\w.-]+: \\{image: (?<depName>[^,\\s]+), tag: \"?(?<currentValue>[^\"}\\s]+)\"?\\}"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "config/versions.yaml: Talos (schematic IDs are pinned per version; check them on bump)",
+      "managerFilePatterns": ["/^config/versions\\.yaml$/"],
+      "matchStrings": ["talos: \\{version: (?<currentValue>v[^,}\\s]+)"],
+      "depNameTemplate": "siderolabs/talos",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "workloads/cdk8s.yaml: Helm chart imports",
+      "managerFilePatterns": ["/^workloads/cdk8s\\.yaml$/"],
+      "matchStrings": [
+        "- helm:(?<registryUrl>https?://\\S+)/(?<depName>[^/@\\s]+)@(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "helm"
+    },
+    {
+      "customType": "regex",
+      "description": "workloads/cdk8s.yaml: Kubernetes API import (keep aligned with Talos' Kubernetes)",
+      "managerFilePatterns": ["/^workloads/cdk8s\\.yaml$/"],
+      "matchStrings": ["- k8s@(?<currentValue>\\S+)"],
+      "depNameTemplate": "kubernetes/kubernetes",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Kubeflow remote kustomize bases",
+      "managerFilePatterns": ["/^workloads/ai/kubeflow/kustomization\\.yaml$/"],
+      "matchStrings": ["github\\.com/kubeflow/manifests//\\S+\\?ref=(?<currentValue>v[\\w.-]+)"],
+      "depNameTemplate": "kubeflow/manifests",
+      "datasourceTemplate": "github-tags"
+    },
+    {
+      "customType": "regex",
+      "description": "scripts/secret-scan.sh: scanner images pinned by tag and digest",
+      "managerFilePatterns": ["/^scripts/secret-scan\\.sh$/"],
+      "matchStrings": [
+        "=(?<depName>[a-z0-9][a-z0-9._/-]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "autoReplaceStringTemplate": "={{{depName}}}:{{{newValue}}}@{{{newDigest}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer base image (FROM go:${GO_VERSION}-bookworm)",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG GO_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "mcr.microsoft.com/devcontainers/go",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: Node.js",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG NODE_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "node",
+      "datasourceTemplate": "node-version"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: cdk8s CLI",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG CDK8S_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "cdk8s-cli",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: nvm",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG NVM_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "nvm-sh/nvm",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: Pulumi CLI",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG PULUMI_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "pulumi/pulumi",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: yq",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG YQ_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "mikefarah/yq",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: just (tags have no v prefix)",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG JUST_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "casey/just",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: Helm",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG HELM_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "helm/helm",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: kubectl",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG KUBECTL_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "kubernetes/kubernetes",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: delve",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG DELVE_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "go-delve/delve",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: gofumpt",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG GOFUMPT_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "mvdan/gofumpt",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: golangci-lint",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG GOLANGCI_LINT_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "golangci/golangci-lint",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: kubeseal (helm-v* chart tags are filtered out by the extract)",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG KUBESEAL_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "bitnami-labs/sealed-secrets",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: talosctl",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG TALOSCTL_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "siderolabs/talos",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "devcontainer: bun",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG BUN_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "oven-sh/bun",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^bun-v(?<version>.+)$"
+    }
+  ]
+}

@@ -4,19 +4,17 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 	harborimport "github.com/madhank93/homelab/workloads/imports/harbor"
-	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
 // NewHarborChart deploys Harbor container registry via the Helm chart.
 //
-// Secrets are sourced from OpenBao via the CSI Driver (Pattern B). Because the
-// Harbor Helm chart does not support extraVolumes natively, a dedicated secret-sync
-// Deployment and ServiceAccount mount the CSI volume to trigger secretObjects sync,
-// making the Harbor admin password and registry credentials available as k8s Secrets.
+// The admin password comes from OpenBao (Pattern B). The Harbor chart cannot
+// mount extra volumes, so a secret-sync pod mounts the CSI volume instead.
 //
-// The HTTPRoute exposes Harbor at harbor.madhan.app via the homelab Gateway.
-// Traffic must be routed to the harbor:80 nginx proxy Service, not harbor-core:80.
+// The HTTPRoute must target the harbor:80 nginx proxy Service, not harbor-core:80.
 //
 // Known issue: RWO PVC deadlock on rolling update — force-delete pods and scale
 // down the old ReplicaSet to zero to resolve.
@@ -25,104 +23,17 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		Namespace: jsii.String(namespace),
 	})
 
-	k8s.NewKubeNamespace(chart, jsii.String("harbor-namespace"), &k8s.KubeNamespaceProps{
-		Metadata: &k8s.ObjectMeta{
-			Name: jsii.String(namespace),
-		},
-	})
-
-	// SecretProviderClass — Pattern B (secretObjects sync).
-	// Fetches HARBOR_ADMIN_PASSWORD from OpenBao and syncs it into k8s Secret "harbor-admin".
-	cdk8s.NewApiObject(chart, jsii.String("harbor-spc"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
-		Kind:       jsii.String("SecretProviderClass"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("harbor-secrets"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"provider": "openbao",
-		"parameters": map[string]any{
-			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
-			"roleName":     "harbor",
-			"objects": `- objectName: "HARBOR_ADMIN_PASSWORD"
-  secretPath: "secret/data/harbor"
-  secretKey: "HARBOR_ADMIN_PASSWORD"`,
-		},
-		"secretObjects": []map[string]any{
-			{
-				"secretName": "harbor-admin",
-				"type":       "Opaque",
-				"data": []map[string]any{
-					{"objectName": "HARBOR_ADMIN_PASSWORD", "key": "HARBOR_ADMIN_PASSWORD"},
-				},
-			},
-		},
-	}))
-
-	k8s.NewKubeServiceAccount(chart, jsii.String("harbor-secret-sync-sa"), &k8s.KubeServiceAccountProps{
-		Metadata: &k8s.ObjectMeta{
-			Name:      jsii.String("secret-sync"),
-			Namespace: jsii.String(namespace),
-		},
-	})
-
-	// Secret-sync Deployment — mounts the CSI volume to trigger secretObjects sync.
-	// Harbor's Helm chart does not support extraVolumes on its component pods.
-	replicas := float64(1)
-	k8s.NewKubeDeployment(chart, jsii.String("harbor-secret-sync"), &k8s.KubeDeploymentProps{
-		Metadata: &k8s.ObjectMeta{
-			Name:      jsii.String("secret-sync"),
-			Namespace: jsii.String(namespace),
-		},
-		Spec: &k8s.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &k8s.LabelSelector{
-				MatchLabels: &map[string]*string{"app": jsii.String("secret-sync")},
-			},
-			Template: &k8s.PodTemplateSpec{
-				Metadata: &k8s.ObjectMeta{
-					Labels:      &map[string]*string{"app": jsii.String("secret-sync")},
-					Annotations: &map[string]*string{"reloader.stakater.com/auto": jsii.String("true")},
-				},
-				Spec: &k8s.PodSpec{
-					ServiceAccountName: jsii.String("secret-sync"),
-					Volumes: &[]*k8s.Volume{
-						{
-							Name: jsii.String("openbao-secrets"),
-							Csi: &k8s.CsiVolumeSource{
-								Driver:   jsii.String("secrets-store.csi.k8s.io"),
-								ReadOnly: jsii.Bool(true),
-								VolumeAttributes: &map[string]*string{
-									"secretProviderClass": jsii.String("harbor-secrets"),
-								},
-							},
-						},
-					},
-					Containers: &[]*k8s.Container{
-						{
-							Name:  jsii.String("pause"),
-							Image: jsii.String("registry.k8s.io/pause:3.10"),
-							VolumeMounts: &[]*k8s.VolumeMount{
-								{
-									Name:      jsii.String("openbao-secrets"),
-									MountPath: jsii.String("/mnt/secrets"),
-									ReadOnly:  jsii.Bool(true),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
+	kit.Namespace(chart, namespace, false)
+	kit.SecretProviderClass(chart, "harbor-secrets", "harbor", []string{"HARBOR_ADMIN_PASSWORD"}, "harbor-admin",
+		kit.Sync{Object: "HARBOR_ADMIN_PASSWORD", Key: "HARBOR_ADMIN_PASSWORD"})
+	kit.SecretSync(chart, "harbor-secrets")
 
 	values := map[string]any{
 		"expose": map[string]any{
 			"type": "clusterIP",
 			"tls":  map[string]any{"enabled": false},
 		},
-		"externalURL": "https://harbor.madhan.app",
+		"externalURL": "https://" + config.C.Host("harbor"),
 		"persistence": map[string]any{
 			"enabled": true,
 			// ReadWriteMany via Longhorn NFS — eliminates RWO multi-attach deadlocks
@@ -169,30 +80,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		Values:      &values,
 	})
 
-	// Gateway API HTTPRoute — routes harbor.madhan.app → harbor:80 (nginx proxy)
-	cdk8s.NewApiObject(chart, jsii.String("harbor-httproute"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
-		Kind:       jsii.String("HTTPRoute"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("harbor"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"parentRefs": []map[string]any{
-			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
-		},
-		"hostnames": []string{"harbor.madhan.app"},
-		"rules": []map[string]any{
-			{
-				"matches": []map[string]any{
-					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
-				},
-				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "harbor", "port": 80, "weight": 1},
-				},
-			},
-		},
-	}))
+	kit.Route(chart, "harbor", "harbor", "harbor", 80)
 
 	return chart
 }

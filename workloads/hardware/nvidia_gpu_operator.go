@@ -4,7 +4,9 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
 // NewNvidiaDevicePluginChart deploys the standalone NVIDIA k8s-device-plugin with
@@ -19,14 +21,7 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 		Namespace: jsii.String(namespace),
 	})
 
-	k8s.NewKubeNamespace(chart, jsii.String("namespace"), &k8s.KubeNamespaceProps{
-		Metadata: &k8s.ObjectMeta{
-			Name: jsii.String(namespace),
-			Labels: &map[string]*string{
-				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
-			},
-		},
-	})
+	kit.Namespace(chart, namespace, true)
 
 	// RuntimeClass: tells containerd to use nvidia-container-runtime for the
 	// device plugin and GFD pods. Without this, the default runc runtime ignores
@@ -41,10 +36,11 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 		Handler:  jsii.String("nvidia"),
 	})
 
+	plugin := config.HelmChart("nvidia-device-plugin")
 	cdk8s.NewHelm(chart, jsii.String("nvidia-device-plugin-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("nvidia-device-plugin"),
-		Repo:        jsii.String("https://nvidia.github.io/k8s-device-plugin"),
-		Version:     jsii.String("0.19.3"),
+		Repo:        jsii.String(plugin.Repo),
+		Version:     jsii.String(plugin.Version),
 		ReleaseName: jsii.String("nvidia-device-plugin"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{
@@ -56,9 +52,7 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
 			},
 			// GFD adds nvidia.com/gpu.present=true and product/memory/count labels.
-			"gfd": map[string]any{"enabled": true},
-			// Use the nvidia RuntimeClass so containerd's nvidia-container-runtime hook
-			// fires and injects libnvidia-ml.so.1 into the container at startup.
+			"gfd":              map[string]any{"enabled": true},
 			"runtimeClassName": "nvidia",
 			// Inline config avoids a separate ConfigMap resource.
 			// - deviceDiscoveryStrategy: nvml — "auto" fails on Talos because it probes
@@ -93,14 +87,15 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 	// DCGM Exporter — exports GPU metrics (utilisation, VRAM, temp, power) to Prometheus/VMAgent.
 	// Runs as a DaemonSet only on the GPU node (nodeAffinity + toleration for dedicated=ai).
 	// Requires runtimeClassName=nvidia so containerd injects libnvidia-ml.so.1 via the hook.
+	dcgm := config.HelmChart("dcgm-exporter")
 	cdk8s.NewHelm(chart, jsii.String("dcgm-exporter-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("dcgm-exporter"),
-		Repo:        jsii.String("https://nvidia.github.io/dcgm-exporter/helm-charts"),
-		Version:     jsii.String("4.8.3"),
+		Repo:        jsii.String(dcgm.Repo),
+		Version:     jsii.String(dcgm.Version),
 		ReleaseName: jsii.String("dcgm-exporter"),
 		Namespace:   jsii.String(namespace),
 		Values: &map[string]any{
-			// Target only GPU nodes (GFD sets this label)
+			// GFD sets nvidia.com/gpu.present on GPU nodes.
 			"affinity": map[string]any{
 				"nodeAffinity": map[string]any{
 					"requiredDuringSchedulingIgnoredDuringExecution": map[string]any{
@@ -118,9 +113,7 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 			"tolerations": []map[string]any{
 				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
 			},
-			// nvidia runtime injects libnvidia-ml.so.1 needed by DCGM's NVML binding
 			"runtimeClassName": "nvidia",
-			// Let VMAgent scrape GPU metrics; also creates a Grafana dashboard ConfigMap
 			"serviceMonitor": map[string]any{
 				"enabled": true,
 			},

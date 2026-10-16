@@ -4,17 +4,16 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 )
 
 // NewNotebookGatewayControllerChart creates a small controller that watches Notebook CRs
 // and creates an HTTPRoute + ReferenceGrant for each one so the notebook URL
 // /notebook/<namespace>/<name>/ is routable through the Cilium Gateway.
 //
-// Why this is needed:
-//   The notebook-controller has USE_ISTIO=true and creates Istio VirtualServices per notebook.
-//   Without Istio, those VirtualServices are no-ops. Gateway API has no dynamic path routing,
-//   so we need a controller to create an HTTPRoute per Notebook in the kubeflow namespace
-//   and a ReferenceGrant in the user namespace (required for cross-namespace service refs).
+// The notebook-controller (USE_ISTIO=true) creates Istio VirtualServices, which are
+// no-ops without Istio, and Gateway API has no dynamic path routing. The
+// ReferenceGrant is required for the cross-namespace service ref.
 func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -317,7 +316,7 @@ if __name__ == "__main__":
 				"containers": []map[string]any{
 					{
 						"name":  "controller",
-						"image": "harbor.madhan.app/library/notebook-gateway-controller:v1",
+						"image": config.C.Host("harbor") + "/library/notebook-gateway-controller:v1",
 						"command": []string{
 							"python", "/app/controller.py",
 						},
@@ -342,7 +341,7 @@ if __name__ == "__main__":
 				},
 				"volumes": []map[string]any{
 					{
-						"name": "script",
+						"name":      "script",
 						"configMap": map[string]any{"name": "notebook-gateway-controller-script"},
 					},
 				},

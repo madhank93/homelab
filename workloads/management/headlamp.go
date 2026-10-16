@@ -6,10 +6,10 @@ import (
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/workloads/imports/headlamp"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
 // NewHeadlampChart deploys Headlamp, a Kubernetes web UI, via the official Helm chart.
-// An HTTPRoute exposes it at headlamp.madhan.app through the homelab Gateway.
 func NewHeadlampChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -24,13 +24,12 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 					"limits":   map[string]interface{}{"cpu": "500m", "memory": "512Mi"},
 					"requests": map[string]interface{}{"cpu": "100m", "memory": "128Mi"},
 				},
-				// Ingress disabled — traffic routed via Gateway API HTTPRoute below
+				// Exposed through the Gateway instead.
 				"ingress": map[string]interface{}{"enabled": false},
 			},
 		},
 	})
 
-	// ServiceAccount for Headlamp admin access
 	k8s.NewKubeServiceAccount(chart, jsii.String("headlamp-admin-sa"), &k8s.KubeServiceAccountProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("headlamp-admin"),
@@ -38,7 +37,6 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		},
 	})
 
-	// ClusterRoleBinding — grants headlamp-admin cluster-admin access
 	k8s.NewKubeClusterRoleBinding(chart, jsii.String("headlamp-admin-crb"), &k8s.KubeClusterRoleBindingProps{
 		Metadata: &k8s.ObjectMeta{
 			Name: jsii.String("headlamp-admin"),
@@ -57,8 +55,8 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		},
 	})
 
-	// Long-lived token Secret — Kubernetes auto-populates .data.token
-	// Retrieve with: kubectl get secret headlamp-admin-token -n headlamp -o jsonpath='{.data.token}' | base64 -d
+	// Long-lived login token, populated by Kubernetes. Read it with:
+	// kubectl get secret headlamp-admin-token -n headlamp -o jsonpath='{.data.token}' | base64 -d
 	k8s.NewKubeSecret(chart, jsii.String("headlamp-admin-token"), &k8s.KubeSecretProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("headlamp-admin-token"),
@@ -70,30 +68,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		Type: jsii.String("kubernetes.io/service-account-token"),
 	})
 
-	// Gateway API HTTPRoute — routes headlamp.madhan.app → headlamp:80
-	cdk8s.NewApiObject(chart, jsii.String("headlamp-httproute"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
-		Kind:       jsii.String("HTTPRoute"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("headlamp"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"parentRefs": []map[string]any{
-			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
-		},
-		"hostnames": []string{"headlamp.madhan.app"},
-		"rules": []map[string]any{
-			{
-				"matches": []map[string]any{
-					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
-				},
-				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "headlamp", "port": 80, "weight": 1},
-				},
-			},
-		},
-	}))
+	kit.Route(chart, "headlamp", "headlamp", "headlamp", 80)
 
 	return chart
 }

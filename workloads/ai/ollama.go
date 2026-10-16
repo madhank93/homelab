@@ -6,6 +6,7 @@ import (
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 	"github.com/madhank93/homelab/workloads/imports/ollama"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
 // Base weights for the `executor` model used by the aider offload workflow.
@@ -23,7 +24,7 @@ const modelCacheStorageClass = "longhorn-model-cache"
 // Ollama is pinned to the GPU worker node via nodeSelector nvidia.com/gpu.present=true
 // (set by Node Feature Discovery). Time-slicing is configured in the GPU operator
 // (5 virtual GPUs), so Ollama shares the RTX 5070 Ti with ComfyUI and Kubeflow workloads.
-// An HTTPRoute exposes Ollama at ollama.madhan.app through the homelab Gateway.
+// An HTTPRoute exposes Ollama at ollama.<domain> through the homelab Gateway.
 func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -115,30 +116,7 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 		},
 	})
 
-	// Gateway API HTTPRoute — routes ollama.madhan.app → ollama:11434
-	cdk8s.NewApiObject(chart, jsii.String("ollama-httproute"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
-		Kind:       jsii.String("HTTPRoute"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("ollama"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"parentRefs": []map[string]any{
-			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
-		},
-		"hostnames": []string{"ollama.madhan.app"},
-		"rules": []map[string]any{
-			{
-				"matches": []map[string]any{
-					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
-				},
-				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "ollama", "port": 11434, "weight": 1},
-				},
-			},
-		},
-	}))
+	kit.Route(chart, "ollama", "ollama", "ollama", 11434)
 
 	return chart
 }

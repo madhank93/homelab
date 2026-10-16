@@ -4,8 +4,9 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/grafana"
-	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
 // NewGrafanaChart deploys Grafana into the given namespace with OpenBao-sourced secrets
@@ -22,48 +23,15 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		Namespace: jsii.String(namespace),
 	})
 
-	k8s.NewKubeNamespace(chart, jsii.String("monitoring-namespace"), &k8s.KubeNamespaceProps{
-		Metadata: &k8s.ObjectMeta{
-			Name: jsii.String(namespace),
-		},
-	})
+	kit.Namespace(chart, namespace, false)
 
-	// SecretProviderClass — Pattern B (secretObjects sync).
-	// Mounts secrets from OpenBao and syncs selected keys to a k8s Secret.
-	//   ADMIN_PASSWORD      → file at /mnt/secrets/ADMIN_PASSWORD (read via __FILE env var)
-	//   OAUTH_CLIENT_SECRET → synced to k8s Secret grafana-oauth-secret (read as GF_ env var)
-	cdk8s.NewApiObject(chart, jsii.String("grafana-spc"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
-		Kind:       jsii.String("SecretProviderClass"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("grafana-secrets"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"provider": "openbao",
-		"parameters": map[string]any{
-			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
-			"roleName":     "grafana",
-			"objects": `- objectName: "ADMIN_PASSWORD"
-  secretPath: "secret/data/grafana"
-  secretKey: "ADMIN_PASSWORD"
-- objectName: "OAUTH_CLIENT_SECRET"
-  secretPath: "secret/data/grafana"
-  secretKey: "OAUTH_CLIENT_SECRET"`,
-		},
-		// Sync OAUTH_CLIENT_SECRET to a k8s Secret so Grafana can read it as a GF_ env var.
-		// The CSI volume mount (below) must be present to trigger the sync.
-		"secretObjects": []map[string]any{
-			{
-				"secretName": "grafana-oauth-secret",
-				"type":       "Opaque",
-				"data": []map[string]any{
-					{"objectName": "OAUTH_CLIENT_SECRET", "key": "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"},
-				},
-			},
-		},
-	}))
+	// ADMIN_PASSWORD is only file-mounted; OAUTH_CLIENT_SECRET is mirrored into
+	// a Secret so Grafana can read it as a GF_ env var.
+	kit.SecretProviderClass(chart, "grafana-secrets", "grafana",
+		[]string{"ADMIN_PASSWORD", "OAUTH_CLIENT_SECRET"}, "grafana-oauth-secret",
+		kit.Sync{Object: "OAUTH_CLIENT_SECRET", Key: "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"})
 
+	auth := "https://" + config.C.Host("auth")
 	values := map[string]any{
 		"podAnnotations": map[string]any{
 			"reloader.stakater.com/auto": "true",
@@ -101,7 +69,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		//   1. Authentik UI → Directory → Social Logins → Add GitHub source (slug: github)
 		//   2. Authentik UI → Applications → Providers → Create OAuth2/OIDC provider
 		//        Name: Grafana | Slug: grafana | Scopes: openid, email, profile
-		//        Redirect URI: https://grafana.madhan.app/login/generic_oauth
+		//        Redirect URI: https://grafana.<domain>/login/generic_oauth
 		//   3. Authentik UI → Applications → Create Application → bind to Grafana provider
 		//   4. Copy the Client ID from the provider and replace the placeholder below.
 		//   5. Copy the Client Secret and store it in OpenBao:
@@ -110,22 +78,22 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		"grafana.ini": map[string]any{
 			// root_url must be set so Grafana constructs OAuth redirect_uri with https://.
 			// Without it, Grafana uses the incoming request scheme (http — TLS terminates at
-			// Bifrost/Traefik) and sends http://grafana.madhan.app/login/generic_oauth,
+			// Bifrost/Traefik) and sends http://grafana.<domain>/login/generic_oauth,
 			// which mismatches the https:// redirect_uri registered in Authentik.
 			"server": map[string]any{
-				"root_url": "https://grafana.madhan.app",
+				"root_url": "https://" + config.C.Host("grafana"),
 			},
 			"auth.generic_oauth": map[string]any{
 				"enabled": true,
 				"name":    "GitHub via Authentik",
 				// Client ID set in core/cloud/authentik.go — matches GrafanaOIDCClientID export.
-				"client_id":            "grafana-homelab",
-				"scopes":               "openid email profile",
-				"auth_url":             "https://auth.madhan.app/application/o/authorize/",
-				"token_url":            "https://auth.madhan.app/application/o/token/",
-				"api_url":              "https://auth.madhan.app/application/o/userinfo/",
-				"use_pkce":             true,
-				"allow_sign_up":        true,
+				"client_id":     "grafana-homelab",
+				"scopes":        "openid email profile",
+				"auth_url":      auth + "/application/o/authorize/",
+				"token_url":     auth + "/application/o/token/",
+				"api_url":       auth + "/application/o/userinfo/",
+				"use_pkce":      true,
+				"allow_sign_up": true,
 				// Members of the grafana-admins Authentik group get Admin role; everyone else Viewer.
 				"role_attribute_path": "contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'",
 			},
@@ -173,25 +141,8 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 				},
 			},
 		},
-		"extraVolumes": []map[string]any{
-			{
-				"name": "openbao-secrets",
-				"csi": map[string]any{
-					"driver":   "secrets-store.csi.k8s.io",
-					"readOnly": true,
-					"volumeAttributes": map[string]any{
-						"secretProviderClass": "grafana-secrets",
-					},
-				},
-			},
-		},
-		"extraVolumeMounts": []map[string]any{
-			{
-				"name":      "openbao-secrets",
-				"mountPath": "/mnt/secrets",
-				"readOnly":  true,
-			},
-		},
+		"extraVolumes":      []map[string]any{kit.SecretsVolumeValues("grafana-secrets")},
+		"extraVolumeMounts": []map[string]any{kit.SecretsMountValues()},
 	}
 
 	grafana.NewGrafana(chart, jsii.String("grafana-release"), &grafana.GrafanaProps{
@@ -200,30 +151,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		Values:      &values,
 	})
 
-	// Gateway API HTTPRoute — routes grafana.madhan.app → grafana:3000
-	cdk8s.NewApiObject(chart, jsii.String("grafana-httproute"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
-		Kind:       jsii.String("HTTPRoute"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("grafana"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"parentRefs": []map[string]any{
-			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
-		},
-		"hostnames": []string{"grafana.madhan.app"},
-		"rules": []map[string]any{
-			{
-				"matches": []map[string]any{
-					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
-				},
-				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "grafana", "port": 3000, "weight": 1},
-				},
-			},
-		},
-	}))
+	kit.Route(chart, "grafana", "grafana", "grafana", 3000)
 
 	return chart
 }

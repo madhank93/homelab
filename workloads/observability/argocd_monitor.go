@@ -4,6 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
@@ -27,20 +28,16 @@ func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 	}
 
 	for _, c := range components {
-		// Metrics Service — selects ArgoCD pods by app.kubernetes.io/name, exposes metrics port.
-		// The ArgoCD Helm chart doesn't create metrics services by default, so we add them here.
 		k8s.NewKubeService(chart, jsii.String(c.name+"-metrics-svc"), &k8s.KubeServiceProps{
 			Metadata: &k8s.ObjectMeta{
 				Name:      jsii.String(c.name + "-metrics"),
 				Namespace: jsii.String(namespace),
 				Labels: &map[string]*string{
-					// ServiceMonitor selects this service by this label
 					"app.kubernetes.io/name": jsii.String(c.name + "-metrics"),
 				},
 			},
 			Spec: &k8s.ServiceSpec{
 				Selector: &map[string]*string{
-					// Selects the ArgoCD pods
 					"app.kubernetes.io/name": jsii.String(c.name),
 				},
 				Ports: &[]*k8s.ServicePort{
@@ -73,7 +70,6 @@ func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 		}))
 	}
 
-	// Certificate for argocd.madhan.app — letsencrypt-prod DNS01 via Cloudflare.
 	// ArgoCD auto-detects a secret named "argocd-server-tls" and replaces its
 	// self-signed cert, fixing browser TLS warnings without public exposure.
 	cdk8s.NewApiObject(chart, jsii.String("argocd-server-tls-cert"), &cdk8s.ApiObjectProps{
@@ -89,7 +85,7 @@ func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 			"name": "letsencrypt-prod",
 			"kind": "ClusterIssuer",
 		},
-		"dnsNames": []string{"argocd.madhan.app"},
+		"dnsNames": []string{config.C.Host("argocd")},
 	}))
 
 	return chart

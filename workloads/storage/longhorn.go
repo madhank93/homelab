@@ -4,8 +4,8 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/workloads/imports/k8s"
 	"github.com/madhank93/homelab/workloads/imports/longhorn"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
 // NewLonghornChart deploys Longhorn distributed block storage into the given
@@ -20,34 +20,21 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		Namespace: jsii.String(namespace),
 	})
 
-	// Privileged namespace — Longhorn CSI driver and manager require elevated privileges.
-	k8s.NewKubeNamespace(chart, jsii.String("longhorn-namespace"), &k8s.KubeNamespaceProps{
-		Metadata: &k8s.ObjectMeta{
-			Name: jsii.String(namespace),
-			Labels: &map[string]*string{
-				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
-				"pod-security.kubernetes.io/audit":   jsii.String("privileged"),
-				"pod-security.kubernetes.io/warn":    jsii.String("privileged"),
-			},
-		},
-	})
+	kit.Namespace(chart, namespace, true)
 
 	values := map[string]any{
 		"defaultSettings": map[string]any{
 			"defaultReplicaCount":           3,
 			"defaultDataPath":               "/var/lib/longhorn/", // Talos persistent path
 			"createDefaultDiskLabeledNodes": false,                // Auto-provision default disk on ALL nodes (not just labelled ones)
-			// 300% overprovisioning: allows up to 360Gi scheduled per 120Gi disk.
-			// Workers have ~90-95Gi actually free. At 200% the 240Gi scheduling cap
-			// was exhausted (no room for new 50Gi replicas). 300% gives ~150Gi
-			// headroom per node for AI model volumes and future growth.
+			// 300% of a 120Gi disk leaves room for new 50Gi replicas (AI model
+			// volumes); 200% was exhausted.
 			"storageOverProvisioningPercentage": 300,
 		},
 		"persistence": map[string]any{
 			"defaultClass":             true,
 			"defaultClassReplicaCount": 3,
 		},
-		// Expose Longhorn metrics to VMAgent via a ServiceMonitor.
 		"metrics": map[string]any{
 			"serviceMonitor": map[string]any{
 				"enabled": true,
@@ -87,30 +74,7 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		},
 	}
 
-	// Gateway API HTTPRoute — routes longhorn.madhan.app → longhorn-frontend:80
-	cdk8s.NewApiObject(chart, jsii.String("longhorn-httproute"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
-		Kind:       jsii.String("HTTPRoute"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("longhorn"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"parentRefs": []map[string]any{
-			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
-		},
-		"hostnames": []string{"longhorn.madhan.app"},
-		"rules": []map[string]any{
-			{
-				"matches": []map[string]any{
-					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
-				},
-				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "longhorn-frontend", "port": 80, "weight": 1},
-				},
-			},
-		},
-	}))
+	kit.Route(chart, "longhorn", "longhorn", "longhorn-frontend", 80)
 
 	longhorn.NewLonghorn(chart, jsii.String("longhorn-release"), &longhorn.LonghornProps{
 		ReleaseName: jsii.String("longhorn"),

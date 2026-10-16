@@ -13,17 +13,12 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/trivyoperator"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
-const (
-	trivyChartName = "trivy-operator"
-	trivyVersion   = "0.32.0"
-
-	// Adjust if Aqua ever changes the release/tag naming.
-	trivyHelmReleasesBase = "https://github.com/aquasecurity/helm-charts/releases/download"
-)
+const trivyHelmReleasesBase = "https://github.com/aquasecurity/helm-charts/releases/download"
 
 // NewTrivyChart deploys the Trivy Operator for continuous vulnerability and
 // misconfiguration scanning of workloads and container images.
@@ -37,15 +32,8 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 		Namespace: jsii.String(namespace),
 	})
 
-	k8s.NewKubeNamespace(chart, jsii.String("namespace"), &k8s.KubeNamespaceProps{
-		Metadata: &k8s.ObjectMeta{
-			Name: jsii.String(namespace),
-			Labels: &map[string]*string{
-				// node-collector Jobs require hostPID and hostPath volumes — needs privileged.
-				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
-			},
-		},
-	})
+	// node-collector Jobs need hostPID and hostPath volumes.
+	kit.Namespace(chart, namespace, true)
 
 	values := map[string]any{
 		"trivy-operator": map[string]any{
@@ -130,12 +118,8 @@ func includeTrivyCRDs(chart cdk8s.Chart) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	chartURL := fmt.Sprintf(
-		"%s/%s-%s/%s-%s.tgz",
-		trivyHelmReleasesBase,
-		trivyChartName, trivyVersion,
-		trivyChartName, trivyVersion,
-	)
+	name, version := "trivy-operator", config.HelmChart("trivy-operator").Version
+	chartURL := fmt.Sprintf("%s/%s-%s/%s-%s.tgz", trivyHelmReleasesBase, name, version, name, version)
 
 	resp, err := http.Get(chartURL)
 	if err != nil {
@@ -168,7 +152,6 @@ func includeTrivyCRDs(chart cdk8s.Chart) {
 			continue
 		}
 
-		// Match CRDs inside the chart's crds/ directory
 		if !strings.Contains(header.Name, "crds/") || !strings.HasSuffix(header.Name, ".yaml") {
 			continue
 		}

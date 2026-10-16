@@ -1,0 +1,63 @@
+name: SBOM
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the SBOM to
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # uploads the release asset
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          persist-credentials: false
+
+      - name: Scan repository with syft
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: syft.cdx.json
+          syft-version: v1.54.1
+          upload-artifact: false
+          upload-release-assets: false
+
+      # syft has no cataloger for config/versions.yaml, so its chart, image and
+      # Talos pins are appended as CycloneDX components here.
+      - name: Add config/versions.yaml pins
+        run: |
+          yq -o=json '[
+              {"type": "operating-system", "name": "talos", "version": .talos.version,
+               "purl": "pkg:github/siderolabs/talos@" + .talos.version}
+            ] + [
+              .charts | to_entries | .[] |
+              {"type": "application", "name": .key, "version": .value.version,
+               "purl": "pkg:helm/" + .key + "@" + .value.version + "?repository_url=" + .value.repo}
+            ] + [
+              .images | to_entries | .[] |
+              {"type": "container", "name": .value.image, "version": (.value.tag | tostring),
+               "purl": "pkg:docker/" + .value.image + "@" + (.value.tag | tostring)}
+            ]' config/versions.yaml > versions.components.json
+          jq --slurpfile extra versions.components.json \
+            '.components = ((.components // []) + $extra[0])' syft.cdx.json > sbom.cdx.json
+          jq '.components | length' sbom.cdx.json
+
+      - name: Upload SBOM to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" sbom.cdx.json --clobber --repo "$GITHUB_REPOSITORY"

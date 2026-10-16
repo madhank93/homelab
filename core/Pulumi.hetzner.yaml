@@ -1,4 +1,1 @@
-config:
-  services.hetzner.enabled: "true"
-  services.talos.enabled: "false"
-  services.authentik.enabled: "false"
+config: {}

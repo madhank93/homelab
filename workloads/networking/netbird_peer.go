@@ -4,14 +4,16 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
 // NewNetbirdPeerChart deploys the NetBird routing peer (k8s-routing-peer) as a
 // StatefulSet on any available worker (no nodeSelector — floats for resilience).
 //
 // The routing peer forms a WireGuard mesh with the Bifrost VPS and advertises the
-// 192.168.1.0/24 cluster subnet to Bifrost. Incoming traffic from Bifrost arrives
+// cluster LAN subnet to Bifrost. Incoming traffic from Bifrost arrives
 // on wt0, is forwarded via kernel IP routing, and exits through eth0 on another node
 // where Cilium BPF handles the DNAT to the backend pod.
 //
@@ -29,49 +31,13 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 		Namespace: jsii.String(namespace),
 	})
 
-	// Privileged namespace — netbird peer needs NET_ADMIN and SYS_MODULE for WireGuard.
-	k8s.NewKubeNamespace(chart, jsii.String("namespace"), &k8s.KubeNamespaceProps{
-		Metadata: &k8s.ObjectMeta{
-			Name: jsii.String(namespace),
-			Labels: &map[string]*string{
-				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
-			},
-		},
-	})
+	// Privileged: the peer needs NET_ADMIN and SYS_MODULE for WireGuard.
+	kit.Namespace(chart, namespace, true)
 
-	// SecretProviderClass — Pattern B (secretObjects sync).
-	// Fetches NETBIRD_SETUP_KEY from OpenBao and syncs it into k8s Secret "netbird-setup-key".
-	// The setup key is only used on first registration; subsequent restarts use the persisted
-	// private key from the netbird-config PVC and ignore the setup key.
-	cdk8s.NewApiObject(chart, jsii.String("netbird-spc"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
-		Kind:       jsii.String("SecretProviderClass"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("netbird-secrets"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"provider": "openbao",
-		"parameters": map[string]any{
-			"vaultAddress": "http://openbao.openbao.svc.cluster.local:8200",
-			"roleName":     "netbird",
-			"objects": `- objectName: "NETBIRD_SETUP_KEY"
-  secretPath: "secret/data/netbird"
-  secretKey: "NETBIRD_SETUP_KEY"`,
-		},
-		"secretObjects": []map[string]any{
-			{
-				"secretName": "netbird-setup-key",
-				"type":       "Opaque",
-				"data": []map[string]any{
-					{
-						"objectName": "NETBIRD_SETUP_KEY",
-						"key":        "NETBIRD_SETUP_KEY",
-					},
-				},
-			},
-		},
-	}))
+	// The setup key is only used on first registration; restarts reuse the
+	// private key persisted on the netbird-config PVC.
+	kit.SecretProviderClass(chart, "netbird-secrets", "netbird", []string{"NETBIRD_SETUP_KEY"}, "netbird-setup-key",
+		kit.Sync{Object: "NETBIRD_SETUP_KEY", Key: "NETBIRD_SETUP_KEY"})
 
 	// Headless Service — required by StatefulSet spec.serviceName.
 	k8s.NewKubeService(chart, jsii.String("netbird-peer-svc"), &k8s.KubeServiceProps{
@@ -87,12 +53,11 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 		},
 	})
 
-	// StatefulSet: k8s-routing-peer — replaces the old Deployment.
-	// Using StatefulSet + PVC so /etc/netbird/ (private key + config) persists across
-	// pod restarts. This prevents new peer registrations on every restart, eliminating
-	// duplicate peers accumulating in the NetBird Management UI.
-	// hostNetwork: true so WireGuard can manipulate the host routing table.
-	// Routes are assigned to this peer via the NetBird Management UI (Network → Routes).
+	// StatefulSet + PVC keeps the peer's private key across restarts, so a restart
+	// does not register a duplicate peer. hostNetwork lets WireGuard manipulate the
+	// host routing table. Routes are assigned to this peer in the NetBird UI.
+	image := config.ContainerImage("netbird").Ref()
+	subnet := config.C.Cluster.Subnet
 	replicas := float64(1)
 	k8s.NewKubeStatefulSet(chart, jsii.String("netbird-peer"), &k8s.KubeStatefulSetProps{
 		Metadata: &k8s.ObjectMeta{
@@ -113,18 +78,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 				Spec: &k8s.PodSpec{
 					HostNetwork: jsii.Bool(true),
 					DnsPolicy:   jsii.String("ClusterFirstWithHostNet"),
-						Volumes: &[]*k8s.Volume{
-						{
-							Name: jsii.String("openbao-secrets"),
-							Csi: &k8s.CsiVolumeSource{
-								Driver:   jsii.String("secrets-store.csi.k8s.io"),
-								ReadOnly: jsii.Bool(true),
-								VolumeAttributes: &map[string]*string{
-									"secretProviderClass": jsii.String("netbird-secrets"),
-								},
-							},
-						},
-					},
+					Volumes:     &[]*k8s.Volume{kit.SecretsVolume("netbird-secrets")},
 					// Init container: MASQUERADE wt0-forwarded traffic so it exits ens18
 					// with this node's LAN IP, enabling Cilium's cil_from_netdev TC BPF
 					// on the L2 winner to set the TPROXY mark and redirect to Envoy.
@@ -139,11 +93,11 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 					InitContainers: &[]*k8s.Container{
 						{
 							Name:    jsii.String("setup-iptables"),
-							Image:   jsii.String("netbirdio/netbird:0.76.3"),
+							Image:   jsii.String(image),
 							Command: &[]*string{jsii.String("/bin/sh")},
 							Args: &[]*string{
 								jsii.String("-c"),
-								jsii.String("iptables -t nat -C POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE"),
+								jsii.String("iptables -t nat -C POSTROUTING -o ens18 -d " + subnet + " -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o ens18 -d " + subnet + " -j MASQUERADE"),
 							},
 							SecurityContext: &k8s.SecurityContext{
 								Privileged: jsii.Bool(true),
@@ -158,11 +112,9 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 							Name: jsii.String("netbird"),
 							// Pinned to match Bifrost server version. Default entrypoint starts
 							// the service daemon then calls 'netbird up' — do not override Command.
-							Image: jsii.String("netbirdio/netbird:0.76.3"),
+							Image: jsii.String(image),
 							Env: &[]*k8s.EnvVar{
 								{
-									// Setup key only used on first registration.
-									// Read from k8s Secret synced by SecretProviderClass above.
 									Name: jsii.String("NB_SETUP_KEY"),
 									ValueFrom: &k8s.EnvVarSource{
 										SecretKeyRef: &k8s.SecretKeySelector{
@@ -173,7 +125,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 								},
 								{
 									Name:  jsii.String("NB_MANAGEMENT_URL"),
-									Value: jsii.String("https://netbird.madhan.app"),
+									Value: jsii.String("https://" + config.C.Host("netbird")),
 								},
 								{
 									Name:  jsii.String("NB_HOSTNAME"),
@@ -196,19 +148,13 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 									Name:      jsii.String("netbird-config"),
 									MountPath: jsii.String("/var/lib/netbird"),
 								},
-								{
-									// CSI mount triggers secretObjects sync → creates netbird-setup-key Secret.
-									Name:      jsii.String("openbao-secrets"),
-									MountPath: jsii.String("/mnt/secrets"),
-									ReadOnly:  jsii.Bool(true),
-								},
+								// The CSI mount is what creates the netbird-setup-key Secret.
+								kit.SecretsMount(),
 							},
 						},
 					},
 				},
 			},
-			// PVC template: 100Mi for /etc/netbird/ config persistence.
-			// Longhorn default StorageClass is used automatically.
 			VolumeClaimTemplates: &[]*k8s.KubePersistentVolumeClaimProps{
 				{
 					Metadata: &k8s.ObjectMeta{

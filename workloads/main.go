@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/workloads/ai"
@@ -20,178 +18,51 @@ import (
 	"github.com/madhank93/homelab/workloads/support"
 )
 
+// Each entry synthesizes into ../app/<dir>, which Argo CD deploys as one Application.
+var apps = []struct {
+	dir   string
+	build func(app cdk8s.App)
+}{
+	{"longhorn", func(a cdk8s.App) { storage.NewLonghornChart(a, "longhorn-app", "longhorn-system") }},
+	{"openbao", func(a cdk8s.App) { secrets.NewOpenBaoChart(a, "openbao-app", "openbao") }},
+	{"csi-driver", func(a cdk8s.App) { secrets.NewCsiDriverChart(a, "csi-driver-app") }},
+	{"grafana", func(a cdk8s.App) { monitoring.NewGrafanaChart(a, "grafana-app", "grafana") }},
+	{"victoria-metrics", func(a cdk8s.App) {
+		observability.NewVictoriaMetricsChart(a, "victoria-metrics-app", "victoria-metrics")
+	}},
+	{"victoria-logs", func(a cdk8s.App) { observability.NewVictoriaLogsChart(a, "victoria-logs-app", "victoria-logs") }},
+	{"harbor", func(a cdk8s.App) { registry.NewHarborChart(a, "harbor-app", "harbor") }},
+	{"cnpg-operator", func(a cdk8s.App) { databases.NewCnpgOperatorChart(a, "cnpg-operator-app") }},
+	{"n8n", func(a cdk8s.App) { automation.NewN8nChart(a, "n8n-app", "n8n") }},
+	{"nvidia-gpu-operator", func(a cdk8s.App) {
+		hardware.NewNvidiaDevicePluginChart(a, "nvidia-gpu-operator", "nvidia-gpu-operator")
+	}},
+	{"ollama", func(a cdk8s.App) { ai.NewOllamaChart(a, "ollama-app", "ollama") }},
+	{"comfyui", func(a cdk8s.App) { ai.NewComfyUIChart(a, "comfyui-app", "comfyui") }},
+	// The Kubeflow platform itself is a pre-built kustomize overlay (workloads/ai/kubeflow/).
+	{"kubeflow", func(a cdk8s.App) {
+		ai.NewKubeflowChart(a, "kubeflow-app", "kubeflow")
+		ai.NewNotebookGatewayControllerChart(a, "notebook-gateway-controller", "kubeflow")
+	}},
+	{"trivy", func(a cdk8s.App) { security.NewTrivyChart(a, "trivy-app", "trivy") }},
+	{"falco", func(a cdk8s.App) { security.NewFalcoChart(a, "falco-app", "falco") }},
+	{"kyverno", func(a cdk8s.App) { security.NewKyvernoChart(a, "kyverno-app", "kyverno") }},
+	{"opentelemetry", func(a cdk8s.App) { observability.NewOtelCollectorChart(a, "otel-app", "opentelemetry") }},
+	// Argo CD itself is deployed by Pulumi; this adds only its ServiceMonitors.
+	{"argocd-monitor", func(a cdk8s.App) { observability.NewArgoCDMonitorChart(a, "argocd-monitor-app") }},
+	{"netbird", func(a cdk8s.App) { networking.NewNetbirdPeerChart(a, "netbird-app", "netbird") }},
+	{"headlamp", func(a cdk8s.App) { management.NewHeadlampChart(a, "headlamp-app", "headlamp") }},
+	{"reloader", func(a cdk8s.App) { support.NewReloaderChart(a, "reloader-app", "reloader") }},
+	{"metrics-server", func(a cdk8s.App) { monitoring.NewMetricsServerChart(a, "metrics-server-app") }},
+}
+
 func main() {
-	rootFolder := "../app"
-
-	// 1. Longhorn Storage
-	longhornApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/longhorn", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	storage.NewLonghornChart(longhornApp, "longhorn-app", "longhorn-system")
-	longhornApp.Synth()
-
-	// OpenBao (secrets store)
-	openBaoApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/openbao", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	secrets.NewOpenBaoChart(openBaoApp, "openbao-app", "openbao")
-	openBaoApp.Synth()
-
-	// Secrets Store CSI Driver — mounts OpenBao secrets as files in pods
-	csiDriverApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/csi-driver", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	secrets.NewCsiDriverChart(csiDriverApp, "csi-driver-app")
-	csiDriverApp.Synth()
-
-	// Monitoring Stack
-	grafanaApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/grafana", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	monitoring.NewGrafanaChart(grafanaApp, "grafana-app", "grafana")
-	grafanaApp.Synth()
-
-	victoriaMetricsApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/victoria-metrics", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	observability.NewVictoriaMetricsChart(victoriaMetricsApp, "victoria-metrics-app", "victoria-metrics")
-	victoriaMetricsApp.Synth()
-
-	victoriaLogsApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/victoria-logs", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	observability.NewVictoriaLogsChart(victoriaLogsApp, "victoria-logs-app", "victoria-logs")
-	victoriaLogsApp.Synth()
-
-	// Container Registry
-	harborApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/harbor", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	registry.NewHarborChart(harborApp, "harbor-app", "harbor")
-	harborApp.Synth()
-
-	// CloudNativePG Operator — cluster-scoped PostgreSQL operator (dependency for n8n)
-	cnpgApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/cnpg-operator", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	databases.NewCnpgOperatorChart(cnpgApp, "cnpg-operator-app")
-	cnpgApp.Synth()
-
-	// Automation
-	n8nApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/n8n", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	automation.NewN8nChart(n8nApp, "n8n-app", "n8n")
-	n8nApp.Synth()
-
-	// AI/ML
-	nvidiaGpuOperatorApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/nvidia-gpu-operator", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	hardware.NewNvidiaDevicePluginChart(nvidiaGpuOperatorApp, "nvidia-gpu-operator", "nvidia-gpu-operator")
-	nvidiaGpuOperatorApp.Synth()
-
-	ollamaApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/ollama", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	ai.NewOllamaChart(ollamaApp, "ollama-app", "ollama")
-	ollamaApp.Synth()
-
-	comfyuiApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/comfyui", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	ai.NewComfyUIChart(comfyuiApp, "comfyui-app", "comfyui")
-	comfyuiApp.Synth()
-
-	// Kubeflow — Application CR (points to workloads/ai/kubeflow/ kustomize overlay) + HTTPRoute
-	kubeflowApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/kubeflow", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	ai.NewKubeflowChart(kubeflowApp, "kubeflow-app", "kubeflow")
-	ai.NewNotebookGatewayControllerChart(kubeflowApp, "notebook-gateway-controller", "kubeflow")
-	kubeflowApp.Synth()
-
-	// Security & Compliance
-	trivyApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/trivy", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	security.NewTrivyChart(trivyApp, "trivy-app", "trivy")
-	trivyApp.Synth()
-
-	falcoApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/falco", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	security.NewFalcoChart(falcoApp, "falco-app", "falco")
-	falcoApp.Synth()
-
-	kyvernoApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/kyverno", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	security.NewKyvernoChart(kyvernoApp, "kyverno-app", "kyverno")
-	kyvernoApp.Synth()
-
-	// Observability
-	otelApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/opentelemetry", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	observability.NewOtelCollectorChart(otelApp, "otel-app", "opentelemetry")
-	otelApp.Synth()
-
-	// ArgoCD ServiceMonitors — ArgoCD is deployed via Pulumi; this chart only adds
-	// ServiceMonitors in the argocd namespace for VMAgent to discover.
-	argoCDMonitorApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/argocd-monitor", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	observability.NewArgoCDMonitorChart(argoCDMonitorApp, "argocd-monitor-app")
-	argoCDMonitorApp.Synth()
-
-	// NetBird routing peer — advertises 192.168.1.0/24 into WireGuard mesh
-	netbirdApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/netbird", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	networking.NewNetbirdPeerChart(netbirdApp, "netbird-app", "netbird")
-	netbirdApp.Synth()
-
-	// Management Tools
-	headlampApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/headlamp", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	management.NewHeadlampChart(headlampApp, "headlamp-app", "headlamp")
-	headlampApp.Synth()
-
-	// Stakater Reloader
-	reloaderApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/reloader", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	support.NewReloaderChart(reloaderApp, "reloader-app", "reloader")
-	reloaderApp.Synth()
-
-	// Metrics Server — exposes pod/node CPU+memory metrics (required by Headlamp, HPA)
-	metricsServerApp := cdk8s.NewApp(&cdk8s.AppProps{
-		Outdir:         jsii.String(fmt.Sprintf("%s/metrics-server", rootFolder)),
-		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
-	})
-	monitoring.NewMetricsServerChart(metricsServerApp, "metrics-server-app")
-	metricsServerApp.Synth()
+	for _, entry := range apps {
+		app := cdk8s.NewApp(&cdk8s.AppProps{
+			Outdir:         jsii.String("../app/" + entry.dir),
+			YamlOutputType: cdk8s.YamlOutputType_FILE_PER_RESOURCE,
+		})
+		entry.build(app)
+		app.Synth()
+	}
 }

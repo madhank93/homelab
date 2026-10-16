@@ -15,11 +15,12 @@ import (
 // ArgoCD serves plain HTTP; the gateway terminates TLS using a certificate
 // owned by CDK8s in workloads/observability/argocd_monitor.go.
 func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
+	argoChart := config.HelmChart("argo-cd")
 	chart, err := helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 		Chart:   pulumi.String("argo-cd"),
-		Version: pulumi.String("10.3.2"),
+		Version: pulumi.String(argoChart.Version),
 		RepositoryOpts: &helm.RepositoryOptsArgs{
-			Repo: pulumi.String("https://argoproj.github.io/argo-helm"),
+			Repo: pulumi.String(argoChart.Repo),
 		},
 		Namespace:       pulumi.String("argocd"),
 		CreateNamespace: pulumi.Bool(true),
@@ -36,7 +37,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				// mask-spoofing hole in the same path; this cluster runs
 				// ServerSideApply everywhere. Drop once a chart ships it.
 				"image": pulumi.Map{
-					"tag": pulumi.String("v3.5.1"),
+					"tag": pulumi.String(config.ContainerImage("argocd").Tag),
 				},
 			},
 			"repoServer": pulumi.Map{

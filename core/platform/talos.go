@@ -136,10 +136,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 `
 
 	// install.disk is required: these nodes boot with talos.platform=metal, and the
-	// metal installer refuses to run an upgrade without it. sda is the 215 GB virtio
-	// system disk on every node; sdb on the workers is the iSCSI volume Longhorn uses.
-	// install.image is deliberately unset — deprecated in favour of Image Factory,
-	// and `just talos-upgrade` passes the factory installer explicitly.
+	// metal installer refuses to run an upgrade without it. /dev/sda is each VM's
+	// only disk (scsi0, sized per node in config.yml). install.image stays unset:
+	// `just talos-upgrade` passes the Image Factory installer explicitly.
 	basePatch := `cluster:
   network:
     cni:
@@ -309,12 +308,11 @@ machine:
 
 // patchTalosConfig applies per-node patches to a raw Talos machine config YAML.
 //
-// It performs three transformations:
+// It performs two transformations:
 //  1. Drops the HostnameConfig document (auto-generated; we set hostname explicitly).
-//  2. Removes machine.install (handled by cloud-init; not needed after first boot).
-//  3. Sets machine.network.hostname, converts DHCP to a static address (hostname/24),
-//     adds a default gateway route, and adds a static route for the NetBird subnet
-//     (100.109.0.0/16 via worker1) so return traffic can reach the WireGuard tunnel.
+//  2. Sets machine.network.hostname and nameservers, converts DHCP to a static
+//     address in cl.Subnet, adds a default route via cl.Router, and adds a route for
+//     cl.NetbirdCIDR via cl.NetbirdRouter so return traffic reaches the WireGuard tunnel.
 func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (string, error) {
 	prefix := cl.Subnet[strings.Index(cl.Subnet, "/"):]
 	reader := strings.NewReader(rawConfig)

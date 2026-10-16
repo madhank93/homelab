@@ -5,13 +5,11 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/madhank93/homelab/workloads/imports/victorialogssingle"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
-// NewVictoriaLogsChart deploys VictoriaLogs single-node into the given namespace.
-//
-// VictoriaLogs receives log records from the OTel Collector via OTLP/HTTP on port 9428.
-// The reloader.stakater.com/auto annotation ensures the pod is rolled whenever
-// its ConfigMap or Secret changes.
+// NewVictoriaLogsChart deploys VictoriaLogs single-node, which receives logs
+// from the OTel Collector over OTLP/HTTP on port 9428.
 func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -50,30 +48,7 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 		Values:      &values,
 	})
 
-	// Gateway API HTTPRoute — routes victorialogs.madhan.app → server:9428 (/logs UI)
-	cdk8s.NewApiObject(chart, jsii.String("victoria-logs-httproute"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("gateway.networking.k8s.io/v1"),
-		Kind:       jsii.String("HTTPRoute"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("victoria-logs"),
-			Namespace: jsii.String(namespace),
-		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
-		"parentRefs": []map[string]any{
-			{"group": "gateway.networking.k8s.io", "kind": "Gateway", "name": "homelab-gateway", "namespace": "kube-system"},
-		},
-		"hostnames": []string{"victorialogs.madhan.app"},
-		"rules": []map[string]any{
-			{
-				"matches": []map[string]any{
-					{"path": map[string]any{"type": "PathPrefix", "value": "/"}},
-				},
-				"backendRefs": []map[string]any{
-					{"group": "", "kind": "Service", "name": "victoria-logs-victoria-logs-single-server", "port": 9428, "weight": 1},
-				},
-			},
-		},
-	}))
+	kit.Route(chart, "victoria-logs", "victorialogs", "victoria-logs-victoria-logs-single-server", 9428)
 
 	return chart
 }

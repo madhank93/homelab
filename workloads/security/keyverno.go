@@ -8,130 +8,52 @@ import (
 )
 
 // NewKyvernoChart deploys the Kyverno policy engine in high-availability mode.
-//
-// Replica counts:
-//   - admissionController: 3 (odd number required for leader election quorum)
-//   - backgroundController: 2
-//   - cleanupController:    2
-//   - reportsController:    2
-//
-// A ServiceMonitor on port 8000 is enabled for VictoriaMetrics scraping,
-// and a Grafana dashboard ConfigMap is created for policy observability.
+// The admission controller runs 3 replicas (odd, for leader-election quorum);
+// the other controllers run 2. Metrics on port 8000 are scraped by VMAgent.
 func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
 	})
 
+	controller := func(replicas int, limitCPU, limitMem, reqCPU, reqMem string) map[string]any {
+		return map[string]any{
+			"replicas": replicas,
+			"resources": map[string]any{
+				"limits":   map[string]any{"cpu": limitCPU, "memory": limitMem},
+				"requests": map[string]any{"cpu": reqCPU, "memory": reqMem},
+			},
+		}
+	}
+
 	values := map[string]any{
-
-		// High availability configuration
-		"admissionController": map[string]any{
-			"replicas": 3,
-			"resources": map[string]any{
-				"limits": map[string]any{
-					"cpu":    "1000m",
-					"memory": "512Mi",
-				},
-				"requests": map[string]any{
-					"cpu":    "100m",
-					"memory": "256Mi",
-				},
-			},
-		},
-
-		"backgroundController": map[string]any{
-			"replicas": 2,
-			"resources": map[string]any{
-				"limits": map[string]any{
-					"cpu":    "500m",
-					"memory": "256Mi",
-				},
-				"requests": map[string]any{
-					"cpu":    "50m",
-					"memory": "128Mi",
-				},
-			},
-		},
-
-		"cleanupController": map[string]any{
-			"replicas": 2,
-			"resources": map[string]any{
-				"limits": map[string]any{
-					"cpu":    "500m",
-					"memory": "256Mi",
-				},
-				"requests": map[string]any{
-					"cpu":    "50m",
-					"memory": "128Mi",
-				},
-			},
-		},
-
-		"reportsController": map[string]any{
-			"replicas": 2,
-			"resources": map[string]any{
-				"limits": map[string]any{
-					"cpu":    "500m",
-					"memory": "256Mi",
-				},
-				"requests": map[string]any{
-					"cpu":    "50m",
-					"memory": "128Mi",
-				},
-			},
-		},
-
-		// Service account configuration
+		"admissionController":  controller(3, "1000m", "512Mi", "100m", "256Mi"),
+		"backgroundController": controller(2, "500m", "256Mi", "50m", "128Mi"),
+		"cleanupController":    controller(2, "500m", "256Mi", "50m", "128Mi"),
+		"reportsController":    controller(2, "500m", "256Mi", "50m", "128Mi"),
 		"serviceAccount": map[string]any{
 			"create": true,
 			"name":   "kyverno",
 		},
-
-		// Security and RBAC
 		"podSecurityContext": map[string]any{
 			"runAsNonRoot": true,
 			"runAsUser":    65534,
 			"fsGroup":      65534,
 		},
-
-		// Node selector for system nodes (optional)
 		"nodeSelector": map[string]any{
 			"kubernetes.io/os": "linux",
 		},
-
-		// Monitoring and metrics
 		"metricsService": map[string]any{
 			"create": true,
 			"type":   "ClusterIP",
 			"port":   8000,
 		},
-
-		// Webhook configurations
-		"webhooksCleanup": map[string]any{
-			"enabled": true,
-		},
-
-		// Policy exception handling
-		"policyExceptions": map[string]any{
-			"enabled": true,
-		},
-
-		// Image verification with Cosign (optional)
-		"imageVerification": map[string]any{
-			"enabled": false, // Set to true if you want image verification
-		},
-
-		// Grafana dashboard integration — creates a ConfigMap with the Kyverno
-		// dashboard JSON; Grafana's sidecar picks it up automatically.
-		"grafana": map[string]any{
-			"enabled": true,
-		},
-
-		// Global settings
+		"webhooksCleanup":   map[string]any{"enabled": true},
+		"policyExceptions":  map[string]any{"enabled": true},
+		"imageVerification": map[string]any{"enabled": false},
+		// Renders the Kyverno dashboard ConfigMap for Grafana's sidecar.
+		"grafana": map[string]any{"enabled": true},
 		"global": map[string]any{
-			"image": map[string]any{
-				"pullPolicy": "IfNotPresent",
-			},
+			"image": map[string]any{"pullPolicy": "IfNotPresent"},
 		},
 	}
 
@@ -141,14 +63,10 @@ func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cd
 		Values:      &values,
 	})
 
-	// ServiceMonitor — tells VMAgent to scrape Kyverno's metrics on port 8000.
 	cdk8s.NewApiObject(chart, jsii.String("kyverno-servicemonitor"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("monitoring.coreos.com/v1"),
 		Kind:       jsii.String("ServiceMonitor"),
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      jsii.String("kyverno"),
-			Namespace: jsii.String(namespace),
-		},
+		Metadata:   &cdk8s.ApiObjectMetadata{Name: jsii.String("kyverno")},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"selector": map[string]any{
 			"matchLabels": map[string]any{"app.kubernetes.io/name": "kyverno"},
@@ -157,11 +75,7 @@ func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cd
 			"matchNames": []string{namespace},
 		},
 		"endpoints": []map[string]any{
-			{
-				"port":     "metrics-port",
-				"path":     "/metrics",
-				"interval": "30s",
-			},
+			{"port": "metrics-port", "path": "/metrics", "interval": "30s"},
 		},
 	}))
 

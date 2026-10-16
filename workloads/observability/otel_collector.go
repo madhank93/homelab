@@ -4,15 +4,13 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/madhank93/homelab/workloads/imports/k8s"
+	"github.com/madhank93/homelab/config"
+	"github.com/madhank93/homelab/workloads/kit"
 )
 
 const (
-	// vmInsertEndpoint is the VictoriaMetrics single-node remote-write endpoint.
-	// VMCluster is disabled (vmcluster.enabled=false in victoria_metrics.go).
 	vmInsertEndpoint = "http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428/api/v1/write"
-	// vlOtlpEndpoint is the VictoriaLogs OTLP/HTTP endpoint.
-	vlOtlpEndpoint = "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry"
+	vlOtlpEndpoint   = "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry"
 )
 
 // NewOtelCollectorChart deploys two OpenTelemetry Collector instances:
@@ -31,15 +29,8 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		Namespace: jsii.String(namespace),
 	})
 
-	k8s.NewKubeNamespace(chart, jsii.String("namespace"), &k8s.KubeNamespaceProps{
-		Metadata: &k8s.ObjectMeta{
-			Name: jsii.String(namespace),
-			Labels: &map[string]*string{
-				// Agent DaemonSet uses hostPath volumes and hostPorts — requires privileged
-				"pod-security.kubernetes.io/enforce": jsii.String("privileged"),
-			},
-		},
-	})
+	// The agent DaemonSet uses hostPath volumes and hostPorts.
+	kit.Namespace(chart, namespace, true)
 
 	commonExporters := map[string]any{
 		"prometheusremotewrite": map[string]any{
@@ -128,13 +119,10 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 			"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
 			"requests": map[string]any{"cpu": "50m", "memory": "128Mi"},
 		},
-		// Run on every node including control plane
 		"tolerations": []map[string]any{
 			{"operator": "Exists"},
 		},
-		// Persist filelog receiver checkpoints on the host so that agent restarts
-		// (e.g. on config changes) do not re-read logs from the beginning,
-		// which would cause duplicate entries and slow startup.
+		// Host directory for the file_storage checkpoints above.
 		"extraVolumes": []map[string]any{
 			{
 				"name": "otelcol-checkpoint",
@@ -152,10 +140,11 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		},
 	}
 
+	otel := config.HelmChart("opentelemetry-collector")
 	cdk8s.NewHelm(chart, jsii.String("otel-agent"), &cdk8s.HelmProps{
 		Chart:       jsii.String("opentelemetry-collector"),
-		Repo:        jsii.String("https://open-telemetry.github.io/opentelemetry-helm-charts"),
-		Version:     jsii.String("0.169.0"),
+		Repo:        jsii.String(otel.Repo),
+		Version:     jsii.String(otel.Version),
 		ReleaseName: jsii.String("otel-agent"),
 		Namespace:   jsii.String(namespace),
 		Values:      &agentValues,
@@ -165,7 +154,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 	// Presets configure: k8s_cluster receiver (node/pod/deployment metrics),
 	// k8sobjects receiver (Kubernetes events as logs), and necessary RBAC.
 	gatewayValues := map[string]any{
-		"mode":  "deployment",
+		"mode": "deployment",
 		"podAnnotations": map[string]any{
 			"reloader.stakater.com/auto": "true",
 		},
@@ -213,8 +202,8 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 
 	cdk8s.NewHelm(chart, jsii.String("otel-gateway"), &cdk8s.HelmProps{
 		Chart:       jsii.String("opentelemetry-collector"),
-		Repo:        jsii.String("https://open-telemetry.github.io/opentelemetry-helm-charts"),
-		Version:     jsii.String("0.169.0"),
+		Repo:        jsii.String(otel.Repo),
+		Version:     jsii.String(otel.Version),
 		ReleaseName: jsii.String("otel-gateway"),
 		Namespace:   jsii.String(namespace),
 		Values:      &gatewayValues,

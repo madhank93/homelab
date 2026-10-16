@@ -19,27 +19,36 @@ concurrency:
   group: docs-deploy
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 env:
   # Keep in step with [markdown.highlighting] in docs/config.toml — 0.21 renamed
   # that table and dropped several themes, so the two versions move together.
   ZOLA_VERSION: 0.22.1
+  # sha256 of zola-v${ZOLA_VERSION}-x86_64-unknown-linux-gnu.tar.gz; bump with the version.
+  ZOLA_SHA256: 0ca09aa40376aaa9ddfb512ff9ad963262ef95edb0d0f2d5ec6961b6f5cf22ef
 
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # pushes gh-pages from release branches
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Install Zola
         run: |
-          curl -sL "https://github.com/getzola/zola/releases/download/v${ZOLA_VERSION}/zola-v${ZOLA_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
-            | tar -xz -C /usr/local/bin
+          tarball="zola-v${ZOLA_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSLO "https://github.com/getzola/zola/releases/download/v${ZOLA_VERSION}/${tarball}"
+          echo "${ZOLA_SHA256}  ${tarball}" | sha256sum --check --strict
+          sudo tar -xzf "$tarball" -C /usr/local/bin zola
+          rm "$tarball"
 
       - name: Check documented versions against code
         run: ./scripts/docs-version-check.sh
@@ -53,7 +62,7 @@ jobs:
         # to the release being documented, so that branch is what the site
         # should show.
         if: startsWith(github.ref, 'refs/heads/v')
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/public

@@ -2,9 +2,9 @@ package platform
 
 import (
 	"fmt"
-	"github.com/madhank93/homelab/config"
 	"net/netip"
 
+	"github.com/madhank93/homelab/config"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
@@ -21,14 +21,15 @@ import (
 // silently drops non-Ethernet frames. NetBird traffic reaches Cilium by kernel
 // IP forwarding to eth0 on another node.
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
+	// Held on 1.18.x: 1.19.x breaks host TCP on eth0 nodes (cilium/cilium#44430,
+	// #46010). Fixed in 1.20.0, which needs its own change window — a bad
+	// upgrade takes out the Talos API too.
+	cilium := config.HelmChart("cilium")
 	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
-		Chart: pulumi.String("cilium"),
-		// Held on 1.18.x: 1.19.x breaks host TCP on eth0 nodes (cilium/cilium#44430,
-		// #46010). Fixed in 1.20.0, which needs its own change window — a bad
-		// upgrade takes out the Talos API too.
-		Version: pulumi.String("1.18.12"),
+		Chart:   pulumi.String("cilium"),
+		Version: pulumi.String(cilium.Version),
 		RepositoryOpts: &helm.RepositoryOptsArgs{
-			Repo: pulumi.String("https://helm.cilium.io/"),
+			Repo: pulumi.String(cilium.Repo),
 		},
 		Namespace:       pulumi.String("kube-system"),
 		CreateNamespace: pulumi.Bool(true),

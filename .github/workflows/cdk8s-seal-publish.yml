@@ -7,6 +7,8 @@ on:
       - 'v*'  # Trigger on release branches (v0.1.5, etc)
     paths:
       - 'workloads/**'
+      - 'scripts/manifest-secret-guard.sh'
+      - 'scripts/manifest-secret-allowlist.txt'
       - '.github/workflows/cdk8s-seal-publish.yml'
   # A new release branch must publish its manifests branch even when its first
   # commits touch only core/ or docs/. ArgoCD is repointed to <branch>-manifests
@@ -14,6 +16,9 @@ on:
   # Application loses its source at once.
   create:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   publish:
@@ -24,14 +29,21 @@ jobs:
       (github.ref_type == 'branch' && startsWith(github.ref_name, 'v'))
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # pushes <branch>-manifests
+
+    env:
+      # Bump both together; checksum from the release's checksums.txt.
+      KUSTOMIZE_VERSION: v5.8.1
+      KUSTOMIZE_SHA256: 029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d
 
     steps:
       - name: Checkout source repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.26'
           cache-dependency-path: workloads/go.sum
@@ -47,9 +59,10 @@ jobs:
 
       - name: Install kustomize
         run: |
-          KUSTOMIZE_VERSION=v5.8.1
-          curl -sLO "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
-          tar -xzf kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz
+          tarball="kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/${tarball}"
+          echo "${KUSTOMIZE_SHA256}  ${tarball}" | sha256sum --check --strict
+          tar -xzf "$tarball" kustomize
           sudo mv kustomize /usr/local/bin/kustomize
           kustomize version
 
@@ -58,8 +71,12 @@ jobs:
         run: |
           kustomize build ai/kubeflow/ > ../app/kubeflow/kubeflow-manifests.yaml
 
+      # The manifests branch is public: block any newly rendered Secret payload.
+      - name: Guard against rendered Secrets
+        run: ./scripts/manifest-secret-guard.sh app
+
       - name: Deploy Manifests to Branch
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./app

@@ -194,15 +194,9 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	// Note: We'll output this so the user can put it in management.json
 	saToken, err := authentik.NewToken(ctx, "token-netbird", &authentik.TokenArgs{
 		Identifier: pulumi.String("netbird-api-token"),
-		User: sa.ID().ToStringOutput().ApplyT(func(id string) (float64, error) {
-			idInt, err := strconv.Atoi(id)
-			if err != nil {
-				return 0.0, err
-			}
-			return float64(idInt), nil
-		}).(pulumi.Float64Output), // Token User expects Float64Input
-		Intent:   pulumi.String("app_password"),
-		Expiring: pulumi.Bool(false),
+		User:       idFloat(sa.ID()),
+		Intent:     pulumi.String("app_password"),
+		Expiring:   pulumi.Bool(false),
 	}, pulumi.Provider(provider))
 	if err != nil {
 		return err
@@ -354,28 +348,15 @@ func createHomelabForwardAuth(ac AuthentikContext) error {
 	}
 
 	_, err = authentik.NewApplication(ac.Ctx, "app-homelab-forwardauth", &authentik.ApplicationArgs{
-		Name: pulumi.String("Homelab ForwardAuth"),
-		Slug: pulumi.String("homelab-forwardauth"),
-		ProtocolProvider: proxyProvider.ID().ApplyT(func(id pulumi.ID) (*float64, error) {
-			idInt, err := strconv.Atoi(string(id))
-			if err != nil {
-				return nil, err
-			}
-			f := float64(idInt)
-			return &f, nil
-		}).(pulumi.Float64PtrOutput),
+		Name:             pulumi.String("Homelab ForwardAuth"),
+		Slug:             pulumi.String("homelab-forwardauth"),
+		ProtocolProvider: idFloat(proxyProvider.ID()).ToFloat64PtrOutput(),
 	}, pulumi.Provider(ac.Provider))
 	if err != nil {
 		return err
 	}
 
-	proxyProviderID := proxyProvider.ID().ApplyT(func(id pulumi.ID) (float64, error) {
-		idInt, err := strconv.Atoi(string(id))
-		if err != nil {
-			return 0, err
-		}
-		return float64(idInt), nil
-	}).(pulumi.Float64Output)
+	proxyProviderID := idFloat(proxyProvider.ID())
 
 	_, err = authentik.NewOutpost(ac.Ctx, "outpost-homelab-embedded", &authentik.OutpostArgs{
 		Name: pulumi.String("Homelab Embedded Outpost"),
@@ -444,13 +425,7 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 		return err
 	}
 
-	providerIDPtr := oidcProvider.ID().ApplyT(func(id pulumi.ID) (float64, error) {
-		idInt, err := strconv.Atoi(string(id))
-		if err != nil {
-			return 0, fmt.Errorf("failed to convert ID: %w", err)
-		}
-		return float64(idInt), nil
-	}).(pulumi.Float64Output).ToFloat64PtrOutput()
+	providerIDPtr := idFloat(oidcProvider.ID()).ToFloat64PtrOutput()
 
 	_, err = authentik.NewApplication(ac.Ctx, fmt.Sprintf("app-%s", app.ClientID), &authentik.ApplicationArgs{
 		Name:             pulumi.String(app.Name),
@@ -494,4 +469,16 @@ func getCommonScopes(ctx *pulumi.Context, prov *authentik.Provider) pulumi.Strin
 	}
 
 	return scopeIds
+}
+
+// idFloat converts a Pulumi resource ID to the numeric form the Authentik
+// provider takes for cross-resource references.
+func idFloat(id pulumi.IDOutput) pulumi.Float64Output {
+	return id.ApplyT(func(id pulumi.ID) (float64, error) {
+		n, err := strconv.Atoi(string(id))
+		if err != nil {
+			return 0, fmt.Errorf("non-numeric authentik ID %q: %w", id, err)
+		}
+		return float64(n), nil
+	}).(pulumi.Float64Output)
 }

@@ -1,5 +1,8 @@
 # justfile
 
+# Backtick values below (yq reads of config/) are evaluated only by recipes that use them.
+set lazy
+
 # Pulumi — infra stacks (talos | platform | hetzner | authentik | cloudflare)
 [working-directory: 'core']
 core stack action:
@@ -164,11 +167,14 @@ sops-view file:
 sops-decrypt file:
     SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" sops -d {{file}}
 
-ping_scan:
-    nmap -sn 192.168.1.0/24
+SUBNET     := `yq -e '.cluster.subnet' config/config.yml`
+VIP        := `yq -e '.cluster.vip' config/config.yml`
+CONTROLLER := `yq -e '[.cluster.nodes[] | select(.role == "control")][0].ip' config/config.yml`
+NODES      := `yq -e '[.cluster.nodes[].ip] | join(",")' config/config.yml`
+TALOSCTL   := 'talosctl --talosconfig "$HOME/.talos/config" -e ' + VIP
 
-TALOSCTL := 'talosctl --talosconfig "$HOME/.talos/config" -e 192.168.1.210'
-NODES    := '192.168.1.211,192.168.1.212,192.168.1.213,192.168.1.221,192.168.1.222,192.168.1.223,192.168.1.224'
+ping_scan:
+    nmap -sn {{SUBNET}}
 
 # Upgrade one running Talos node.
 # Upgrade workers first, then GPU workers, then controllers; verify cluster
@@ -191,21 +197,13 @@ talos-upgrade node schematic='base' drain='true':
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # Derive the version and schematic IDs from Pulumi configuration.
-    SRC=core/platform/talos.go
-    VERSION=$(sed -nE 's/.*talosVersion[[:space:]]*=[[:space:]]*"(v[0-9.]+)".*/\1/p' "$SRC")
-    IDS=$(sed -nE 's|.*factory\.talos\.dev/image/([0-9a-f]{64}).*|\1|p' "$SRC")
-
+    # Same version and schematics Pulumi builds new VMs from.
     case "{{schematic}}" in
-      base) ID=$(echo "$IDS" | sed -n 1p) ;;
-      gpu)  ID=$(echo "$IDS" | sed -n 2p) ;;
+      base|gpu) ;;
       *) echo "schematic must be 'base' or 'gpu'" >&2; exit 1 ;;
     esac
-
-    [ -n "$VERSION" ] && [ -n "$ID" ] || {
-      echo "could not parse $SRC" >&2
-      exit 1
-    }
+    VERSION=$(yq -e '.talos.version' config/versions.yaml)
+    ID=$(yq -e '.talos.{{schematic}}_schematic' config/versions.yaml)
 
     IMAGE="factory.talos.dev/installer/$ID:$VERSION"
     echo "upgrading {{node}} to $VERSION"
@@ -214,7 +212,7 @@ talos-upgrade node schematic='base' drain='true':
     case "$ok" in y|Y|yes|YES) ;; *) echo "aborted"; exit 1 ;; esac
 
     {{TALOSCTL}} upgrade --nodes {{node}} --image "$IMAGE" --drain={{drain}}
-    {{TALOSCTL}} -n 192.168.1.211 health --wait-timeout=10m
+    {{TALOSCTL}} -n {{CONTROLLER}} health --wait-timeout=10m
     just longhorn-repair-iscsi
 
 # Drop iSCSI node records the current open-iscsi refuses to parse.
@@ -342,7 +340,7 @@ comfyui state:
 
 # Cluster health. Must be clean before upgrading the next node.
 talos-health:
-    {{TALOSCTL}} -n 192.168.1.211 health
+    {{TALOSCTL}} -n {{CONTROLLER}} health
 
 # Talos version reported by every node.
 talos-versions:
@@ -351,4 +349,4 @@ talos-versions:
 # Upgrade Kubernetes. Separate from the OS; requires all nodes healthy.
 #   just talos-upgrade-k8s 1.36.2
 talos-upgrade-k8s version:
-    {{TALOSCTL}} -n 192.168.1.211 upgrade-k8s --to {{version}}
+    {{TALOSCTL}} -n {{CONTROLLER}} upgrade-k8s --to {{version}}

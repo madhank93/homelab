@@ -1,4 +1,0 @@
-config:
-  services.hetzner.enabled: "true"
-  services.proxmox.enabled: "true"
-  services.authentik.enabled: "true"

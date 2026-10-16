@@ -64,9 +64,14 @@ while IFS= read -r line; do
   # Accept the version with or without a leading v — docs write v1.21.1 where
   # some charts pin 1.21.1 and vice versa.
   bare="${version#v}"
-  if ! grep -qF -- "$bare" "$path"; then
-    fail "$component: version '$version' not found in $path"
+  grep -qF -- "$bare" "$path" && continue
+  # Go code that reads its pins through the config package keeps them in
+  # config/versions.yaml.
+  if [[ "$path" == *.go ]] && grep -qE 'config\.(HelmChart|ContainerImage|V\.)' "$path" \
+    && grep -qF -- "$bare" config/versions.yaml; then
+    continue
   fi
+  fail "$component: version '$version' not found in $path"
 done <"$inventory"
 
 # --- Rule 2: no versions outside the inventory -------------------------------
@@ -130,15 +135,14 @@ done < <(
 # --- Rule 3: the manifests branch docs name is the one Argo CD watches -------
 #
 # Allowlisted above so rule 2 ignores it, but it still rots on a release cut,
-# so check it against the ApplicationSet directly.
+# so check it against the branch the ApplicationSet reads from config.yml.
 
 echo "Checking the manifests branch reference..."
 
-argocd_branch=$(grep -oE '"(revision|targetRevision)": "[^"]*-manifests"' core/platform/argocd.go \
-  | head -1 | grep -oE '[^" ]*-manifests')
+argocd_branch=$(sed -nE 's/^manifests_branch:[[:space:]]*"?([^"#[:space:]]+-manifests)"?.*/\1/p' config/config.yml)
 
 if [[ -z "$argocd_branch" ]]; then
-  fail "could not find a *-manifests branch in core/platform/argocd.go"
+  fail "could not find a *-manifests manifests_branch in config/config.yml"
 else
   while IFS= read -r hit; do
     file="${hit%%:*}"
