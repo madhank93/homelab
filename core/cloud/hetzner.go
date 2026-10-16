@@ -9,22 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/core/internal/cfg"
 	"github.com/pulumi/pulumi-command/sdk/go/command/remote"
 	hcloud "github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
-
-// HetznerConfig holds Bifrost VPS provisioning parameters read from config.yml
-// under the "hetzner" key.
-type HetznerConfig struct {
-	ServerName string `koanf:"server_name"`
-	Image      string `koanf:"image"`
-	ServerType string `koanf:"server_type"`
-	Location   string `koanf:"location"`
-	SSHKey     string `koanf:"ssh_key"`
-	VpsIP      string `koanf:"vps_ip"`
-}
 
 // DeployHetznerVPS provisions the Bifrost VPS on Hetzner Cloud and bootstraps it.
 //
@@ -36,10 +26,7 @@ type HetznerConfig struct {
 // Secrets are written to .secrets.env and .env under ./cloud/bifrost/ (gitignored)
 // before the copy step. Run via `just core hetzner up`.
 func DeployHetznerVPS(ctx *pulumi.Context) error {
-	var hcfg HetznerConfig
-	if err := cfg.Load("hetzner", &hcfg); err != nil {
-		return err
-	}
+	hcfg := config.C.Hetzner
 
 	token := cfg.K.String("HCLOUD_TOKEN")
 	if token == "" {
@@ -413,7 +400,7 @@ func generateTraefikPublicServices(services []PublicService) error {
 	sb.WriteString("  routers:\n")
 	for _, svc := range services {
 		sb.WriteString(fmt.Sprintf("    %s:\n", svc.Name))
-		sb.WriteString(fmt.Sprintf("      rule: \"Host(`%s.madhan.app`)\"\n", svc.Name))
+		sb.WriteString(fmt.Sprintf("      rule: \"Host(`%s`)\"\n", config.C.Host(svc.Name)))
 		if !svc.SkipAuth {
 			sb.WriteString("      middlewares: [authentik-forwardauth]\n")
 		}

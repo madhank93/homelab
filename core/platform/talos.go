@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/madhank93/homelab/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	talos_client "github.com/pulumiverse/pulumi-talos/sdk/go/talos/client"
 	talos_cluster "github.com/pulumiverse/pulumi-talos/sdk/go/talos/cluster"
@@ -13,15 +14,9 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-const (
-	talosVersion    = "v1.13.8"
-	clusterEndpoint = "https://192.168.1.210:6443" // VIP
-	vipIP           = "192.168.1.210"
-)
-
 // DeployTalosCluster provisions Talos Linux VMs on Proxmox and bootstraps the
 // Kubernetes cluster. It downloads the base and GPU Talos images, generates
-// machine secrets, creates all VMs defined in the nodes slice, applies per-node
+// machine secrets, creates the VMs listed in config/config.yml, applies per-node
 // machine configs (hostname, static IP, routes), bootstraps etcd on the first
 // controller, and writes talosconfig + kubeconfig to disk for the platform stack.
 //
@@ -31,16 +26,21 @@ const (
 // nodes with `just talos-upgrade <ip>`.
 func DeployTalosCluster(ctx *pulumi.Context) error {
 	// Initialize Provider & Config
-	provider, cfg, err := NewProxmoxProvider(ctx)
+	provider, err := NewProxmoxProvider(ctx)
 	if err != nil {
 		return err
 	}
+	cl := config.C.Cluster
+	talos := config.V.Talos
+	pveNode := config.C.Proxmox.NodeName
+	clusterEndpoint := "https://" + cl.VIP + ":6443"
+	factoryURL := func(schematic string) string {
+		return "https://factory.talos.dev/image/" + schematic + "/" + talos.Version + "/nocloud-amd64.raw.gz"
+	}
 
-	// Download Base Talos Image (without Nvidia extensions)
-	// Schematic ID: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b
-	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent
-	baseTalosImage, err := DownloadImage(ctx, provider, "talos-base-image", cfg.NodeName,
-		"https://factory.talos.dev/image/88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b/v1.13.8/nocloud-amd64.raw.gz",
+	// Base image extensions: iscsi-tools, util-linux-tools, qemu-guest-agent
+	baseTalosImage, err := DownloadImage(ctx, provider, "talos-base-image", pveNode,
+		factoryURL(talos.BaseSchematic),
 		"talos-nocloud-amd64-base.img",
 		"gz",
 	)
@@ -48,12 +48,10 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Download GPU Talos Image (with Nvidia extensions)
-	// Schematic ID: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829
-	// Extensions: iscsi-tools, util-linux-tools, qemu-guest-agent,
+	// GPU image adds: iscsi-tools, util-linux-tools, qemu-guest-agent,
 	//             nvidia-container-toolkit-production, nvidia-open-gpu-kernel-modules-production
-	gpuTalosImage, err := DownloadImage(ctx, provider, "talos-gpu-image", cfg.NodeName,
-		"https://factory.talos.dev/image/901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829/v1.13.8/nocloud-amd64.raw.gz",
+	gpuTalosImage, err := DownloadImage(ctx, provider, "talos-gpu-image", pveNode,
+		factoryURL(talos.GPUSchematic),
 		"talos-nocloud-amd64-gpu.img",
 		"gz",
 	)
@@ -63,7 +61,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	// Generate Talos Secrets
 	secrets, err := talos_machine.NewSecrets(ctx, "talos-secrets", &talos_machine.SecretsArgs{
-		TalosVersion: pulumi.String(talosVersion),
+		TalosVersion: pulumi.String(talos.Version),
 	})
 	if err != nil {
 		return err
@@ -78,9 +76,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	// Generate Client Config (Talos Config)
 	clientConfig := talos_client.GetConfigurationOutput(ctx, talos_client.GetConfigurationOutputArgs{
-		ClusterName:         pulumi.String("talos-cluster"),
+		ClusterName:         pulumi.String(cl.Name),
 		ClientConfiguration: clientConfigInput,
-		Endpoints:           pulumi.StringArray{pulumi.String(vipIP)},
+		Endpoints:           pulumi.StringArray{pulumi.String(cl.VIP)},
 	})
 
 	ctx.Export("talosconfig", clientConfig.TalosConfig())
@@ -91,30 +89,6 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return nil, err
 	})
 
-	// Define nodes
-	// Total host RAM: 92 GB. Reserved for Proxmox/host OS: 8 GB.
-	// VM budget: 84 GB — control planes 8 GB each, workers 14 GB each, GPU worker 18 GB.
-	nodes := []NodeConfig{
-		// Control Plane (3 Nodes) - High Priority
-		{Name: "k8s-controller1", IP: "192.168.1.211", Role: "control", Cores: 4, Memory: 8192, DiskSize: 50, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller2", IP: "192.168.1.212", Role: "control", Cores: 4, Memory: 8192, DiskSize: 50, CpuUnits: 1024, Balloon: 4096},
-		{Name: "k8s-controller3", IP: "192.168.1.213", Role: "control", Cores: 4, Memory: 8192, DiskSize: 50, CpuUnits: 1024, Balloon: 4096},
-		// Workers (3 Nodes) - Standard Priority
-		{Name: "k8s-worker1", IP: "192.168.1.221", Role: "worker", Cores: 4, Memory: 14336, DiskSize: 200, CpuUnits: 100, Balloon: 8192},
-		{Name: "k8s-worker2", IP: "192.168.1.222", Role: "worker", Cores: 4, Memory: 14336, DiskSize: 200, CpuUnits: 100, Balloon: 8192},
-		{Name: "k8s-worker3", IP: "192.168.1.223", Role: "worker", Cores: 4, Memory: 14336, DiskSize: 200, CpuUnits: 100, Balloon: 8192},
-		// Worker 4 with GPU — xvga=false (proxmox.go): compute-only, no VGA BAR constraints.
-		// 16384 = 16 GB (2^14). Requires clean cold boot — GPU PCIe can't hot-resize.
-		// Balloon floor 8192: guarantees 8 GB to prevent CUDA-pinned memory being reclaimed.
-		// 250 GB disk: extra space for AI model volumes (Ollama, ComfyUI).
-		// 8 cores: dedicated AI node; Ollama + ComfyUI are CPU-hungry at inference time.
-		{
-			Name: "k8s-worker4", IP: "192.168.1.224", Role: "worker", Cores: 8, Memory: 16384, DiskSize: 250,
-			HasGPU: true, PcieIDs: []string{"0000:09:00.0"},
-			CpuUnits: 100, Balloon: 8192,
-		},
-	}
-
 	// Patches for DHCP and VIP
 	cpPatch := fmt.Sprintf(`machine:
   network:
@@ -124,9 +98,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
         dhcp: true
         vip:
           ip: %s
-`, vipIP)
+`, cl.VIP)
 
-	workerPatch := `machine:
+	workerPatch := fmt.Sprintf(`machine:
   nodeLabels:
     "node.longhorn.io/create-default-disk": "config"
   network:
@@ -137,39 +111,24 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
   kubelet:
     nodeIP:
       validSubnets:
-        - 192.168.1.0/24
+        - %s
   kernel:
     modules:
       - name: nbd
       - name: iscsi_tcp
       - name: iscsi_generic
       - name: configfs
-`
+`, cl.Subnet)
 
-	// GPU Worker Patch - Includes worker networking/modules + Nvidia modules
+	// GPU worker = worker patch + this; Talos appends the module list.
 	// Note: The nvidia-container-toolkit-production Talos extension configures
 	// containerd automatically — no machine.files drop-in needed.
 	// Talos v1.10+ restricts machine.files writes to /var; /etc/cri/conf.d/ is not allowed.
 	gpuWorkerPatch := `machine:
-  nodeLabels:
-    "node.longhorn.io/create-default-disk": "config"
   nodeTaints:
     dedicated: "ai:NoSchedule"
-  network:
-    interfaces:
-      - deviceSelector:
-          physical: true
-        dhcp: true
-  kubelet:
-    nodeIP:
-      validSubnets:
-        - 192.168.1.0/24
   kernel:
     modules:
-      - name: nbd
-      - name: iscsi_tcp
-      - name: iscsi_generic
-      - name: configfs
       - name: nvidia
       - name: nvidia_uvm
       - name: nvidia_drm
@@ -194,30 +153,30 @@ machine:
 
 	// Generate Configs
 	cpConfig := talos_machine.GetConfigurationOutput(ctx, talos_machine.GetConfigurationOutputArgs{
-		ClusterName:     pulumi.String("talos-cluster"),
+		ClusterName:     pulumi.String(cl.Name),
 		MachineType:     pulumi.String("controlplane"),
 		ClusterEndpoint: pulumi.String(clusterEndpoint),
 		MachineSecrets:  secrets.MachineSecrets,
-		TalosVersion:    pulumi.String(talosVersion),
+		TalosVersion:    pulumi.String(talos.Version),
 		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(cpPatch)},
 	})
 
 	workerConfig := talos_machine.GetConfigurationOutput(ctx, talos_machine.GetConfigurationOutputArgs{
-		ClusterName:     pulumi.String("talos-cluster"),
+		ClusterName:     pulumi.String(cl.Name),
 		MachineType:     pulumi.String("worker"),
 		ClusterEndpoint: pulumi.String(clusterEndpoint),
 		MachineSecrets:  secrets.MachineSecrets,
-		TalosVersion:    pulumi.String(talosVersion),
+		TalosVersion:    pulumi.String(talos.Version),
 		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(workerPatch)},
 	})
 
 	gpuConfig := talos_machine.GetConfigurationOutput(ctx, talos_machine.GetConfigurationOutputArgs{
-		ClusterName:     pulumi.String("talos-cluster"),
+		ClusterName:     pulumi.String(cl.Name),
 		MachineType:     pulumi.String("worker"),
 		ClusterEndpoint: pulumi.String(clusterEndpoint),
 		MachineSecrets:  secrets.MachineSecrets,
-		TalosVersion:    pulumi.String(talosVersion),
-		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(gpuWorkerPatch)},
+		TalosVersion:    pulumi.String(talos.Version),
+		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(workerPatch), pulumi.String(gpuWorkerPatch)},
 	})
 
 	// Export sanitized configs
@@ -227,17 +186,17 @@ machine:
 	var cpConfigApplies []pulumi.Resource
 	var controllerIP pulumi.String
 
-	for _, node := range nodes {
+	for _, node := range cl.Nodes {
 		// Select Image Based on GPU
 		var imageID pulumi.IDOutput
-		if node.HasGPU {
+		if node.HasGPU() {
 			imageID = gpuTalosImage.ID()
 		} else {
 			imageID = baseTalosImage.ID()
 		}
 
 		// Create VM
-		vmRes, err := NewProxmoxVM(ctx, provider, cfg.NodeName, node, imageID)
+		vmRes, err := NewProxmoxVM(ctx, provider, pveNode, node, imageID)
 		if err != nil {
 			return err
 		}
@@ -247,7 +206,7 @@ machine:
 
 		ctx.Export(node.Name+"-ip", nodeIP)
 
-		if node.Name == "k8s-controller1" {
+		if controllerIP == "" && node.Role == "control" {
 			controllerIP = nodeIP
 		}
 
@@ -255,7 +214,7 @@ machine:
 		var baseConfig pulumi.StringOutput
 		if node.Role == "control" {
 			baseConfig = cpConfig.MachineConfiguration()
-		} else if node.HasGPU {
+		} else if node.HasGPU() {
 			baseConfig = gpuConfig.MachineConfiguration()
 		} else {
 			baseConfig = workerConfig.MachineConfiguration()
@@ -263,7 +222,7 @@ machine:
 
 		// Patch Hostname and Sanitize
 		finalConfig := baseConfig.ApplyT(func(c string) (string, error) {
-			return patchTalosConfig(c, node.Name, node.IP)
+			return patchTalosConfig(c, node.Name, node.IP, cl)
 		}).(pulumi.StringOutput)
 
 		// Dynamically discovered IP from QEMU agent for bootstrapping.
@@ -331,7 +290,7 @@ machine:
 
 	kubeconfigRes, err := talos_cluster.NewKubeconfig(ctx, "kubeconfig", &talos_cluster.KubeconfigArgs{
 		ClientConfiguration: clusterClientConfigInput,
-		Node:                pulumi.String(vipIP),
+		Node:                pulumi.String(cl.VIP),
 	}, pulumi.DependsOn([]pulumi.Resource{bootstrap}))
 	if err != nil {
 		return err
@@ -356,7 +315,8 @@ machine:
 //  3. Sets machine.network.hostname, converts DHCP to a static address (hostname/24),
 //     adds a default gateway route, and adds a static route for the NetBird subnet
 //     (100.109.0.0/16 via worker1) so return traffic can reach the WireGuard tunnel.
-func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
+func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (string, error) {
+	prefix := cl.Subnet[strings.Index(cl.Subnet, "/"):]
 	reader := strings.NewReader(rawConfig)
 	decoder := yaml.NewDecoder(reader)
 	var documents []map[string]any
@@ -385,24 +345,24 @@ func patchTalosConfig(rawConfig, hostname, ip string) (string, error) {
 					if interfaces, ok := networkMap["interfaces"].([]any); ok && len(interfaces) > 0 {
 						if iface, ok := interfaces[0].(map[string]any); ok {
 							iface["dhcp"] = false
-							iface["addresses"] = []string{fmt.Sprintf("%s/24", ip)}
+							iface["addresses"] = []string{ip + prefix}
 							iface["routes"] = []any{
 								map[string]any{
-									"gateway": "192.168.1.254",
+									"gateway": cl.Router,
 								},
 								// Static route: return traffic to Bifrost's NetBird subnet
 								// must go via k8s-routing-peer (worker1). Cilium's eBPF
 								// bypasses iptables MASQUERADE, so a kernel route is required
 								// on every node so SYN-ACKs reach worker1's wt0 tunnel.
 								map[string]any{
-									"network": "100.109.0.0/16",
-									"gateway": "192.168.1.221",
+									"network": cl.NetbirdCIDR,
+									"gateway": cl.NetbirdRouter,
 									"metric":  1024,
 								},
 							}
 						}
 					}
-					networkMap["nameservers"] = []string{"1.1.1.1", "192.168.1.254"}
+					networkMap["nameservers"] = cl.Nameservers
 				}
 			}
 		}

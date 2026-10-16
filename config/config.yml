@@ -1,0 +1,48 @@
+# Infrastructure values shared by Pulumi (core/), CDK8s (workloads/) and the
+# justfile (`yq`). Secrets never go here: they live in SOPS, .env and OpenBao.
+
+domain: madhan.app
+
+cluster:
+  name: talos-cluster
+  vip: 192.168.1.210
+  subnet: 192.168.1.0/24
+  router: 192.168.1.254
+  nameservers: [1.1.1.1, 192.168.1.254]
+  # Gateway LB address; the public wildcard DNS record points here.
+  gateway_ip: 192.168.1.220
+  lb_pool: {start: 192.168.1.220, stop: 192.168.1.230}
+  # Return route for Bifrost's NetBird subnet via the k8s routing peer (worker1).
+  netbird_cidr: 100.109.0.0/16
+  netbird_router: 192.168.1.221
+  # Host RAM 92 GB, 8 GB reserved for Proxmox: control planes 8 GB, workers 14 GB, GPU worker 16 GB.
+  nodes:
+    - {name: k8s-controller1, ip: 192.168.1.211, role: control, cores: 4, memory: 8192, disk: 50, cpu_units: 1024, balloon: 4096}
+    - {name: k8s-controller2, ip: 192.168.1.212, role: control, cores: 4, memory: 8192, disk: 50, cpu_units: 1024, balloon: 4096}
+    - {name: k8s-controller3, ip: 192.168.1.213, role: control, cores: 4, memory: 8192, disk: 50, cpu_units: 1024, balloon: 4096}
+    - {name: k8s-worker1, ip: 192.168.1.221, role: worker, cores: 4, memory: 14336, disk: 200, cpu_units: 100, balloon: 8192}
+    - {name: k8s-worker2, ip: 192.168.1.222, role: worker, cores: 4, memory: 14336, disk: 200, cpu_units: 100, balloon: 8192}
+    - {name: k8s-worker3, ip: 192.168.1.223, role: worker, cores: 4, memory: 14336, disk: 200, cpu_units: 100, balloon: 8192}
+    # GPU passthrough needs a cold boot; the balloon floor keeps CUDA-pinned memory resident.
+    - {name: k8s-worker4, ip: 192.168.1.224, role: worker, cores: 8, memory: 16384, disk: 250, cpu_units: 100, balloon: 8192, pcie_ids: ["0000:09:00.0"]}
+
+gateway: {name: homelab-gateway, namespace: kube-system}
+openbao_addr: http://openbao.openbao.svc.cluster.local:8200
+# Branch Argo CD syncs from; CI publishes synth output to it.
+manifests_branch: v0.1.7-manifests
+
+cloudflare:
+  zone_id: ab8d029e91fb2bb38cb8bc91b9f0b218
+
+proxmox:
+  username: root@pam
+  endpoint: https://192.168.1.235:8006/
+  nodename: proxmox
+
+hetzner:
+  server_name: bifrost-public-vps1
+  image: ubuntu-24.04
+  server_type: cpx21
+  location: ash
+  ssh_key: mac-ssh
+  vps_ip: "178.156.199.250"

@@ -2,7 +2,8 @@ package platform
 
 import (
 	"fmt"
-	"strings"
+	"github.com/madhank93/homelab/config"
+	"net/netip"
 
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
@@ -21,7 +22,7 @@ import (
 // IP forwarding to eth0 on another node.
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
-		Chart:   pulumi.String("cilium"),
+		Chart: pulumi.String("cilium"),
 		// Held on 1.18.x: 1.19.x breaks host TCP on eth0 nodes (cilium/cilium#44430,
 		// #46010). Fixed in 1.20.0, which needs its own change window — a bad
 		// upgrade takes out the Talos API too.
@@ -55,7 +56,7 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				},
 				"hostRoot": pulumi.String("/sys/fs/cgroup"),
 			},
-			"k8sServiceHost": pulumi.String("192.168.1.210"), // VIP
+			"k8sServiceHost": pulumi.String(config.C.Cluster.VIP),
 			"k8sServicePort": pulumi.Int(6443),
 			"hubble": pulumi.Map{
 				"enabled": pulumi.Bool(true),
@@ -137,9 +138,9 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		OtherFields: map[string]any{
 			"spec": map[string]any{
 				"parentRefs": []map[string]any{
-					{"name": "homelab-gateway", "namespace": "kube-system"},
+					{"name": config.C.Gateway.Name, "namespace": config.C.Gateway.Namespace},
 				},
-				"hostnames": []string{"hubble.madhan.app"},
+				"hostnames": []string{config.C.Host("hubble")},
 				"rules": []map[string]any{
 					{
 						"matches":     []map[string]any{{"path": map[string]any{"type": "PathPrefix", "value": "/"}}},
@@ -176,8 +177,8 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 		Kind:       pulumi.String("Gateway"),
 		Metadata: &metav1.ObjectMetaArgs{
-			Name:      pulumi.String("homelab-gateway"),
-			Namespace: pulumi.String("kube-system"),
+			Name:      pulumi.String(config.C.Gateway.Name),
+			Namespace: pulumi.String(config.C.Gateway.Namespace),
 		},
 		OtherFields: map[string]any{
 			"spec": map[string]any{
@@ -220,28 +221,24 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error
 	return err
 }
 
-// ConfigureCiliumIPPool creates the L2 Announcement Policy and IP Pool dynamically.
-func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, nodeIP pulumi.StringInput, interfaceName string) error {
-
-	// Calculate the Blocks (CIDRs) as an Output
-	blocks := nodeIP.ToStringOutput().ApplyT(func(ip string) ([]any, error) {
-		parts := strings.Split(ip, ".")
-		if len(parts) != 4 {
-			return nil, fmt.Errorf("invalid IPv4 address: %s", ip)
-		}
-		subnet := strings.Join(parts[:3], ".") // "192.168.1"
-
-		var b []any
-		for i := 220; i <= 230; i++ {
-			b = append(b, map[string]string{
-				"cidr": fmt.Sprintf("%s.%d/32", subnet, i),
-			})
-		}
-		return b, nil
-	})
+// ConfigureCiliumIPPool creates the L2 announcement policy and the LB IP pool
+// (one /32 block per address in config cluster.lb_pool).
+func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, interfaceName string) error {
+	start, err := netip.ParseAddr(config.C.Cluster.LBPool.Start)
+	if err != nil {
+		return err
+	}
+	stop, err := netip.ParseAddr(config.C.Cluster.LBPool.Stop)
+	if err != nil {
+		return err
+	}
+	var blocks []any
+	for ip := start; ip.Compare(stop) <= 0; ip = ip.Next() {
+		blocks = append(blocks, map[string]string{"cidr": ip.String() + "/32"})
+	}
 
 	// Create IP Pool Resource
-	_, err := apiextensions.NewCustomResource(ctx, "cilium-ip-pool", &apiextensions.CustomResourceArgs{
+	_, err = apiextensions.NewCustomResource(ctx, "cilium-ip-pool", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("cilium.io/v2alpha1"),
 		Kind:       pulumi.String("CiliumLoadBalancerIPPool"),
 		Metadata: &metav1.ObjectMetaArgs{
@@ -249,7 +246,7 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 		},
 		OtherFields: map[string]any{
 			"spec": map[string]any{
-				"blocks": blocks, // Output inserted here
+				"blocks": blocks,
 			},
 		},
 	}, pulumi.Provider(k8sProvider))

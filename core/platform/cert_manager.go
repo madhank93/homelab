@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"github.com/madhank93/homelab/config"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
@@ -82,7 +83,7 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 								},
 							},
 							"selector": map[string]any{
-								"dnsZones": []string{"madhan.app"},
+								"dnsZones": []string{config.C.Domain},
 							},
 						},
 					},
@@ -126,7 +127,7 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 					"name": "letsencrypt-prod",
 					"kind": "ClusterIssuer",
 				},
-				"dnsNames": []string{"madhan.app", "*.madhan.app"},
+				"dnsNames": []string{config.C.Domain, "*." + config.C.Domain},
 			},
 		},
 	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{chart}))

@@ -8,10 +8,13 @@ require (
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.70.91
 )
 
+require go.yaml.in/yaml/v3 v3.0.4 // indirect
+
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/madhank93/homelab/config v0.0.0
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/yuin/goldmark v1.7.16 // indirect
@@ -24,3 +27,5 @@ require (
 	golang.org/x/tools/cmd/godoc v0.1.0-deprecated // indirect
 	golang.org/x/tools/godoc v0.1.0-deprecated // indirect
 )
+
+replace github.com/madhank93/homelab/config => ../config

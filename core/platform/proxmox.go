@@ -8,48 +8,17 @@ import (
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/vm"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/core/internal/cfg"
 )
 
-// ProxmoxClusterConfig holds Proxmox provider settings read from config.yml
-// under the "proxmox" key.
-type ProxmoxClusterConfig struct {
-	Username string `koanf:"username"`
-	Endpoint string `koanf:"endpoint"`
-	NodeName string `koanf:"nodename"`
-	ImageURL string `koanf:"image_url"`
-}
-
-// NodeConfig describes a single Talos VM to create on Proxmox.
-// HasGPU and PcieIDs enable PCIe passthrough for the GPU worker node.
-// CpuUnits controls the Proxmox CPU weight (scheduling priority).
-// Balloon is the minimum guaranteed RAM in MiB (balloon floor).
-type NodeConfig struct {
-	Name       string
-	IP         string
-	Role       string
-	Cores      int
-	Memory     int
-	DiskSize   int
-	HasGPU     bool
-	PcieIDs    []string
-	IsTemplate bool
-	TemplateID pulumi.IntInput
-	CpuUnits   int
-	Balloon    int
-}
-
 // NewProxmoxProvider initialises the Proxmox VE provider from config.yml and
 // the PROXMOX_PASSWORD environment variable (injected via SOPS).
-func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, *ProxmoxClusterConfig, error) {
-	var pcfg ProxmoxClusterConfig
-	if err := cfg.Load("proxmox", &pcfg); err != nil {
-		return nil, nil, err
-	}
-
+func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, error) {
+	pcfg := config.C.Proxmox
 	password := cfg.K.String("PROXMOX_PASSWORD")
 	if password == "" {
-		return nil, nil, fmt.Errorf("PROXMOX_PASSWORD not found in .env")
+		return nil, fmt.Errorf("PROXMOX_PASSWORD not found in .env")
 	}
 
 	provider, err := proxmoxve.NewProvider(ctx, "proxmoxve", &proxmoxve.ProviderArgs{
@@ -59,10 +28,10 @@ func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, *ProxmoxClust
 		Insecure: pulumi.Bool(true),
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return provider, &pcfg, nil
+	return provider, nil
 }
 
 // DownloadImage downloads a file to the Proxmox datastore.
@@ -95,11 +64,11 @@ func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceNa
 
 // NewProxmoxVM creates a Talos virtual machine on the given Proxmox node.
 // It uses OVMF BIOS + q35 machine type, virtio-scsi-single, and an EFI disk.
-// When config.HasGPU is true, each PcieID is added as a PCIe passthrough device
-// with Xvga=false (compute-only; no VGA BAR constraints).
-func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string, config NodeConfig, imageID pulumi.IDInput) (*vm.VirtualMachine, error) {
+// Each of the node's PcieIDs becomes a PCIe passthrough device with Xvga=false
+// (compute-only; no VGA BAR constraints).
+func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string, node config.Node, imageID pulumi.IDInput) (*vm.VirtualMachine, error) {
 	diskArgs := vm.VirtualMachineDiskArgs{
-		Size:        pulumi.Int(config.DiskSize),
+		Size:        pulumi.Int(node.Disk),
 		Interface:   pulumi.String("scsi0"),
 		Iothread:    pulumi.Bool(true),
 		FileFormat:  pulumi.String("raw"),
@@ -109,16 +78,16 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 
 	args := &vm.VirtualMachineArgs{
 		NodeName: pulumi.String(nodeName),
-		Name:     pulumi.String(config.Name),
+		Name:     pulumi.String(node.Name),
 		Agent:    vm.VirtualMachineAgentArgs{Enabled: pulumi.Bool(true)},
 		Cpu: &vm.VirtualMachineCpuArgs{
-			Cores: pulumi.Int(config.Cores),
+			Cores: pulumi.Int(node.Cores),
 			Type:  pulumi.String("host"),
-			Units: pulumi.Int(config.CpuUnits), // CPU Weight
+			Units: pulumi.Int(node.CPUUnits), // CPU Weight
 		},
 		Memory: &vm.VirtualMachineMemoryArgs{
-			Dedicated: pulumi.Int(config.Memory),
-			Shared:    pulumi.Int(config.Balloon), // Balloon Minimum (Guaranteed)
+			Dedicated: pulumi.Int(node.Memory),
+			Shared:    pulumi.Int(node.Balloon), // Balloon Minimum (Guaranteed)
 		},
 		Disks: &vm.VirtualMachineDiskArray{
 			diskArgs,
@@ -144,11 +113,11 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 		},
 	}
 
-	if config.HasGPU {
+	if node.HasGPU() {
 		var hostpcis vm.VirtualMachineHostpciArray
-		for _, pcieID := range config.PcieIDs {
+		for i, pcieID := range node.PcieIDs {
 			hostpcis = append(hostpcis, vm.VirtualMachineHostpciArgs{
-				Device: pulumi.String("hostpci0"),
+				Device: pulumi.String(fmt.Sprintf("hostpci%d", i)),
 				Pcie:   pulumi.Bool(true),
 				Id:     pulumi.String(pcieID),
 				// Xvga=false: this is a compute-only GPU (CUDA/Ollama/ComfyUI), not a display.
@@ -161,7 +130,7 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 
 	// Prevent accidental VM replacement; controllers are etcd members.
 	// Unprotect explicitly for intentional rebuilds.
-	return vm.NewVirtualMachine(ctx, config.Name, args,
+	return vm.NewVirtualMachine(ctx, node.Name, args,
 		pulumi.Provider(provider),
 		pulumi.Protect(true),
 	)

@@ -40,8 +40,7 @@ func DeployPlatform(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// k8s-controller1 has a static IP — used to determine the LAN subnet for the IP pool
-	if err := ConfigureCiliumIPPool(ctx, k8sProvider, pulumi.String("192.168.1.211"), "(eth0|ens.*|enp.*)"); err != nil {
+	if err := ConfigureCiliumIPPool(ctx, k8sProvider, "(eth0|ens.*|enp.*)"); err != nil {
 		return err
 	}
 

@@ -12,6 +12,15 @@ core stack action:
 synth:
     go run .
 
+# Enable the gitleaks + trufflehog secret scan on commit and push (needs Docker).
+hooks:
+    git config core.hooksPath .githooks
+
+# Scan the whole git history for secrets (both scanners, findings redacted).
+secret-scan-history:
+    docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git --no-banner --redact /repo
+    docker run --rm -v "$PWD:/repo" trufflesecurity/trufflehog:3.99.2 git file:///repo --no-update --results=verified,unknown
+
 # Docs: every version in the Software Inventory must still be in the file that
 # pins it, and no other page may state a version. Also runs in CI.
 docs-check:

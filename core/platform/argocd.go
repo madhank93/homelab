@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"github.com/madhank93/homelab/config"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
@@ -66,23 +67,23 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 					// CDK8s omits them. Ignore globally so all StatefulSets stay Synced.
 					"resource.customizations.ignoreDifferences.apps_StatefulSet": pulumi.String(
 						"jqPathExpressions:\n" +
-						"  - .spec.volumeClaimTemplates[]?.apiVersion\n" +
-						"  - .spec.volumeClaimTemplates[]?.kind\n" +
-						"  - .spec.volumeClaimTemplates[]?.spec.volumeMode\n",
+							"  - .spec.volumeClaimTemplates[]?.apiVersion\n" +
+							"  - .spec.volumeClaimTemplates[]?.kind\n" +
+							"  - .spec.volumeClaimTemplates[]?.spec.volumeMode\n",
 					),
 					// Kubeflow aggregationRule ClusterRoles: K8s auto-fills .rules from sub-roles;
 					// manifests have rules:null. Global customization handles all ClusterRoles.
 					"resource.customizations.ignoreDifferences.rbac.authorization.k8s.io_ClusterRole": pulumi.String(
 						"jqPathExpressions:\n" +
-						"  - .rules\n",
+							"  - .rules\n",
 					),
 					// Kubeflow CRDs: K8s adds .spec.conversion and .status after apply.
 					// .spec.preserveUnknownFields=false is explicit in manifests but K8s drops it (default).
 					"resource.customizations.ignoreDifferences.apiextensions.k8s.io_CustomResourceDefinition": pulumi.String(
 						"jqPathExpressions:\n" +
-						"  - .spec.conversion\n" +
-						"  - .spec.preserveUnknownFields\n" +
-						"  - .status\n",
+							"  - .spec.conversion\n" +
+							"  - .spec.preserveUnknownFields\n" +
+							"  - .status\n",
 					),
 				},
 			},
@@ -117,11 +118,11 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			"spec": map[string]any{
 				"parentRefs": []map[string]any{
 					{
-						"name":      "homelab-gateway",
-						"namespace": "kube-system",
+						"name":      config.C.Gateway.Name,
+						"namespace": config.C.Gateway.Namespace,
 					},
 				},
-				"hostnames": []string{"argocd.local", "argocd.madhan.app"},
+				"hostnames": []string{"argocd.local", config.C.Host("argocd")},
 				"rules": []map[string]any{
 					{
 						"matches": []map[string]any{
@@ -147,7 +148,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return err
 	}
 
-	// 5. Create ApplicationSet to Bootstrap GitOps (Watch v0.1.7-manifests)
+	// 5. Create ApplicationSet to Bootstrap GitOps (watches config manifests_branch)
 	_, err = apiextensions.NewCustomResource(ctx, "bootstrap-appset", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("argoproj.io/v1alpha1"),
 		Kind:       pulumi.String("ApplicationSet"),
@@ -161,7 +162,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 					{
 						"git": map[string]any{
 							"repoURL":  "https://github.com/madhank93/homelab.git",
-							"revision": "v0.1.7-manifests", // Watch the manifests branch
+							"revision": config.C.ManifestsBranch,
 							"directories": []map[string]any{
 								{"path": "*"}, // Apps are at the root of the manifests branch
 							},
@@ -176,7 +177,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						"project": "default",
 						"source": map[string]any{
 							"repoURL":        "https://github.com/madhank93/homelab.git",
-							"targetRevision": "v0.1.7-manifests",
+							"targetRevision": config.C.ManifestsBranch,
 							"path":           "{{path}}",
 						},
 						"destination": map[string]any{
@@ -208,8 +209,8 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 							},
 							// Kubeflow CRDs and ClusterRoles: Kubernetes mutates fields not in manifests.
 							{
-								"group": "apiextensions.k8s.io",
-								"kind": "CustomResourceDefinition",
+								"group":             "apiextensions.k8s.io",
+								"kind":              "CustomResourceDefinition",
 								"jqPathExpressions": []string{".spec.conversion", ".status"},
 							},
 							{

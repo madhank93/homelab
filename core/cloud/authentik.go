@@ -3,6 +3,7 @@ package cloud
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/madhank93/homelab/config"
 	"io"
 	"net/http"
 	"strconv"
@@ -14,9 +15,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+var AuthUrl = "https://" + config.C.Host("auth")
+
 const (
-	// Authentik System
-	AuthUrl      = "https://auth.madhan.app"
 	AuthInsecure = false
 
 	// GitHub SSO Settings
@@ -82,7 +83,7 @@ type AuthentikContext struct {
 	FlowExplicit   pulumi.StringInput // explicit-consent authorization flow
 	FlowEnrollment pulumi.StringInput // default-source-enrollment (required for OAuth sources)
 	Scopes         pulumi.StringArrayInput
-	SigningKey      pulumi.StringInput // authentik Self-signed Certificate ID
+	SigningKey     pulumi.StringInput // authentik Self-signed Certificate ID
 }
 
 // OIDCApp describes an OIDC application to register in Authentik.
@@ -92,8 +93,8 @@ type OIDCApp struct {
 	Name                  string
 	Slug                  string
 	ClientID              string
-	ClientSecret          string             // required when ClientType is "confidential"
-	ClientType            string             // "public" or "confidential"; defaults to "public"
+	ClientSecret          string // required when ClientType is "confidential"
+	ClientType            string // "public" or "confidential"; defaults to "public"
 	Redirects             []string
 	LaunchURL             string
 	ExtraPropertyMappings pulumi.StringArray // additional scope/property mappings beyond the defaults
@@ -293,8 +294,8 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		ClientID:     "grafana-homelab",
 		ClientSecret: grafanaSecret,
 		ClientType:   "confidential",
-		LaunchURL:    "https://grafana.madhan.app/",
-		Redirects:    []string{"https://grafana.madhan.app/login/generic_oauth"},
+		LaunchURL:    "https://" + config.C.Host("grafana") + "/",
+		Redirects:    []string{"https://" + config.C.Host("grafana") + "/login/generic_oauth"},
 		ExtraPropertyMappings: pulumi.StringArray{
 			groupsMapping.ID().ToStringOutput(),
 		},
@@ -316,10 +317,10 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		ClientID:     "aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT",
 		ClientSecret: netbirdSecret,
 		ClientType:   "confidential",
-		LaunchURL:    "https://netbird.madhan.app/",
+		LaunchURL:    "https://" + config.C.Host("netbird") + "/",
 		Redirects: []string{
 			// Embedded Dex callback: issuer (/oauth2) + /callback
-			"https://netbird.madhan.app/oauth2/callback",
+			"https://" + config.C.Host("netbird") + "/oauth2/callback",
 			// NetBird CLI device-auth callback
 			"http://localhost:53000",
 		},
@@ -327,7 +328,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Homelab ForwardAuth — covers *.madhan.app public services via Traefik
+	// Homelab ForwardAuth — covers public services via Traefik
 	if err := createHomelabForwardAuth(ac); err != nil {
 		return err
 	}
@@ -337,14 +338,14 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 
 // createHomelabForwardAuth creates the Authentik forward-domain proxy provider and
 // embedded outpost that back Traefik's ForwardAuth middleware for public services.
-// All *.madhan.app requests from the internet pass through this outpost for
+// All requests from the internet pass through this outpost for
 // authentication unless the service is listed with SkipAuth: true in publicServices.
 func createHomelabForwardAuth(ac AuthentikContext) error {
 	proxyProvider, err := authentik.NewProviderProxy(ac.Ctx, "provider-homelab-forwardauth", &authentik.ProviderProxyArgs{
 		Name:              pulumi.String("Homelab ForwardAuth"),
 		Mode:              pulumi.String("forward_domain"),
-		ExternalHost:      pulumi.String("https://madhan.app"),
-		CookieDomain:      pulumi.String(".madhan.app"),
+		ExternalHost:      pulumi.String("https://" + config.C.Domain),
+		CookieDomain:      pulumi.String("." + config.C.Domain),
 		AuthorizationFlow: ac.FlowImplicit,
 		InvalidationFlow:  ac.FlowInvalid,
 	}, pulumi.Provider(ac.Provider))
@@ -418,14 +419,14 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 	}
 
 	providerArgs := &authentik.ProviderOauth2Args{
-		Name:                  pulumi.String(app.Name),
-		ClientId:              pulumi.String(app.ClientID),
-		ClientType:            pulumi.String(clientType),
-		AuthorizationFlow:     ac.FlowExplicit,
-		InvalidationFlow:      ac.FlowInvalid,
-		PropertyMappings:      scopes,
-		AllowedRedirectUris:   redirectMap,
-		SubMode:               pulumi.String("user_id"),
+		Name:                   pulumi.String(app.Name),
+		ClientId:               pulumi.String(app.ClientID),
+		ClientType:             pulumi.String(clientType),
+		AuthorizationFlow:      ac.FlowExplicit,
+		InvalidationFlow:       ac.FlowInvalid,
+		PropertyMappings:       scopes,
+		AllowedRedirectUris:    redirectMap,
+		SubMode:                pulumi.String("user_id"),
 		IncludeClaimsInIdToken: pulumi.Bool(true),
 		// IMPORTANT: Signing Key is required for verifying JWTs in OIDC (especially for Netbird)
 		SigningKey: ac.SigningKey,

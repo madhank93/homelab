@@ -7,7 +7,7 @@ import (
 	cf "github.com/pulumi/pulumi-cloudflare/sdk/v5/go/cloudflare"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
-	"github.com/madhank93/homelab/core/internal/cfg"
+	"github.com/madhank93/homelab/config"
 )
 
 // PublicService describes a service exposed to the public internet via the Hetzner VPS.
@@ -29,19 +29,12 @@ var publicServices = []PublicService{
 
 // ManageCloudflare provisions Cloudflare DNS records for the homelab domain.
 //
-// It creates a wildcard A record pointing all *.madhan.app subdomains at the
-// LAN gateway (192.168.1.220), static records for always-public services
+// It creates a wildcard A record pointing every subdomain at the LAN gateway
+// (config cluster.gateway_ip), static records for always-public services
 // (auth, netbird, proxy), and per-entry records for each service listed in
 // [publicServices]. Run `just core cloudflare up` to apply changes.
 func ManageCloudflare(ctx *pulumi.Context) error {
-	var hetznerCfg HetznerConfig
-	if err := cfg.Load("hetzner", &hetznerCfg); err != nil {
-		return err
-	}
-	hetznerIP := hetznerCfg.VpsIP
-	if hetznerIP == "" {
-		return fmt.Errorf("hetzner.vps_ip not set in config.yml")
-	}
+	hetznerIP := config.C.Hetzner.VPSIP
 
 	cfToken := os.Getenv("CLOUDFLARE_API_TOKEN")
 	if cfToken == "" {
@@ -55,7 +48,7 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 		return err
 	}
 
-	zoneID := "ab8d029e91fb2bb38cb8bc91b9f0b218"
+	zoneID := config.C.Cloudflare.ZoneID
 
 	newRecord := func(name, logicalName, ip, comment string) error {
 		_, err := cf.NewRecord(ctx, logicalName, &cf.RecordArgs{
@@ -70,20 +63,20 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Wildcard — all *.madhan.app defaults to LAN gateway (private, no internet)
-	if err := newRecord("*", "wildcard-madhan-app", "192.168.1.220", "Homelab wildcard - LAN gateway"); err != nil {
+	// Wildcard — every subdomain defaults to the LAN gateway (private, no internet)
+	if err := newRecord("*", "wildcard-madhan-app", config.C.Cluster.GatewayIP, "Homelab wildcard - LAN gateway"); err != nil {
 		return err
 	}
 
 	// Always-public: Authentik, NetBird, NetBird expose base, Gatus uptime page
 	for _, svc := range []string{"auth", "netbird", "proxy", "uptime"} {
-		if err := newRecord(svc+".madhan.app", "always-public-"+svc, hetznerIP, "Bifrost VPS - always public"); err != nil {
+		if err := newRecord(config.C.Host(svc), "always-public-"+svc, hetznerIP, "Bifrost VPS - always public"); err != nil {
 			return err
 		}
 	}
 
 	// Wildcard for NetBird expose feature
-	if err := newRecord("*.proxy.madhan.app", "wildcard-proxy-madhan-app", hetznerIP, "NetBird expose wildcard"); err != nil {
+	if err := newRecord(config.C.Host("*.proxy"), "wildcard-proxy-madhan-app", hetznerIP, "NetBird expose wildcard"); err != nil {
 		return err
 	}
 
@@ -93,7 +86,7 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 		if svc.SkipAuth {
 			comment = "Public via Bifrost (self-managed auth)"
 		}
-		if err := newRecord(svc.Name+".madhan.app", "public-svc-"+svc.Name, hetznerIP, comment); err != nil {
+		if err := newRecord(config.C.Host(svc.Name), "public-svc-"+svc.Name, hetznerIP, comment); err != nil {
 			return err
 		}
 	}
