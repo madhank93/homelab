@@ -2,17 +2,17 @@
 # ==============================================================================
 # bifrost/bootstrap.sh
 #
-# Starts bifrost services in dependency order, gates each step on health checks.
-# Processes netbird/config.yaml by substituting secret placeholders before
-# starting netbird-server.
+# Hardens the host, then starts bifrost services in dependency order, gating
+# each step on health checks. Processes netbird/config.yaml by substituting
+# secret placeholders before starting netbird-server.
 #
-# NetBird v0.66 combined server ALWAYS runs embedded Dex OIDC.
+# The NetBird combined server ALWAYS runs embedded Dex OIDC.
 # auth.issuer is the NetBird server's own /oauth2 URL.
 # After first deploy: configure Authentik connector via NetBird Settings UI.
 #
 # Invoked via: pulumi remote.Command → bash /etc/bifrost/bootstrap.sh
 # Runs as:     root on the Hetzner VPS
-# Safe to re-run — docker compose up -d is idempotent.
+# Safe to re-run on a live box — every step is idempotent.
 # ==============================================================================
 set -euo pipefail
 
@@ -75,23 +75,24 @@ wait_healthy() {
   done
 }
 
-# has_secret <varname>
-# Returns 0 if varname=<non-empty-value> exists in .secrets.env.
-has_secret() {
-  grep -q "^${1}=[^[:space:]]" "$BIFROST/.secrets.env" 2>/dev/null
+# Secrets live in env/<consumer>.env, one file per container (written by hetzner.go).
+
+# read_secret <file> <varname>
+# Prints the value of varname from env/<file>.env (used internally — never logged).
+read_secret() {
+  grep "^${2}=" "$BIFROST/env/$1.env" 2>/dev/null | cut -d= -f2-
 }
 
-# secret_len <varname>
+# has_secret <file> <varname>
+# Returns 0 if varname has a non-empty value in env/<file>.env.
+has_secret() {
+  grep -q "^${2}=[^[:space:]]" "$BIFROST/env/$1.env" 2>/dev/null
+}
+
+# secret_len <file> <varname>
 # Prints character count of the value for logging (never the value itself).
 secret_len() {
-  grep "^${1}=" "$BIFROST/.secrets.env" 2>/dev/null \
-    | cut -d= -f2- | tr -d '\n' | wc -c | tr -d ' '
-}
-
-# read_secret <varname>
-# Prints the value of a secret from .secrets.env (used internally — never logged).
-read_secret() {
-  grep "^${1}=" "$BIFROST/.secrets.env" 2>/dev/null | cut -d= -f2-
+  read_secret "$1" "$2" | tr -d '\n' | wc -c | tr -d ' '
 }
 
 # ── Pre-flight ────────────────────────────────────────────────────────────────
@@ -113,36 +114,88 @@ preflight() {
     || die "docker compose not available; check /var/log/cloud-init-output.log"
   log "  docker compose: OK"
 
-  # Validate required secrets
-  log "  checking required secrets in .secrets.env ..."
-  local missing=0
-  for var in CF_DNS_API_TOKEN NB_DATA_STORE_KEY NB_RELAY_SECRET AUTHENTIK_BOOTSTRAP_TOKEN NB_OWNER_PASSWORD; do
-    if has_secret "$var"; then
-      log "  ✓  $var  ($(secret_len "$var") chars)"
+  # Validate required secrets, as <file>:<var>
+  log "  checking required secrets in env/ ..."
+  local missing=0 spec
+  for spec in traefik:CF_DNS_API_TOKEN \
+              authentik-postgres:POSTGRES_PASSWORD \
+              authentik-server:AUTHENTIK_SECRET_KEY \
+              authentik-server:AUTHENTIK_BOOTSTRAP_TOKEN \
+              bootstrap:NB_DATA_STORE_KEY \
+              bootstrap:NB_RELAY_SECRET \
+              bootstrap:NB_OWNER_PASSWORD; do
+    if has_secret "${spec%%:*}" "${spec#*:}"; then
+      log "  ✓  $spec  ($(secret_len "${spec%%:*}" "${spec#*:}") chars)"
     else
-      log "  ✗  $var  MISSING"
+      log "  ✗  $spec  MISSING"
       missing=$(( missing + 1 ))
     fi
   done
 
   if [ "$missing" -gt 0 ]; then
-    die "$missing required secret(s) absent from .secrets.env — run: just core hetzner up"
+    die "$missing required secret(s) absent from env/ — run: just core hetzner up"
   fi
 
   # Warn about optional secrets
-  for var in NB_PROXY_TOKEN NB_BIFROST_SETUP_KEY; do
-    if has_secret "$var"; then
-      log "  ✓  $var  ($(secret_len "$var") chars)"
+  for spec in netbird-proxy:NB_PROXY_TOKEN netbird-agent:NB_SETUP_KEY; do
+    if has_secret "${spec%%:*}" "${spec#*:}"; then
+      log "  ✓  $spec  ($(secret_len "${spec%%:*}" "${spec#*:}") chars)"
     else
-      log "  ⚠  $var  not set  (will be skipped below)"
+      log "  ⚠  $spec  not set  (will be skipped below)"
     fi
   done
+
+  # Shared env files from before the per-container split.
+  rm -f "$BIFROST/.env" "$BIFROST/.secrets.env"
 
   log "  pre-flight OK"
 }
 
+# ── Host hardening ────────────────────────────────────────────────────────────
+# Key-only SSH (root keeps key login: Pulumi connects as root), fail2ban on sshd,
+# and unattended security upgrades. Port 22 stays open in the hcloud firewall.
+
+harden_host() {
+  log_step "Host hardening — SSH, fail2ban, unattended-upgrades"
+
+  # sshd keeps the first value it reads; 10- sorts before cloud-init's 50- drop-in.
+  local sshd_dropin=/etc/ssh/sshd_config.d/10-bifrost-hardening.conf
+  cat > "$sshd_dropin" <<'CONF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+CONF
+  # sshd -t needs the privsep dir, absent while socket-activated ssh is idle.
+  # An invalid drop-in is removed so a later sshd restart cannot fail on it.
+  mkdir -p /run/sshd
+  if ! sshd -t; then
+    rm -f "$sshd_dropin"
+    die "sshd rejected the hardening drop-in — removed it, sshd config unchanged"
+  fi
+  # Reload keeps existing sessions, including the one running this script.
+  systemctl try-reload-or-restart ssh
+  log "  sshd: key-only ✓"
+
+  if ! dpkg -s fail2ban unattended-upgrades > /dev/null 2>&1; then
+    log "  installing fail2ban + unattended-upgrades ..."
+    apt-get -o DPkg::Lock::Timeout=300 update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 \
+      install -y -qq fail2ban unattended-upgrades > /dev/null
+  fi
+  # Debian's jail.d/defaults-debian.conf enables the sshd jail.
+  systemctl enable --now fail2ban
+  log "  fail2ban: active ✓"
+
+  # Ubuntu's default 50unattended-upgrades only pulls from the security pocket.
+  cat > /etc/apt/apt.conf.d/20auto-upgrades <<'CONF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+CONF
+  log "  unattended-upgrades: enabled ✓"
+}
+
 # ── Process netbird config template ──────────────────────────────────────────
-# NetBird v0.66 does NOT expand ${VAR} in its config.yaml — the YAML is read
+# NetBird does NOT expand ${VAR} in its config.yaml — the YAML is read
 # verbatim. This function substitutes secret placeholders before starting
 # netbird-server.
 #
@@ -159,9 +212,9 @@ process_netbird_config() {
   local cfg="$BIFROST/netbird/config.yaml"
   local relay store owner_pass owner_hash
 
-  relay=$(read_secret NB_RELAY_SECRET)
-  store=$(read_secret NB_DATA_STORE_KEY)
-  owner_pass=$(read_secret NB_OWNER_PASSWORD)
+  relay=$(read_secret bootstrap NB_RELAY_SECRET)
+  store=$(read_secret bootstrap NB_DATA_STORE_KEY)
+  owner_pass=$(read_secret bootstrap NB_OWNER_PASSWORD)
 
   # Generate bcrypt hash from owner password.
   # Bcrypt hash contains $, /, and other chars that break sed — use Python.
@@ -203,6 +256,7 @@ PYEOF
 # ── Main startup sequence ─────────────────────────────────────────────────────
 
 preflight
+harden_host
 
 log_step "1/8  traefik — TLS termination + routing"
 $COMPOSE up -d traefik
@@ -244,13 +298,13 @@ log "  │     Issuer:        https://auth.madhan.app/application/o/netbird/│"
 log "  └─────────────────────────────────────────────────────────────────┘"
 
 log_step "6/8  netbird-agent — WireGuard routing peer (Bifrost → homelab LAN)"
-if has_secret "NB_BIFROST_SETUP_KEY"; then
-  log "  NB_BIFROST_SETUP_KEY present ($(secret_len NB_BIFROST_SETUP_KEY) chars)"
-  NB_BIFROST_SETUP_KEY=$(read_secret NB_BIFROST_SETUP_KEY) $COMPOSE up -d netbird-agent
+if has_secret netbird-agent NB_SETUP_KEY; then
+  log "  NB_SETUP_KEY present ($(secret_len netbird-agent NB_SETUP_KEY) chars)"
+  $COMPOSE up -d netbird-agent
   wait_healthy netbird-agent 60
   log "  netbird-agent connected — Bifrost can now route to 192.168.1.0/24 ✓"
 else
-  log "  NB_BIFROST_SETUP_KEY not set — netbird-agent skipped (k8s services unreachable from internet!)"
+  log "  NB_SETUP_KEY not set — netbird-agent skipped (k8s services unreachable from internet!)"
   log ""
   log "  ┌─ One-time setup needed (required for public k8s service access) ──┐"
   log "  │  1. Open https://netbird.madhan.app                               │"
@@ -263,8 +317,8 @@ else
 fi
 
 log_step "7/8  netbird-proxy — TCP expose feature"
-if has_secret "NB_PROXY_TOKEN"; then
-  log "  NB_PROXY_TOKEN present ($(secret_len NB_PROXY_TOKEN) chars)"
+if has_secret netbird-proxy NB_PROXY_TOKEN; then
+  log "  NB_PROXY_TOKEN present ($(secret_len netbird-proxy NB_PROXY_TOKEN) chars)"
   $COMPOSE up -d --force-recreate netbird-proxy
   wait_healthy netbird-proxy 60
 else

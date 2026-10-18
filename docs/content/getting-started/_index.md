@@ -63,11 +63,11 @@ The repository layout is mapped in [CDK8s](@/platform/cdk8s/index.md).
 
 | Command | What it does |
 |---------|-------------|
-| `just openbao-init` | One-time OpenBao initialization |
-| `just openbao-setup` | Configure K8s auth, policies, and roles |
-| `just openbao-token` | Mint a temporary root token |
+| `just openbao-init` | One-time OpenBao init + unseal; saves only the unseal key |
+| `just openbao-setup` | Configure K8s auth, policies, roles; seed missing app secrets (idempotent) |
+| `just openbao-token` | Mint a short-lived root token (capture it, never printed to a terminal) |
 | `just openbao-get <path> [field]` | Read a secret with the root token |
-| `just openbao-revoke <token>` | Revoke a root token when finished |
+| `just openbao-revoke [token]` | Revoke a root token (default `$ROOT_TOKEN`) |
 | `just openbao-sa-token <sa> <ns> <role>` | Mint a token as an app's ServiceAccount |
 | `just openbao-sa-get <sa> <ns> <role> <path> [field]` | Read a secret as that app — checks a policy actually works |
 | `just sops-view <file>` | Open a SOPS file in `$EDITOR` |

@@ -51,7 +51,7 @@ flowchart TB
 
     subgraph WG["WireGuard Mesh · 100.109.0.0/16"]
         direction LR
-        RELAY["NetBird Relay<br/>TURN/STUN via Bifrost"]
+        RELAY["NetBird Relay<br/>WebSocket 443 + STUN via Bifrost"]
     end
 
     subgraph K8S["Talos Cluster · routing-peer node"]

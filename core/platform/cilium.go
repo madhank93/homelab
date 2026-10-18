@@ -19,7 +19,7 @@ import (
 //
 // devices must never include wt0: it is NOARP/POINTOPOINT, and Cilium's TC BPF
 // silently drops non-Ethernet frames. NetBird traffic reaches Cilium by kernel
-// IP forwarding to eth0 on another node.
+// IP forwarding to the LAN NIC of another node.
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	// Held on 1.18.x: 1.19.x breaks host TCP on eth0 nodes (cilium/cilium#44430,
 	// #46010). Fixed in 1.20.0, which needs its own change window — a bad
@@ -69,15 +69,8 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				},
 			},
 			// Access & Routing
-			"l2Announcements": pulumi.Map{
+			"l2announcements": pulumi.Map{
 				"enabled": pulumi.Bool(true),
-			},
-			"externalIPs": pulumi.Map{
-				"enabled": pulumi.Bool(true),
-			},
-			"extraConfig": pulumi.Map{
-				"enable-l2-announcements": pulumi.String("true"),
-				"enable-external-ips":     pulumi.String("true"),
 			},
 			"gatewayAPI": pulumi.Map{
 				"enabled": pulumi.Bool(true),
@@ -92,12 +85,9 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 					"sync": pulumi.Bool(true),
 				},
 			},
-			// Both ens18 (existing VMs, Talos ≤v1.12 predictable naming) and eth0
-			// (fresh VMs from Talos v1.13+ nocloud image, classic naming) listed so
-			// Cilium works across both. Cilium skips non-existent interfaces gracefully
-			// and auto-detects the direct routing device from whichever one has the
-			// node IP. wt0 (NetBird WireGuard) excluded — NOARP/POINTOPOINT; TC BPF
-			// silently drops non-Ethernet frames.
+			// ens18 is the VirtIO NIC under predictable naming, eth0 under classic
+			// naming; nodes have carried both across Talos upgrades. Never add wt0
+			// (see InstallCilium doc).
 			"devices": pulumi.StringArray{
 				pulumi.String("ens18"),
 				pulumi.String("eth0"),
@@ -151,6 +141,54 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			},
 		},
 	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{ciliumChart}))
+	if err != nil {
+		return err
+	}
+
+	return denyServiceExternalIPs(ctx, k8sProvider)
+}
+
+// denyServiceExternalIPs rejects Services that set spec.externalIPs, which would
+// let any Service author hijack traffic to an arbitrary IP (CVE-2020-8554).
+// Cilium cannot disable this itself: kubeProxyReplacement forces it on.
+func denyServiceExternalIPs(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
+	policy, err := apiextensions.NewCustomResource(ctx, "deny-service-external-ips", &apiextensions.CustomResourceArgs{
+		ApiVersion: pulumi.String("admissionregistration.k8s.io/v1"),
+		Kind:       pulumi.String("ValidatingAdmissionPolicy"),
+		Metadata:   &metav1.ObjectMetaArgs{Name: pulumi.String("deny-service-external-ips")},
+		OtherFields: map[string]any{
+			"spec": map[string]any{
+				"failurePolicy": "Fail",
+				"matchConstraints": map[string]any{
+					"resourceRules": []map[string]any{{
+						"apiGroups":   []string{""},
+						"apiVersions": []string{"v1"},
+						"operations":  []string{"CREATE", "UPDATE"},
+						"resources":   []string{"services"},
+					}},
+				},
+				"validations": []map[string]any{{
+					"expression": "!has(object.spec.externalIPs) || size(object.spec.externalIPs) == 0",
+					"message":    "spec.externalIPs is not allowed; use a LoadBalancer Service",
+				}},
+			},
+		},
+	}, pulumi.Provider(k8sProvider))
+	if err != nil {
+		return err
+	}
+
+	_, err = apiextensions.NewCustomResource(ctx, "deny-service-external-ips-binding", &apiextensions.CustomResourceArgs{
+		ApiVersion: pulumi.String("admissionregistration.k8s.io/v1"),
+		Kind:       pulumi.String("ValidatingAdmissionPolicyBinding"),
+		Metadata:   &metav1.ObjectMetaArgs{Name: pulumi.String("deny-service-external-ips")},
+		OtherFields: map[string]any{
+			"spec": map[string]any{
+				"policyName":        "deny-service-external-ips",
+				"validationActions": []string{"Deny"},
+			},
+		},
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{policy}))
 
 	return err
 }
@@ -275,7 +313,7 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 				"interfaces": []string{
 					fmt.Sprintf("^%s", interfaceName),
 				},
-				"externalIPs":     true,
+				"externalIPs":     false,
 				"loadBalancerIPs": true,
 			},
 		},

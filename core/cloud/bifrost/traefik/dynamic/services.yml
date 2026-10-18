@@ -80,11 +80,20 @@ http:
     authentik-forwardauth:
       forwardAuth:
         address: "http://authentik-server:9000/outpost.goauthentik.io/auth/nginx"
-        trustForwardHeader: true
+        trustForwardHeader: false   # Traefik is the edge; never trust client X-Forwarded-*
         authResponseHeaders:
           - X-authentik-username
           - X-authentik-groups
           - X-authentik-email
+
+    hsts:
+      headers:
+        stsSeconds: 31536000
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
 
 tcp:
   routers:

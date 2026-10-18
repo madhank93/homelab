@@ -14,7 +14,7 @@ import (
 //
 // The routing peer forms a WireGuard mesh with the Bifrost VPS and advertises the
 // cluster LAN subnet to Bifrost. Incoming traffic from Bifrost arrives
-// on wt0, is forwarded via kernel IP routing, and exits through eth0 on another node
+// on wt0, is forwarded via kernel IP routing, and exits the LAN NIC toward another node
 // where Cilium BPF handles the DNAT to the backend pod.
 //
 // Key configuration decisions:
@@ -79,17 +79,12 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 					HostNetwork: jsii.Bool(true),
 					DnsPolicy:   jsii.String("ClusterFirstWithHostNet"),
 					Volumes:     &[]*k8s.Volume{kit.SecretsVolume("netbird-secrets")},
-					// Init container: MASQUERADE wt0-forwarded traffic so it exits ens18
-					// with this node's LAN IP, enabling Cilium's cil_from_netdev TC BPF
-					// on the L2 winner to set the TPROXY mark and redirect to Envoy.
-					//
-					// Key constraint: kernel WireGuard delivers decapsulated inner packets
-					// DIRECTLY to the FORWARD hook, bypassing PREROUTING entirely. So
-					// -i wt0 in PREROUTING always sees 0 packets — match by output interface
-					// (-o ens18) in POSTROUTING instead. Pod traffic is already handled by
-					// CILIUM_POST_nat (runs first) so iptables deduplicates the NAT entry
-					// and our rule is a safe no-op for already-masqueraded packets.
-					// The -C check prevents duplicate rules on pod restart.
+					// Init container: MASQUERADE wt0-forwarded traffic to the LAN so it leaves
+					// with this node's IP and replies return through this peer. Kernel
+					// WireGuard hands decapsulated packets straight to FORWARD, skipping
+					// PREROUTING, so the rule matches in POSTROUTING on "not back out wt0"
+					// rather than a NIC name, which varies with Talos interface naming.
+					// The -C check keeps pod restarts from stacking duplicate rules.
 					InitContainers: &[]*k8s.Container{
 						{
 							Name:    jsii.String("setup-iptables"),
@@ -97,7 +92,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 							Command: &[]*string{jsii.String("/bin/sh")},
 							Args: &[]*string{
 								jsii.String("-c"),
-								jsii.String("iptables -t nat -C POSTROUTING -o ens18 -d " + subnet + " -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o ens18 -d " + subnet + " -j MASQUERADE"),
+								jsii.String("iptables -t nat -C POSTROUTING ! -o wt0 -d " + subnet + " -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING ! -o wt0 -d " + subnet + " -j MASQUERADE"),
 							},
 							SecurityContext: &k8s.SecurityContext{
 								Privileged: jsii.Bool(true),

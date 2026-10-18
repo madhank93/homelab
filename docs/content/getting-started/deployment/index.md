@@ -128,57 +128,39 @@ kubectl get pods -n openbao   # wait for Running
 just openbao-init
 ```
 
-This generates the root token and unseal key and writes them to
-`/tmp/openbao-init.json`. It does **not** unseal OpenBao — that happens in 2c, once
-the key is in SOPS and the sidecar can read it.
+This initialises and unseals OpenBao, revokes the init root token straight away,
+and writes only the unseal key to `~/openbao-unseal-key` (mode 600). No root token
+is ever stored: later admin work mints a short-lived one from the unseal key.
 
 ### 2b. Store the unseal key in SOPS
 
 ```bash
-UNSEAL_KEY=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['unseal_keys_b64'][0])")
-echo "OPENBAO_UNSEAL_KEY: $UNSEAL_KEY"
-
-# Add to SOPS (replaces the placeholder from Phase 0)
 sops secrets/bootstrap.sops.yaml
-# → update OPENBAO_UNSEAL_KEY with the value above
+# → set OPENBAO_UNSEAL_KEY to the contents of ~/openbao-unseal-key
 ```
 
 ### 2c. Update the bootstrap secret
 
 ```bash
 just create-secrets
-kubectl rollout restart statefulset/openbao -n openbao
+kubectl delete pod -n openbao openbao-0   # StatefulSet is OnDelete
+rm ~/openbao-unseal-key
 # The unseal sidecar reads the updated secret and unseals on startup
 ```
 
-### 2d. Configure K8s auth + policies + roles
+### 2d. Configure K8s auth + policies + roles + app secrets
 
 ```bash
 just openbao-setup
 ```
 
-This enables Kubernetes auth, creates per-app policies and roles, and writes placeholder secrets at each path.
+This enables Kubernetes auth, creates per-app policies and roles, and seeds every
+key the apps read with a random value — Grafana's `OAUTH_CLIENT_SECRET` comes from
+`GRAFANA_OAUTH_CLIENT_SECRET` in SOPS. It is safe to re-run: keys that already
+exist are never overwritten, so n8n's `ENCRYPTION_KEY` stays stable.
 
-### 2e. Write real app secrets
-
-```bash
-# Grafana — admin password + Authentik OAuth client secret (set OAUTH_CLIENT_SECRET after Phase 7)
-kubectl exec -n openbao openbao-0 -- bao kv put secret/grafana \
-  ADMIN_PASSWORD="<strong password>" \
-  OAUTH_CLIENT_SECRET="placeholder"
-
-# Harbor
-kubectl exec -n openbao openbao-0 -- bao kv put secret/harbor \
-  HARBOR_ADMIN_PASSWORD="<strong password>"
-
-# N8n (DB password managed by CNPG — only encryption key needed)
-kubectl exec -n openbao openbao-0 -- bao kv put secret/n8n \
-  N8N_ENCRYPTION_KEY="<32-char random — record this, required on every rebuild>"
-
-# NetBird — add the setup key after Phase 6
-kubectl exec -n openbao openbao-0 -- bao kv put secret/netbird \
-  NETBIRD_SETUP_KEY="placeholder"
-```
+`NETBIRD_SETUP_KEY` starts as a random placeholder; the real key is written in
+[6c](#6c-write-k8s-routing-peer-setup-key-to-openbao).
 
 > After writing secrets, Argo CD syncs and app pods start. Apps will become `Healthy` progressively as their CSI volumes mount.
 
@@ -197,11 +179,13 @@ just core hetzner up
 ### What `just core hetzner up` does
 
 ```
-1. Reads SOPS secrets → writes .secrets.env and .env on laptop
+1. Reads SOPS secrets → writes one env/<container>.env per consumer on laptop (mode 0600)
 2. Uploads entire ./cloud/bifrost/ directory to /etc/bifrost/ on VPS
 3. Runs bootstrap.sh on the VPS, which:
 
-   Preflight      — validates 5 required secrets, waits for cloud-init
+   Preflight      — validates 7 required secrets, waits for cloud-init,
+                    deletes legacy .env/.secrets.env
+   harden_host()  — key-only SSH, fail2ban, unattended-upgrades
    Step 1/5  traefik            → wait healthy (60s)
    Step 2/5  authentik-postgres → wait healthy (120s)
    Step 3/5  authentik-server   → wait healthy (300s)
@@ -324,9 +308,13 @@ bootstrap.sh re-runs. This time:
 
 ### 6c. Write K8s routing peer setup key to OpenBao
 
+Values go through stdin, so neither the root token nor the secret lands in a process list:
+
 ```bash
-kubectl exec -n openbao openbao-0 -- bao kv patch secret/netbird \
-  NETBIRD_SETUP_KEY="<k8s-routing-peer key from step 6a>"
+export ROOT_TOKEN=$(just openbao-token)
+printf '%s\n%s' "$ROOT_TOKEN" '<k8s-routing-peer key from step 6a>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
+  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-'
+just openbao-revoke
 ```
 
 The `netbird-peer` StatefulSet CSI volume mounts the secret and the pod starts.
@@ -360,7 +348,7 @@ Authentik UI → **Applications → Providers → Create → OAuth2/OpenID Provi
 | Name | `Grafana` |
 | Client type | `Confidential` |
 | Redirect URI | `https://grafana.madhan.app/login/generic_oauth` |
-| Scopes | `openid`, `email`, `profile` |
+| Scopes | `openid`, `email`, `profile`, `groups` |
 
 Copy the **Client ID** and **Client Secret**.
 
@@ -389,11 +377,23 @@ just synth && git add -A && git commit -m "feat: set Grafana Authentik client_id
 ### 7e. Write client secret to OpenBao
 
 ```bash
-kubectl exec -n openbao openbao-0 -- bao kv patch secret/grafana \
-  OAUTH_CLIENT_SECRET="<client-secret-from-7a>"
+export ROOT_TOKEN=$(just openbao-token)
+printf '%s\n%s' "$ROOT_TOKEN" '<client-secret-from-7a>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
+  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret grafana OAUTH_CLIENT_SECRET=-'
+just openbao-revoke
 ```
 
 Grafana pod will start and SSO will work.
+
+### 7f. Create Grafana's Public org
+
+Run once against the running Grafana, before Argo CD syncs the two-org config (Grafana will not start while provisioning references a missing org — on a fresh cluster, deploy it first without the org-2 settings):
+
+```bash
+just grafana-init
+```
+
+See [Grafana — Organizations](@/workloads/monitoring/grafana/index.md#organizations).
 
 ---
 
@@ -434,7 +434,7 @@ kubectl exec -n openbao openbao-0 -- bao status | grep Sealed
 # Full browser flow
 # 1. Open https://grafana.madhan.app
 # 2. Redirected to Authentik → log in with GitHub
-# 3. Land on Grafana as Viewer (or Admin if in grafana-admins group)
+# 3. Land in Grafana's Public org as Viewer (or the main org as Admin if in grafana-admins)
 
 # All apps healthy
 kubectl get applications -n argocd
@@ -449,17 +449,17 @@ kubectl get applications -n argocd
 | `HCLOUD_TOKEN` | SOPS | Phase 0 | Hetzner API access |
 | `PROXMOX_PASSWORD` | SOPS | Phase 0 | Proxmox API access |
 | `CLOUDFLARE_API_TOKEN` | SOPS → k8s Secret `cert-manager/cloudflare-api-token` | Phase 0 | cert-manager + Traefik ACME |
-| `AUTHENTIK_TOKEN` | SOPS → `.secrets.env` | Phase 0 | Authentik akadmin API token |
-| `AUTHENTIK_SECRET_KEY` | SOPS → `.env` | Phase 0 | Django secret key |
-| `AUTHENTIK_POSTGRESQL_PASSWORD` | SOPS → `.env` | Phase 0 | Authentik Postgres |
+| `AUTHENTIK_TOKEN` | SOPS → `env/authentik-server.env` | Phase 0 | Authentik akadmin API token |
+| `AUTHENTIK_SECRET_KEY` | SOPS → `env/authentik-{server,worker}.env` | Phase 0 | Django secret key |
+| `AUTHENTIK_POSTGRESQL_PASSWORD` | SOPS → `env/authentik-{postgres,server,worker}.env` | Phase 0 | Authentik Postgres |
 | `AUTHENTIK_GITHUB_SECRET` | SOPS | Phase 0 | GitHub OAuth app secret |
-| `NB_DATA_STORE_KEY` | SOPS → `.secrets.env` | Phase 0 | **Never rotate** |
-| `NB_RELAY_SECRET` | SOPS → `.secrets.env` | Phase 0 | |
-| `NB_OWNER_PASSWORD` | SOPS → `.secrets.env` | Phase 0 | Local admin for first NetBird login |
+| `NB_DATA_STORE_KEY` | SOPS → `env/bootstrap.env` | Phase 0 | **Never rotate** |
+| `NB_RELAY_SECRET` | SOPS → `env/bootstrap.env` | Phase 0 | |
+| `NB_OWNER_PASSWORD` | SOPS → `env/bootstrap.env` | Phase 0 | Local admin for first NetBird login |
 | `NETBIRD_CLIENT_SECRET` | SOPS (used by Pulumi) | Phase 0 | Dex→Authentik OIDC connector |
 | `OPENBAO_UNSEAL_KEY` | SOPS → k8s Secret `openbao/openbao-unseal-key` | Phase 2 | Generated by `just openbao-init` |
-| `NB_PROXY_TOKEN` | SOPS → `.secrets.env` | Phase 6 | |
-| `NB_BIFROST_SETUP_KEY` | SOPS → `.secrets.env` | Phase 6 | |
+| `NB_PROXY_TOKEN` | SOPS → `env/netbird-proxy.env` | Phase 6 | |
+| `NB_BIFROST_SETUP_KEY` | SOPS → `env/netbird-agent.env` (as `NB_SETUP_KEY`) | Phase 6 | |
 | `ADMIN_PASSWORD` (Grafana) | OpenBao `secret/grafana` | Phase 2 | |
 | `OAUTH_CLIENT_SECRET` (Grafana) | OpenBao `secret/grafana` | Phase 7 | Authentik OIDC client secret |
 | `HARBOR_ADMIN_PASSWORD` | OpenBao `secret/harbor` | Phase 2 | |

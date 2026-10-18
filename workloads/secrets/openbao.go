@@ -54,23 +54,29 @@ listener "tcp" {
     unauthenticated_metrics_access = true
   }
 }
+# In-pod only (kubectl exec): the one listener that allows the unauthenticated
+# generate-root used by "just openbao-token"; disabled by default since 2.5.3.
+listener "unix" {
+  address                                  = "/tmp/openbao.sock"
+  disable_unauthed_generate_root_endpoints = false
+}
 storage "file" {
   path = "/openbao/data"
+}
+# Declarative: API audit creation is off by default (unsafe_allow_api_audit_creation).
+audit "file" "stdout" {
+  options {
+    file_path = "stdout"
+  }
 }
 telemetry {
   prometheus_retention_time = "30s"
   disable_hostname          = true
 }`,
 				},
-				"extraSecretEnvironmentVars": []map[string]any{
-					{
-						"envName":    "OPENBAO_UNSEAL_KEY",
-						"secretName": "openbao-unseal-key",
-						"secretKey":  "unseal-key",
-					},
-				},
 				// A sidecar, not an init container: the server must be running to
 				// accept unseal requests. First boot still needs `just openbao-init`.
+				// Only this container gets the unseal key.
 				"extraContainers": []map[string]any{
 					{
 						"name":  "unseal",

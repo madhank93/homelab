@@ -31,7 +31,7 @@ Source: {{ src(path="workloads/registry/harbor.go") }}
 | Registry PVC | `50Gi` RWX Longhorn | Multi-attach safe for rolling updates |
 | Jobservice PVC | RWX Longhorn | Multi-attach safe for rolling updates |
 | Database PVC | `10Gi` RWO Longhorn | Internal PostgreSQL (single writer) |
-| `existingSecret` | `harbor-admin` | CSI-synced Secret from OpenBao |
+| `existingSecretAdminPassword` | `harbor-admin` | CSI-synced Secret from OpenBao (key `HARBOR_ADMIN_PASSWORD`) |
 
 ## HTTPRoute Note
 
@@ -48,10 +48,10 @@ Harbor's HTTPRoute **must point to `harbor:80`** (the nginx proxy service), not 
 
 Pattern B (secretObjects sync). The `HARBOR_ADMIN_PASSWORD` is fetched from OpenBao (`secret/data/harbor`) and synced into the `harbor-admin` k8s Secret by a dedicated `secret-sync` Deployment.
 
-**Why a dedicated secret-sync Deployment?** Harbor's Helm chart does not support `extraVolumes` on its component pods. A `pause` container in a separate Deployment mounts the CSI volume, triggering the secretObjects sync. The Harbor chart then references `harbor-admin` via `existingSecret`.
+**Why a dedicated secret-sync Deployment?** Harbor's Helm chart does not support `extraVolumes` on its component pods. A `pause` container in a separate Deployment mounts the CSI volume, triggering the secretObjects sync. The Harbor chart then reads the admin password from `harbor-admin` via `existingSecretAdminPassword`.
 
 ```yaml
-existingSecret: harbor-admin  # CSI-synced from OpenBao
+existingSecretAdminPassword: harbor-admin  # CSI-synced from OpenBao
 ```
 
 ## RWX PVCs
@@ -74,7 +74,7 @@ Docker push → harbor.madhan.app
 
 Secret sync:
   secret-sync pod → CSI volume → OpenBao → harbor-admin k8s Secret
-  harbor-core → existingSecret: harbor-admin
+  harbor-core → existingSecretAdminPassword: harbor-admin
 ```
 
 ## Screenshots

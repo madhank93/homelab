@@ -30,6 +30,8 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		},
 	})
 
+	// Login identity for the UI. No static token Secret: mint a short-lived one
+	// with `just headlamp-token` (kubectl create token).
 	k8s.NewKubeServiceAccount(chart, jsii.String("headlamp-admin-sa"), &k8s.KubeServiceAccountProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("headlamp-admin"),
@@ -53,19 +55,6 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 				Namespace: jsii.String(namespace),
 			},
 		},
-	})
-
-	// Long-lived login token, populated by Kubernetes. Read it with:
-	// kubectl get secret headlamp-admin-token -n headlamp -o jsonpath='{.data.token}' | base64 -d
-	k8s.NewKubeSecret(chart, jsii.String("headlamp-admin-token"), &k8s.KubeSecretProps{
-		Metadata: &k8s.ObjectMeta{
-			Name:      jsii.String("headlamp-admin-token"),
-			Namespace: jsii.String(namespace),
-			Annotations: &map[string]*string{
-				"kubernetes.io/service-account.name": jsii.String("headlamp-admin"),
-			},
-		},
-		Type: jsii.String("kubernetes.io/service-account-token"),
 	})
 
 	kit.Route(chart, "headlamp", "headlamp", "headlamp", 80)

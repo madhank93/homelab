@@ -16,10 +16,10 @@ netbird-agent (Bifrost · wt0: 100.109.47.211)
     │  WireGuard tunnel via relay
     ↓
 netbird-peer-0 (any worker · wt0: 100.109.244.71)
-    │  kernel IP forward: wt0 → ens18
+    │  kernel IP forward: wt0 → LAN NIC
     │  CILIUM_POST_nat MASQUERADE: src → <worker node IP>
     ↓
-192.168.1.220 (Cilium Gateway · another node's ens18)
+192.168.1.220 (Cilium Gateway · another node's LAN NIC)
     │  Cilium BPF L7LB DNAT → Envoy :13507
     ↓
 Grafana / other cluster pod
@@ -73,12 +73,13 @@ The setup key is only used on **first registration**. Once the peer is registere
 The StatefulSet includes an `initContainer` that adds an iptables rule before the NetBird agent starts:
 
 ```bash
-iptables -t nat -C POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null \
-  || iptables -t nat -A POSTROUTING -o ens18 -d 192.168.1.0/24 -j MASQUERADE
+iptables -t nat -C POSTROUTING ! -o wt0 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/null \
+  || iptables -t nat -A POSTROUTING ! -o wt0 -d 192.168.1.0/24 -j MASQUERADE
 ```
 
-The rule matches on the **outbound interface** (`-o ens18`), not a source range: anything
-leaving the node toward the cluster LAN is source-NAT'd to that node's own IP, so
+The rule matches on the **outbound interface** (`! -o wt0`), not a source range or a
+NIC name — the LAN NIC is `ens18` or `eth0` depending on Talos interface naming. Anything
+leaving the node toward the cluster LAN, other than back out the tunnel, is source-NAT'd to that node's own IP, so
 replies come back via normal LAN routing instead of trying to find the WireGuard
 overlay. The `-C` check makes it idempotent across pod restarts.
 
@@ -90,7 +91,7 @@ In practice the actual NAT is performed by Cilium's `CILIUM_POST_nat` BPF chain,
 
 Do **not** add `wt0` to Cilium's `devices` list in `core/platform/cilium.go`. WireGuard interfaces are `NOARP/POINTOPOINT` with no Ethernet header — Cilium's `cil_from_netdev` TC BPF silently drops all packets without monitor events, breaking all traffic from Bifrost.
 
-`wt0` must never appear in Cilium `devices`. Traffic from `wt0` reaches Cilium BPF via the node's `ens18` after kernel IP forwarding and MASQUERADE. See [Network Flow — Why wt0 is NOT in Cilium Devices](/architecture/network-flow/#why-wt0-is-not-in-cilium-devices).
+`wt0` must never appear in Cilium `devices`. Traffic from `wt0` reaches Cilium BPF via the node's LAN NIC after kernel IP forwarding and MASQUERADE. See [Network Flow — Why wt0 is NOT in Cilium Devices](/architecture/network-flow/#why-wt0-is-not-in-cilium-devices).
 
 ---
 
@@ -188,7 +189,8 @@ relay connection never establishes.
 
 ```bash
 ssh root@178.156.199.250 'docker ps | grep netbird-agent'
-ssh root@178.156.199.250 'NB_BIFROST_SETUP_KEY=$(grep NB_BIFROST_SETUP_KEY /etc/bifrost/.secrets.env | cut -d= -f2) docker compose -f /etc/bifrost/docker-compose.yml up -d netbird-agent'
+# netbird-agent reads NB_SETUP_KEY from /etc/bifrost/env/netbird-agent.env
+ssh root@178.156.199.250 'docker compose -f /etc/bifrost/docker-compose.yml up -d netbird-agent'
 ```
 
 ### MASQUERADE rule not taking effect

@@ -37,14 +37,25 @@ Source: {{ src(path="workloads/monitoring/grafana.go") }}
 | Admin password | File at `/mnt/secrets/ADMIN_PASSWORD` | Pattern A (CSI file mount) |
 | OAuth secret | `grafana-oauth-secret` k8s Secret | Pattern B (CSI secretObjects sync) |
 
+## Organizations
+
+Grafana runs two orgs so that SSO users who are not admins never see logs:
+
+| Org | ID | Who | Role | Datasources | Dashboards |
+|-----|----|-----|------|-------------|------------|
+| Main Org. | `1` | Authentik group `grafana-admins` only | Admin | VictoriaMetrics, VictoriaLogs | All sidecar ConfigMaps |
+| Public | `2` | Every other SSO user | Viewer | VictoriaMetrics only | Kubernetes Views Global, NVIDIA DCGM |
+
+Grafana cannot create orgs through provisioning, and it refuses to start while provisioning references an org that does not exist. `just grafana-init` creates the Public org and checks it got ID `2` (see [One-Time Setup](#one-time-sso-setup-managed-by-pulumi)).
+
 ## Datasources
 
 Configured statically in Helm values:
 
-| Name | Type | URL | Notes |
-|------|------|-----|-------|
-| VictoriaMetrics | `prometheus` (default) | `http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428` | `timeInterval: 30s` |
-| VictoriaLogs | `loki` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select` | `logsVolumeEnabled: false` (VictoriaLogs doesn't implement Loki index/volume API) |
+| Name | Org | Type | URL | Notes |
+|------|-----|------|-----|-------|
+| VictoriaMetrics | 1 and 2 | `prometheus` (default) | `http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428` | `timeInterval: 30s` |
+| VictoriaLogs | 1 only | `loki` | `http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select` | `logsVolumeEnabled: false` (VictoriaLogs doesn't implement Loki index/volume API) |
 
 > **Important:** The VictoriaLogs URL ends at `/select` — Grafana's Loki plugin appends `/loki/api/v1/...` automatically. The `logsVolumeEnabled` flag is disabled to suppress the unsupported `/index/volume` endpoint error in Drilldown → Logs.
 
@@ -76,6 +87,8 @@ data:
   my-dashboard.json: |
     { ... Grafana dashboard JSON ... }
 ```
+
+Sidecar dashboards always land in the main org. The Public org's two dashboards — Kubernetes Views Global (`gnetId 15757`) and NVIDIA DCGM (`gnetId 12239`) — come from a separate `public` dashboard provider and are downloaded from grafana.com by the chart's init container at pod start, so the pod needs outbound internet access to start cleanly.
 
 ## Secrets (OpenBao)
 
@@ -110,9 +123,11 @@ Grafana uses Authentik as an OIDC provider. GitHub is a social login source in A
 3. GitHub OAuth consent screen appears — authorise the app
 4. GitHub redirects back to Authentik, which creates an Authentik user (using the `default-source-enrollment` flow)
 5. Authentik issues an OIDC token and redirects back to Grafana
-6. Grafana reads the `groups` claim and assigns role: **Admin** if in `grafana-admins`, otherwise **Viewer**
+6. Grafana reads the `groups` claim through `org_mapping`: members of `grafana-admins` become **Admin** of the main org; everyone else becomes **Viewer** of the Public org
 
-> First-time users get the **Viewer** role automatically. To promote to Admin, add the user to the `grafana-admins` group in Authentik → Directory → Groups.
+> First-time users land in the Public org as **Viewer**. To promote to Admin, add the user to the `grafana-admins` group in Authentik → Directory → Groups. Org membership is re-evaluated on every login, so anyone who was a Viewer of the main org loses that membership on their next login.
+
+There is no anonymous access and no login form — every user signs in through Authentik.
 
 ### OIDC Configuration
 
@@ -123,13 +138,20 @@ Set in `workloads/monitoring/grafana.go`:
     "enabled":              true,
     "name":                 "GitHub via Authentik",
     "client_id":            "grafana-homelab",
-    "scopes":               "openid email profile",
+    "scopes":               "openid email profile groups",
     "auth_url":             "https://auth.madhan.app/application/o/authorize/",
     "token_url":            "https://auth.madhan.app/application/o/token/",
     "api_url":              "https://auth.madhan.app/application/o/userinfo/",
     "use_pkce":             true,
     "allow_sign_up":        true,
-    "role_attribute_path":  "contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'",
+    // grafana-admins → Admin of org 1; everyone → Viewer of org 2 (Public)
+    "org_attribute_path":    "groups",
+    "org_mapping":           "grafana-admins:1:Admin *:2:Viewer",
+    "role_attribute_path":   "contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'",
+    "role_attribute_strict": true,
+},
+"auth": map[string]any{
+    "disable_login_form": true, // SSO only
 },
 // root_url forces https:// in redirect_uri — TLS terminates at Bifrost/Traefik,
 // so without this Grafana would construct an http:// callback that mismatches
@@ -143,20 +165,26 @@ Set in `workloads/monitoring/grafana.go`:
 
 The Authentik configuration is fully automated via `just core authentik up` (`core/cloud/authentik.go`). Manual steps are only needed to:
 
-1. **Grant Admin role** — Authentik UI → Directory → Groups → `grafana-admins` → Add user
-2. **Store Client Secret in OpenBao** — run once after creating the Grafana OIDC provider:
+1. **Create the Public org** — once, against the running Grafana, *before* Argo CD syncs the two-org config:
+   ```bash
+   just grafana-init
+   ```
+   On a fresh cluster this is a chicken-and-egg: Grafana will not start while its provisioning references org `2`. Deploy it first without the org-2 datasource, dashboard provider and `org_mapping`, run `just grafana-init`, then sync the full config.
+2. **Grant Admin role** — Authentik UI → Directory → Groups → `grafana-admins` → Add user
+3. **Store Client Secret in OpenBao** — run once after creating the Grafana OIDC provider:
    ```bash
    just openbao-get secret/grafana   # verify current value
    bao kv patch secret/grafana OAUTH_CLIENT_SECRET=<secret>
    ```
 
-### Admin Login (Bypass SSO)
+### Break-Glass Admin Access
 
-The local `admin` account is always available at `/login`:
+The login form is disabled, so the local `admin` account cannot sign in through the UI. If SSO is broken, reset its password inside the pod and use the HTTP API with basic auth (still enabled):
 
 ```bash
-# Get admin password
-just openbao-get secret/grafana ADMIN_PASSWORD
+kubectl exec -n grafana deploy/grafana -- grafana-cli admin reset-admin-password '<new-password>'
+curl -u admin https://grafana.madhan.app/api/org
+# curl prompts for the password, keeping it out of shell history
 ```
 
 ## How It Connects

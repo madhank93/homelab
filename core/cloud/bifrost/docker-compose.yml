@@ -45,14 +45,13 @@ services:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
       - traefik_certs:/certs
-    env_file:
-      - .env
-      - .secrets.env
+    env_file: [env/traefik.env]
     security_opt:
       - no-new-privileges:true
 
   # --------------------------------------------------------------------------------
-  # NetBird v0.66.2 — Combined server (Management + Signal + Relay + STUN)
+  # NetBird combined server (Management + Signal + Relay + STUN)
+  # Secrets are substituted into netbird/config.yaml by bootstrap.sh.
   # --------------------------------------------------------------------------------
 
   netbird-server:
@@ -62,8 +61,6 @@ services:
     networks: [bifrost_net]
     ports:
       - "3478:3478/udp"   # STUN (UDP bypasses Traefik)
-    env_file:
-      - .secrets.env   # injects NB_RELAY_SECRET, NB_DATA_STORE_KEY, NB_IDP_MGMT_TOKEN
     volumes:
       - netbird_data:/var/lib/netbird
       - ./netbird/config.yaml:/etc/netbird/config.yaml:ro
@@ -84,7 +81,7 @@ services:
     container_name: netbird-proxy
     networks: [bifrost_net]
     env_file:
-      - .secrets.env            # expands ${NB_PROXY_TOKEN}
+      - env/netbird-proxy.env
       - ./netbird/proxy.env
     volumes:
       - netbird_proxy_certs:/certs
@@ -98,8 +95,8 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
+    env_file: [env/netbird-agent.env]   # NB_SETUP_KEY
     environment:
-      - NB_SETUP_KEY=${NB_BIFROST_SETUP_KEY}
       - NB_MANAGEMENT_URL=https://netbird.madhan.app
       - NB_HOSTNAME=bifrost-agent
     volumes:
@@ -163,10 +160,8 @@ services:
     networks: [bifrost_net]
     volumes:
       - authentik_postgres_data:/var/lib/postgresql/data
-    env_file:
-      - .env
+    env_file: [env/authentik-postgres.env]
     environment:
-      - POSTGRES_PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
       - POSTGRES_USER=authentik
       - POSTGRES_DB=authentik
     healthcheck:
@@ -186,14 +181,11 @@ services:
     networks: [bifrost_net]
     ports:
       - "127.0.0.1:9000:9000"   # localhost only — used by bootstrap.sh curl health polling
-    env_file:
-      - .env
-      - .secrets.env             # injects AUTHENTIK_BOOTSTRAP_TOKEN (auto-creates akadmin API token on first boot)
+    env_file: [env/authentik-server.env]
     environment:
       - AUTHENTIK_POSTGRESQL__HOST=authentik-postgres
       - AUTHENTIK_POSTGRESQL__USER=authentik
       - AUTHENTIK_POSTGRESQL__NAME=authentik
-      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
     volumes:
       - authentik_media:/media
       - authentik_certs:/certs
@@ -215,13 +207,11 @@ services:
     container_name: authentik-worker
     command: worker
     networks: [bifrost_net]
-    env_file:
-      - .env
+    env_file: [env/authentik-worker.env]
     environment:
       - AUTHENTIK_POSTGRESQL__HOST=authentik-postgres
       - AUTHENTIK_POSTGRESQL__USER=authentik
       - AUTHENTIK_POSTGRESQL__NAME=authentik
-      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
     volumes:
       - authentik_media:/media
       - authentik_certs:/certs

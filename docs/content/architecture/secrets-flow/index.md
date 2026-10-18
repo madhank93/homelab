@@ -36,13 +36,11 @@ flowchart TB
     end
 
     subgraph BIFROST["Bifrost VPS — auto-provisioned by Pulumi"]
-        HG["hetzner.go<br/>generateBifrostSecretsEnv()<br/>generateBifrostDotEnv()"]
-        SE[".secrets.env on VPS<br/>CF · NB_ · AUTHENTIK_BOOTSTRAP_TOKEN"]
-        DE[".env on VPS<br/>AUTHENTIK_SECRET_KEY<br/>AUTHENTIK_POSTGRESQL_PASSWORD"]
+        HG["hetzner.go<br/>bifrostEnvFiles"]
+        SE["env/*.env on VPS<br/>one file per container, mode 0600"]
+        DE["env/bootstrap.env on VPS<br/>NB_DATA_STORE_KEY · NB_RELAY_SECRET<br/>NB_OWNER_PASSWORD"]
         BS["bootstrap.sh<br/>starts services in order"]
-        AK["ak shell<br/>Token.objects.get_or_create<br/>netbird-mgmt-token"]
         NC["sed substitution<br/>config.yaml ${VARS} → real values"]
-        NBI["NB_IDP_MGMT_TOKEN<br/>appended to .secrets.env"]
     end
 
     subgraph RUNTIME["Runtime — OpenBao + CSI Driver"]
@@ -61,10 +59,8 @@ flowchart TB
     SOPSFILE -->|sops exec-env| HG
     HG --> SE & DE
     SE & DE -->|CopyToRemote| BS
-    BS --> AK
-    AK -->|TOKEN:key stdout| NBI
-    BS --> NC
-    NBI & NC -->|env ready| BS
+    DE --> NC
+    NC -->|config ready| BS
 
     OB -->|K8s auth| CSI
     CSI -->|fetches secrets| SPC
@@ -93,7 +89,7 @@ PROXMOX_PASSWORD: <proxmox root password>
 CLOUDFLARE_API_TOKEN: <zone-edit API token>
 
 # Authentik — Bifrost VPS
-AUTHENTIK_TOKEN: <60-char random string>        # bootstrap token → also becomes NB_IDP_MGMT_TOKEN
+AUTHENTIK_TOKEN: <60-char random string>        # bootstrap token → akadmin API token on first boot
 AUTHENTIK_SECRET_KEY: <openssl rand -base64 48> # Django secret key
 AUTHENTIK_POSTGRESQL_PASSWORD: <openssl rand -hex 16>
 AUTHENTIK_GITHUB_SECRET: <github oauth app secret>
@@ -130,15 +126,13 @@ The Bifrost VPS secrets are fully automated by Pulumi. No manual SSH required.
 
 **`just core hetzner up` does the following in sequence:**
 
-1. **`generateBifrostSecretsEnv()`** reads SOPS env vars, writes `./cloud/bifrost/.secrets.env` on the laptop
-2. **`generateBifrostDotEnv()`** reads SOPS env vars, writes `./cloud/bifrost/.env` on the laptop
-3. **`CopyToRemote`** uploads the entire `./cloud/bifrost/` directory to `/etc/bifrost/` on the VPS
-4. **`bootstrap.sh`** runs on the VPS:
-   - Starts all containers in dependency order, waiting for health at each step
-   - After Authentik is healthy, runs `docker exec authentik-server ak shell` to create `netbird-mgmt-token` via Django ORM
-   - Writes `NB_IDP_MGMT_TOKEN` to `.secrets.env` on the VPS
-   - Runs `sed` to substitute `${NB_RELAY_SECRET}`, `${NB_DATA_STORE_KEY}`, `${NB_IDP_MGMT_TOKEN}` in `netbird/config.yaml`
-   - Starts `netbird-server` (now has all required secrets)
+1. **`bifrostEnvFiles`** — Pulumi reads SOPS env vars and writes one `./cloud/bifrost/env/<consumer>.env` per container (plus `bootstrap.env` for the script) on the laptop, mode `0600`
+2. **`CopyToRemote`** uploads the entire `./cloud/bifrost/` directory to `/etc/bifrost/` on the VPS
+3. **`bootstrap.sh`** runs on the VPS:
+   - Deletes the legacy shared `.env`/`.secrets.env`, then hardens the host
+   - Starts all containers in dependency order, waiting for health at each step; each container reads only its own env file
+   - Substitutes `${NB_RELAY_SECRET}`, `${NB_DATA_STORE_KEY}` and the bcrypt `${NB_OWNER_HASH}` from `env/bootstrap.env` into `netbird/config.yaml`
+   - Starts `netbird-server` (it has no env file; its secrets are in `config.yaml`)
 
 See [Hetzner Bifrost](/infrastructure/hetzner-bifrost) for the full bootstrap sequence.
 
@@ -169,12 +163,11 @@ After first deploy, run `just openbao-setup` to configure K8s auth, policies, ro
 
 | Secret | Lives in | Set during | Rotatable? |
 |--------|---------|-----------|-----------|
-| `NB_DATA_STORE_KEY` | SOPS → `.secrets.env` | Phase 0 | **No** — NetBird DB encrypted with it |
-| `NB_RELAY_SECRET` | SOPS → `.secrets.env` | Phase 0 | Yes (all peers reconnect) |
-| `AUTHENTIK_TOKEN` | SOPS → `.secrets.env` as `AUTHENTIK_BOOTSTRAP_TOKEN` | Phase 0 | Yes |
-| `NB_IDP_MGMT_TOKEN` | Auto-written to `.secrets.env` by `bootstrap.sh` | Auto | Yes |
-| `NB_PROXY_TOKEN` | SOPS → `.secrets.env` | After first NetBird login | Yes |
-| `NB_BIFROST_SETUP_KEY` | SOPS → `.secrets.env` | After first NetBird login | Yes |
+| `NB_DATA_STORE_KEY` | SOPS → `env/bootstrap.env` → `config.yaml` | Phase 0 | **No** — NetBird DB encrypted with it |
+| `NB_RELAY_SECRET` | SOPS → `env/bootstrap.env` → `config.yaml` | Phase 0 | Yes (all peers reconnect) |
+| `AUTHENTIK_TOKEN` | SOPS → `env/authentik-server.env` as `AUTHENTIK_BOOTSTRAP_TOKEN` | Phase 0 | Yes |
+| `NB_PROXY_TOKEN` | SOPS → `env/netbird-proxy.env` | After first NetBird login | Yes |
+| `NB_BIFROST_SETUP_KEY` | SOPS → `env/netbird-agent.env` as `NB_SETUP_KEY` | After first NetBird login | Yes |
 | `CLOUDFLARE_API_TOKEN` | SOPS → k8s Secret | Phase 0 | Yes |
 | `OPENBAO_UNSEAL_KEY` | SOPS → k8s Secret | Phase 0 | Yes (redeploy OpenBao) |
 | App passwords | OpenBao KV | Phase 2 (`just openbao-setup`) | Yes |

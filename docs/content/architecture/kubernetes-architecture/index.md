@@ -130,7 +130,7 @@ The Gateway API `GatewayClass` is provisioned by `core/platform/cilium.go`. App 
 
 | Service URL | DNS resolves to | Access |
 |------------|----------------|--------|
-| `grafana.madhan.app` | `178.156.199.250` (public) | Via Bifrost + ForwardAuth |
+| `grafana.madhan.app` | `178.156.199.250` (public) | Via Bifrost; Grafana's own Authentik OIDC login |
 | `auth.madhan.app` | `178.156.199.250` (public) | Authentik on Bifrost |
 | `netbird.madhan.app` | `178.156.199.250` (public) | NetBird on Bifrost |
 | `harbor.madhan.app` | `192.168.1.220` (LAN) | LAN or VPN only |

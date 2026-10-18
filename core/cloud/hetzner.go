@@ -18,13 +18,13 @@ import (
 
 // DeployHetznerVPS provisions the Bifrost VPS on Hetzner Cloud and bootstraps it.
 //
-// It creates a firewall (ports 22, 80, 443, STUN/TURN 3478/5349, TURN ephemeral
-// 50000-50500), a server with cloud-init, then copies the ./cloud/bifrost/ config
-// directory to the server and runs bootstrap.sh. The bootstrap is re-triggered
-// whenever configs or secrets change via a SHA-256 hash stored as a Pulumi trigger.
+// It creates a firewall (SSH 22, Traefik 80/443, NetBird STUN 3478/udp), a server
+// with cloud-init, then copies the ./cloud/bifrost/ config directory to the server
+// and runs bootstrap.sh. The bootstrap is re-triggered whenever configs or secrets
+// change via a SHA-256 hash stored as a Pulumi trigger.
 //
-// Secrets are written to .secrets.env and .env under ./cloud/bifrost/ (gitignored)
-// before the copy step. Run via `just core hetzner up`.
+// Secrets are written to one env file per consumer under ./cloud/bifrost/env/
+// (gitignored) before the copy step. Run via `just core hetzner up`.
 func DeployHetznerVPS(ctx *pulumi.Context) error {
 	hcfg := config.C.Hetzner
 
@@ -74,42 +74,6 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 				Direction: pulumi.String("in"),
 				Protocol:  pulumi.String("udp"),
 				Port:      pulumi.String("3478"),
-				SourceIps: pulumi.StringArray{
-					pulumi.String("0.0.0.0/0"),
-					pulumi.String("::/0"),
-				},
-			},
-			&hcloud.FirewallRuleArgs{
-				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("tcp"),
-				Port:      pulumi.String("3478"),
-				SourceIps: pulumi.StringArray{
-					pulumi.String("0.0.0.0/0"),
-					pulumi.String("::/0"),
-				},
-			},
-			&hcloud.FirewallRuleArgs{
-				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("udp"),
-				Port:      pulumi.String("5349"),
-				SourceIps: pulumi.StringArray{
-					pulumi.String("0.0.0.0/0"),
-					pulumi.String("::/0"),
-				},
-			},
-			&hcloud.FirewallRuleArgs{
-				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("tcp"),
-				Port:      pulumi.String("5349"),
-				SourceIps: pulumi.StringArray{
-					pulumi.String("0.0.0.0/0"),
-					pulumi.String("::/0"),
-				},
-			},
-			&hcloud.FirewallRuleArgs{
-				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("udp"),
-				Port:      pulumi.String("50000-50500"), // TURN ephemeral range
 				SourceIps: pulumi.StringArray{
 					pulumi.String("0.0.0.0/0"),
 					pulumi.String("::/0"),
@@ -172,13 +136,15 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 		return fmt.Errorf("generate traefik public-services.yml: %w", err)
 	}
 
-	// Write .secrets.env and .env with all VPS secrets from the SOPS-injected environment.
-	// Both files are gitignored and overwritten on every pulumi up — never edit by hand.
-	if err := writeBifrostEnv("./cloud/bifrost/.secrets.env", bifrostSecretsEnv); err != nil {
-		return fmt.Errorf("generate bifrost .secrets.env: %w", err)
+	// Env files are gitignored and overwritten on every pulumi up — never edit by hand.
+	if err := os.MkdirAll(bifrostEnvDir, 0700); err != nil {
+		return err
 	}
-	if err := writeBifrostEnv("./cloud/bifrost/.env", bifrostDotEnv); err != nil {
-		return fmt.Errorf("generate bifrost .env: %w", err)
+	for _, f := range bifrostEnvFiles {
+		path := filepath.Join(bifrostEnvDir, f.name+".env")
+		if err := writeBifrostEnv(path, f.vars); err != nil {
+			return fmt.Errorf("generate bifrost %s: %w", path, err)
+		}
 	}
 
 	// Trigger hash — bootstrap.sh re-runs when configs or secrets change.
@@ -223,50 +189,52 @@ type secretVar struct {
 	require bool   // hard-fail if empty
 }
 
-// bifrostSecretsEnv is written to .secrets.env, read by the bifrost containers.
-var bifrostSecretsEnv = []secretVar{
-	// Traefik Cloudflare ACME DNS challenge provider
-	{"CLOUDFLARE_API_TOKEN", "CF_DNS_API_TOKEN", true},
+const bifrostEnvDir = "./cloud/bifrost/env"
 
-	// NetBird datastore encryption key — generate: openssl rand -base64 32
-	{"NB_DATA_STORE_KEY", "NB_DATA_STORE_KEY", true},
-
-	// NetBird relay auth secret — generate: openssl rand -base64 32
-	{"NB_RELAY_SECRET", "NB_RELAY_SECRET", true},
-
-	// Authentik bootstrap token — Authentik creates this as the akadmin API token
-	// on first boot (AUTHENTIK_BOOTSTRAP_TOKEN env var in docker-compose.yml).
-	// Same SOPS value reused across fresh deployments.
-	{"AUTHENTIK_TOKEN", "AUTHENTIK_BOOTSTRAP_TOKEN", true},
-
-	// NetBird initial admin password — bootstrap.sh generates a bcrypt hash from
-	// this and substitutes ${NB_OWNER_HASH} in netbird/config.yaml before starting
-	// netbird-server. Used only for the embedded Dex owner account on first login.
-	{"NB_OWNER_PASSWORD", "NB_OWNER_PASSWORD", true},
-
-	// NetBird Personal Access Token for netbird-proxy.
-	// Created in the NetBird UI after first login. Optional on initial deploy —
-	// bootstrap.sh skips netbird-proxy until this is present.
-	{"NB_PROXY_TOKEN", "NB_PROXY_TOKEN", false},
-
-	// NetBird setup key for the bifrost WireGuard routing agent.
-	// Reusable key created in NetBird UI → Setup Keys.
-	// Add to secrets/bootstrap.sops.yaml: NB_BIFROST_SETUP_KEY=<key>
-	{"NB_BIFROST_SETUP_KEY", "NB_BIFROST_SETUP_KEY", false},
-}
-
-// bifrostDotEnv is written to .env. Docker Compose reads only that file for ${VAR}
-// interpolation in docker-compose.yml (e.g. POSTGRES_PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}),
-// so these cannot live in .secrets.env.
-var bifrostDotEnv = []secretVar{
+var (
 	// Authentik Django secret key — generate: openssl rand -base64 48
-	{"AUTHENTIK_SECRET_KEY", "AUTHENTIK_SECRET_KEY", true},
-
+	authentikSecretKey = secretVar{"AUTHENTIK_SECRET_KEY", "AUTHENTIK_SECRET_KEY", true}
 	// Authentik Postgres password — generate: openssl rand -hex 16
-	{"AUTHENTIK_POSTGRESQL_PASSWORD", "AUTHENTIK_POSTGRESQL_PASSWORD", true},
+	authentikDBPassword = secretVar{"AUTHENTIK_POSTGRESQL_PASSWORD", "AUTHENTIK_POSTGRESQL__PASSWORD", true}
+)
 
-	// NetBird agent setup key, interpolated into netbird-agent's environment section.
-	{"NB_BIFROST_SETUP_KEY", "NB_BIFROST_SETUP_KEY", true},
+// bifrostEnvFiles lists env/<name>.env and the secrets it holds. Each file has
+// exactly one consumer (a compose service, or bootstrap.sh itself), so a
+// container never sees another service's secrets.
+var bifrostEnvFiles = []struct {
+	name string
+	vars []secretVar
+}{
+	// Cloudflare ACME DNS challenge provider.
+	{"traefik", []secretVar{{"CLOUDFLARE_API_TOKEN", "CF_DNS_API_TOKEN", true}}},
+
+	{"authentik-postgres", []secretVar{{"AUTHENTIK_POSTGRESQL_PASSWORD", "POSTGRES_PASSWORD", true}}},
+
+	// The bootstrap token becomes the akadmin API token on first boot; the same
+	// SOPS value is reused across fresh deployments.
+	{"authentik-server", []secretVar{
+		authentikSecretKey,
+		authentikDBPassword,
+		{"AUTHENTIK_TOKEN", "AUTHENTIK_BOOTSTRAP_TOKEN", true},
+	}},
+
+	{"authentik-worker", []secretVar{authentikSecretKey, authentikDBPassword}},
+
+	// Personal Access Token created in the NetBird UI after first login;
+	// bootstrap.sh skips netbird-proxy until it is set.
+	{"netbird-proxy", []secretVar{{"NB_PROXY_TOKEN", "NB_PROXY_TOKEN", false}}},
+
+	// Reusable setup key (NetBird UI → Setup Keys) for the bifrost routing peer.
+	{"netbird-agent", []secretVar{{"NB_BIFROST_SETUP_KEY", "NB_SETUP_KEY", true}}},
+
+	// Substituted into netbird/config.yaml by bootstrap.sh (NetBird does not
+	// expand env vars there). Keys: openssl rand -base64 32; the owner password
+	// is bcrypt-hashed for the embedded Dex admin account.
+	{"bootstrap", []secretVar{
+		{"NB_DATA_STORE_KEY", "NB_DATA_STORE_KEY", true},
+		{"NB_RELAY_SECRET", "NB_RELAY_SECRET", true},
+		{"NB_OWNER_PASSWORD", "NB_OWNER_PASSWORD", true},
+	}},
 }
 
 // writeBifrostEnv writes vars to path as KEY=value lines. Values come from the
@@ -302,23 +270,15 @@ func writeBifrostEnv(path string, vars []secretVar) error {
 	return nil
 }
 
-// computeBifrostHash returns a SHA-256 of all bifrost config files (excluding secret
-// files) plus secret key=value pairs. Used as a Pulumi Trigger so bootstrap.sh
-// re-runs when either configs or secrets change. Values are hashed — never stored.
+// computeBifrostHash returns a SHA-256 of every file under ./cloud/bifrost, the
+// generated env files included. Used as a Pulumi Trigger so bootstrap.sh re-runs
+// when either configs or secrets change. Values are hashed — never stored.
 func computeBifrostHash() (string, error) {
 	h := sha256.New()
-
-	skipFiles := map[string]bool{
-		".secrets.env": true,
-		".env":         true,
-	}
 
 	err := filepath.Walk("./cloud/bifrost", func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return err
-		}
-		if skipFiles[filepath.Base(path)] {
-			return nil
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -331,18 +291,6 @@ func computeBifrostHash() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	// Mix in secret values so the hash changes on secret rotation. Key order is
-	// part of the hash, so reordering the lists re-runs bootstrap.sh once.
-	seen := map[string]bool{}
-	for _, v := range append(append([]secretVar{}, bifrostSecretsEnv...), bifrostDotEnv...) {
-		if seen[v.envKey] {
-			continue
-		}
-		seen[v.envKey] = true
-		h.Write([]byte(v.envKey + "=" + os.Getenv(v.envKey) + "\n"))
-	}
-
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 

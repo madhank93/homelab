@@ -74,7 +74,7 @@ Grafana uses Authentik as a **confidential** OIDC provider:
 | Scopes | `openid email profile groups offline_access` |
 | Token validity | 1 hour access, 10 min authorization code |
 
-The `groups` scope is a custom property mapping that returns the list of Authentik group names the user belongs to. Grafana uses this via `role_attribute_path` to assign the **Admin** role to members of the `grafana-admins` group.
+The `groups` scope is a custom property mapping that returns the list of Authentik group names the user belongs to. Grafana's `org_mapping` reads it to make members of `grafana-admins` **Admin** of the main org; everyone else lands in the Public org as **Viewer**.
 
 ```python
 # groups scope expression (in Authentik)

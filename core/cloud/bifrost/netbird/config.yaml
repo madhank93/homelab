@@ -1,4 +1,4 @@
-# NetBird v0.66 Combined Server Configuration
+# NetBird Combined Server Configuration
 #
 # ARCHITECTURE: The combined server ALWAYS runs embedded Dex OIDC internally.
 #   auth.issuer MUST be the NetBird server's own /oauth2 URL — NEVER Authentik's URL.

@@ -54,7 +54,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			"server": pulumi.Map{
 				"extraArgs": pulumi.StringArray{},
 				"service": pulumi.Map{
-					"type": pulumi.String("LoadBalancer"), // Cilium L2 will assign an IP
+					"type": pulumi.String("ClusterIP"), // reached only through the Gateway HTTPRoute
 				},
 			},
 			"configs": pulumi.Map{

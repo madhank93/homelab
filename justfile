@@ -49,78 +49,73 @@ create-secrets:
     SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
       sops exec-env secrets/bootstrap.sops.yaml 'bash scripts/create-bootstrap-secrets.sh'
 
+# kubectl exec into the OpenBao server; bao_root takes the token as the first stdin
+# line so it never appears in a process list.
+bao_exec := "kubectl exec -i -n openbao openbao-0 -c openbao --"
+bao_root := bao_exec + " sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao \"$@\"' bao"
+
+# Saves only the unseal key (mode 600); the init root token is revoked at once.
 # One-time OpenBao initialisation (run after first ArgoCD deploy of OpenBao)
 openbao-init:
-    kubectl exec -n openbao openbao-0 -- bao operator init \
-      -key-shares=1 -key-threshold=1 -format=json > /tmp/openbao-init.json
-    @echo "✅  Init output saved to /tmp/openbao-init.json"
-    @echo "    Copy the unseal_keys_b64[0] value into secrets/bootstrap.sops.yaml as OPENBAO_UNSEAL_KEY"
-    @echo "    Then run: just create-secrets && kubectl rollout restart statefulset/openbao -n openbao"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    umask 077
+    out="$HOME/openbao-unseal-key"
+    if [[ -e "$out" ]]; then echo "❌  $out already exists — move it into SOPS or delete it first." >&2; exit 1; fi
+    init="$({{bao_exec}} bao operator init -key-shares=1 -key-threshold=1 -format=json </dev/null)"
+    jq -r '.unseal_keys_b64[0]' <<<"$init" >"$out"
+    jq -r '.unseal_keys_b64[0]' <<<"$init" | {{bao_exec}} sh -c 'read -r k; bao operator unseal "$k" >/dev/null'
+    jq -r '.root_token' <<<"$init" | {{bao_root}} token revoke -self >/dev/null
+    echo "✅  OpenBao initialised and unsealed; init root token revoked."
+    echo "    Unseal key written to $out (mode 600). Next:"
+    echo "      1. sops secrets/bootstrap.sops.yaml  → set OPENBAO_UNSEAL_KEY to the contents of $out"
+    echo "      2. just create-secrets && kubectl delete pod -n openbao openbao-0   # OnDelete StatefulSet"
+    echo "      3. rm $out"
+    echo "      4. just openbao-setup"
 
-# One-time OpenBao K8s auth + policy + role setup (run after openbao-init)
+# Configure OpenBao K8s auth, policies, roles and seed app secrets (idempotent)
 openbao-setup:
     SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
       sops exec-env secrets/bootstrap.sops.yaml 'bash scripts/openbao-setup.sh'
 
-# Generate a temporary OpenBao root token from the stored unseal key.
-# The token is printed to stdout — export it for subsequent bao commands.
-# Revoke it when done: just openbao-revoke <token>
-# OpenBao 2.x: client must generate OTP first, then pass it to -init.
+# Refuses to print to a terminal; capture it and revoke it when done:
+#   export ROOT_TOKEN=$(just openbao-token) ... just openbao-revoke
+# Generate a root token from the unseal key in the openbao-unseal-key Secret.
+# Goes through the in-pod socket: the only listener allowing generate-root (openbao.go).
 openbao-token:
     #!/usr/bin/env bash
     set -euo pipefail
-    UNSEAL_KEY=$(kubectl get secret openbao-unseal-key -n openbao \
-      -o jsonpath='{.data.unseal-key}' | base64 -d)
-    kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -cancel -format=json 2>/dev/null || true
-    OTP=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -generate-otp)
-    INIT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -init -otp="$OTP" -format=json)
-    NONCE=$(echo "$INIT" | python3 -c "import sys,json; print(json.load(sys.stdin)['nonce'])")
-    RESULT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -nonce="$NONCE" -format=json "$UNSEAL_KEY")
-    ENCODED=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['encoded_token'])")
-    kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -decode="$ENCODED" -otp="$OTP"
+    if [[ -t 1 ]]; then echo "Capture the token instead: export ROOT_TOKEN=\$(just openbao-token)" >&2; exit 1; fi
+    gen="{{bao_exec}} env BAO_ADDR=unix:///tmp/openbao.sock bao"
+    $gen delete sys/generate-root/attempt </dev/null >/dev/null
+    init="$($gen write -format=json -f sys/generate-root/attempt </dev/null)"
+    nonce="$(jq -r .data.nonce <<<"$init")"
+    otp="$(jq -r .data.otp <<<"$init")"
+    encoded="$(kubectl get secret openbao-unseal-key -n openbao -o jsonpath='{.data.unseal-key}' | base64 -d |
+      $gen write -format=json sys/generate-root/update nonce="$nonce" key=- | jq -r .data.encoded_token)"
+    # The bao CLI decodes via the authenticated endpoint; the token is the
+    # unpadded-base64 encoded_token XORed with the OTP.
+    printf '%s %s' "$encoded" "$otp" | python3 -c 'import base64, sys
+    e, o = sys.stdin.read().split()
+    print(bytes(b ^ ord(c) for b, c in zip(base64.b64decode(e + "=" * (-len(e) % 4)), o)).decode())'
 
-# Read an OpenBao secret. Optionally pass a field name to get a single value.
+# Read an OpenBao secret with a throwaway root token. Optionally pass a field name.
 # Usage:
 #   just openbao-get secret/grafana
 #   just openbao-get secret/grafana ADMIN_PASSWORD
 openbao-get path field='':
     #!/usr/bin/env bash
     set -euo pipefail
-    UNSEAL_KEY=$(kubectl get secret openbao-unseal-key -n openbao \
-      -o jsonpath='{.data.unseal-key}' | base64 -d)
-    kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -cancel -format=json 2>/dev/null || true
-    OTP=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -generate-otp)
-    INIT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -init -otp="$OTP" -format=json)
-    NONCE=$(echo "$INIT" | python3 -c "import sys,json; print(json.load(sys.stdin)['nonce'])")
-    RESULT=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -nonce="$NONCE" -format=json "$UNSEAL_KEY")
-    ENCODED=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['encoded_token'])")
-    ROOT_TOKEN=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao operator generate-root -decode="$ENCODED" -otp="$OTP")
-    if [ -n "{{field}}" ]; then
-      kubectl exec -n openbao openbao-0 -c openbao -- \
-        env VAULT_TOKEN="$ROOT_TOKEN" bao kv get -field="{{field}}" "{{path}}"
-    else
-      kubectl exec -n openbao openbao-0 -c openbao -- \
-        env VAULT_TOKEN="$ROOT_TOKEN" bao kv get "{{path}}"
-    fi
-    kubectl exec -n openbao openbao-0 -c openbao -- \
-      env VAULT_TOKEN="$ROOT_TOKEN" bao token revoke "$ROOT_TOKEN" 2>/dev/null || true
+    token="$(just openbao-token)"
+    bao() { printf '%s\n' "$token" | {{bao_root}} "$@"; }
+    trap 'bao token revoke -self >/dev/null' EXIT
+    if [[ -n "{{field}}" ]]; then bao kv get -field="{{field}}" "{{path}}"; else bao kv get "{{path}}"; fi
 
-# Revoke a previously generated root token
-openbao-revoke token:
+# Revoke a root token from openbao-token (argument, or $ROOT_TOKEN if omitted)
+openbao-revoke $token='':
     #!/usr/bin/env bash
     set -euo pipefail
-    kubectl exec -n openbao openbao-0 -c openbao -- \
-      env VAULT_TOKEN="{{token}}" bao token revoke "{{token}}"
+    printf '%s\n' "${token:-${ROOT_TOKEN:?pass a token or export ROOT_TOKEN}}" | {{bao_root}} token revoke -self
 
 # Get a short-lived OpenBao token via Kubernetes auth using a service account.
 # The service account must be bound to an OpenBao role (see scripts/openbao-setup.sh).
@@ -155,6 +150,29 @@ openbao-sa-get sa ns role path field='':
       kubectl exec -n openbao openbao-0 -c openbao -- \
         env VAULT_TOKEN="$VAULT_TOKEN" bao kv get {{path}}
     fi
+
+# One-time: create Grafana's "Public" org (must get id 2, see workloads/monitoring/grafana.go).
+# Grafana won't start while provisioning references a missing org, so run this
+# against the running Grafana BEFORE syncing the two-org config. Idempotent.
+grafana-init:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    pw=$(kubectl exec -n grafana deploy/grafana -c grafana -- cat /mnt/secrets/ADMIN_PASSWORD)
+    auth="header = \"Authorization: Basic $(printf 'admin:%s' "$pw" | base64 | tr -d '\n')\""
+    unset pw
+    kubectl port-forward -n grafana svc/grafana 13030:3000 >/dev/null &
+    pf=$!
+    trap 'kill $pf' EXIT
+    for _ in $(seq 20); do curl -sf -o /dev/null http://localhost:13030/api/health && break; sleep 0.5; done
+    api() { printf '%s\n' "$auth" | curl -sf -K - -H 'Content-Type: application/json' "$@"; }
+    id=$(api http://localhost:13030/api/orgs/name/Public | jq -r .id) \
+      || id=$(api -X POST -d '{"name":"Public"}' http://localhost:13030/api/orgs | jq -r .orgId)
+    [ "$id" = 2 ] || { echo "Grafana org Public has id $id, expected 2" >&2; exit 1; }
+    echo "Grafana org Public = id 2"
+
+# Short-lived Headlamp login token (cluster-admin); paste into the Headlamp UI
+headlamp-token duration="24h":
+    kubectl create token headlamp-admin -n headlamp --duration={{duration}}
 
 # Decrypt and view a SOPS-encrypted file (opens in $EDITOR by default)
 # Usage:

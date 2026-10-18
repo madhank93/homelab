@@ -27,7 +27,8 @@ OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Po
 | Grafana | `grafana` (default) | `grafana` | `grafana-policy` |
 | Harbor | `secret-sync` | `harbor` | `harbor-policy` |
 | n8n | `n8n` (default) | `n8n` | `n8n-policy` |
-| NetBird | `netbird-peer` | `netbird` | `netbird-policy` |
+| NetBird | `default` | `netbird` | `netbird-policy` |
+| Falco | `secret-sync` | `falco` | `falco-policy` |
 
 **Secret paths (KV v2):**
 
@@ -37,6 +38,7 @@ OpenBao runs as a standalone (single-node) server in the `openbao` namespace. Po
 | Harbor | `secret/data/harbor` | `HARBOR_ADMIN_PASSWORD` |
 | n8n | `secret/data/n8n` | `ENCRYPTION_KEY` |
 | NetBird | `secret/data/netbird` | `NETBIRD_SETUP_KEY` |
+| Falco | `secret/data/falco` | `FALCOSIDEKICK_UI_USER` |
 
 Source: {{ src(path="workloads/secrets/openbao.go") }}
 
@@ -58,6 +60,8 @@ SecretProviderClass with no pod mounting it produces nothing.
 | Injector | disabled | CSI-only approach |
 | Metrics | `unauthenticated_metrics_access: true` | VMAgent scrapes `/v1/sys/metrics` |
 | Retention | `prometheus_retention_time: 30s` | Prometheus metrics TTL |
+| Audit | `audit "file" "stdout"` | Every request logged to the pod's stdout; declared in config because API audit creation is off by default |
+| Unix listener | `/tmp/openbao.sock`, generate-root enabled | Unauthenticated generate-root is off by default on every listener; only this in-pod socket allows it, for `just openbao-token` |
 
 ## Auto-Unseal Sidecar
 
@@ -83,6 +87,7 @@ done`},
 
 > **Why `extraContainers` and not `extraInitContainers`?** Init containers must complete before the main container starts, but OpenBao must be running before it can accept an unseal request. A sidecar container runs alongside the main container and can poll until the server is ready.
 
+Only the sidecar gets the key; the server container has no reference to it.
 The `openbao-unseal-key` Secret is created by `just create-secrets` from `secrets/bootstrap.sops.yaml`. It carries `argocd.argoproj.io/sync-options: Prune=false` so Argo CD never deletes it.
 
 ## How It Connects
@@ -103,10 +108,10 @@ Pod starts
 
 ## Commands
 
-The `openbao-unseal-key` bootstrap Secret stores only `unseal-key` — the root
-token is not persisted. Use the `just` recipes below to generate a temporary
-root token on demand (they handle the full `generate-root` ceremony automatically
-and revoke the token after use).
+No root token is stored anywhere. `just openbao-token` mints a short-lived one
+from the unseal key in the `openbao-unseal-key` Secret (the `generate-root`
+ceremony over the in-pod socket). It refuses to print to a terminal: capture it,
+pass it to `bao` on stdin so it never shows in a process list, and revoke it.
 
 ### Read a secret (recommended)
 
@@ -115,36 +120,24 @@ just openbao-get secret/grafana
 just openbao-get secret/grafana ADMIN_PASSWORD
 ```
 
-### Generate a root token for interactive use
+### Change a value
 
 ```bash
-ROOT_TOKEN=$(just openbao-token)
+export ROOT_TOKEN=$(just openbao-token)
+printf '%s\n%s' "$ROOT_TOKEN" '<new value>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
+  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret grafana ADMIN_PASSWORD=-'
+just openbao-revoke
 ```
 
-Revoke it when done:
+### Other bao commands
 
 ```bash
-just openbao-revoke $ROOT_TOKEN
-```
-
-### Raw bao commands (after exporting ROOT_TOKEN)
-
-```bash
-# List all secrets
-kubectl exec -n openbao openbao-0 -c openbao -- \
-  env VAULT_TOKEN=$ROOT_TOKEN bao kv list secret/
-
-# Patch a single key (non-destructive)
-kubectl exec -n openbao openbao-0 -c openbao -- \
-  env VAULT_TOKEN=$ROOT_TOKEN bao kv patch secret/grafana ADMIN_PASSWORD=newvalue
-
-# Replace all keys (full put)
-kubectl exec -n openbao openbao-0 -c openbao -- \
-  env VAULT_TOKEN=$ROOT_TOKEN bao kv put secret/grafana ADMIN_PASSWORD=value OAUTH_CLIENT_SECRET=value
-
-# Check auth roles
-kubectl exec -n openbao openbao-0 -c openbao -- \
-  env VAULT_TOKEN=$ROOT_TOKEN bao read auth/kubernetes/role/grafana
+export ROOT_TOKEN=$(just openbao-token)
+printf '%s\n' "$ROOT_TOKEN" | kubectl exec -i -n openbao openbao-0 -c openbao -- \
+  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao "$@"' bao kv list secret/
+printf '%s\n' "$ROOT_TOKEN" | kubectl exec -i -n openbao openbao-0 -c openbao -- \
+  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao "$@"' bao read auth/kubernetes/role/grafana
+just openbao-revoke
 ```
 
 ### Check OpenBao status
@@ -174,8 +167,8 @@ kubectl exec -n openbao openbao-0 -- bao status
 kubectl logs -n openbao openbao-0 -c unseal
 
 # Manual unseal (get key from bootstrap secret)
-UNSEAL_KEY=$(kubectl get secret openbao-unseal-key -n openbao -o jsonpath='{.data.unseal-key}' | base64 -d)
-kubectl exec -n openbao openbao-0 -- bao operator unseal "$UNSEAL_KEY"
+kubectl get secret openbao-unseal-key -n openbao -o jsonpath='{.data.unseal-key}' | base64 -d |
+  kubectl exec -i -n openbao openbao-0 -c openbao -- sh -c 'read -r k; bao operator unseal "$k"'
 ```
 
 ### 403 Permission Denied
@@ -195,8 +188,9 @@ kubectl exec -n openbao openbao-0 -- bao read auth/kubernetes/role/<app-name>
 **Fix:** The Kubernetes auth role may not include the pod's ServiceAccount. Run `just openbao-setup` to re-apply roles, or manually add the SA:
 
 ```bash
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao write auth/kubernetes/role/<app> \
+printf '%s\n' "$ROOT_TOKEN" | kubectl exec -i -n openbao openbao-0 -c openbao -- \
+  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao "$@"' bao \
+  write auth/kubernetes/role/<app> \
     bound_service_account_names=<sa-name> \
     bound_service_account_namespaces=<namespace> \
     policies=<policy-name> \

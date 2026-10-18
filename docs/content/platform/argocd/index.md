@@ -36,7 +36,7 @@ helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
     Values: pulumi.Map{
         "server": pulumi.Map{
             "service": pulumi.Map{
-                "type": pulumi.String("LoadBalancer"), // Cilium L2 assigns IP
+                "type": pulumi.String("ClusterIP"), // reached only through the Gateway HTTPRoute
             },
         },
     },

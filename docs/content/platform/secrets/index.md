@@ -147,23 +147,17 @@ just create-secrets
 ## OpenBao Setup (one-time)
 
 ```bash
-# 1. Deploy OpenBao + unseal it
-just openbao-init        # initialises, saves root token to /tmp/openbao-init.json
+# 1. Initialise + unseal; writes only the unseal key to ~/openbao-unseal-key (mode 600)
+just openbao-init        # then move it into SOPS as OPENBAO_UNSEAL_KEY (it prints the steps)
 
-# 2. Configure K8s auth, policies, roles, placeholder secrets
+# 2. Configure K8s auth, policies, roles; seed missing app secrets (idempotent)
 just openbao-setup       # runs scripts/openbao-setup.sh
-
-# 3. Replace placeholder secrets with real values
-ROOT_TOKEN=$(python3 -c "import json; print(json.load(open('/tmp/openbao-init.json'))['root_token'])")
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv put -mount=secret grafana  ADMIN_PASSWORD=<real>
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv put -mount=secret harbor   HARBOR_ADMIN_PASSWORD=<real>
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv put -mount=secret n8n      ENCRYPTION_KEY=<real>
-kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-  bao kv put -mount=secret netbird  NETBIRD_SETUP_KEY=<real>
 ```
+
+No root token is stored anywhere. `just openbao-token` mints a short-lived one from
+the unseal key in the `openbao-unseal-key` Secret, and `openbao-setup` revokes its
+own on exit. See [OpenBao](@/workloads/secrets/openbao/index.md#commands) for
+changing a value.
 
 ## Apps and Their Secret Paths
 

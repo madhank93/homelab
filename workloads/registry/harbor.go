@@ -52,8 +52,8 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 				"database": map[string]any{"size": "10Gi"},
 			},
 		},
-		"harborAdminPassword": "",
-		"existingSecret":      "harbor-admin", // Secret synced by SecretProviderClass + secret-sync pod
+		"harborAdminPassword":         "",
+		"existingSecretAdminPassword": "harbor-admin", // synced from OpenBao by the secret-sync pod
 		"core": map[string]any{
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},

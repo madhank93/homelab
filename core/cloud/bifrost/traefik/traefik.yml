@@ -8,6 +8,8 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+    http:
+      middlewares: [hsts@file]   # every HTTPS router, incl. generated public-services.yml
     transport:
       respondingTimeouts:
         readTimeout: 0    # required for long-lived gRPC streams

@@ -255,7 +255,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	// --- Applications ---
 
 	// Groups property mapping — returns the list of group names the user belongs to.
-	// Required by Grafana's role_attribute_path to map grafana-admins → Admin role.
+	// Grafana's org_mapping reads this claim to place grafana-admins in the admin org.
 	groupsMapping, err := authentik.NewPropertyMappingProviderScope(ctx, "scope-groups", &authentik.PropertyMappingProviderScopeArgs{
 		Name:      pulumi.String("Groups"),
 		ScopeName: pulumi.String("groups"),
@@ -267,7 +267,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// grafana-admins group — members get Admin role in Grafana via role_attribute_path.
+	// grafana-admins group — members get Admin in Grafana's main org via org_mapping.
 	_, err = authentik.NewGroup(ctx, "group-grafana-admins", &authentik.GroupArgs{
 		Name: pulumi.String("grafana-admins"),
 	}, pulumi.Provider(provider))

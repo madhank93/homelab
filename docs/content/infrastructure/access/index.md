@@ -42,12 +42,13 @@ Cloudflare resolves specific records before wildcards. A service with no explici
 Internet Browser
   → Cloudflare: grafana.madhan.app → 178.156.199.250
   → Traefik (TLS termination on Hetzner VPS)
-  → [no session] → Authentik ForwardAuth
-      → auth.madhan.app → GitHub OAuth → redirect back
-  → [session cookie set] → k8s-gateway (http://192.168.1.220)
+  → SkipAuth: no ForwardAuth — straight to k8s-gateway (http://192.168.1.220)
        ↑ reachable via WireGuard (netbird-agent on Hetzner routes 192.168.1.0/24)
   → Cilium HTTPRoute: grafana.madhan.app → Grafana pod
+  → Grafana's own OIDC login → auth.madhan.app → GitHub OAuth → redirect back
 ```
+
+Services without `SkipAuth` get an Authentik ForwardAuth check at Traefik instead.
 
 ### Internal service (e.g. Headlamp)
 
@@ -123,7 +124,7 @@ the record and the service is LAN-only again, with no other change.
 | `netbird.madhan.app` | `178.156.199.250` | Internet |
 | `proxy.madhan.app` | `178.156.199.250` | Internet |
 | `*.proxy.madhan.app` | `178.156.199.250` | Internet (NetBird expose) |
-| `grafana.madhan.app` | `178.156.199.250` | Internet + ForwardAuth |
+| `grafana.madhan.app` | `178.156.199.250` | Internet + Grafana's own Authentik OIDC |
 
 ### LAN user accessing a public service (hairpin routing)
 
@@ -184,8 +185,8 @@ This is useful for:
 dig grafana.madhan.app     # → 178.156.199.250  (public, explicit A record)
 dig headlamp.madhan.app    # → 192.168.1.220   (LAN wildcard, private)
 
-# Unauthenticated access redirects to SSO
-curl -I https://grafana.madhan.app   # → 302 to auth.madhan.app
+# Unauthenticated access redirects to the login page (SSO only)
+curl -I https://grafana.madhan.app   # → 302 to /login (SSO button → auth.madhan.app)
 
 # K8s routing peer connected
 kubectl get pods -n netbird           # → Running

@@ -22,7 +22,7 @@ Cilium replaces kube-proxy entirely, manages LoadBalancer IPs in the `192.168.1.
 |---------|-------|---------|
 | `ipam.mode` | `kubernetes` | IPAM managed by Kubernetes |
 | `kubeProxyReplacement` | `true` | Full eBPF kube-proxy replacement |
-| `l2Announcements.enabled` | `true` | L2 ARP announcements for LoadBalancer IPs |
+| `l2announcements.enabled` | `true` | L2 ARP announcements for LoadBalancer IPs (the chart key is all lowercase) |
 | `gatewayAPI.enabled` | `true` | Kubernetes Gateway API support |
 | `hubble.enabled` | `true` | Network observability |
 | `hubble.relay.enabled` | `true` | Hubble relay for cross-node visibility |
@@ -95,6 +95,10 @@ spec:
       - key: node-role.kubernetes.io/control-plane
         operator: DoesNotExist
 ```
+
+The policy announces `loadBalancerIPs` only (`externalIPs: false`).
+
+**Service `externalIPs` are blocked.** With `kubeProxyReplacement` on, Cilium always serves `spec.externalIPs`, so no Helm flag can turn it off — and an author who sets it can capture traffic to any IP (CVE-2020-8554). A `ValidatingAdmissionPolicy` named `deny-service-external-ips` (with its binding) rejects any Service that sets the field; use `type: LoadBalancer` instead.
 
 **Traffic flow for a LoadBalancer Service:**
 

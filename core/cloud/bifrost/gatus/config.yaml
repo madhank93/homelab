@@ -8,10 +8,13 @@ endpoints:
   # extra_hosts in docker-compose maps *.madhan.app → Traefik (172.30.0.10) to
   # avoid hairpin NAT (Gatus lives on the same host as Traefik).
 
+  # The status page is public: connection errors embed resolved IPs, so they
+  # are hidden on every endpoint (conditions still show why a check failed).
   - name: Authentik
     group: Bifrost
     url: https://auth.madhan.app/-/health/ready/
     interval: 1m
+    ui: &private {hide-errors: true}
     conditions:
       - "[STATUS] == 200"
 
@@ -19,6 +22,7 @@ endpoints:
     group: Bifrost
     url: https://netbird.madhan.app
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -26,8 +30,10 @@ endpoints:
 
   - name: Kubernetes API
     group: Platform
+    # No DNS name exists for the API VIP, so the address itself is hidden.
     url: https://192.168.1.210:6443/livez
     interval: 30s
+    ui: {hide-errors: true, hide-hostname: true, hide-port: true, hide-url: true}
     client:
       insecure: true
     # Talos disables anonymous auth — 401 means API server is up and responding.
@@ -38,6 +44,7 @@ endpoints:
     group: Platform
     url: https://argocd.madhan.app/healthz
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -49,6 +56,7 @@ endpoints:
     group: Observability
     url: https://grafana.madhan.app/api/health
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
       - "[BODY].database == ok"
@@ -57,6 +65,7 @@ endpoints:
     group: Observability
     url: https://vmselect.madhan.app/health
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -64,6 +73,7 @@ endpoints:
     group: Observability
     url: https://victorialogs.madhan.app/health
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -71,6 +81,7 @@ endpoints:
     group: Observability
     url: https://alertmanager.madhan.app/-/healthy
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -80,6 +91,7 @@ endpoints:
     group: Storage
     url: https://longhorn.madhan.app
     interval: 2m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -89,6 +101,7 @@ endpoints:
     group: Registry
     url: https://harbor.madhan.app/api/v2.0/ping
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
       - "[BODY] == Pong"
@@ -101,6 +114,7 @@ endpoints:
     group: Secrets
     url: https://openbao.madhan.app/v1/sys/health
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -110,6 +124,7 @@ endpoints:
     group: Management
     url: https://headlamp.madhan.app
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -119,6 +134,7 @@ endpoints:
     group: Network
     url: https://hubble.madhan.app
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -128,6 +144,7 @@ endpoints:
     group: Applications
     url: https://n8n.madhan.app
     interval: 1m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -135,6 +152,7 @@ endpoints:
     group: Applications
     url: https://ollama.madhan.app/api/version
     interval: 2m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -142,6 +160,7 @@ endpoints:
     group: Applications
     url: https://comfyui.madhan.app
     interval: 2m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -149,6 +168,7 @@ endpoints:
     group: Applications
     url: https://falco.madhan.app
     interval: 2m
+    ui: *private
     conditions:
       - "[STATUS] == 200"
 
@@ -156,5 +176,6 @@ endpoints:
     group: Applications
     url: https://kubeflow.madhan.app
     interval: 2m
+    ui: *private
     conditions:
       - "[STATUS] == 200"

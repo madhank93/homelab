@@ -22,7 +22,7 @@ in a console.
 
 ## How It's Used Here
 
-Headlamp runs in the `headlamp` namespace, accessible at `https://headlamp.madhan.app`. It uses a long-lived ServiceAccount token with `cluster-admin` ClusterRoleBinding.
+Headlamp runs in the `headlamp` namespace, accessible at `https://headlamp.madhan.app`. You log in with a short-lived token for the `headlamp-admin` ServiceAccount, which is bound to `cluster-admin`. No static token Secret exists.
 
 Source: {{ src(path="workloads/management/headlamp.go") }}
 
@@ -34,16 +34,15 @@ Source: {{ src(path="workloads/management/headlamp.go") }}
 | HTTPRoute | `headlamp.madhan.app` → `headlamp:80` | Gateway API (LAN only) |
 | ServiceAccount | `headlamp-admin` | cluster-admin access |
 | ClusterRoleBinding | `cluster-admin` | Full read/write access to all resources |
-| Token Secret | `headlamp-admin-token` | Long-lived SA token (kubernetes.io/service-account-token) |
 | Resources (limits) | `500m` / `512Mi` | Lightweight dashboard |
 
 ## Authentication
 
-Headlamp uses token-based authentication. Retrieve the long-lived token:
+Headlamp uses token-based authentication. Mint a short-lived token (optional duration, e.g. `8h`):
 
 ```bash
-kubectl get secret headlamp-admin-token -n headlamp \
-  -o jsonpath='{.data.token}' | base64 -d
+just headlamp-token [duration]
+# equivalent to: kubectl create token headlamp-admin -n headlamp [--duration=<duration>]
 ```
 
 Paste the token into the Headlamp login screen.
@@ -66,11 +65,10 @@ Headlamp is LAN-only by default (no Cloudflare A record). For temporary external
 
 ### Token Expired / Invalid
 
-Long-lived SA tokens do not expire (unlike projected tokens), but if the ServiceAccount is deleted and recreated, the token must be re-retrieved:
+Tokens from `kubectl create token` expire, and recreating the ServiceAccount invalidates them early. Mint a new one:
 
 ```bash
-kubectl get secret headlamp-admin-token -n headlamp \
-  -o jsonpath='{.data.token}' | base64 -d
+just headlamp-token
 ```
 
 ### Resource Metrics Not Showing

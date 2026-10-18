@@ -57,7 +57,7 @@ flowchart LR
     end
 
     subgraph RELAY["WireGuard Relay"]
-        RE["NetBird TURN/STUN<br/>via netbird-server<br/>UDP 3478 / TCP 5349"]
+        RE["NetBird relay + STUN<br/>via netbird-server<br/>WebSocket 443 / UDP 3478"]
     end
 
     subgraph K8S["Kubernetes · routing-peer node"]
@@ -140,8 +140,8 @@ This connector is registered in NetBird via the UI after first login (see [First
 
 | Config field | Template value | Final value |
 |---|---|---|
-| `server.authSecret` | `${NB_RELAY_SECRET}` | base64 secret from `.secrets.env` |
-| `store.encryptionKey` | `${NB_DATA_STORE_KEY}` | base64 key from `.secrets.env` |
+| `server.authSecret` | `${NB_RELAY_SECRET}` | base64 secret from `env/bootstrap.env` |
+| `store.encryptionKey` | `${NB_DATA_STORE_KEY}` | base64 key from `env/bootstrap.env` |
 | `auth.owner.password` | `${NB_OWNER_HASH}` | bcrypt hash generated from `NB_OWNER_PASSWORD` |
 | `auth.issuer` | `https://netbird.madhan.app/oauth2` | embedded Dex's own issuer URL |
 | `server.exposedAddress` | `https://netbird.madhan.app:443` | static |
@@ -165,7 +165,7 @@ All secrets come from `secrets/bootstrap.sops.yaml` via `generateBifrostSecretsE
 | `NB_PROXY_TOKEN` | Personal access token for netbird-proxy | NetBird UI → Settings → Access Tokens | Yes |
 | `NB_BIFROST_SETUP_KEY` | Setup key for netbird-agent on Bifrost | NetBird UI → Setup Keys | Yes |
 
-`NB_OWNER_PASSWORD` is only written to `.secrets.env` (and bcrypt-hashed at runtime). It enables the initial local admin login before an external identity provider is connected.
+`NB_OWNER_PASSWORD` is only written to `env/bootstrap.env` (and bcrypt-hashed into `config.yaml` at runtime). It enables the initial local admin login before an external identity provider is connected.
 
 ---
 
@@ -224,7 +224,7 @@ Two peers, two setup keys, two storage locations — matching where each consume
 | Peer | Setup key stored in | Key name | Reason |
 |------|-------------------|----------|--------|
 | `k8s-routing-peer` (k8s pod) | **OpenBao** `secret/data/netbird` | `NETBIRD_SETUP_KEY` | Read by k8s workload via CSI driver |
-| `netbird-agent` (Bifrost Docker) | **SOPS** `bootstrap.sops.yaml` | `NB_BIFROST_SETUP_KEY` | Read by Pulumi → `.secrets.env` → Docker |
+| `netbird-agent` (Bifrost Docker) | **SOPS** `bootstrap.sops.yaml` | `NB_BIFROST_SETUP_KEY` | Read by Pulumi → `env/netbird-agent.env` (as `NB_SETUP_KEY`) → Docker |
 
 Both keys can share the same **Reusable** setup key value from the NetBird UI — they just live in different stores because each consumer has different access patterns.
 
@@ -250,7 +250,7 @@ NB_PROXY_DOMAIN=proxy.madhan.app
 NB_PROXY_ACME_CERTIFICATES=true
 ```
 
-`NB_PROXY_TOKEN` is injected from `.secrets.env`. The proxy container is only started by `bootstrap.sh` if `NB_PROXY_TOKEN` is present. If missing, bootstrap prints setup instructions and skips it.
+`NB_PROXY_TOKEN` is injected from `env/netbird-proxy.env`. The proxy container is only started by `bootstrap.sh` if `NB_PROXY_TOKEN` is present. If missing, bootstrap prints setup instructions and skips it.
 
 ---
 
@@ -298,8 +298,10 @@ Bootstrap.sh picks up the new tokens and starts `netbird-proxy` and `netbird-age
 
 - [ ] Add the setup key to OpenBao:
   ```bash
-  kubectl exec -n openbao openbao-0 -- env BAO_TOKEN=$ROOT_TOKEN \
-    bao kv patch secret/netbird NETBIRD_SETUP_KEY=<value from Step 3>
+  export ROOT_TOKEN=$(just openbao-token)
+  printf '%s\n%s' "$ROOT_TOKEN" '<value from Step 3>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
+    sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-'
+  just openbao-revoke
   ```
   - This is the key the `netbird-peer` pod uses to join the mesh at startup
 - [ ] Wait for `netbird-peer-0` to show `Running` and check it connected:
