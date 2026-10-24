@@ -16,7 +16,7 @@ charts:
   victoria-metrics-k8s-stack: {repo: https://victoriametrics.github.io/helm-charts, version: 0.72.4}
   victoria-metrics-operator: {repo: https://victoriametrics.github.io/helm-charts, version: 0.59.2}
   kube-prometheus-stack: {repo: https://prometheus-community.github.io/helm-charts, version: 82.0.1}
-  secrets-store-csi-driver: {repo: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts, version: 1.6.0}
+  secrets-store-csi-driver: {repo: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts, version: 1.6.1}
   openbao: {repo: https://openbao.github.io/openbao-helm, version: 0.30.4}
   falco: {repo: https://falcosecurity.github.io/charts, version: 8.0.5}
   reloader: {repo: https://stakater.github.io/stakater-charts, version: 2.2.16}
