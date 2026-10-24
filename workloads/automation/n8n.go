@@ -75,6 +75,8 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 				},
 				"n8n": map[string]any{
 					"host": config.C.Host("n8n"),
+					// n8n 2.x dropped in-memory binary data; keep it on the persistent volume.
+					"default_binary_data_mode": "filesystem",
 				},
 			},
 			// Secrets injected from k8s Secrets via valueFrom — never stored in ConfigMap.
@@ -104,9 +106,18 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 				"accessModes": []string{"ReadWriteMany"},
 			},
 			"replicaCount": 1,
+			// Major upgrades run DB migrations before n8n listens; allow 10 minutes
+			// so the liveness probe does not kill a pod mid-migration.
+			"startupProbe": map[string]any{
+				"httpGet":          map[string]any{"path": "/healthz", "port": "http"},
+				"periodSeconds":    10,
+				"failureThreshold": 60,
+			},
+			// The limit covers the Code-node task runner, which n8n 2.x runs as a
+			// child process inside this container.
 			"resources": map[string]any{
 				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},
-				"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				"limits":   map[string]any{"cpu": "500m", "memory": "1Gi"},
 			},
 			// The CSI mount is what makes the driver create the n8n-secrets Secret.
 			"extraVolumes":      []map[string]any{kit.SecretsVolumeValues("n8n-secrets")},

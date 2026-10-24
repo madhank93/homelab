@@ -108,8 +108,8 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 |---|---|---|
 | Harbor | 1.19.2 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | Headlamp | 0.44.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| n8n (chart) | 2.0.1 | {{ src(path="workloads/automation/n8n.go") }} |
-| n8n (image) | 1.78.0 | same |
+| n8n (chart) | 2.1.1 | {{ src(path="workloads/automation/n8n.go") }} |
+| n8n (image) | 2.44.6 | same |
 | Reloader | 2.2.16 | {{ src(path="workloads/support/reloader.go") }} |
 | NetBird peer | 0.76.3 | {{ src(path="workloads/networking/netbird_peer.go") }} |
 | Kubeflow | 26.03.1 | {{ src(path="workloads/ai/kubeflow/kustomization.yaml") }} |

@@ -21,12 +21,12 @@ charts:
   falco: {repo: https://falcosecurity.github.io/charts, version: 8.0.5}
   reloader: {repo: https://stakater.github.io/stakater-charts, version: 2.2.16}
   trivy-operator: {repo: https://aquasecurity.github.io/helm-charts, version: 0.32.0}
-  n8n: {repo: oci://8gears.container-registry.com/library, version: 2.0.1}
+  n8n: {repo: oci://8gears.container-registry.com/library, version: 2.1.1}
 
 images:
   argocd: {image: quay.io/argoproj/argocd, tag: v3.5.1}
   openbao: {image: openbao/openbao, tag: 2.6.1}
-  n8n: {image: n8nio/n8n, tag: 1.78.0}
+  n8n: {image: n8nio/n8n, tag: 2.44.6}
   netbird: {image: netbirdio/netbird, tag: 0.76.3}
   pause: {image: registry.k8s.io/pause, tag: "3.10"}
   comfyui: {image: yanwk/comfyui-boot, tag: cu130-megapak-pt211-20260812}
