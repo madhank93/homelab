@@ -27,6 +27,6 @@ images:
   argocd: {image: quay.io/argoproj/argocd, tag: v3.5.1}
   openbao: {image: openbao/openbao, tag: 2.6.1}
   n8n: {image: n8nio/n8n, tag: 1.78.0}
-  netbird: {image: netbirdio/netbird, tag: 0.76.3}
+  netbird: {image: netbirdio/netbird, tag: 0.80.0}
   pause: {image: registry.k8s.io/pause, tag: "3.10"}
   comfyui: {image: yanwk/comfyui-boot, tag: cu130-megapak-pt211-20260812}

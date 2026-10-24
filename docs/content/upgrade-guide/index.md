@@ -309,8 +309,8 @@ All image tags live in `core/cloud/bifrost/docker-compose.yml`:
 
 **NetBird rule:** `netbird-server`, `reverse-proxy` and the agent **must be on the
 same version**. The dashboard is versioned independently (`v2.x`) and does not
-follow them. Also update both image tags in `workloads/networking/netbird_peer.go` — the
-`setup-iptables` init container and the main container.
+follow them; take the dashboard release that was current when the server version shipped.
+Also bump `netbird` in `config/versions.yaml` — the in-cluster peer reads its image from there.
 
 **Authentik migration race (fixed in bootstrap.sh):** On Authentik upgrades, `bootstrap.sh` now runs `ak migrate` explicitly (via a one-off server container) before starting `authentik-server` and `authentik-worker`. This prevents a crash-loop where the server queries new ORM columns that haven't been added yet. If `just core hetzner up` fails at the Authentik health check step, SSH in and run:
 ```bash
@@ -514,6 +514,7 @@ docker exec netbird-agent netbird status
 | Longhorn minor | Upgrade one minor at a time only |
 | NetBird any | All components (server/dashboard/proxy/agent/peer) must be on identical version |
 | Authentik any | Migration race: `bootstrap.sh` runs `ak migrate` first; if health check times out SSH + force-migrate (see Phase 7) |
+| Authentik 2026.5 → 2026.8 | Forwarded headers are honoured only from `AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS` (the default covers `172.16.0.0/12`, so Traefik on `bifrost_net` qualifies). Upgrades refuse to skip a minor: the newest row of `authentik_version_history` must be the previous minor |
 | Authentik any | After `netbird-agent` restart, verify `ip rule show \| grep 7120` — missing rules = restart agent again |
 | Trivy any | `trivyVersion` const in `trivy.go` drives the CRD bundle; the chart comes from `cdk8s.yaml` |
 | ComfyUI any | Needs a CUDA 12.8+ tag for sm_120; the `cu128` line is discontinued |
