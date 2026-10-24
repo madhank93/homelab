@@ -87,7 +87,7 @@ the rest are pinned at their call site.
 | VictoriaLogs | 0.13.9 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | Grafana | 12.10.4 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | OpenTelemetry Collector | 0.169.0 | {{ src(path="workloads/observability/otel_collector.go") }} |
-| Metrics Server | 3.13.1 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
+| Metrics Server | 3.14.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | kube-prometheus-stack CRDs | 82.0.1 | {{ src(path="workloads/observability/victoria_metrics.go") }} |
 
 VMAlertmanager ships inside the VictoriaMetrics k8s-stack chart; it has no
@@ -114,7 +114,7 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 | Headlamp | 0.45.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | n8n (chart) | 2.0.1 | {{ src(path="workloads/automation/n8n.go") }} |
 | n8n (image) | 1.78.0 | same |
-| Reloader | 2.2.16 | {{ src(path="workloads/support/reloader.go") }} |
+| Reloader | 2.2.18 | {{ src(path="workloads/support/reloader.go") }} |
 | NetBird peer | 0.76.3 | {{ src(path="workloads/networking/netbird_peer.go") }} |
 | Kubeflow | v1.11.0 | {{ src(path="workloads/ai/kubeflow/kustomization.yaml") }} |
 | notebook-gateway-controller | v1 | {{ src(path="workloads/ai/notebook_gateway_controller.go") }} |

@@ -13,4 +13,4 @@ imports:
   - helm:https://kubernetes-sigs.github.io/headlamp/headlamp@0.45.0
   - helm:https://kyverno.github.io/kyverno/kyverno@3.8.2
   - helm:https://charts.longhorn.io/longhorn@1.13.0
-  - helm:https://kubernetes-sigs.github.io/metrics-server/metrics-server@3.13.1
+  - helm:https://kubernetes-sigs.github.io/metrics-server/metrics-server@3.14.0
