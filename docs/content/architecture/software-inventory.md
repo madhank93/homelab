@@ -35,12 +35,12 @@ terminates here.
 
 | Software | Version | Pinned in |
 |---|---|---|
-| Traefik | v3.7.10 | {{ src(path="core/cloud/bifrost/docker-compose.yml") }} |
-| NetBird (server, agent, proxy) | 0.76.3 | same |
-| NetBird dashboard | v2.90.10 | same |
-| Authentik | 2026.5.6 | same |
+| Traefik | v3.7.16 | {{ src(path="core/cloud/bifrost/docker-compose.yml") }} |
+| NetBird (server, agent, proxy) | 0.80.0 | same |
+| NetBird dashboard | v2.94.0 | same |
+| Authentik | 2026.8.5 | same |
 | PostgreSQL (Authentik) | 16.14-alpine | same |
-| Gatus (uptime) | v5.36.0 | same |
+| Gatus (uptime) | v5.37.0 | same |
 
 ## Platform
 
@@ -115,7 +115,7 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 | n8n (chart) | 2.0.1 | {{ src(path="workloads/automation/n8n.go") }} |
 | n8n (image) | 1.78.0 | same |
 | Reloader | 2.2.18 | {{ src(path="workloads/support/reloader.go") }} |
-| NetBird peer | 0.76.3 | {{ src(path="workloads/networking/netbird_peer.go") }} |
+| NetBird peer | 0.80.0 | {{ src(path="workloads/networking/netbird_peer.go") }} |
 | Kubeflow | v1.11.0 | {{ src(path="workloads/ai/kubeflow/kustomization.yaml") }} |
 | notebook-gateway-controller | v1 | {{ src(path="workloads/ai/notebook_gateway_controller.go") }} |
 
