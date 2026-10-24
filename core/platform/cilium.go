@@ -21,9 +21,10 @@ import (
 // silently drops non-Ethernet frames. NetBird traffic reaches Cilium by kernel
 // IP forwarding to the LAN NIC of another node.
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewayCRDs pulumi.Resource) error {
-	// Held on 1.18.x: 1.19.x breaks host TCP on eth0 nodes (cilium/cilium#44430,
-	// #46010). Fixed in 1.20.0, which needs its own change window — a bad
-	// upgrade takes out the Talos API too.
+	// Upgrade one minor at a time. From 1.19 the datapath drops traffic to an
+	// LB-IPAM address on ports no Service uses, and LB-IPAM does not skip node
+	// IPs, so a pool address that is also a node IP cuts that node off from the LAN
+	// (cilium/cilium#44430; 1.19.5+ exempts only the node that owns the IP).
 	cilium := config.HelmChart("cilium")
 	ciliumChart, err := helm.NewRelease(ctx, "cilium", &helm.ReleaseArgs{
 		Chart:   pulumi.String("cilium"),
@@ -104,7 +105,7 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewa
 			// Cilium's socket-level LB hooks (cil_sock4_post_bind) intercept bind()
 			// calls and interfere with kubelet and Talos apid binding to their ports
 			// (10250, 50000) after Cilium starts. Disabling prevents this.
-			"hostServices": pulumi.Map{
+			"socketLB": pulumi.Map{
 				"enabled": pulumi.Bool(false),
 			},
 			// Cilium's NOTRACK iptables rules bypass conntrack for all traffic.
