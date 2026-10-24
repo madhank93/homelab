@@ -7,7 +7,7 @@ imports:
   - k8s@1.36.0
   - helm:https://grafana-community.github.io/helm-charts/grafana@12.10.4
   - helm:https://helm.goharbor.io/harbor@1.19.2
-  - helm:https://otwld.github.io/ollama-helm/ollama@1.74.0
+  - helm:https://otwld.github.io/ollama-helm/ollama@1.88.0
   - helm:https://victoriametrics.github.io/helm-charts/victoria-logs-single@0.13.9
   - helm:https://aquasecurity.github.io/helm-charts/trivy-operator@0.35.0
   - helm:https://kubernetes-sigs.github.io/headlamp/headlamp@0.44.0
