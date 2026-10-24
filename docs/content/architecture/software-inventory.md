@@ -15,14 +15,18 @@ running. `just docs-check` enforces both halves of that rule.
 
 | Software | Version | Managed by | Pinned in |
 |---|---|---|---|
-| Talos Linux | v1.13.8 | Pulumi | {{ src(path="core/platform/talos.go") }} |
+| Talos Linux | v1.14.4 | Pulumi | {{ src(path="core/platform/talos.go") }} |
+| Kubernetes | 1.36.5 | Talos machine config | {{ src(path="config/versions.yaml", label="versions.yaml") }} |
 | Kubernetes API types | 1.36.0 | CDK8s | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 
-Kubernetes itself has no pin of its own: the running version is whatever the
-Talos release ships (v1.13.x ships 1.36.x), and it does **not** ride along with
-a Talos upgrade — `talosctl upgrade-k8s` is a separate step, see the
-[Upgrade Guide](@/upgrade-guide/index.md). The row above pins the API types
-CDK8s generates Go structs from, which must stay aligned with the cluster.
+Kubernetes is pinned separately from Talos, which would otherwise default to a
+newer minor than Cilium supports. It does **not** ride along with a Talos
+upgrade — `just talos-upgrade-k8s` rolls it out as a separate step, see the
+[Upgrade Guide](@/upgrade-guide/index.md). The API types CDK8s generates Go
+structs from must stay on the same minor as the cluster.
+
+The NVIDIA driver on the GPU worker comes from the Talos `-production` system
+extensions, so its version moves with the Talos release.
 
 ## Bifrost (Hetzner VPS)
 

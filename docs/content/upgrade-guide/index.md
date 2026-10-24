@@ -86,15 +86,18 @@ curl -s https://hub.docker.com/v2/repositories/ollama/ollama/tags?page_size=3 | 
 
 **Risk:** High — rolling node restart.
 
-```go
-// core/platform/talos.go — the talosVersion const
-talosVersion = "vX.Y.Z"
+```yaml
+# config/versions.yaml
+talos: {version: vX.Y.Z, base_schematic: ..., gpu_schematic: ...}
+kubernetes: {version: X.Y.Z}
 ```
 
 **Rules:**
 - Upgrade one minor version at a time (1.12 → 1.13, not 1.12 → 1.15)
-- Workers first, then GPU workers, then control planes — verify health between nodes
-- Check the k8s version embedded in the new Talos release — if it bumps, update `k8s@X.Y.Z` in `workloads/cdk8s.yaml` and re-run `cdk8s import`
+- Workers first, then control planes one at a time, then the GPU worker last — verify health between nodes
+- Schematic IDs hash only the extension list, so they survive a version bump; check that every extension still exists for the new release: `curl -s https://factory.talos.dev/version/vX.Y.Z/extensions/official | jq -r '.[].name'`
+- Kubernetes is pinned on its own line and must stay inside Cilium's supported range; when it moves a minor, update `k8s@X.Y.Z` in `workloads/cdk8s.yaml` and re-run `cdk8s import`
+- Never lower `talos.version` and run `just core talos up`: the provider regenerates the cluster secrets on a downgrade (the resource is protected, so the run fails instead)
 
 > **`just core talos up` does not upgrade a running node.** Images download to a
 > fixed filename, so the Proxmox file ID never changes and existing disks keep
@@ -115,7 +118,9 @@ a single-instance CNPG cluster can never release its only pod. The drain then
 burns its timeout and `talosctl` exits *before* rebooting, leaving the node
 cordoned and un-upgraded.
 
-Kubernetes does not ride along: `just talos-upgrade-k8s <version>` is separate.
+Kubernetes does not ride along: `just talos-upgrade-k8s` rolls out the pinned
+version as a separate step. Run it before `just core talos up`, which would
+otherwise push the new images to every node at once.
 
 ### After each node
 
@@ -138,6 +143,76 @@ survives the shutdown sequence. Skip the graceful path:
 ```bash
 talosctl --talosconfig ~/.talos/config reboot --nodes <ip> --mode powercycle
 ```
+
+### Talos 1.13 → 1.14
+
+Talos 1.14 defaults to Kubernetes 1.37, which Cilium does not support yet, so
+`kubernetes.version` in `config/versions.yaml` holds the cluster on 1.36. An
+upgraded node keeps its v1alpha1 config: the deprecated fields this repo sets
+(`machine.install`, `machine.kernel`, `machine.nodeLabels`, `machine.nodeTaints`,
+`machine.kubelet.nodeIP`) still work, and 1.14-only defaults such as workload
+isolation (`SecurityProfileConfig`) and periodic trim stay off. Leave workload
+isolation off: it moves the kubelet and pods into a sandbox PID namespace, and
+Longhorn's iSCSI frontend and `just longhorn-repair-iscsi` both reach into the
+host `iscsid` namespaces.
+
+Use a `talosctl` client of 1.14.1 or later (1.14.0 can hang the full timeout
+after a node is already back). Then, one node at a time:
+
+```bash
+just talos-versions                         # every node on 1.13.x
+just talos-health
+
+# Workers. Start with one and prove Longhorn attaches there before the rest.
+# worker1 runs the NetBird routing peer: public traffic drops while it reboots.
+just talos-upgrade 192.168.1.223
+just talos-upgrade 192.168.1.222
+just talos-upgrade 192.168.1.221
+
+# Control planes, one at a time. Talos refuses an upgrade that breaks quorum.
+just talos-upgrade 192.168.1.211
+just talos-upgrade 192.168.1.212
+just talos-upgrade 192.168.1.213
+
+# GPU worker last: new NVIDIA driver build, and its PDBs need drain=false.
+just talos-upgrade 192.168.1.224 gpu false
+```
+
+Gate before every next node:
+
+```bash
+just talos-health                                   # clean
+kubectl get nodes                                   # all Ready, none SchedulingDisabled
+talosctl --talosconfig ~/.talos/config -n 192.168.1.211,192.168.1.212,192.168.1.213 etcd status
+                                                    # 3 members, one leader, no errors
+kubectl -n longhorn-system get volumes.longhorn.io \
+  -o custom-columns=NAME:.metadata.name,ROBUSTNESS:.status.robustness | grep -E 'degraded|faulted'
+                                                    # empty: replicas rebuilt
+```
+
+After worker4, check the GPU before calling it done:
+
+```bash
+talosctl --talosconfig ~/.talos/config -n 192.168.1.224 get extensions   # nvidia-* present
+kubectl get node k8s-worker4 -o jsonpath='{.status.allocatable.nvidia\.com/gpu}'  # 5
+```
+
+Then Kubernetes, then Pulumi:
+
+```bash
+just talos-upgrade-k8s --dry-run
+just talos-upgrade-k8s
+just core talos preview
+```
+
+The preview should show updates only: `talos-secrets` (version contract), the
+two image downloads, and the per-node config applies. A `replace` on
+`talos-secrets` or a VM means stop. Then `just core talos up`.
+
+Rollback before `just core talos up`: `talosctl rollback --nodes <ip>` boots the
+previous A/B image with data intact, then revert the commit. After it, never
+lower `talos.version` — roll nodes back with `talosctl rollback` and leave the
+pin alone.
 
 ---
 

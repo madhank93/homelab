@@ -82,6 +82,9 @@ type Versions struct {
 		BaseSchematic string `yaml:"base_schematic"`
 		GPUSchematic  string `yaml:"gpu_schematic"`
 	} `yaml:"talos"`
+	Kubernetes struct {
+		Version string `yaml:"version"`
+	} `yaml:"kubernetes"`
 	Charts map[string]Chart `yaml:"charts"`
 	Images map[string]Image `yaml:"images"`
 }

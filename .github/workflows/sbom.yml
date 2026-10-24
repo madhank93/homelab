@@ -43,7 +43,9 @@ jobs:
         run: |
           yq -o=json '[
               {"type": "operating-system", "name": "talos", "version": .talos.version,
-               "purl": "pkg:github/siderolabs/talos@" + .talos.version}
+               "purl": "pkg:github/siderolabs/talos@" + .talos.version},
+              {"type": "platform", "name": "kubernetes", "version": .kubernetes.version,
+               "purl": "pkg:github/kubernetes/kubernetes@v" + .kubernetes.version}
             ] + [
               .charts | to_entries | .[] |
               {"type": "application", "name": .key, "version": .value.version,

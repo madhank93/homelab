@@ -59,10 +59,11 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Generate Talos Secrets
+	// Generate Talos Secrets. The provider replaces them (new cluster PKI) when
+	// TalosVersion decreases, so a version rollback must never reach pulumi up.
 	secrets, err := talos_machine.NewSecrets(ctx, "talos-secrets", &talos_machine.SecretsArgs{
 		TalosVersion: pulumi.String(talos.Version),
-	})
+	}, pulumi.Protect(true))
 	if err != nil {
 		return err
 	}
@@ -150,32 +151,36 @@ machine:
     disk: /dev/sda
 `
 
-	// Generate Configs
+	// Generate Configs. KubernetesVersion pins the kubelet and control-plane images;
+	// left unset, the provider's built-in default would roll nodes back on apply.
 	cpConfig := talos_machine.GetConfigurationOutput(ctx, talos_machine.GetConfigurationOutputArgs{
-		ClusterName:     pulumi.String(cl.Name),
-		MachineType:     pulumi.String("controlplane"),
-		ClusterEndpoint: pulumi.String(clusterEndpoint),
-		MachineSecrets:  secrets.MachineSecrets,
-		TalosVersion:    pulumi.String(talos.Version),
-		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(cpPatch)},
+		ClusterName:       pulumi.String(cl.Name),
+		MachineType:       pulumi.String("controlplane"),
+		ClusterEndpoint:   pulumi.String(clusterEndpoint),
+		MachineSecrets:    secrets.MachineSecrets,
+		TalosVersion:      pulumi.String(talos.Version),
+		KubernetesVersion: pulumi.String(config.V.Kubernetes.Version),
+		ConfigPatches:     pulumi.StringArray{pulumi.String(basePatch), pulumi.String(cpPatch)},
 	})
 
 	workerConfig := talos_machine.GetConfigurationOutput(ctx, talos_machine.GetConfigurationOutputArgs{
-		ClusterName:     pulumi.String(cl.Name),
-		MachineType:     pulumi.String("worker"),
-		ClusterEndpoint: pulumi.String(clusterEndpoint),
-		MachineSecrets:  secrets.MachineSecrets,
-		TalosVersion:    pulumi.String(talos.Version),
-		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(workerPatch)},
+		ClusterName:       pulumi.String(cl.Name),
+		MachineType:       pulumi.String("worker"),
+		ClusterEndpoint:   pulumi.String(clusterEndpoint),
+		MachineSecrets:    secrets.MachineSecrets,
+		TalosVersion:      pulumi.String(talos.Version),
+		KubernetesVersion: pulumi.String(config.V.Kubernetes.Version),
+		ConfigPatches:     pulumi.StringArray{pulumi.String(basePatch), pulumi.String(workerPatch)},
 	})
 
 	gpuConfig := talos_machine.GetConfigurationOutput(ctx, talos_machine.GetConfigurationOutputArgs{
-		ClusterName:     pulumi.String(cl.Name),
-		MachineType:     pulumi.String("worker"),
-		ClusterEndpoint: pulumi.String(clusterEndpoint),
-		MachineSecrets:  secrets.MachineSecrets,
-		TalosVersion:    pulumi.String(talos.Version),
-		ConfigPatches:   pulumi.StringArray{pulumi.String(basePatch), pulumi.String(workerPatch), pulumi.String(gpuWorkerPatch)},
+		ClusterName:       pulumi.String(cl.Name),
+		MachineType:       pulumi.String("worker"),
+		ClusterEndpoint:   pulumi.String(clusterEndpoint),
+		MachineSecrets:    secrets.MachineSecrets,
+		TalosVersion:      pulumi.String(talos.Version),
+		KubernetesVersion: pulumi.String(config.V.Kubernetes.Version),
+		ConfigPatches:     pulumi.StringArray{pulumi.String(basePatch), pulumi.String(workerPatch), pulumi.String(gpuWorkerPatch)},
 	})
 
 	// Export sanitized configs

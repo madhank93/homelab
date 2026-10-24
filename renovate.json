@@ -38,6 +38,11 @@
       "groupName": "talos"
     },
     {
+      "description": "Held on Kubernetes 1.36: the newest minor Cilium supports.",
+      "matchPackageNames": ["kubernetes/kubernetes"],
+      "allowedVersions": "<1.37"
+    },
+    {
       "description": "Held on Helm 3: cdk8s renders charts via `helm template`.",
       "matchPackageNames": ["helm/helm"],
       "allowedVersions": "<4"
@@ -84,11 +89,20 @@
     },
     {
       "customType": "regex",
-      "description": "config/versions.yaml: Talos (schematic IDs are pinned per version; check them on bump)",
+      "description": "config/versions.yaml: Talos (schematic IDs hash only the extension list; check each extension exists for the new version)",
       "managerFilePatterns": ["/^config/versions\\.yaml$/"],
       "matchStrings": ["talos: \\{version: (?<currentValue>v[^,}\\s]+)"],
       "depNameTemplate": "siderolabs/talos",
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "config/versions.yaml: Kubernetes rendered into the Talos machine config",
+      "managerFilePatterns": ["/^config/versions\\.yaml$/"],
+      "matchStrings": ["kubernetes: \\{version: (?<currentValue>[^}\\s]+)\\}"],
+      "depNameTemplate": "kubernetes/kubernetes",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
     },
     {
       "customType": "regex",
