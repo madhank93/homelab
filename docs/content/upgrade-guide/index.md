@@ -453,7 +453,26 @@ Must match Bifrost docker-compose NetBird version exactly. Upgrade Bifrost and k
 
 ### Kubeflow
 
-Kubeflow is deployed via Kustomize from `kubeflow/manifests`, not a Helm chart. Upgrade by updating the `ref` on each base in `workloads/ai/kubeflow/kustomization.yaml`. Check the [kubeflow/manifests tags](https://github.com/kubeflow/manifests/tags) for the version compatible with the current k8s version.
+Kubeflow is deployed via Kustomize from `kubeflow/community-distribution` (formerly `kubeflow/manifests`), not a Helm chart. Upgrade by updating the `ref` on each base in `workloads/ai/kubeflow/kustomization.yaml`. Check the [releases](https://github.com/kubeflow/community-distribution/releases) for the version compatible with the current k8s version, and read the "Version-Specific Upgrade Notes" in the upstream README — paths move between releases.
+
+Build locally before pushing; CI runs the same command:
+
+```bash
+cd workloads && kustomize build ai/kubeflow/ > /dev/null
+```
+
+**Manual steps, 1.11.0 → 26.03.1** (dashboard moved to `kubeflow/dashboard` v2, notebooks to `notebooks-v1/`, Trainer 2.2.0):
+
+Two Deployments changed their immutable `spec.selector`, so Argo CD cannot update them in place. Once the new manifests branch is published, delete them and let the sync recreate them:
+
+```bash
+kubectl delete deployment jobset-controller-manager -n kubeflow-system --ignore-not-found
+kubectl delete deployment profiles-deployment -n kubeflow --ignore-not-found
+```
+
+The old `centraldashboard` and `admission-webhook` resources are no longer rendered, so Argo CD prunes them. The dashboard Service is now `dashboard`; the HTTPRoute in `workloads/ai/kubeflow.go` points at it.
+
+> **Never delete the `profiles.kubeflow.org` CRD** — it cascades to every Profile and its namespace.
 
 ---
 
@@ -517,3 +536,4 @@ docker exec netbird-agent netbird status
 | Authentik any | After `netbird-agent` restart, verify `ip rule show \| grep 7120` — missing rules = restart agent again |
 | Trivy any | `trivyVersion` const in `trivy.go` drives the CRD bundle; the chart comes from `cdk8s.yaml` |
 | ComfyUI any | Needs a CUDA 12.8+ tag for sm_120; the `cu128` line is discontinued |
+| Kubeflow 1.11 → 26.03 | Repo renamed to `kubeflow/community-distribution`; dashboard, PodDefaults and profiles moved under `applications/dashboard/`, notebook apps under `applications/notebooks-v1/`; NetworkPolicies now ship in `common/kubeflow-namespace/base`; dashboard Service renamed `centraldashboard` → `dashboard` |
