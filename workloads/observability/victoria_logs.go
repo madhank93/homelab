@@ -16,29 +16,19 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 	})
 
 	values := map[string]any{
-		"podAnnotations": map[string]any{
-			"reloader.stakater.com/auto": "true",
-		},
 		"server": map[string]any{
 			"enabled": true,
 			"persistentVolume": map[string]any{
 				"enabled": true,
 				"size":    "100Gi",
 			},
-			"retention": "30d",
+			"retentionPeriod": "30d",
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
 				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},
 			},
 			// Force re-pull to recover from exec format error (corrupted cached image layer).
 			"image": map[string]any{"pullPolicy": "Always"},
-		},
-		"fluent-bit": map[string]any{
-			"enabled": true,
-		},
-		"service": map[string]any{
-			"type": "ClusterIP",
-			"port": 9428,
 		},
 	}
 

@@ -160,16 +160,11 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 			// Cilium replaces kube-proxy — no kube-proxy metrics endpoint
 			"kubeProxy": map[string]any{"enabled": false},
 
-			// Replace=true: the node-exporter-full dashboard is too large for the
-			// last-applied-configuration annotation, so it must be PUT, not patched.
-			"defaultDashboards": map[string]any{
-				"enabled": true,
-				"annotations": map[string]any{
-					"argocd.argoproj.io/sync-options": "Replace=true",
-				},
-			},
-
-			"defaultRules": map[string]any{"create": true},
+			// Dashboards and rules are not rendered by the chart: its sync-job (an
+			// Argo CD PostSync hook) fetches them from upstream GitHub and creates
+			// the ConfigMaps and VMRules, owned by its ServiceAccount.
+			"defaultDashboards": map[string]any{"enabled": true},
+			"defaultRules":      map[string]any{"enabled": true},
 		},
 	})
 

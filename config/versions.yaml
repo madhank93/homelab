@@ -17,8 +17,8 @@ charts:
   nvidia-device-plugin: {repo: https://nvidia.github.io/k8s-device-plugin, version: 0.20.1}
   dcgm-exporter: {repo: https://nvidia.github.io/dcgm-exporter/helm-charts, version: 4.8.4}
   opentelemetry-collector: {repo: https://open-telemetry.github.io/opentelemetry-helm-charts, version: 0.169.0}
-  victoria-metrics-k8s-stack: {repo: https://victoriametrics.github.io/helm-charts, version: 0.72.4}
-  victoria-metrics-operator: {repo: https://victoriametrics.github.io/helm-charts, version: 0.59.2}
+  victoria-metrics-k8s-stack: {repo: https://victoriametrics.github.io/helm-charts, version: 0.96.0}
+  victoria-metrics-operator: {repo: https://victoriametrics.github.io/helm-charts, version: 0.68.1}
   kube-prometheus-stack: {repo: https://prometheus-community.github.io/helm-charts, version: 82.0.1}
   secrets-store-csi-driver: {repo: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts, version: 1.6.1}
   openbao: {repo: https://openbao.github.io/openbao-helm, version: 0.30.4}
