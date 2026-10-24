@@ -79,7 +79,7 @@ the rest are pinned at their call site.
 
 | Software | Chart | Pinned in |
 |---|---|---|
-| VictoriaMetrics k8s-stack | 0.72.4 | {{ src(path="workloads/observability/victoria_metrics.go") }} |
+| VictoriaMetrics k8s-stack | 0.96.0 | {{ src(path="workloads/observability/victoria_metrics.go") }} |
 | VictoriaLogs | 0.13.9 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | Grafana | 14.0.1 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | OpenTelemetry Collector | 0.169.0 | {{ src(path="workloads/observability/otel_collector.go") }} |
