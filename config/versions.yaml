@@ -6,7 +6,7 @@
 talos: {version: v1.13.8, base_schematic: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b, gpu_schematic: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829}
 
 charts:
-  cilium: {repo: https://helm.cilium.io/, version: 1.19.10}
+  cilium: {repo: https://helm.cilium.io/, version: 1.20.4}
   argo-cd: {repo: https://argoproj.github.io/argo-helm, version: 10.3.2}
   cert-manager: {repo: https://charts.jetstack.io, version: v1.21.1}
   cloudnative-pg: {repo: https://cloudnative-pg.github.io/charts, version: 0.29.0}
