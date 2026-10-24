@@ -95,12 +95,13 @@ separate pin.
 |---|---|---|
 | Falco | 8.0.5 | {{ src(path="workloads/security/falco.go") }} |
 | Kyverno | 3.8.2 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| Trivy Operator (chart) | 0.35.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| Trivy Operator (CRD bundle) | 0.32.0 | {{ src(path="workloads/security/trivy.go") }} |
+| Trivy Operator (chart) | 0.37.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
+| Trivy Operator (CRD bundle) | 0.37.0 | {{ src(path="workloads/security/trivy.go") }} |
 
-Trivy is the one component with two deliberately different pins: the chart comes
-from the generated typed package, while the CRD bundle is downloaded separately
-by URL. They do not have to match, but a chart bump usually wants a CRD bump too.
+Trivy is the one component with two pins: the chart comes from the generated
+typed package, while the CRD bundle is downloaded separately by URL from the
+release named in `config/versions.yaml`. Bump both together so the CRDs match
+the operator.
 
 ### Applications
 
