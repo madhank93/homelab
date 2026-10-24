@@ -36,11 +36,8 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 	kit.Namespace(chart, namespace, true)
 
 	values := map[string]any{
-		"trivy-operator": map[string]any{
+		"serviceMonitor": map[string]any{
 			"enabled": true,
-			"serviceMonitor": map[string]any{
-				"enabled": true,
-			},
 		},
 		"operator": map[string]any{
 			"replicas":                1,

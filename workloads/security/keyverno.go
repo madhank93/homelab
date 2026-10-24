@@ -47,6 +47,12 @@ func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cd
 			"type":   "ClusterIP",
 			"port":   8000,
 		},
+		// The post-upgrade CRD migration hook fails under Argo CD: its ServiceAccount
+		// is pruned before the Job runs (kyverno/kyverno#17741). Re-enable it, or run
+		// the migration by hand, for any chart bump that changes a CRD storage version.
+		"crds": map[string]any{
+			"migration": map[string]any{"enabled": false},
+		},
 		"webhooksCleanup":   map[string]any{"enabled": true},
 		"policyExceptions":  map[string]any{"enabled": true},
 		"imageVerification": map[string]any{"enabled": false},
