@@ -51,9 +51,9 @@ everything else. Applied with `just core platform up`.
 |---|---|---|
 | Cilium | 1.20.4 | {{ src(path="core/platform/cilium.go") }} |
 | Gateway API CRDs | v1.6.3 | {{ src(path="core/platform/manifests/gateway-api-v1.6.3-experimental-install.yaml") }} |
-| Argo CD (chart) | 10.3.2 | {{ src(path="core/platform/argocd.go") }} |
-| Argo CD (image) | v3.5.1 | same — runs ahead of the chart, see [Platform](@/platform/_index.md) |
-| cert-manager | v1.21.1 | {{ src(path="core/platform/cert_manager.go") }} |
+| Argo CD (chart) | 10.10.5 | {{ src(path="core/platform/argocd.go") }} |
+| Argo CD (image) | v3.5.6 | same — runs ahead of the chart, see [Platform](@/platform/_index.md) |
+| cert-manager | v1.21.3 | {{ src(path="core/platform/cert_manager.go") }} |
 
 The Gateway API CRDs are vendored into the repo rather than fetched from GitHub
 on every apply — see [Cilium](@/platform/networking/index.md#gateway-api-crds).
@@ -68,16 +68,16 @@ the rest are pinned at their call site.
 
 | Software | Chart | Pinned in |
 |---|---|---|
-| Longhorn | 1.12.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| CloudNativePG | 0.29.0 | {{ src(path="workloads/databases/cnpg.go") }} |
+| Longhorn | 1.13.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
+| CloudNativePG | 0.29.1 | {{ src(path="workloads/databases/cnpg.go") }} |
 
 ### Secrets
 
 | Software | Version | Pinned in |
 |---|---|---|
-| OpenBao (chart) | 0.29.0 | {{ src(path="workloads/secrets/openbao.go") }} |
-| OpenBao (image) | 2.6.1 | same — unseal sidecar |
-| Secrets Store CSI Driver | 1.6.0 | {{ src(path="workloads/secrets/csi_driver.go") }} |
+| OpenBao (chart) | 0.30.4 | {{ src(path="workloads/secrets/openbao.go") }} |
+| OpenBao (image) | 2.6.4 | same — server, CSI agent and unseal sidecar; held on 2.6.x for the `file` storage backend |
+| Secrets Store CSI Driver | 1.6.1 | {{ src(path="workloads/secrets/csi_driver.go") }} |
 
 ### Observability
 
@@ -111,7 +111,7 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 | Software | Version | Pinned in |
 |---|---|---|
 | Harbor | 1.19.2 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| Headlamp | 0.44.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
+| Headlamp | 0.45.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | n8n (chart) | 2.0.1 | {{ src(path="workloads/automation/n8n.go") }} |
 | n8n (image) | 1.78.0 | same |
 | Reloader | 2.2.16 | {{ src(path="workloads/support/reloader.go") }} |
@@ -123,9 +123,9 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 
 | Software | Version | Pinned in |
 |---|---|---|
-| Ollama (chart) | 1.74.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| NVIDIA Device Plugin | 0.19.3 | {{ src(path="workloads/hardware/nvidia_gpu_operator.go") }} |
-| DCGM Exporter | 4.8.3 | same |
+| Ollama (chart) | 1.88.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
+| NVIDIA Device Plugin | 0.20.1 | {{ src(path="workloads/hardware/nvidia_gpu_operator.go") }} |
+| DCGM Exporter | 4.8.4 | same |
 | ComfyUI | cu130-megapak-pt211-20260812 | {{ src(path="workloads/ai/comfyui.go") }} |
 
 Ollama's image tag is deliberately unset so it tracks the chart's appVersion —
@@ -135,8 +135,8 @@ the chart is the pin. ComfyUI's tag encodes its CUDA line: the card is Blackwell
 ## Checking for updates
 
 `helm search repo` compares **chart** versions. A chart can lag the software it
-ships, so check the app version too — Argo CD 3.5.1 was released while chart
-10.3.2 still pinned 3.5.0.
+ships, so check the app version too — Argo CD 3.5.6 was released while chart
+10.10.5 still pinned 3.5.5.
 
 ```bash
 helm repo update

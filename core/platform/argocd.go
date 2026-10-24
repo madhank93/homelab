@@ -32,10 +32,9 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				"networkPolicy": pulumi.Map{
 					"create": pulumi.Bool(false),
 				},
-				// Chart 10.3.2 still pins v3.5.0. 3.5.1 stops server-side diff
-				// leaking Secret data into last-applied-configuration and closes a
-				// mask-spoofing hole in the same path; this cluster runs
-				// ServerSideApply everywhere. Drop once a chart ships it.
+				// Chart 10.10.5 still pins v3.5.5. 3.5.6 stops server-side diff
+				// reporting fields removed by other field managers as drift; this
+				// cluster runs ServerSideApply everywhere. Drop once a chart ships it.
 				"image": pulumi.Map{
 					"tag": pulumi.String(config.ContainerImage("argocd").Tag),
 				},

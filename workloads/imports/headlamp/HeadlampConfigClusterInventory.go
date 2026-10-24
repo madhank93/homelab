@@ -11,6 +11,10 @@ type HeadlampConfigClusterInventory struct {
 	Enabled *bool `field:"optional" json:"enabled" yaml:"enabled"`
 	// Kubernetes label selector used to filter experimental/alpha ClusterProfile resources.
 	LabelSelector *string `field:"optional" json:"labelSelector" yaml:"labelSelector"`
+	// Namespaces watched for experimental/alpha ClusterProfile resources.
+	//
+	// Empty uses the Headlamp pod namespace for in-cluster roots and the kubeconfig context namespace for kubeconfig roots; ["*"] watches all and requires equivalent cluster-wide RBAC permissions.
+	Namespaces *[]interface{} `field:"optional" json:"namespaces" yaml:"namespaces"`
 	// Override the experimental/alpha Cluster Inventory no-CRD cache TTL.
 	//
 	// Empty uses the Headlamp default.

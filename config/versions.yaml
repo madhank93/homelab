@@ -11,25 +11,25 @@ kubernetes: {version: 1.36.5}
 
 charts:
   cilium: {repo: https://helm.cilium.io/, version: 1.20.4}
-  argo-cd: {repo: https://argoproj.github.io/argo-helm, version: 10.3.2}
-  cert-manager: {repo: https://charts.jetstack.io, version: v1.21.1}
-  cloudnative-pg: {repo: https://cloudnative-pg.github.io/charts, version: 0.29.0}
-  nvidia-device-plugin: {repo: https://nvidia.github.io/k8s-device-plugin, version: 0.19.3}
-  dcgm-exporter: {repo: https://nvidia.github.io/dcgm-exporter/helm-charts, version: 4.8.3}
+  argo-cd: {repo: https://argoproj.github.io/argo-helm, version: 10.10.5}
+  cert-manager: {repo: https://charts.jetstack.io, version: v1.21.3}
+  cloudnative-pg: {repo: https://cloudnative-pg.github.io/charts, version: 0.29.1}
+  nvidia-device-plugin: {repo: https://nvidia.github.io/k8s-device-plugin, version: 0.20.1}
+  dcgm-exporter: {repo: https://nvidia.github.io/dcgm-exporter/helm-charts, version: 4.8.4}
   opentelemetry-collector: {repo: https://open-telemetry.github.io/opentelemetry-helm-charts, version: 0.169.0}
   victoria-metrics-k8s-stack: {repo: https://victoriametrics.github.io/helm-charts, version: 0.72.4}
   victoria-metrics-operator: {repo: https://victoriametrics.github.io/helm-charts, version: 0.59.2}
   kube-prometheus-stack: {repo: https://prometheus-community.github.io/helm-charts, version: 82.0.1}
-  secrets-store-csi-driver: {repo: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts, version: 1.6.0}
-  openbao: {repo: https://openbao.github.io/openbao-helm, version: 0.29.0}
+  secrets-store-csi-driver: {repo: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts, version: 1.6.1}
+  openbao: {repo: https://openbao.github.io/openbao-helm, version: 0.30.4}
   falco: {repo: https://falcosecurity.github.io/charts, version: 8.0.5}
   reloader: {repo: https://stakater.github.io/stakater-charts, version: 2.2.16}
   trivy-operator: {repo: https://aquasecurity.github.io/helm-charts, version: 0.32.0}
   n8n: {repo: oci://8gears.container-registry.com/library, version: 2.0.1}
 
 images:
-  argocd: {image: quay.io/argoproj/argocd, tag: v3.5.1}
-  openbao: {image: openbao/openbao, tag: 2.6.1}
+  argocd: {image: quay.io/argoproj/argocd, tag: v3.5.6}
+  openbao: {image: openbao/openbao, tag: 2.6.4}
   n8n: {image: n8nio/n8n, tag: 1.78.0}
   netbird: {image: netbirdio/netbird, tag: 0.76.3}
   pause: {image: registry.k8s.io/pause, tag: "3.10"}
