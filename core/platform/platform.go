@@ -24,11 +24,16 @@ func DeployPlatform(ctx *pulumi.Context) error {
 		return err
 	}
 
-	if err := InstallCilium(ctx, k8sProvider); err != nil {
+	gatewayCRDs, err := InstallGatewayAPICRDs(ctx, k8sProvider)
+	if err != nil {
 		return err
 	}
 
-	if err := InstallGateway(ctx, k8sProvider); err != nil {
+	if err := InstallCilium(ctx, k8sProvider, gatewayCRDs); err != nil {
+		return err
+	}
+
+	if err := InstallGateway(ctx, k8sProvider, gatewayCRDs); err != nil {
 		return err
 	}
 

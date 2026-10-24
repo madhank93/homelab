@@ -20,7 +20,7 @@ import (
 // devices must never include wt0: it is NOARP/POINTOPOINT, and Cilium's TC BPF
 // silently drops non-Ethernet frames. NetBird traffic reaches Cilium by kernel
 // IP forwarding to the LAN NIC of another node.
-func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
+func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewayCRDs pulumi.Resource) error {
 	// Held on 1.18.x: 1.19.x breaks host TCP on eth0 nodes (cilium/cilium#44430,
 	// #46010). Fixed in 1.20.0, which needs its own change window — a bad
 	// upgrade takes out the Talos API too.
@@ -113,7 +113,7 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			// track host connections normally.
 			"installNoConntrackIptablesRules": pulumi.Bool(false),
 		},
-	}, pulumi.Provider(k8sProvider))
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{gatewayCRDs}))
 	if err != nil {
 		return err
 	}
@@ -193,26 +193,27 @@ func denyServiceExternalIPs(ctx *pulumi.Context, k8sProvider *kubernetes.Provide
 	return err
 }
 
-// InstallGateway creates the shared Gateway resource for the cluster
-func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
-
-	// Gateway API CRDs (experimental channel v1.2.1) — required by Cilium 1.16+.
-	//
-	// Vendored rather than fetched from the GitHub release URL: that fetch ran on
-	// every apply, so a rate limit or a blip failed the whole stack with an opaque
-	// "cannot unmarshal string into Go value of type map[string]interface{}" —
-	// GitHub's error page parsed as a bare string. The version is now pinned in
-	// git like every other dependency. Re-vendor to upgrade; do not point this
-	// back at a URL.
-	crds, err := yaml.NewConfigFile(ctx, "gateway-api-crds", &yaml.ConfigFileArgs{
-		File: "platform/manifests/gateway-api-v1.2.1-experimental-install.yaml",
+// InstallGatewayAPICRDs applies the vendored Gateway API CRDs. Cilium depends on
+// them: its operator only enables the Gateway controller for CRDs present at
+// startup, and each Cilium minor needs a minimum Gateway API release.
+//
+// Experimental channel because Cilium before 1.20 requires TLSRoute v1alpha2,
+// which the standard channel no longer serves. The bundle also installs the
+// safe-upgrades admission policy, which rejects Gateway API CRDs older than v1.5.
+//
+// Vendored rather than fetched from the GitHub release URL: a rate-limited fetch
+// returns an HTML page that fails the whole stack with an opaque unmarshal error.
+// Re-vendor to upgrade; do not point this back at a URL.
+func InstallGatewayAPICRDs(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) (pulumi.Resource, error) {
+	return yaml.NewConfigFile(ctx, "gateway-api-crds", &yaml.ConfigFileArgs{
+		File: "platform/manifests/gateway-api-v1.6.3-experimental-install.yaml",
 	}, pulumi.Provider(k8sProvider))
-	if err != nil {
-		return err
-	}
+}
 
+// InstallGateway creates the shared Gateway resource for the cluster
+func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, crds pulumi.Resource) error {
 	// Create Gateway Resource (Depends on GatewayClass from Cilium Helm Chart + CRDs)
-	_, err = apiextensions.NewCustomResource(ctx, "cilium-gateway", &apiextensions.CustomResourceArgs{
+	_, err := apiextensions.NewCustomResource(ctx, "cilium-gateway", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 		Kind:       pulumi.String("Gateway"),
 		Metadata: &metav1.ObjectMetaArgs{
@@ -276,9 +277,10 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 		blocks = append(blocks, map[string]string{"cidr": ip.String() + "/32"})
 	}
 
-	// Create IP Pool Resource
+	// cilium.io/v2 is served from Cilium 1.18; v2alpha1 is deprecated from 1.19.
+	// Pulumi updates apiVersion in place, so the pool and its allocations survive.
 	_, err = apiextensions.NewCustomResource(ctx, "cilium-ip-pool", &apiextensions.CustomResourceArgs{
-		ApiVersion: pulumi.String("cilium.io/v2alpha1"),
+		ApiVersion: pulumi.String("cilium.io/v2"),
 		Kind:       pulumi.String("CiliumLoadBalancerIPPool"),
 		Metadata: &metav1.ObjectMetaArgs{
 			Name: pulumi.String("address-pool"),
