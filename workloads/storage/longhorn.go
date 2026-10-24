@@ -35,6 +35,21 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 			"defaultClass":             true,
 			"defaultClassReplicaCount": 3,
 		},
+		// The chart's internal NetworkPolicies (enforced by Cilium) only admit
+		// Longhorn's own pods to longhorn-manager:9500; vmagent scrapes from
+		// another namespace and needs its own peer entry.
+		"networkPolicies": map[string]any{
+			"metricsScrapeSources": []map[string]any{
+				{
+					"namespaceSelector": map[string]any{
+						"matchLabels": map[string]any{"kubernetes.io/metadata.name": "victoria-metrics"},
+					},
+					"podSelector": map[string]any{
+						"matchLabels": map[string]any{"app.kubernetes.io/name": "vmagent"},
+					},
+				},
+			},
+		},
 		"metrics": map[string]any{
 			"serviceMonitor": map[string]any{
 				"enabled": true,
@@ -80,6 +95,9 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		ReleaseName: jsii.String("longhorn"),
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
+		// helm template otherwise checks the chart's kubeVersion against the local
+		// Helm binary's built-in default; this matches the k8s@ import in cdk8s.yaml.
+		HelmFlags: &[]*string{jsii.String("--kube-version=1.36.0")},
 	})
 
 	return chart

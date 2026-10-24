@@ -64,7 +64,7 @@ the rest are pinned at their call site.
 
 | Software | Chart | Pinned in |
 |---|---|---|
-| Longhorn | 1.12.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
+| Longhorn | 1.13.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | CloudNativePG | 0.29.1 | {{ src(path="workloads/databases/cnpg.go") }} |
 
 ### Secrets
