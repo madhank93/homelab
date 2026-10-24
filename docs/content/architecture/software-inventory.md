@@ -110,7 +110,7 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 | Headlamp | 0.44.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | n8n (chart) | 2.0.1 | {{ src(path="workloads/automation/n8n.go") }} |
 | n8n (image) | 1.78.0 | same |
-| Reloader | 2.2.16 | {{ src(path="workloads/support/reloader.go") }} |
+| Reloader | 2.2.18 | {{ src(path="workloads/support/reloader.go") }} |
 | NetBird peer | 0.76.3 | {{ src(path="workloads/networking/netbird_peer.go") }} |
 | Kubeflow | v1.11.0 | {{ src(path="workloads/ai/kubeflow/kustomization.yaml") }} |
 | notebook-gateway-controller | v1 | {{ src(path="workloads/ai/notebook_gateway_controller.go") }} |
