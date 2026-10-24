@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/devcontainers/go:${GO_VERSION}-bookworm
 
 ARG NODE_VERSION=24.19.0
 ARG NVM_VERSION=0.40.6
-ARG PULUMI_VERSION=3.256.0
+ARG PULUMI_VERSION=3.272.0
 ARG YQ_VERSION=4.53.3
 ARG JUST_VERSION=1.58.0
 # Held on 3.x: cdk8s renders charts via `helm template`, so Helm 4 can shift

@@ -1,6 +1,6 @@
 module github.com/madhank93/homelab/workloads
 
-go 1.26.0
+go 1.26.6
 
 require (
 	github.com/aws/constructs-go/constructs/v10 v10.8.1
