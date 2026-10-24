@@ -9,7 +9,7 @@ charts:
   cilium: {repo: https://helm.cilium.io/, version: 1.18.12}
   argo-cd: {repo: https://argoproj.github.io/argo-helm, version: 10.10.5}
   cert-manager: {repo: https://charts.jetstack.io, version: v1.21.3}
-  cloudnative-pg: {repo: https://cloudnative-pg.github.io/charts, version: 0.29.0}
+  cloudnative-pg: {repo: https://cloudnative-pg.github.io/charts, version: 0.29.1}
   nvidia-device-plugin: {repo: https://nvidia.github.io/k8s-device-plugin, version: 0.19.3}
   dcgm-exporter: {repo: https://nvidia.github.io/dcgm-exporter/helm-charts, version: 4.8.3}
   opentelemetry-collector: {repo: https://open-telemetry.github.io/opentelemetry-helm-charts, version: 0.169.0}
