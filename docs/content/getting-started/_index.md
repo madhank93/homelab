@@ -80,7 +80,7 @@ The repository layout is mapped in [CDK8s](@/platform/cdk8s/index.md).
 | `just talos-health` | Cluster health — must be clean before upgrading a node |
 | `just talos-versions` | Talos version reported by every node |
 | `just talos-upgrade <node> [schematic] [drain]` | Upgrade one node |
-| `just talos-upgrade-k8s <version>` | Upgrade Kubernetes (separate from Talos) |
+| `just talos-upgrade-k8s [--dry-run]` | Upgrade Kubernetes to the pinned version (separate from Talos) |
 | `just longhorn-repair-iscsi` | Recover volumes after an iSCSI parameter rejection |
 | `just gateway-repair-l2` | Force L2 re-election when LoadBalancer IPs blackhole |
 | `just comfyui on\|off` | Start or stop ComfyUI — see [ComfyUI](@/workloads/ai/comfyui/index.md) |

@@ -195,12 +195,12 @@ ping_scan:
     nmap -sn {{SUBNET}}
 
 # Upgrade one running Talos node.
-# Upgrade workers first, then GPU workers, then controllers; verify cluster
-# health between nodes.
+# Upgrade workers first, then controllers one at a time, then the GPU worker
+# last; verify cluster health between nodes.
 #
 # Never pass --preserve: it forces the deprecated MachineService.Upgrade path,
 # whose installer runs in metal mode and rejects configs without a
-# machine.install section. Talos 1.13 upgrades via LifecycleService, which
+# machine.install section. Talos 1.13+ upgrades via LifecycleService, which
 # keeps user data and drains the node on its own.
 #
 # Pass drain=false for a node whose pods cannot be evicted: Longhorn gives each
@@ -220,6 +220,13 @@ talos-upgrade node schematic='base' drain='true':
       base|gpu) ;;
       *) echo "schematic must be 'base' or 'gpu'" >&2; exit 1 ;;
     esac
+    # The wrong schematic silently drops (or adds) the NVIDIA extensions.
+    case "$(yq ".cluster.nodes[] | select(.ip == \"{{node}}\") | has(\"pcie_ids\")" config/config.yml)" in
+      true) want=gpu ;;
+      false) want=base ;;
+      *) echo "{{node}} is not in config/config.yml" >&2; exit 1 ;;
+    esac
+    [ "{{schematic}}" = "$want" ] || { echo "{{node}} needs schematic '$want'" >&2; exit 1; }
     VERSION=$(yq -e '.talos.version' config/versions.yaml)
     ID=$(yq -e '.talos.{{schematic}}_schematic' config/versions.yaml)
 
@@ -364,7 +371,10 @@ talos-health:
 talos-versions:
     {{TALOSCTL}} -n {{NODES}} version
 
-# Upgrade Kubernetes. Separate from the OS; requires all nodes healthy.
-#   just talos-upgrade-k8s 1.36.2
-talos-upgrade-k8s version:
-    {{TALOSCTL}} -n {{CONTROLLER}} upgrade-k8s --to {{version}}
+# Upgrade Kubernetes to the version pinned in config/versions.yaml. Separate
+# from the OS; requires all nodes healthy. Run it before `just core talos up`,
+# which would otherwise push the new images to every node at once.
+#   just talos-upgrade-k8s --dry-run
+#   just talos-upgrade-k8s
+talos-upgrade-k8s *flags:
+    {{TALOSCTL}} -n {{CONTROLLER}} upgrade-k8s --to "$(yq -e '.kubernetes.version' config/versions.yaml)" {{flags}}

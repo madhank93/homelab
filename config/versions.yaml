@@ -3,7 +3,11 @@
 # Pins outside Go stay where their tool reads them: core/cloud/bifrost/docker-compose.yml,
 # workloads/cdk8s.yaml, workloads/ai/kubeflow/kustomization.yaml, .devcontainer/, .github/.
 
-talos: {version: v1.13.8, base_schematic: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b, gpu_schematic: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829}
+talos: {version: v1.14.4, base_schematic: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b, gpu_schematic: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829}
+
+# Rendered into the Talos machine config and rolled out with `just talos-upgrade-k8s`;
+# a Talos upgrade never changes it. Held at 1.36.x for Cilium (renovate.json).
+kubernetes: {version: 1.36.5}
 
 charts:
   cilium: {repo: https://helm.cilium.io/, version: 1.18.12}

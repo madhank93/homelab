@@ -17,12 +17,12 @@ just talos-versions                    # what each node runs today
 just talos-upgrade 192.168.1.223       # one worker
 just talos-upgrade 192.168.1.224 gpu   # worker4, nvidia schematic
 just talos-health                      # must be clean before the next node
-just talos-upgrade-k8s 1.36.2          # Kubernetes, after all nodes are done
+just talos-upgrade-k8s                 # Kubernetes, after all nodes are done
 ```
 
-Upgrade workers first, then the GPU worker, then controllers one at a time.
-The target version and both schematic IDs are read from
-`core/platform/talos.go`, so they cannot drift from what Pulumi provisions.
+Upgrade workers first, then controllers one at a time, then the GPU worker
+last. The target versions and both schematic IDs are read from
+`config/versions.yaml`, so they cannot drift from what Pulumi provisions.
 
 `just core talos up` does not upgrade running nodes — it only stages the image
 on the Proxmox datastore for VMs created afterwards.
