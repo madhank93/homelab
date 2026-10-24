@@ -112,11 +112,11 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 |---|---|---|
 | Harbor | 1.19.2 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | Headlamp | 0.45.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| n8n (chart) | 2.0.1 | {{ src(path="workloads/automation/n8n.go") }} |
-| n8n (image) | 1.78.0 | same |
+| n8n (chart) | 2.1.1 | {{ src(path="workloads/automation/n8n.go") }} |
+| n8n (image) | 2.44.6 | same |
 | Reloader | 2.2.18 | {{ src(path="workloads/support/reloader.go") }} |
 | NetBird peer | 0.80.0 | {{ src(path="workloads/networking/netbird_peer.go") }} |
-| Kubeflow | v1.11.0 | {{ src(path="workloads/ai/kubeflow/kustomization.yaml") }} |
+| Kubeflow | 26.03.1 | {{ src(path="workloads/ai/kubeflow/kustomization.yaml") }} |
 | notebook-gateway-controller | v1 | {{ src(path="workloads/ai/notebook_gateway_controller.go") }} |
 
 ### AI and GPU

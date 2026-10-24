@@ -45,12 +45,11 @@ Argo CD manages it from the manifests branch like every other workload.
 
 ```
 workloads/ai/kubeflow/kustomization.yaml
-  ├── remote bases → github.com/kubeflow/manifests (no Istio overlay)
+  ├── remote bases → github.com/kubeflow/community-distribution (no Istio overlay)
   ├── stub-istio-crds.yaml
   └── patches:
       ├── Profile name fix (kustomize 5.8.0 variable substitution bug)
-      ├── Delete centraldashboard NetworkPolicy (blocks Cilium-envoy hostNetwork traffic)
-      ├── Delete seaweedfs NetworkPolicy (blocks profile controller IAM port 8111)
+      ├── Delete every upstream NetworkPolicy (block Cilium-envoy hostNetwork traffic and SeaweedFS IAM port 8111)
       └── Delete all Istio resources (DestinationRule, VirtualService, AuthorizationPolicy)
 ```
 
@@ -60,19 +59,19 @@ Components installed:
 
 | Component | Path |
 |-----------|------|
-| cert-manager Kubeflow issuer | `common/cert-manager/kubeflow-issuer/base` |
+| cert-manager Kubeflow issuer | `common/cert-manager/overlays/kubeflow` |
 | Kubeflow namespace + roles | `common/kubeflow-namespace/base` + `kubeflow-roles/base` |
 | Kubeflow Pipelines | `applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user` |
 | Katib | `applications/katib/upstream/installs/katib-with-kubeflow` |
-| Central Dashboard | `applications/centraldashboard/upstream/base` |
-| Admission Webhook (PodDefaults) | `applications/admission-webhook/upstream/overlays/cert-manager` |
-| Jupyter Web App | `applications/jupyter/jupyter-web-app/upstream/base` |
-| Notebook Controller | `applications/jupyter/notebook-controller/upstream/overlays/kubeflow` |
-| Profiles + KFAM | `applications/profiles/pss` |
-| PVC Viewer Controller | `applications/pvcviewer-controller/upstream/base` |
-| Volumes Web App | `applications/volumes-web-app/upstream/base` |
-| Tensorboard Controller | `applications/tensorboard/tensorboard-controller/upstream/overlays/kubeflow` |
-| Tensorboards Web App | `applications/tensorboard/tensorboards-web-app/upstream/base` |
+| Dashboard | `applications/dashboard/upstream/centraldashboard/base` |
+| PodDefaults webhook | `applications/dashboard/upstream/poddefaults-webhooks/overlays/cert-manager` |
+| Profiles + KFAM (baseline PSS on profile namespaces) | `applications/dashboard/upstream/profile-controller/overlays/kubeflow-pss` |
+| Jupyter Web App | `applications/notebooks-v1/upstream/jupyter-web-app/base` |
+| Notebook Controller | `applications/notebooks-v1/upstream/notebook-controller/overlays/kubeflow` |
+| PVC Viewer Controller | `applications/notebooks-v1/upstream/pvcviewer-controller/base` |
+| Volumes Web App | `applications/notebooks-v1/upstream/volumes-web-app/base` |
+| Tensorboard Controller | `applications/notebooks-v1/upstream/tensorboard-controller/overlays/kubeflow` |
+| Tensorboards Web App | `applications/notebooks-v1/upstream/tensorboards-web-app/base` |
 | Training Operator (Trainer v2) | `applications/trainer/overlays` |
 | Spark Operator | `applications/spark/spark-operator/overlays/kubeflow` |
 | User namespace | `common/user-namespace/base` |
@@ -83,7 +82,7 @@ All Kubeflow sub-apps are exposed at `https://kubeflow.madhan.app` via the Ciliu
 
 | Path | Service | URL rewrite |
 |------|---------|-------------|
-| `/` | `centraldashboard:80` | None (catch-all) |
+| `/` | `dashboard:80` | None (catch-all) |
 | `/jupyter/` | `jupyter-web-app-service:80` | `ReplacePrefixMatch: /` |
 | `/volumes/` | `volumes-web-app-service:80` | `ReplacePrefixMatch: /` |
 | `/tensorboards/` | `tensorboards-web-app-service:80` | `ReplacePrefixMatch: /` |
@@ -236,7 +235,7 @@ kubectl logs deployment/kubeflow-pipelines-profile-controller -n kubeflow --tail
 kubectl logs metacontroller-0 -n kubeflow --tail=20 | grep error
 ```
 
-**Known cause in this cluster:** The upstream SeaweedFS NetworkPolicy (installed by the pipeline manifests) only allows port 8333 (S3 API) to SeaweedFS, not port 8111 (IAM/STS API). The profile controller uses `AWS_ENDPOINT_URL=http://seaweedfs.kubeflow:8111` which routes all boto3 calls (including S3 bucket creation) through port 8111. Without access to 8111, the profile controller times out and never creates the secret. The fix is applied via a kustomize patch that deletes the seaweedfs NetworkPolicy.
+**Known cause in this cluster:** The upstream SeaweedFS NetworkPolicy (installed by the pipeline manifests) only allows port 8333 (S3 API) to SeaweedFS, not port 8111 (IAM/STS API). The profile controller uses `AWS_ENDPOINT_URL=http://seaweedfs.kubeflow:8111` which routes all boto3 calls (including S3 bucket creation) through port 8111. Without access to 8111, the profile controller times out and never creates the secret. The fix is the kustomize patch that deletes every upstream NetworkPolicy, seaweedfs included.
 
 ## PVC Viewer
 
@@ -273,7 +272,7 @@ Browser → kubeflow.madhan.app
       ├── /tensorboards/ → tensorboards-web-app-service (URLRewrite /)
       ├── /katib/        → katib-ui (no rewrite)
       ├── /pipeline/     → ml-pipeline-ui (URLRewrite /)
-      └── /              → centraldashboard
+      └── /              → dashboard
   → HTTPRoute: notebook-<ns>-<name> (dynamic, kubeflow ns)
       → /notebook/<ns>/<name>/ → <name>.<ns>:80 (no rewrite)
   → HTTPRoute: tensorboard-<ns>-<name> (dynamic, kubeflow ns)

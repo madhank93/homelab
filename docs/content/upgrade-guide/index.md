@@ -591,16 +591,43 @@ kubectl exec -n ollama deploy/ollama -- nvidia-smi
 
 ### n8n
 
-```go
-// workloads/automation/n8n.go — chart Version
-Version: jsii.String("2.X.Y"),
-```
+Chart and image are pinned in `config/versions.yaml` (`helm.n8n`, `images.n8n`).
+Check latest: `helm show chart oci://8gears.container-registry.com/library/n8n`.
+n8n runs its DB schema migrations on pod start; they are one-way, so an image
+downgrade after a migrated start does not work — only a database restore does.
 
-Check latest: `helm show chart oci://8gears.container-registry.com/library/n8n`. DB schema migrations run automatically on pod start via CNPG. Verify n8n healthy after upgrade:
+**Manual steps — back up the CNPG database before sync.** The CNPG cluster has
+no scheduled backup, so take a dump before the change lands on the release
+branch (CI then publishes the manifests branch and Argo CD syncs on its own):
 
 ```bash
+primary=$(kubectl get pod -n n8n -l cnpg.io/cluster=n8n-pg,cnpg.io/instanceRole=primary -o name)
+kubectl exec -n n8n "$primary" -c postgres -- \
+  pg_dump -U postgres -d n8n -Fc > n8n-$(date +%F).dump
+ls -lh n8n-$(date +%F).dump   # non-empty, keep it off-cluster
+```
+
+The first 2.x start can take several minutes of migrations (the startup probe
+allows 10). Watch it, then verify:
+
+```bash
+kubectl logs -n n8n deploy/n8n -f          # migration progress, then "Editor is now accessible"
 kubectl rollout status deployment n8n -n n8n
 ```
+
+To roll back: scale n8n to 0, restore the dump into an empty `n8n` database
+(`pg_restore -U postgres -d n8n --clean --if-exists`), and revert the pin.
+
+**1.x → 2.x behaviour changes to check in workflows** (n8n's own list:
+[2.0 breaking changes](https://docs.n8n.io/2-0-breaking-changes/)):
+
+- Code node runs in a task runner (internal mode, child process in the n8n container); `$evaluateExpression()` no longer works there, and Code-node access to env vars is blocked (`N8N_BLOCK_ENV_ACCESS_IN_NODE=true`).
+- Python Code node needs an external runner (`n8nio/runners` sidecar) — not deployed here.
+- Execute Command and Local File Trigger nodes are disabled by default (`NODES_EXCLUDE`).
+- Read/Write File nodes are confined to `~/.n8n-files` (`N8N_RESTRICT_FILE_ACCESS_TO`).
+- Workflow activate/deactivate became Publish/Unpublish; the legacy Start node is removed.
+- OAuth callbacks now require an authenticated session (`N8N_SKIP_AUTH_ON_OAUTH_CALLBACK=false`).
+- In-memory binary data is gone; `N8N_DEFAULT_BINARY_DATA_MODE=filesystem` keeps it on the PVC.
 
 ### Ollama
 
@@ -638,7 +665,26 @@ Must match Bifrost docker-compose NetBird version exactly. Upgrade Bifrost and k
 
 ### Kubeflow
 
-Kubeflow is deployed via Kustomize from `kubeflow/manifests`, not a Helm chart. Upgrade by updating the `ref` on each base in `workloads/ai/kubeflow/kustomization.yaml`. Check the [kubeflow/manifests tags](https://github.com/kubeflow/manifests/tags) for the version compatible with the current k8s version.
+Kubeflow is deployed via Kustomize from `kubeflow/community-distribution` (formerly `kubeflow/manifests`), not a Helm chart. Upgrade by updating the `ref` on each base in `workloads/ai/kubeflow/kustomization.yaml`. Check the [releases](https://github.com/kubeflow/community-distribution/releases) for the version compatible with the current k8s version, and read the "Version-Specific Upgrade Notes" in the upstream README — paths move between releases.
+
+Build locally before pushing; CI runs the same command:
+
+```bash
+cd workloads && kustomize build ai/kubeflow/ > /dev/null
+```
+
+**Manual steps, 1.11.0 → 26.03.1** (dashboard moved to `kubeflow/dashboard` v2, notebooks to `notebooks-v1/`, Trainer 2.2.0):
+
+Two Deployments changed their immutable `spec.selector`, so Argo CD cannot update them in place. Once the new manifests branch is published, delete them and let the sync recreate them:
+
+```bash
+kubectl delete deployment jobset-controller-manager -n kubeflow-system --ignore-not-found
+kubectl delete deployment profiles-deployment -n kubeflow --ignore-not-found
+```
+
+The old `centraldashboard` and `admission-webhook` resources are no longer rendered, so Argo CD prunes them. The dashboard Service is now `dashboard`; the HTTPRoute in `workloads/ai/kubeflow.go` points at it.
+
+> **Never delete the `profiles.kubeflow.org` CRD** — it cascades to every Profile and its namespace.
 
 ---
 
@@ -705,3 +751,5 @@ docker exec netbird-agent netbird status
 | Authentik any | After `netbird-agent` restart, verify `ip rule show \| grep 7120` — missing rules = restart agent again |
 | Trivy any | `trivyVersion` const in `trivy.go` drives the CRD bundle; the chart comes from `cdk8s.yaml` |
 | ComfyUI any | Needs a CUDA 12.8+ tag for sm_120; the `cu128` line is discontinued |
+| n8n 1.x → 2.x | One-way DB migration — dump the CNPG database first; Code node moves to task runners, Execute Command node disabled, in-memory binary data removed |
+| Kubeflow 1.11 → 26.03 | Repo renamed to `kubeflow/community-distribution`; dashboard, PodDefaults and profiles moved under `applications/dashboard/`, notebook apps under `applications/notebooks-v1/`; NetworkPolicies now ship in `common/kubeflow-namespace/base`; dashboard Service renamed `centraldashboard` → `dashboard` |

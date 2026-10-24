@@ -52,7 +52,7 @@ func NewKubeflowChart(scope constructs.Construct, id string, namespace string) c
 		rule("/tensorboards/", "tensorboards-web-app-service", true),
 		rule("/katib/", "katib-ui", false),
 		rule("/pipeline/", "ml-pipeline-ui", true),
-		rule("/", "centraldashboard", false),
+		rule("/", "dashboard", false),
 	})
 
 	return chart
