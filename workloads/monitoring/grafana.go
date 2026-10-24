@@ -125,12 +125,12 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		// Client secret injected from grafana-oauth-secret k8s Secret (synced by CSI driver above).
 		// GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET overrides auth.generic_oauth.client_secret in ini.
 		"envFromSecret": "grafana-oauth-secret",
-		// Admin credentials: user set directly in env; password read from CSI-mounted file.
-		// The Grafana chart's auto-generated admin Secret is NOT used to avoid synth-time
-		// random value churn. GF_SECURITY_ADMIN_PASSWORD__FILE takes precedence over the Secret.
+		// Admin password read from the CSI-mounted file via Grafana's $__file provider;
+		// setting it here also stops the chart rendering a random admin Secret on every
+		// synth. The distroless image has no /run.sh, so GF_*__FILE vars are unsupported.
 		"env": map[string]any{
-			"GF_SECURITY_ADMIN_USER":           "admin",
-			"GF_SECURITY_ADMIN_PASSWORD__FILE": "/mnt/secrets/ADMIN_PASSWORD",
+			"GF_SECURITY_ADMIN_USER":     "admin",
+			"GF_SECURITY_ADMIN_PASSWORD": "$__file{/mnt/secrets/ADMIN_PASSWORD}",
 		},
 		"resources": map[string]any{
 			"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
@@ -146,6 +146,8 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 			"port": 3000,
 		},
 		"ingress": map[string]any{"enabled": false},
+		// Helm test hooks have no meaning under Argo CD.
+		"testFramework": map[string]any{"enabled": false},
 		// Sidecar watches for ConfigMaps with label grafana_dashboard="1" across
 		// all namespaces and auto-provisions them as dashboards.
 		"sidecar": map[string]any{
@@ -191,7 +193,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 	grafana.NewGrafana(chart, jsii.String("grafana-release"), &grafana.GrafanaProps{
 		ReleaseName: jsii.String("grafana"),
 		Namespace:   jsii.String(namespace),
-		Values:      &values,
+		Values:      &grafana.GrafanaValues{AdditionalValues: &values},
 	})
 
 	kit.Route(chart, "grafana", "grafana", "grafana", 3000)
