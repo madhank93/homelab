@@ -10,7 +10,7 @@ talos: {version: v1.14.4, base_schematic: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed2
 kubernetes: {version: 1.36.5}
 
 charts:
-  cilium: {repo: https://helm.cilium.io/, version: 1.18.12}
+  cilium: {repo: https://helm.cilium.io/, version: 1.20.4}
   argo-cd: {repo: https://argoproj.github.io/argo-helm, version: 10.3.2}
   cert-manager: {repo: https://charts.jetstack.io, version: v1.21.1}
   cloudnative-pg: {repo: https://cloudnative-pg.github.io/charts, version: 0.29.0}

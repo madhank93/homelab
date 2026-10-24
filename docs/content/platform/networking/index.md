@@ -131,8 +131,14 @@ The [Gateway API](https://gateway-api.sigs.k8s.io/) is the successor to the Kube
 
 The CRDs are **not** bundled with the Cilium chart. They are vendored into the
 repo at
-{{ src(path="core/platform/manifests/gateway-api-v1.2.1-experimental-install.yaml", label="core/platform/manifests/") }}
-and applied by `InstallGateway` before the Gateway itself.
+{{ src(path="core/platform/manifests/gateway-api-v1.6.3-experimental-install.yaml", label="core/platform/manifests/") }}
+and applied by `InstallGatewayAPICRDs` before Cilium and the Gateway: the Cilium
+operator only enables Gateway API support for CRDs present when it starts. The
+bundle is the experimental channel, because Cilium before 1.20 needs TLSRoute
+`v1alpha2`, which the standard channel no longer serves. It also installs the
+`safe-upgrades.gateway.networking.k8s.io` admission policy, which rejects any
+Gateway API CRD older than the 1.5 line — delete that policy first if you ever
+have to roll the CRDs back.
 
 They used to be fetched from the upstream GitHub release URL on every `pulumi
 up`. One rate-limited fetch returned an HTML error page, which the YAML decoder

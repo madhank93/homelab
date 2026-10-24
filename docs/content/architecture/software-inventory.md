@@ -49,8 +49,8 @@ everything else. Applied with `just core platform up`.
 
 | Software | Version | Pinned in |
 |---|---|---|
-| Cilium | 1.18.12 | {{ src(path="core/platform/cilium.go") }} |
-| Gateway API CRDs | v1.2.1 | {{ src(path="core/platform/manifests/gateway-api-v1.2.1-experimental-install.yaml") }} |
+| Cilium | 1.20.4 | {{ src(path="core/platform/cilium.go") }} |
+| Gateway API CRDs | v1.6.3 | {{ src(path="core/platform/manifests/gateway-api-v1.6.3-experimental-install.yaml") }} |
 | Argo CD (chart) | 10.3.2 | {{ src(path="core/platform/argocd.go") }} |
 | Argo CD (image) | v3.5.1 | same — runs ahead of the chart, see [Platform](@/platform/_index.md) |
 | cert-manager | v1.21.1 | {{ src(path="core/platform/cert_manager.go") }} |

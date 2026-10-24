@@ -79,7 +79,7 @@ done <"$inventory"
 # Legitimate exceptions, matched as substrings of the offending line.
 
 allow=(
-  'gateway-api-v1.2.1'      # the vendored CRD manifest is named after its version
+  'gateway-api-v1.6.3'      # the vendored CRD manifest is named after its version
   '-manifests'              # the Argo CD source branch, checked separately below
   'HTTP/1.1'                # curl output in troubleshooting examples
   'HTTP/2'
