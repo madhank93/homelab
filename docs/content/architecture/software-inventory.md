@@ -120,8 +120,8 @@ by URL. They do not have to match, but a chart bump usually wants a CRD bump too
 | Software | Version | Pinned in |
 |---|---|---|
 | Ollama (chart) | 1.74.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| NVIDIA Device Plugin | 0.19.3 | {{ src(path="workloads/hardware/nvidia_gpu_operator.go") }} |
-| DCGM Exporter | 4.8.3 | same |
+| NVIDIA Device Plugin | 0.20.1 | {{ src(path="workloads/hardware/nvidia_gpu_operator.go") }} |
+| DCGM Exporter | 4.8.4 | same |
 | ComfyUI | cu130-megapak-pt211-20260812 | {{ src(path="workloads/ai/comfyui.go") }} |
 
 Ollama's image tag is deliberately unset so it tracks the chart's appVersion —
