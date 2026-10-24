@@ -71,8 +71,8 @@ the rest are pinned at their call site.
 
 | Software | Version | Pinned in |
 |---|---|---|
-| OpenBao (chart) | 0.29.0 | {{ src(path="workloads/secrets/openbao.go") }} |
-| OpenBao (image) | 2.6.1 | same — unseal sidecar |
+| OpenBao (chart) | 0.30.4 | {{ src(path="workloads/secrets/openbao.go") }} |
+| OpenBao (image) | 2.6.4 | same — server, CSI agent and unseal sidecar; held on 2.6.x for the `file` storage backend |
 | Secrets Store CSI Driver | 1.6.0 | {{ src(path="workloads/secrets/csi_driver.go") }} |
 
 ### Observability

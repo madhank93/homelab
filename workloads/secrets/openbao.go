@@ -33,8 +33,14 @@ func NewOpenBaoChart(scope constructs.Construct, id string, namespace string) cd
 			},
 			"csi": map[string]any{
 				"enabled": true,
+				"agent": map[string]any{
+					"image": map[string]any{"tag": config.ContainerImage("openbao").Tag},
+				},
 			},
 			"server": map[string]any{
+				// Pinned to 2.6.x, not the chart appVersion: 2.7 drops the
+				// `file` storage backend configured below.
+				"image": map[string]any{"tag": config.ContainerImage("openbao").Tag},
 				"podAnnotations": map[string]any{
 					"reloader.stakater.com/auto": "true",
 				},
