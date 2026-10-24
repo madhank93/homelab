@@ -94,7 +94,7 @@ separate pin.
 | Software | Chart | Pinned in |
 |---|---|---|
 | Falco | 8.0.5 | {{ src(path="workloads/security/falco.go") }} |
-| Kyverno | 3.8.2 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
+| Kyverno | 3.9.1 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | Trivy Operator (chart) | 0.37.0 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | Trivy Operator (CRD bundle) | 0.37.0 | {{ src(path="workloads/security/trivy.go") }} |
 
