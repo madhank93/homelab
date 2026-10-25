@@ -32,6 +32,10 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 	// The agent DaemonSet uses hostPath volumes and hostPorts.
 	kit.Namespace(chart, namespace, true)
 
+	// contrib image includes all Kubernetes receivers (kubeletstats, k8s_cluster, filelog, etc.)
+	img := config.ContainerImage("otel-collector-contrib")
+	image := map[string]any{"repository": img.Image, "tag": img.Tag}
+
 	commonExporters := map[string]any{
 		"prometheusremotewrite": map[string]any{
 			"endpoint": vmInsertEndpoint,
@@ -61,8 +65,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		"podAnnotations": map[string]any{
 			"reloader.stakater.com/auto": "true",
 		},
-		// contrib image includes all Kubernetes receivers (kubeletstats, k8s_cluster, filelog, etc.)
-		"image": map[string]any{"repository": "otel/opentelemetry-collector-contrib"},
+		"image": image,
 		"presets": map[string]any{
 			// Container log collection from /var/log/pods on each node
 			"logsCollection": map[string]any{
@@ -158,7 +161,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		"podAnnotations": map[string]any{
 			"reloader.stakater.com/auto": "true",
 		},
-		"image": map[string]any{"repository": "otel/opentelemetry-collector-contrib"},
+		"image": image,
 		"presets": map[string]any{
 			// Cluster-level resource metrics: nodes, pods, deployments, etc.
 			"clusterMetrics": map[string]any{"enabled": true},

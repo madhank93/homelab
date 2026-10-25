@@ -16,7 +16,7 @@ charts:
   cloudnative-pg: {repo: https://cloudnative-pg.github.io/charts, version: 0.29.1}
   nvidia-device-plugin: {repo: https://nvidia.github.io/k8s-device-plugin, version: 0.20.1}
   dcgm-exporter: {repo: https://nvidia.github.io/dcgm-exporter/helm-charts, version: 4.8.4}
-  opentelemetry-collector: {repo: https://open-telemetry.github.io/opentelemetry-helm-charts, version: 0.169.0}
+  opentelemetry-collector: {repo: https://open-telemetry.github.io/opentelemetry-helm-charts, version: 0.176.0}
   victoria-metrics-k8s-stack: {repo: https://victoriametrics.github.io/helm-charts, version: 0.96.0}
   victoria-metrics-operator: {repo: https://victoriametrics.github.io/helm-charts, version: 0.68.1}
   kube-prometheus-stack: {repo: https://prometheus-community.github.io/helm-charts, version: 82.0.1}
@@ -33,4 +33,5 @@ images:
   n8n: {image: n8nio/n8n, tag: 2.44.6}
   netbird: {image: netbirdio/netbird, tag: 0.80.0}
   pause: {image: registry.k8s.io/pause, tag: "3.10"}
+  otel-collector-contrib: {image: otel/opentelemetry-collector-contrib, tag: 0.162.0}
   comfyui: {image: yanwk/comfyui-boot, tag: cu130-megapak-pt211-20260812}
