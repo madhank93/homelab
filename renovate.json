@@ -9,7 +9,6 @@
     "gomod",
     "github-actions",
     "docker-compose",
-    "dockerfile",
     "devcontainer",
     "mise",
     "custom.regex"
@@ -51,6 +50,18 @@
       "description": "Tag encodes CUDA (major) / PyTorch (minor) / build date (patch).",
       "matchPackageNames": ["yanwk/comfyui-boot"],
       "versioning": "regex:^cu(?<major>\\d+)-megapak-pt(?<minor>\\d+)-(?<patch>\\d+)$"
+    },
+    {
+      "description": "Gateway API manifest is vendored: the PR only renames the reference, so keep it out of the non-major group.",
+      "matchPackageNames": ["kubernetes-sigs/gateway-api"],
+      "groupName": "gateway-api",
+      "prBodyNotes": ["Download `experimental-install.yaml` for the new version to `core/platform/manifests/` and delete the old one. Check Cilium supports it first."]
+    },
+    {
+      "description": "CI tarballs are checksum-pinned next to the version; kept out of the non-major group.",
+      "matchPackageNames": ["kubernetes-sigs/kustomize", "getzola/zola"],
+      "groupName": "checksum-pinned CI tools",
+      "prBodyNotes": ["Update the matching `*_SHA256` in the workflow before merging; CI fails the checksum until then."]
     },
     {
       "description": "cdk8s typed imports are generated code.",
@@ -124,11 +135,46 @@
     },
     {
       "customType": "regex",
-      "description": "Kubeflow remote kustomize bases",
+      "description": "Kubeflow remote kustomize bases (calver tags; the old v1.x tags are excluded by the versioning)",
       "managerFilePatterns": ["/^workloads/ai/kubeflow/kustomization\\.yaml$/"],
-      "matchStrings": ["github\\.com/kubeflow/manifests//\\S+\\?ref=(?<currentValue>v[\\w.-]+)"],
-      "depNameTemplate": "kubeflow/manifests",
-      "datasourceTemplate": "github-tags"
+      "matchStrings": ["github\\.com/kubeflow/community-distribution//\\S+\\?ref=(?<currentValue>[\\w.-]+)"],
+      "depNameTemplate": "kubeflow/community-distribution",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "CI: kustomize (bump KUSTOMIZE_SHA256 in the same PR)",
+      "managerFilePatterns": ["/^\\.github/workflows/cdk8s-seal-publish\\.yml$/"],
+      "matchStrings": ["KUSTOMIZE_VERSION: (?<currentValue>v\\S+)"],
+      "depNameTemplate": "kubernetes-sigs/kustomize",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^kustomize/(?<version>v.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "CI: Zola (bump ZOLA_SHA256 in the same PR)",
+      "managerFilePatterns": ["/^\\.github/workflows/docs\\.yml$/"],
+      "matchStrings": ["ZOLA_VERSION: (?<currentValue>\\S+)"],
+      "depNameTemplate": "getzola/zola",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "CI: syft used by anchore/sbom-action",
+      "managerFilePatterns": ["/^\\.github/workflows/sbom\\.yml$/"],
+      "matchStrings": ["syft-version: (?<currentValue>v\\S+)"],
+      "depNameTemplate": "anchore/syft",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "Gateway API CRDs: vendored manifest named by version",
+      "managerFilePatterns": ["/^core/platform/cilium\\.go$/"],
+      "matchStrings": ["gateway-api-(?<currentValue>v[\\d.]+)-experimental-install\\.yaml"],
+      "depNameTemplate": "kubernetes-sigs/gateway-api",
+      "datasourceTemplate": "github-releases"
     },
     {
       "customType": "regex",
