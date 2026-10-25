@@ -82,7 +82,7 @@ the rest are pinned at their call site.
 | VictoriaMetrics k8s-stack | 0.96.0 | {{ src(path="workloads/observability/victoria_metrics.go") }} |
 | VictoriaLogs | 0.13.10 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | Grafana | 14.0.1 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
-| OpenTelemetry Collector | 0.169.0 | {{ src(path="workloads/observability/otel_collector.go") }} |
+| OpenTelemetry Collector | 0.176.0 | {{ src(path="workloads/observability/otel_collector.go") }} |
 | Metrics Server | 3.13.1 | {{ src(path="workloads/cdk8s.yaml", label="cdk8s.yaml") }} |
 | kube-prometheus-stack CRDs | 82.0.1 | {{ src(path="workloads/observability/victoria_metrics.go") }} |
 
