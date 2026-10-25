@@ -1,0 +1,24 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: falco
+  namespace: falco
+spec:
+  hostnames:
+    - falco.madhan.app
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: homelab-gateway
+      namespace: kube-system
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: falco-falcosidekick-ui
+          port: 2802
+          weight: 1
+      matches:
+        - path:
+            type: PathPrefix
+            value: /

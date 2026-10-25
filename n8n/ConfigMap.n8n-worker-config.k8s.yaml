@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: n8n
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/version: 2.36.8
+    helm.sh/chart: n8n-2.1.1
+  name: n8n-worker-config
+  namespace: n8n
+data:
+  QUEUE_HEALTH_CHECK_ACTIVE: "true"

@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvidia-device-plugin
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/version: v0.19.0
+    helm.sh/chart: nfd-0.19.0
+    role: master
+  name: nvidia-device-plugin-node-feature-discovery-master
+  namespace: nvidia-gpu-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nvidia-device-plugin
+      app.kubernetes.io/name: node-feature-discovery
+      role: master
+  template:
+    metadata:
+      annotations:
+        checksum/config: 57356655ea7827fc997065978b58ae9f63dc90214755cd1f7ff1ccf6922d472a
+      labels:
+        app.kubernetes.io/instance: nvidia-device-plugin
+        app.kubernetes.io/name: node-feature-discovery
+        role: master
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: In
+                    values:
+                      - ""
+              weight: 1
+      containers:
+        - args:
+            - -port=8080
+          command:
+            - nfd-master
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          image: registry.k8s.io/nfd/node-feature-discovery:v0.19.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          name: master
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            limits:
+              memory: 4Gi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /healthz
+              port: http
+          volumeMounts:
+            - mountPath: /etc/kubernetes/node-feature-discovery
+              name: nfd-master-conf
+              readOnly: true
+      dnsPolicy: ClusterFirstWithHostNet
+      enableServiceLinks: false
+      hostNetwork: false
+      securityContext: {}
+      serviceAccountName: node-feature-discovery
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Equal
+          value: ""
+      volumes:
+        - configMap:
+            items:
+              - key: nfd-master.conf
+                path: nfd-master.conf
+            name: nvidia-device-plugin-node-feature-discovery-master-conf
+          name: nfd-master-conf

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cs2
+  namespace: cs2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cs2
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        reloader.stakater.com/auto: "true"
+      labels:
+        app: cs2
+    spec:
+      containers:
+        - env:
+            - name: CS2_SERVERNAME
+              value: homelab LAN
+            - name: CS2_LAN
+              value: "1"
+            - name: CS2_GAMEALIAS
+              value: competitive
+            - name: CS2_MAPGROUP
+              value: mg_active
+            - name: CS2_STARTMAP
+              value: de_inferno
+            - name: CS2_MAXPLAYERS
+              value: "10"
+            - name: CS2_BOT_QUOTA
+              value: "0"
+            - name: CS2_SERVER_HIBERNATE
+              value: "0"
+            - name: CS2_RCONPW
+              valueFrom:
+                secretKeyRef:
+                  key: RCON_PASSWORD
+                  name: cs2-secrets
+            - name: CS2_PW
+              valueFrom:
+                secretKeyRef:
+                  key: JOIN_PASSWORD
+                  name: cs2-secrets
+          image: joedwards32/cs2:5.0.0
+          name: cs2
+          ports:
+            - containerPort: 27015
+              name: game
+              protocol: UDP
+            - containerPort: 27015
+              name: rcon
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 4000m
+              memory: 4Gi
+            requests:
+              cpu: 2000m
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /home/steam/cs2-dedicated
+              name: data
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
+      securityContext:
+        fsGroup: 1000
+      serviceAccountName: cs2
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: cs2-data
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: cs2-secrets
+          name: openbao-secrets

@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 13.2.4
+    helm.sh/chart: grafana-14.0.1
+  name: grafana
+  namespace: grafana
+data:
+  dashboardproviders.yaml: |
+    apiVersion: 1
+    providers:
+    - name: public
+      options:
+        path: /var/lib/grafana/dashboards/public
+      orgId: 2
+      type: file
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - access: proxy
+      isDefault: true
+      jsonData:
+        timeInterval: 30s
+      name: VictoriaMetrics
+      orgId: 1
+      type: prometheus
+      url: http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428
+    - access: proxy
+      isDefault: true
+      jsonData:
+        timeInterval: 30s
+      name: VictoriaMetrics
+      orgId: 2
+      type: prometheus
+      url: http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428
+    - access: proxy
+      jsonData:
+        logsVolumeEnabled: false
+      name: VictoriaLogs
+      type: loki
+      url: http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select
+  download_dashboards.sh: |
+    #!/usr/bin/env sh
+    set -eufo pipefail
+    mkdir -p /var/lib/grafana/dashboards/default
+    mkdir -p /var/lib/grafana/dashboards/public
+
+    curl -sf \
+    --connect-timeout 60 \
+    --max-time 60 \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json;charset=UTF-8" \
+      "https://grafana.com/api/dashboards/15757/revisions/43/download" \
+    > "/var/lib/grafana/dashboards/public/kubernetes-global.json"
+      
+    curl -sf \
+    --connect-timeout 60 \
+    --max-time 60 \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json;charset=UTF-8" \
+      "https://grafana.com/api/dashboards/12239/revisions/2/download" \
+          | sed -E '/-- .* --/! s/\$\{?DS_PROMETHEUS\}?/VictoriaMetrics/g' \
+    > "/var/lib/grafana/dashboards/public/nvidia-dcgm.json"
+  grafana.ini: |
+    [analytics]
+    check_for_updates = true
+    [auth]
+    disable_login_form = true
+    [auth.generic_oauth]
+    allow_sign_up = true
+    api_url = https://auth.madhan.app/application/o/userinfo/
+    auth_url = https://auth.madhan.app/application/o/authorize/
+    client_id = grafana-homelab
+    enabled = true
+    name = GitHub via Authentik
+    org_attribute_path = groups
+    org_mapping = grafana-admins:1:Admin *:2:Viewer
+    role_attribute_path = contains(groups[*], 'grafana-admins') && 'Admin' || 'Viewer'
+    role_attribute_strict = true
+    scopes = openid email profile groups
+    token_url = https://auth.madhan.app/application/o/token/
+    use_pkce = true
+    [log]
+    mode = console
+    [paths]
+    data = /var/lib/grafana/
+    logs = /var/log/grafana
+    plugins = /var/lib/grafana/plugins
+    provisioning = /etc/grafana/provisioning
+    [plugins]
+    preinstall_auto_update = false
+    [server]
+    domain = ''
+    root_url = https://grafana.madhan.app
+    [unified_storage]
+    index_path = /var/lib/grafana-search/bleve
