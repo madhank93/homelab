@@ -32,13 +32,41 @@ driver. Read the join password to hand out:
 just openbao-get secret/cs2 JOIN_PASSWORD
 ```
 
-## Playing
+## Player setup
 
-From the CS2 console (enable it under Settings → Game → Enable Developer Console):
+The server is LAN only: players must be on the home network (a `192.168.1.x`
+address). Wi-Fi works; wired is steadier.
 
-```text
-connect 192.168.1.230; password <JOIN_PASSWORD>
-```
+1. **Install Steam** from [store.steampowered.com](https://store.steampowered.com/about/)
+   and sign in (a free account is enough).
+2. **Install CS2.** Search *Counter-Strike 2* in the Steam store and click
+   *Play Game*. It is free to play; Steam asks for ~85 GB of free disk space.
+3. **Launch it once** and finish the intro so the game writes its settings.
+4. **Enable the console:** Settings → Game → *Enable Developer Console* → Yes.
+   Press <kbd>~</kbd> (the key under <kbd>Esc</kbd>) to open it.
+5. **Join** with the password from the host:
+
+   ```text
+   connect 192.168.1.230; password <JOIN_PASSWORD>
+   ```
+
+If the connect times out, check that the PC is on the home network rather than
+a guest network or VPN.
+
+### Low-spec PCs
+
+CS2 needs 4 CPU threads, 8 GB RAM and a DirectX 11 GPU. Laptops on integrated
+graphics (e.g. Intel UHD 620) run it at roughly 20–35 FPS; to get the most out
+of one:
+
+- Plug in the charger and set Windows power mode to *Best performance*.
+- Run RAM in dual channel (two sticks) — the biggest gain for integrated graphics.
+- Install the latest GPU driver from the vendor (Intel, AMD or NVIDIA).
+- In Video settings: 1280×720 or 1024×768, every option on lowest, and
+  FidelityFX Super Resolution on *Performance*.
+- On laptops with a dedicated GPU, set `cs2.exe` to *High performance* under
+  Windows Settings → System → Display → Graphics.
+- Close the browser and overlays before playing.
 
 ## Updating the game
 
