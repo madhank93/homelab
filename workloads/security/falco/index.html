@@ -603,7 +603,7 @@
 <p><strong>Alert pipeline:</strong></p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Falco DaemonSet (every node)</span></span>
 <span class="giallo-l"><span>  → JSON alert to stdout</span></span>
-<span class="giallo-l"><span>  → falcosidekick (collects from gRPC)</span></span>
+<span class="giallo-l"><span>  → falcosidekick (receives over http_output)</span></span>
 <span class="giallo-l"><span>  → OTel Agent filelog receiver (from falcosidekick stdout logs)</span></span>
 <span class="giallo-l"><span>  → VictoriaLogs</span></span>
 <span class="giallo-l"><span>  → Grafana (LogQL query)</span></span></code></pre>
@@ -617,14 +617,13 @@
 <tr><td><code>driver.kind</code></td><td><code>modern_ebpf</code></td><td>Required on Talos — see below</td></tr>
 <tr><td><code>driver.sysfsMountPath</code></td><td><code>/sys/kernel</code></td><td>Exposes BTF at <code>/sys/kernel/btf/vmlinux</code></td></tr>
 <tr><td><code>json_output</code></td><td><code>true</code></td><td>Machine-readable alert format</td></tr>
-<tr><td><code>grpc.enabled</code></td><td><code>true</code></td><td>falcosidekick connection</td></tr>
-<tr><td><code>falcosidekick.enabled</code></td><td><code>true</code></td><td>Collects alerts from gRPC, exposes metrics</td></tr>
+<tr><td><code>falcosidekick.enabled</code></td><td><code>true</code></td><td>Chart wires <code>http_output</code> to it; exposes metrics</td></tr>
 <tr><td><code>falcosidekick.webui.enabled</code></td><td><code>true</code></td><td>Alert dashboard UI</td></tr>
 <tr><td>Falco resources limit</td><td><code>1000m</code> / <code>1024Mi</code></td><td>eBPF program compilation is CPU-intensive</td></tr>
 <tr><td>HTTPRoute</td><td><code>falco.madhan.app</code> → falcosidekick-ui:2802</td><td>Gateway API</td></tr>
 </tbody></table>
 <h2 id="talos-specific-configuration">Talos-Specific Configuration</h2>
-<p>Talos Linux locks down kernel module loading — the <code>kmod</code> and <code>legacy_ebpf</code> Falco drivers cannot be used.</p>
+<p>Talos Linux locks down kernel module loading — the <code>kmod</code> Falco driver cannot be used.</p>
 <p><code>modern_ebpf</code> uses CO-RE (Compile Once, Run Everywhere) eBPF programs that load without a pre-compiled kernel module. These programs use BTF (BPF Type Format) for kernel struct layout information.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #AAD94C;">&quot;driver&quot;</span><span>:</span><span style="color: #FF8F40;"> map</span><span>[</span><span style="color: #39BAE6;">string</span><span>]</span><span style="color: #59C2FF;">any</span><span>{</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;kind&quot;</span><span>:</span><span style="color: #AAD94C;"> &quot;modern_ebpf&quot;</span><span>,</span></span>
@@ -641,17 +640,16 @@
 <li>K8s audit events (if K8s audit log is forwarded to Falco)</li>
 </ul>
 <h2 id="chart-version-notes">Chart Version Notes</h2>
-<p>The chart uses <strong>snake_case</strong> config keys:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">json_output</span><span style="color: #BFBDB6B3;">:</span><span style="color: #D2A6FF;"> true</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">grpc_output</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  enabled</span><span style="color: #BFBDB6B3;">:</span><span style="color: #D2A6FF;"> true</span></span></code></pre>
-<p>Chart 8 renamed these from camelCase (<code>jsonOutput</code>, <code>grpcOutput</code>); on an upgrade
-from an older chart they must be rewritten or Falco silently ignores them.</p>
+<p>The chart uses <strong>snake_case</strong> config keys (<code>json_output</code>, <code>http_output</code>).
+Chart 8 renamed these from camelCase; on an upgrade from an older chart they
+must be rewritten or Falco silently ignores them.</p>
+<p>Chart 9 (Falco 0.44+) dropped the gRPC output/server and the legacy eBPF probe.
+Setting <code>falco.grpc</code>, <code>falco.grpc_output</code> or <code>driver.kind=ebpf</code> fails the render.</p>
 <h2 id="how-it-connects">How It Connects</h2>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Kernel syscalls on every node</span></span>
 <span class="giallo-l"><span>  → Falco modern_ebpf probe (CO-RE, uses BTF from /sys/kernel/btf/vmlinux)</span></span>
 <span class="giallo-l"><span>  → Falco DaemonSet (evaluates rules)</span></span>
-<span class="giallo-l"><span>  → JSON alert to stdout + gRPC to falcosidekick</span></span>
+<span class="giallo-l"><span>  → JSON alert to stdout + http_output to falcosidekick</span></span>
 <span class="giallo-l"><span>  → falcosidekick (aggregates, exposes metrics at :2801/metrics)</span></span>
 <span class="giallo-l"><span>  → OTel Agent filelog receiver (collects stdout logs)</span></span>
 <span class="giallo-l"><span>  → VictoriaLogs (log storage)</span></span>
@@ -1315,6 +1313,22 @@ behind, and answers <code>MISCONF</code> instead of <code>PONG</code> — which 
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

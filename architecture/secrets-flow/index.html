@@ -617,13 +617,11 @@
     end
 
     subgraph BIFROST[&quot;Bifrost VPS — auto-provisioned by Pulumi&quot;]
-        HG[&quot;hetzner.go&lt;br&#x2F;&gt;generateBifrostSecretsEnv()&lt;br&#x2F;&gt;generateBifrostDotEnv()&quot;]
-        SE[&quot;.secrets.env on VPS&lt;br&#x2F;&gt;CF · NB_ · AUTHENTIK_BOOTSTRAP_TOKEN&quot;]
-        DE[&quot;.env on VPS&lt;br&#x2F;&gt;AUTHENTIK_SECRET_KEY&lt;br&#x2F;&gt;AUTHENTIK_POSTGRESQL_PASSWORD&quot;]
+        HG[&quot;hetzner.go&lt;br&#x2F;&gt;bifrostEnvFiles&quot;]
+        SE[&quot;env&#x2F;*.env on VPS&lt;br&#x2F;&gt;one file per container, mode 0600&quot;]
+        DE[&quot;env&#x2F;bootstrap.env on VPS&lt;br&#x2F;&gt;NB_DATA_STORE_KEY · NB_RELAY_SECRET&lt;br&#x2F;&gt;NB_OWNER_PASSWORD&quot;]
         BS[&quot;bootstrap.sh&lt;br&#x2F;&gt;starts services in order&quot;]
-        AK[&quot;ak shell&lt;br&#x2F;&gt;Token.objects.get_or_create&lt;br&#x2F;&gt;netbird-mgmt-token&quot;]
         NC[&quot;sed substitution&lt;br&#x2F;&gt;config.yaml ${VARS} → real values&quot;]
-        NBI[&quot;NB_IDP_MGMT_TOKEN&lt;br&#x2F;&gt;appended to .secrets.env&quot;]
     end
 
     subgraph RUNTIME[&quot;Runtime — OpenBao + CSI Driver&quot;]
@@ -642,10 +640,8 @@
     SOPSFILE --&gt;|sops exec-env| HG
     HG --&gt; SE &amp; DE
     SE &amp; DE --&gt;|CopyToRemote| BS
-    BS --&gt; AK
-    AK --&gt;|TOKEN:key stdout| NBI
-    BS --&gt; NC
-    NBI &amp; NC --&gt;|env ready| BS
+    DE --&gt; NC
+    NC --&gt;|config ready| BS
 
     OB --&gt;|K8s auth| CSI
     CSI --&gt;|fetches secrets| SPC
@@ -692,7 +688,7 @@
 <span class="giallo-l"><span style="color: #39BAE6;">CLOUDFLARE_API_TOKEN</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &lt;zone-edit API token&gt;</span></span>
 <span class="giallo-l"></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Authentik — Bifrost VPS</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">AUTHENTIK_TOKEN</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &lt;60-char random string&gt;</span><span style="color: #5A6673;font-style: italic;">        # bootstrap token → also becomes NB_IDP_MGMT_TOKEN</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">AUTHENTIK_TOKEN</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &lt;60-char random string&gt;</span><span style="color: #5A6673;font-style: italic;">        # bootstrap token → akadmin API token on first boot</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">AUTHENTIK_SECRET_KEY</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &lt;openssl rand -base64 48&gt;</span><span style="color: #5A6673;font-style: italic;"> # Django secret key</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">AUTHENTIK_POSTGRESQL_PASSWORD</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &lt;openssl rand -hex 16&gt;</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">AUTHENTIK_GITHUB_SECRET</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &lt;github oauth app secret&gt;</span></span>
@@ -720,16 +716,14 @@
 <p>The Bifrost VPS secrets are fully automated by Pulumi. No manual SSH required.</p>
 <p><strong><code>just core hetzner up</code> does the following in sequence:</strong></p>
 <ol>
-<li><strong><code>generateBifrostSecretsEnv()</code></strong> reads SOPS env vars, writes <code>./cloud/bifrost/.secrets.env</code> on the laptop</li>
-<li><strong><code>generateBifrostDotEnv()</code></strong> reads SOPS env vars, writes <code>./cloud/bifrost/.env</code> on the laptop</li>
+<li><strong><code>bifrostEnvFiles</code></strong> — Pulumi reads SOPS env vars and writes one <code>./cloud/bifrost/env/&lt;consumer&gt;.env</code> per container (plus <code>bootstrap.env</code> for the script) on the laptop, mode <code>0600</code></li>
 <li><strong><code>CopyToRemote</code></strong> uploads the entire <code>./cloud/bifrost/</code> directory to <code>/etc/bifrost/</code> on the VPS</li>
 <li><strong><code>bootstrap.sh</code></strong> runs on the VPS:
 <ul>
-<li>Starts all containers in dependency order, waiting for health at each step</li>
-<li>After Authentik is healthy, runs <code>docker exec authentik-server ak shell</code> to create <code>netbird-mgmt-token</code> via Django ORM</li>
-<li>Writes <code>NB_IDP_MGMT_TOKEN</code> to <code>.secrets.env</code> on the VPS</li>
-<li>Runs <code>sed</code> to substitute <code>${NB_RELAY_SECRET}</code>, <code>${NB_DATA_STORE_KEY}</code>, <code>${NB_IDP_MGMT_TOKEN}</code> in <code>netbird/config.yaml</code></li>
-<li>Starts <code>netbird-server</code> (now has all required secrets)</li>
+<li>Deletes the legacy shared <code>.env</code>/<code>.secrets.env</code>, then hardens the host</li>
+<li>Starts all containers in dependency order, waiting for health at each step; each container reads only its own env file</li>
+<li>Substitutes <code>${NB_RELAY_SECRET}</code>, <code>${NB_DATA_STORE_KEY}</code> and the bcrypt <code>${NB_OWNER_HASH}</code> from <code>env/bootstrap.env</code> into <code>netbird/config.yaml</code></li>
+<li>Starts <code>netbird-server</code> (it has no env file; its secrets are in <code>config.yaml</code>)</li>
 </ul>
 </li>
 </ol>
@@ -751,12 +745,11 @@ are described in <a href="https://homelab.madhan.app/platform/secrets/">Secrets<
 <hr />
 <h2 id="what-lives-where-quick-reference">What Lives Where — Quick Reference</h2>
 <table><thead><tr><th>Secret</th><th>Lives in</th><th>Set during</th><th>Rotatable?</th></tr></thead><tbody>
-<tr><td><code>NB_DATA_STORE_KEY</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td><strong>No</strong> — NetBird DB encrypted with it</td></tr>
-<tr><td><code>NB_RELAY_SECRET</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td>Yes (all peers reconnect)</td></tr>
-<tr><td><code>AUTHENTIK_TOKEN</code></td><td>SOPS → <code>.secrets.env</code> as <code>AUTHENTIK_BOOTSTRAP_TOKEN</code></td><td>Phase 0</td><td>Yes</td></tr>
-<tr><td><code>NB_IDP_MGMT_TOKEN</code></td><td>Auto-written to <code>.secrets.env</code> by <code>bootstrap.sh</code></td><td>Auto</td><td>Yes</td></tr>
-<tr><td><code>NB_PROXY_TOKEN</code></td><td>SOPS → <code>.secrets.env</code></td><td>After first NetBird login</td><td>Yes</td></tr>
-<tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td>SOPS → <code>.secrets.env</code></td><td>After first NetBird login</td><td>Yes</td></tr>
+<tr><td><code>NB_DATA_STORE_KEY</code></td><td>SOPS → <code>env/bootstrap.env</code> → <code>config.yaml</code></td><td>Phase 0</td><td><strong>No</strong> — NetBird DB encrypted with it</td></tr>
+<tr><td><code>NB_RELAY_SECRET</code></td><td>SOPS → <code>env/bootstrap.env</code> → <code>config.yaml</code></td><td>Phase 0</td><td>Yes (all peers reconnect)</td></tr>
+<tr><td><code>AUTHENTIK_TOKEN</code></td><td>SOPS → <code>env/authentik-server.env</code> as <code>AUTHENTIK_BOOTSTRAP_TOKEN</code></td><td>Phase 0</td><td>Yes</td></tr>
+<tr><td><code>NB_PROXY_TOKEN</code></td><td>SOPS → <code>env/netbird-proxy.env</code></td><td>After first NetBird login</td><td>Yes</td></tr>
+<tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td>SOPS → <code>env/netbird-agent.env</code> as <code>NB_SETUP_KEY</code></td><td>After first NetBird login</td><td>Yes</td></tr>
 <tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>SOPS → k8s Secret</td><td>Phase 0</td><td>Yes</td></tr>
 <tr><td><code>OPENBAO_UNSEAL_KEY</code></td><td>SOPS → k8s Secret</td><td>Phase 0</td><td>Yes (redeploy OpenBao)</td></tr>
 <tr><td>App passwords</td><td>OpenBao KV</td><td>Phase 2 (<code>just openbao-setup</code>)</td><td>Yes</td></tr>
@@ -1383,6 +1376,22 @@ are described in <a href="https://homelab.madhan.app/platform/secrets/">Secrets<
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

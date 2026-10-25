@@ -619,31 +619,30 @@
 repository, pinned to the release in the <a href="https://homelab.madhan.app/architecture/software-inventory/">Software Inventory</a>.
 Argo CD manages it from the manifests branch like every other workload.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>workloads/ai/kubeflow/kustomization.yaml</span></span>
-<span class="giallo-l"><span>  ├── remote bases → github.com/kubeflow/manifests (no Istio overlay)</span></span>
+<span class="giallo-l"><span>  ├── remote bases → github.com/kubeflow/community-distribution (no Istio overlay)</span></span>
 <span class="giallo-l"><span>  ├── stub-istio-crds.yaml</span></span>
 <span class="giallo-l"><span>  └── patches:</span></span>
 <span class="giallo-l"><span>      ├── Profile name fix (kustomize 5.8.0 variable substitution bug)</span></span>
-<span class="giallo-l"><span>      ├── Delete centraldashboard NetworkPolicy (blocks Cilium-envoy hostNetwork traffic)</span></span>
-<span class="giallo-l"><span>      ├── Delete seaweedfs NetworkPolicy (blocks profile controller IAM port 8111)</span></span>
+<span class="giallo-l"><span>      ├── Delete every upstream NetworkPolicy (block Cilium-envoy hostNetwork traffic and SeaweedFS IAM port 8111)</span></span>
 <span class="giallo-l"><span>      └── Delete all Istio resources (DestinationRule, VirtualService, AuthorizationPolicy)</span></span></code></pre>
 <p>Source: 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;ai&#x2F;kubeflow&#x2F;kustomization.yaml"><code>workloads&#x2F;ai&#x2F;kubeflow&#x2F;kustomization.yaml</code></a>
 </p>
 <p>Components installed:</p>
 <table><thead><tr><th>Component</th><th>Path</th></tr></thead><tbody>
-<tr><td>cert-manager Kubeflow issuer</td><td><code>common/cert-manager/kubeflow-issuer/base</code></td></tr>
+<tr><td>cert-manager Kubeflow issuer</td><td><code>common/cert-manager/overlays/kubeflow</code></td></tr>
 <tr><td>Kubeflow namespace + roles</td><td><code>common/kubeflow-namespace/base</code> + <code>kubeflow-roles/base</code></td></tr>
 <tr><td>Kubeflow Pipelines</td><td><code>applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user</code></td></tr>
 <tr><td>Katib</td><td><code>applications/katib/upstream/installs/katib-with-kubeflow</code></td></tr>
-<tr><td>Central Dashboard</td><td><code>applications/centraldashboard/upstream/base</code></td></tr>
-<tr><td>Admission Webhook (PodDefaults)</td><td><code>applications/admission-webhook/upstream/overlays/cert-manager</code></td></tr>
-<tr><td>Jupyter Web App</td><td><code>applications/jupyter/jupyter-web-app/upstream/base</code></td></tr>
-<tr><td>Notebook Controller</td><td><code>applications/jupyter/notebook-controller/upstream/overlays/kubeflow</code></td></tr>
-<tr><td>Profiles + KFAM</td><td><code>applications/profiles/pss</code></td></tr>
-<tr><td>PVC Viewer Controller</td><td><code>applications/pvcviewer-controller/upstream/base</code></td></tr>
-<tr><td>Volumes Web App</td><td><code>applications/volumes-web-app/upstream/base</code></td></tr>
-<tr><td>Tensorboard Controller</td><td><code>applications/tensorboard/tensorboard-controller/upstream/overlays/kubeflow</code></td></tr>
-<tr><td>Tensorboards Web App</td><td><code>applications/tensorboard/tensorboards-web-app/upstream/base</code></td></tr>
+<tr><td>Dashboard</td><td><code>applications/dashboard/upstream/centraldashboard/base</code></td></tr>
+<tr><td>PodDefaults webhook</td><td><code>applications/dashboard/upstream/poddefaults-webhooks/overlays/cert-manager</code></td></tr>
+<tr><td>Profiles + KFAM (baseline PSS on profile namespaces)</td><td><code>applications/dashboard/upstream/profile-controller/overlays/kubeflow-pss</code></td></tr>
+<tr><td>Jupyter Web App</td><td><code>applications/notebooks-v1/upstream/jupyter-web-app/base</code></td></tr>
+<tr><td>Notebook Controller</td><td><code>applications/notebooks-v1/upstream/notebook-controller/overlays/kubeflow</code></td></tr>
+<tr><td>PVC Viewer Controller</td><td><code>applications/notebooks-v1/upstream/pvcviewer-controller/base</code></td></tr>
+<tr><td>Volumes Web App</td><td><code>applications/notebooks-v1/upstream/volumes-web-app/base</code></td></tr>
+<tr><td>Tensorboard Controller</td><td><code>applications/notebooks-v1/upstream/tensorboard-controller/overlays/kubeflow</code></td></tr>
+<tr><td>Tensorboards Web App</td><td><code>applications/notebooks-v1/upstream/tensorboards-web-app/base</code></td></tr>
 <tr><td>Training Operator (Trainer v2)</td><td><code>applications/trainer/overlays</code></td></tr>
 <tr><td>Spark Operator</td><td><code>applications/spark/spark-operator/overlays/kubeflow</code></td></tr>
 <tr><td>User namespace</td><td><code>common/user-namespace/base</code></td></tr>
@@ -651,7 +650,7 @@ Argo CD manages it from the manifests branch like every other workload.</p>
 <h2 id="access">Access</h2>
 <p>All Kubeflow sub-apps are exposed at <code>https://kubeflow.madhan.app</code> via the Cilium Gateway. A static <code>kubeflow-dashboard</code> HTTPRoute routes path prefixes to each service. No authentication — the gateway injects <code>kubeflow-userid: user@example.com</code> header on all requests.</p>
 <table><thead><tr><th>Path</th><th>Service</th><th>URL rewrite</th></tr></thead><tbody>
-<tr><td><code>/</code></td><td><code>centraldashboard:80</code></td><td>None (catch-all)</td></tr>
+<tr><td><code>/</code></td><td><code>dashboard:80</code></td><td>None (catch-all)</td></tr>
 <tr><td><code>/jupyter/</code></td><td><code>jupyter-web-app-service:80</code></td><td><code>ReplacePrefixMatch: /</code></td></tr>
 <tr><td><code>/volumes/</code></td><td><code>volumes-web-app-service:80</code></td><td><code>ReplacePrefixMatch: /</code></td></tr>
 <tr><td><code>/tensorboards/</code></td><td><code>tensorboards-web-app-service:80</code></td><td><code>ReplacePrefixMatch: /</code></td></tr>
@@ -763,7 +762,7 @@ Argo CD manages it from the manifests branch like every other workload.</p>
 <span class="giallo-l"></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Is metacontroller retrying?</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> logs metacontroller-0</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kubeflow</span><span style="color: #95E6CB;"> --tail=20</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #AAD94C;"> error</span></span></code></pre>
-<p><strong>Known cause in this cluster:</strong> The upstream SeaweedFS NetworkPolicy (installed by the pipeline manifests) only allows port 8333 (S3 API) to SeaweedFS, not port 8111 (IAM/STS API). The profile controller uses <code>AWS_ENDPOINT_URL=http://seaweedfs.kubeflow:8111</code> which routes all boto3 calls (including S3 bucket creation) through port 8111. Without access to 8111, the profile controller times out and never creates the secret. The fix is applied via a kustomize patch that deletes the seaweedfs NetworkPolicy.</p>
+<p><strong>Known cause in this cluster:</strong> The upstream SeaweedFS NetworkPolicy (installed by the pipeline manifests) only allows port 8333 (S3 API) to SeaweedFS, not port 8111 (IAM/STS API). The profile controller uses <code>AWS_ENDPOINT_URL=http://seaweedfs.kubeflow:8111</code> which routes all boto3 calls (including S3 bucket creation) through port 8111. Without access to 8111, the profile controller times out and never creates the secret. The fix is the kustomize patch that deletes every upstream NetworkPolicy, seaweedfs included.</p>
 <h2 id="pvc-viewer">PVC Viewer</h2>
 <p>The PVC viewer (filebrowser) is launched by the <code>pvcviewer-controller</code> when a <code>PVCViewer</code> CR exists. The controller is triggered from the Volumes Web App when a user clicks <strong>Connect</strong> on a volume.</p>
 <h3 id="rwo-limitation">RWO Limitation</h3>
@@ -784,7 +783,7 @@ Argo CD manages it from the manifests branch like every other workload.</p>
 <span class="giallo-l"><span>      ├── /tensorboards/ → tensorboards-web-app-service (URLRewrite /)</span></span>
 <span class="giallo-l"><span>      ├── /katib/        → katib-ui (no rewrite)</span></span>
 <span class="giallo-l"><span>      ├── /pipeline/     → ml-pipeline-ui (URLRewrite /)</span></span>
-<span class="giallo-l"><span>      └── /              → centraldashboard</span></span>
+<span class="giallo-l"><span>      └── /              → dashboard</span></span>
 <span class="giallo-l"><span>  → HTTPRoute: notebook-&lt;ns&gt;-&lt;name&gt; (dynamic, kubeflow ns)</span></span>
 <span class="giallo-l"><span>      → /notebook/&lt;ns&gt;/&lt;name&gt;/ → &lt;name&gt;.&lt;ns&gt;:80 (no rewrite)</span></span>
 <span class="giallo-l"><span>  → HTTPRoute: tensorboard-&lt;ns&gt;-&lt;name&gt; (dynamic, kubeflow ns)</span></span>
@@ -1547,6 +1546,22 @@ Argo CD manages it from the manifests branch like every other workload.</p>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

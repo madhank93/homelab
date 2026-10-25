@@ -612,11 +612,12 @@
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Internet Browser</span></span>
 <span class="giallo-l"><span>  → Cloudflare: grafana.madhan.app → 178.156.199.250</span></span>
 <span class="giallo-l"><span>  → Traefik (TLS termination on Hetzner VPS)</span></span>
-<span class="giallo-l"><span>  → [no session] → Authentik ForwardAuth</span></span>
-<span class="giallo-l"><span>      → auth.madhan.app → GitHub OAuth → redirect back</span></span>
-<span class="giallo-l"><span>  → [session cookie set] → k8s-gateway (http://192.168.1.220)</span></span>
+<span class="giallo-l"><span>  → SkipAuth: no ForwardAuth — straight to k8s-gateway (http://192.168.1.220)</span></span>
 <span class="giallo-l"><span>       ↑ reachable via WireGuard (netbird-agent on Hetzner routes 192.168.1.0/24)</span></span>
-<span class="giallo-l"><span>  → Cilium HTTPRoute: grafana.madhan.app → Grafana pod</span></span></code></pre><h3 id="internal-service-e-g-headlamp">Internal service (e.g. Headlamp)</h3>
+<span class="giallo-l"><span>  → Cilium HTTPRoute: grafana.madhan.app → Grafana pod</span></span>
+<span class="giallo-l"><span>  → Grafana&#39;s own OIDC login → auth.madhan.app → GitHub OAuth → redirect back</span></span></code></pre>
+<p>Services without <code>SkipAuth</code> get an Authentik ForwardAuth check at Traefik instead.</p>
+<h3 id="internal-service-e-g-headlamp">Internal service (e.g. Headlamp)</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>LAN Browser</span></span>
 <span class="giallo-l"><span>  → DNS: headlamp.madhan.app → 192.168.1.220 (LAN wildcard)</span></span>
 <span class="giallo-l"><span>  → Cilium Gateway → HTTPRoute → Headlamp pod</span></span>
@@ -671,7 +672,7 @@ the record and the service is LAN-only again, with no other change.</p>
 <tr><td><code>netbird.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Internet</td></tr>
 <tr><td><code>proxy.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Internet</td></tr>
 <tr><td><code>*.proxy.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Internet (NetBird expose)</td></tr>
-<tr><td><code>grafana.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Internet + ForwardAuth</td></tr>
+<tr><td><code>grafana.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Internet + Grafana's own Authentik OIDC</td></tr>
 </tbody></table>
 <h3 id="lan-user-accessing-a-public-service-hairpin-routing">LAN user accessing a public service (hairpin routing)</h3>
 <p>When a service is added to <code>publicServices</code>, Cloudflare resolves it to <code>178.156.199.250</code> for
@@ -714,8 +715,8 @@ Without it, all public services hairpin through the VPS regardless of where the 
 <span class="giallo-l"><span style="color: #59C2FF;">dig</span><span style="color: #AAD94C;"> grafana.madhan.app</span><span style="color: #5A6673;font-style: italic;">     # → 178.156.199.250  (public, explicit A record)</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">dig</span><span style="color: #AAD94C;"> headlamp.madhan.app</span><span style="color: #5A6673;font-style: italic;">    # → 192.168.1.220   (LAN wildcard, private)</span></span>
 <span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Unauthenticated access redirects to SSO</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #95E6CB;"> -I</span><span style="color: #AAD94C;"> https://grafana.madhan.app</span><span style="color: #5A6673;font-style: italic;">   # → 302 to auth.madhan.app</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Unauthenticated access redirects to the login page (SSO only)</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #95E6CB;"> -I</span><span style="color: #AAD94C;"> https://grafana.madhan.app</span><span style="color: #5A6673;font-style: italic;">   # → 302 to /login (SSO button → auth.madhan.app)</span></span>
 <span class="giallo-l"></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># K8s routing peer connected</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> netbird</span><span style="color: #5A6673;font-style: italic;">           # → Running</span></span>
@@ -1451,6 +1452,22 @@ Without it, all public services hairpin through the VPS regardless of where the 
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

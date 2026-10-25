@@ -610,7 +610,7 @@
 <tr><td>Registry PVC</td><td><code>50Gi</code> RWX Longhorn</td><td>Multi-attach safe for rolling updates</td></tr>
 <tr><td>Jobservice PVC</td><td>RWX Longhorn</td><td>Multi-attach safe for rolling updates</td></tr>
 <tr><td>Database PVC</td><td><code>10Gi</code> RWO Longhorn</td><td>Internal PostgreSQL (single writer)</td></tr>
-<tr><td><code>existingSecret</code></td><td><code>harbor-admin</code></td><td>CSI-synced Secret from OpenBao</td></tr>
+<tr><td><code>existingSecretAdminPassword</code></td><td><code>harbor-admin</code></td><td>CSI-synced Secret from OpenBao (key <code>HARBOR_ADMIN_PASSWORD</code>)</td></tr>
 </tbody></table>
 <h2 id="httproute-note">HTTPRoute Note</h2>
 <p>Harbor's HTTPRoute <strong>must point to <code>harbor:80</code></strong> (the nginx proxy service), not <code>harbor-core:80</code> (the core API service directly). The nginx proxy handles routing between Harbor's multiple backend components (core, portal, registry, etc.). Pointing directly to <code>harbor-core</code> will cause the UI to fail to load assets and the registry protocol to break.</p>
@@ -619,8 +619,17 @@
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// Wrong:</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">&quot;name&quot;</span><span>:</span><span style="color: #AAD94C;"> &quot;harbor-core&quot;</span><span>,</span><span style="color: #AAD94C;"> &quot;port&quot;</span><span>:</span><span style="color: #D2A6FF;"> 80</span></span></code></pre><h2 id="secrets-openbao">Secrets (OpenBao)</h2>
 <p>Pattern B (secretObjects sync). The <code>HARBOR_ADMIN_PASSWORD</code> is fetched from OpenBao (<code>secret/data/harbor</code>) and synced into the <code>harbor-admin</code> k8s Secret by a dedicated <code>secret-sync</code> Deployment.</p>
-<p><strong>Why a dedicated secret-sync Deployment?</strong> Harbor's Helm chart does not support <code>extraVolumes</code> on its component pods. A <code>pause</code> container in a separate Deployment mounts the CSI volume, triggering the secretObjects sync. The Harbor chart then references <code>harbor-admin</code> via <code>existingSecret</code>.</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">existingSecret</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> harbor-admin</span><span style="color: #5A6673;font-style: italic;">  # CSI-synced from OpenBao</span></span></code></pre><h2 id="rwx-pvcs">RWX PVCs</h2>
+<p><strong>Why a dedicated secret-sync Deployment?</strong> Harbor's Helm chart does not support <code>extraVolumes</code> on its component pods. A <code>pause</code> container in a separate Deployment mounts the CSI volume, triggering the secretObjects sync. The Harbor chart then reads the admin password from <code>harbor-admin</code> via <code>existingSecretAdminPassword</code>.</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">existingSecretAdminPassword</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> harbor-admin</span><span style="color: #5A6673;font-style: italic;">  # CSI-synced from OpenBao</span></span></code></pre><h3 id="rotating-the-admin-password">Rotating the Admin Password</h3>
+<p><code>HARBOR_ADMIN_PASSWORD</code> only seeds the admin account on the first database init. Once the password is in the database, harbor-core ignores the variable and logs a warning, so changing it in OpenBao does not rotate a running install.</p>
+<p>To rotate, change it in Harbor first, then write the same value to OpenBao (<code>secret/harbor</code>) so a rebuilt database seeds the same password:</p>
+<ul>
+<li>UI: log in as admin, then <strong>admin (top right) → Change Password</strong>.</li>
+<li>API (the admin user ID is 1; curl prompts for the current password):</li>
+</ul>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #95E6CB;"> -u</span><span style="color: #AAD94C;"> admin</span><span style="color: #95E6CB;"> -X</span><span style="color: #AAD94C;"> PUT https://harbor.madhan.app/api/v2.0/users/1/password</span><span style="color: #95E6CB;"> \</span></span>
+<span class="giallo-l"><span style="color: #95E6CB;">  -H</span><span style="color: #AAD94C;"> &#39;Content-Type: application/json&#39;</span><span style="color: #95E6CB;"> \</span></span>
+<span class="giallo-l"><span style="color: #95E6CB;">  -d</span><span style="color: #AAD94C;"> &#39;{&quot;old_password&quot;:&quot;OLD&quot;,&quot;new_password&quot;:&quot;NEW&quot;}&#39;</span></span></code></pre><h2 id="rwx-pvcs">RWX PVCs</h2>
 <p>Harbor's registry and jobservice PVCs use <code>ReadWriteMany</code> via Longhorn's NFS share-manager. This eliminates the <code>Multi-Attach error</code> that occurs during rolling updates when both old and new pods need to mount the same volume simultaneously.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #AAD94C;">&quot;registry&quot;</span><span>: {</span><span style="color: #AAD94C;">&quot;accessMode&quot;</span><span>:</span><span style="color: #AAD94C;"> &quot;ReadWriteMany&quot;</span><span>},</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">&quot;jobservice&quot;</span><span>: {</span><span style="color: #AAD94C;">&quot;jobLog&quot;</span><span>: {</span><span style="color: #AAD94C;">&quot;accessMode&quot;</span><span>:</span><span style="color: #AAD94C;"> &quot;ReadWriteMany&quot;</span><span>}},</span></span></code></pre><h2 id="how-it-connects">How It Connects</h2>
@@ -632,7 +641,7 @@
 <span class="giallo-l"></span>
 <span class="giallo-l"><span>Secret sync:</span></span>
 <span class="giallo-l"><span>  secret-sync pod → CSI volume → OpenBao → harbor-admin k8s Secret</span></span>
-<span class="giallo-l"><span>  harbor-core → existingSecret: harbor-admin</span></span></code></pre><h2 id="screenshots">Screenshots</h2>
+<span class="giallo-l"><span>  harbor-core → existingSecretAdminPassword: harbor-admin</span></span></code></pre><h2 id="screenshots">Screenshots</h2>
 <p><img src="/assets/screenshots/harbor/main-ui.png" alt="Harbor UI showing projects, image repositories, and vulnerability scan results" /></p>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <h3 id="rwo-multi-attach-deadlock">RWO Multi-Attach Deadlock</h3>
@@ -851,7 +860,18 @@
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/registry/harbor/#secrets-openbao" class="toc-link">Secrets (OpenBao)</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/workloads/registry/harbor/#secrets-openbao" class="toc-link">Secrets (OpenBao)</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/workloads/registry/harbor/#rotating-the-admin-password" class="toc-link">Rotating the Admin Password</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -1370,6 +1390,22 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

@@ -645,11 +645,11 @@ whole build from bare Proxmox to a synced cluster.</p>
 </tbody></table>
 <p><strong>Secrets</strong></p>
 <table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>just openbao-init</code></td><td>One-time OpenBao initialization</td></tr>
-<tr><td><code>just openbao-setup</code></td><td>Configure K8s auth, policies, and roles</td></tr>
-<tr><td><code>just openbao-token</code></td><td>Mint a temporary root token</td></tr>
+<tr><td><code>just openbao-init</code></td><td>One-time OpenBao init + unseal; saves only the unseal key</td></tr>
+<tr><td><code>just openbao-setup</code></td><td>Configure K8s auth, policies, roles; seed missing app secrets (idempotent)</td></tr>
+<tr><td><code>just openbao-token</code></td><td>Mint a short-lived root token (capture it, never printed to a terminal)</td></tr>
 <tr><td><code>just openbao-get &lt;path&gt; [field]</code></td><td>Read a secret with the root token</td></tr>
-<tr><td><code>just openbao-revoke &lt;token&gt;</code></td><td>Revoke a root token when finished</td></tr>
+<tr><td><code>just openbao-revoke [token]</code></td><td>Revoke a root token (default <code>$ROOT_TOKEN</code>)</td></tr>
 <tr><td><code>just openbao-sa-token &lt;sa&gt; &lt;ns&gt; &lt;role&gt;</code></td><td>Mint a token as an app's ServiceAccount</td></tr>
 <tr><td><code>just openbao-sa-get &lt;sa&gt; &lt;ns&gt; &lt;role&gt; &lt;path&gt; [field]</code></td><td>Read a secret as that app — checks a policy actually works</td></tr>
 <tr><td><code>just sops-view &lt;file&gt;</code></td><td>Open a SOPS file in <code>$EDITOR</code></td></tr>
@@ -660,7 +660,7 @@ whole build from bare Proxmox to a synced cluster.</p>
 <tr><td><code>just talos-health</code></td><td>Cluster health — must be clean before upgrading a node</td></tr>
 <tr><td><code>just talos-versions</code></td><td>Talos version reported by every node</td></tr>
 <tr><td><code>just talos-upgrade &lt;node&gt; [schematic] [drain]</code></td><td>Upgrade one node</td></tr>
-<tr><td><code>just talos-upgrade-k8s &lt;version&gt;</code></td><td>Upgrade Kubernetes (separate from Talos)</td></tr>
+<tr><td><code>just talos-upgrade-k8s [--dry-run]</code></td><td>Upgrade Kubernetes to the pinned version (separate from Talos)</td></tr>
 <tr><td><code>just longhorn-repair-iscsi</code></td><td>Recover volumes after an iSCSI parameter rejection</td></tr>
 <tr><td><code>just gateway-repair-l2</code></td><td>Force L2 re-election when LoadBalancer IPs blackhole</td></tr>
 <tr><td><code>just comfyui on|off</code></td><td>Start or stop ComfyUI — see <a href="https://homelab.madhan.app/workloads/ai/comfyui/">ComfyUI</a></td></tr>
@@ -1265,6 +1265,22 @@ whole build from bare Proxmox to a synced cluster.</p>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

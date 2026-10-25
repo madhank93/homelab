@@ -600,8 +600,8 @@ so there is nothing to keep in sync.</p>
 <h2 id="upgrade-order">Upgrade Order</h2>
 <p>Components must be upgraded in layer order. Never skip layers.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Talos</span></span>
-<span class="giallo-l"><span>  └─► Cilium  (CNI must be compatible with Talos k8s version)</span></span>
-<span class="giallo-l"><span>        └─► Gateway API CRDs  (vendored in core/platform/manifests/)</span></span>
+<span class="giallo-l"><span>  └─► Gateway API CRDs  (vendored in core/platform/manifests/; at least what the next Cilium needs)</span></span>
+<span class="giallo-l"><span>        └─► Cilium  (CNI must be compatible with Talos k8s version)</span></span>
 <span class="giallo-l"><span>              └─► Argo CD  (GitOps engine)</span></span>
 <span class="giallo-l"><span>                    └─► cert-manager</span></span>
 <span class="giallo-l"><span>                          └─► OpenBao + CSI Driver  (secrets layer; all apps depend on this)</span></span>
@@ -653,13 +653,16 @@ so there is nothing to keep in sync.</p>
 <hr />
 <h2 id="phase-1-talos">Phase 1 — Talos</h2>
 <p><strong>Risk:</strong> High — rolling node restart.</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// core/platform/talos.go — the talosVersion const</span></span>
-<span class="giallo-l"><span>talosVersion</span><span style="color: #F29668;"> =</span><span style="color: #AAD94C;"> &quot;vX.Y.Z&quot;</span></span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># config/versions.yaml</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">talos</span><span style="color: #BFBDB6B3;">:</span><span> {</span><span style="color: #39BAE6;">version</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> vX.Y.Z</span><span style="color: #BFBDB6B3;">,</span><span style="color: #39BAE6;"> base_schematic</span><span style="color: #BFBDB6B3;">:</span><span style="color: #D2A6FF;"> ...</span><span style="color: #BFBDB6B3;">,</span><span style="color: #39BAE6;"> gpu_schematic</span><span style="color: #BFBDB6B3;">:</span><span style="color: #D2A6FF;"> ...</span><span>}</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">kubernetes</span><span style="color: #BFBDB6B3;">:</span><span> {</span><span style="color: #39BAE6;">version</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> X.Y.Z</span><span>}</span></span></code></pre>
 <p><strong>Rules:</strong></p>
 <ul>
 <li>Upgrade one minor version at a time (1.12 → 1.13, not 1.12 → 1.15)</li>
-<li>Workers first, then GPU workers, then control planes — verify health between nodes</li>
-<li>Check the k8s version embedded in the new Talos release — if it bumps, update <code>k8s@X.Y.Z</code> in <code>workloads/cdk8s.yaml</code> and re-run <code>cdk8s import</code></li>
+<li>Control planes first, one at a time, then workers, then the GPU worker last — verify health between nodes. Talos upgrades both roles the same way and leaves Kubernetes alone; <code>just talos-upgrade-k8s</code> orders the Kubernetes rollout itself</li>
+<li>Schematic IDs hash only the extension list, so they survive a version bump; check that every extension still exists for the new release: <code>curl -s https://factory.talos.dev/version/vX.Y.Z/extensions/official | jq -r '.[].name'</code></li>
+<li>Kubernetes is pinned on its own line and must stay inside Cilium's supported range; when it moves a minor, update <code>k8s@X.Y.Z</code> in <code>workloads/cdk8s.yaml</code> and re-run <code>cdk8s import</code></li>
+<li>Never lower <code>talos.version</code> and run <code>just core talos up</code>: the provider regenerates the cluster secrets on a downgrade (the resource is protected, so the run fails instead)</li>
 </ul>
 <blockquote>
 <p><strong><code>just core talos up</code> does not upgrade a running node.</strong> Images download to a
@@ -676,7 +679,9 @@ instance-manager a PDB allowing zero disruptions while a volume is attached, and
 a single-instance CNPG cluster can never release its only pod. The drain then
 burns its timeout and <code>talosctl</code> exits <em>before</em> rebooting, leaving the node
 cordoned and un-upgraded.</p>
-<p>Kubernetes does not ride along: <code>just talos-upgrade-k8s &lt;version&gt;</code> is separate.</p>
+<p>Kubernetes does not ride along: <code>just talos-upgrade-k8s</code> rolls out the pinned
+version as a separate step. Run it before <code>just core talos up</code>, which would
+otherwise push the new images to every node at once.</p>
 <h3 id="after-each-node">After each node</h3>
 <p><code>just talos-upgrade</code> runs <code>just longhorn-repair-iscsi</code> for you. It exists
 because an upgrade can ship an open-iscsi that rejects a parameter its
@@ -691,21 +696,147 @@ unmount of a Longhorn RWX volume blocks on an NFS share-manager ClusterIP it can
 no longer reach, so <code>talosctl reboot</code> hangs at <code>unmountPodMounts</code> forever. <code>cri</code>
 and <code>kubelet</code> read <code>Finished/Fail</code> while the Talos API stays up, because <code>apid</code>
 survives the shutdown sequence. Skip the graceful path:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">talosctl</span><span style="color: #95E6CB;"> --talosconfig</span><span style="color: #AAD94C;"> ~/.talos/config reboot</span><span style="color: #95E6CB;"> --nodes</span><span style="color: #F29668;"> &lt;</span><span style="color: #AAD94C;">i</span><span>p</span><span style="color: #F29668;">&gt;</span><span style="color: #95E6CB;"> --mode</span><span style="color: #AAD94C;"> powercycle</span></span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">talosctl</span><span style="color: #95E6CB;"> --talosconfig</span><span style="color: #AAD94C;"> ~/.talos/config reboot</span><span style="color: #95E6CB;"> --nodes</span><span style="color: #F29668;"> &lt;</span><span style="color: #AAD94C;">i</span><span>p</span><span style="color: #F29668;">&gt;</span><span style="color: #95E6CB;"> --mode</span><span style="color: #AAD94C;"> powercycle</span></span></code></pre><h3 id="talos-1-13-1-14">Talos 1.13 → 1.14</h3>
+<p>Talos 1.14 defaults to Kubernetes 1.37, which Cilium does not support yet, so
+<code>kubernetes.version</code> in <code>config/versions.yaml</code> holds the cluster on 1.36. An
+upgraded node keeps its v1alpha1 config: the deprecated fields this repo sets
+(<code>machine.install</code>, <code>machine.kernel</code>, <code>machine.nodeLabels</code>, <code>machine.nodeTaints</code>,
+<code>machine.kubelet.nodeIP</code>) still work, and 1.14-only defaults such as workload
+isolation (<code>SecurityProfileConfig</code>) and periodic trim stay off. Leave workload
+isolation off: it moves the kubelet and pods into a sandbox PID namespace, and
+Longhorn's iSCSI frontend and <code>just longhorn-repair-iscsi</code> both reach into the
+host <code>iscsid</code> namespaces.</p>
+<p>Use a <code>talosctl</code> client of 1.14.1 or later (1.14.0 can hang the full timeout
+after a node is already back). Then, one node at a time:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-versions</span><span style="color: #5A6673;font-style: italic;">                         # every node on 1.13.x</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-health</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Control planes, one at a time. Talos refuses an upgrade that breaks quorum.</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade</span><span style="color: #D2A6FF;"> 192.168.1.211</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade</span><span style="color: #D2A6FF;"> 192.168.1.212</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade</span><span style="color: #D2A6FF;"> 192.168.1.213</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Workers. Start with one and prove Longhorn attaches there before the rest.</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># worker1 runs the NetBird routing peer: public traffic drops while it reboots.</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade</span><span style="color: #D2A6FF;"> 192.168.1.223</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade</span><span style="color: #D2A6FF;"> 192.168.1.222</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade</span><span style="color: #D2A6FF;"> 192.168.1.221</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># GPU worker last: new NVIDIA driver build, and its PDBs need drain=false.</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade</span><span style="color: #D2A6FF;"> 192.168.1.224</span><span style="color: #AAD94C;"> gpu</span><span style="color: #D2A6FF;"> false</span></span></code></pre>
+<p>Gate before every next node:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-health</span><span style="color: #5A6673;font-style: italic;">                                   # clean</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get nodes</span><span style="color: #5A6673;font-style: italic;">                                   # all Ready, none SchedulingDisabled</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">talosctl</span><span style="color: #95E6CB;"> --talosconfig</span><span style="color: #AAD94C;"> ~/.talos/config</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> 192.168.1.211,192.168.1.212,192.168.1.213 etcd status</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;">                                                    # 3 members, one leader, no errors</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> longhorn-system get volumes.longhorn.io</span><span style="color: #95E6CB;"> \</span></span>
+<span class="giallo-l"><span style="color: #95E6CB;">  -o</span><span style="color: #AAD94C;"> custom-columns=NAME:.metadata.name,ROBUSTNESS:.status.robustness</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #95E6CB;"> -E</span><span style="color: #AAD94C;"> &#39;degraded|faulted&#39;</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;">                                                    # empty: replicas rebuilt</span></span></code></pre>
+<p>After worker4, check the GPU before calling it done:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">talosctl</span><span style="color: #95E6CB;"> --talosconfig</span><span style="color: #AAD94C;"> ~/.talos/config</span><span style="color: #95E6CB;"> -n</span><span style="color: #D2A6FF;"> 192.168.1.224</span><span style="color: #AAD94C;"> get extensions</span><span style="color: #5A6673;font-style: italic;">   # nvidia-* present</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get node k8s-worker4</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> jsonpath=&#39;{.status.allocatable.nvidia\.com/gpu}&#39;</span><span style="color: #5A6673;font-style: italic;">  # 5</span></span></code></pre>
+<p>Then Kubernetes, then Pulumi:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade-k8s</span><span style="color: #95E6CB;"> --dry-run</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-upgrade-k8s</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> core talos preview</span></span></code></pre>
+<p>The preview should show updates only: <code>talos-secrets</code> (version contract), the
+two image downloads, and the per-node config applies. A <code>replace</code> on
+<code>talos-secrets</code> or a VM means stop. Then <code>just core talos up</code>.</p>
+<p>Rollback before <code>just core talos up</code>: <code>talosctl rollback --nodes &lt;ip&gt;</code> boots the
+previous A/B image with data intact, then revert the commit. After it, never
+lower <code>talos.version</code> — roll nodes back with <code>talosctl rollback</code> and leave the
+pin alone.</p>
 <hr />
 <h2 id="phase-2-cilium">Phase 2 — Cilium</h2>
 <p><strong>Risk:</strong> High — CNI restart interrupts pod networking briefly.</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// core/platform/cilium.go — Version on the cilium Release</span></span>
-<span class="giallo-l"><span>Version: pulumi.</span><span style="color: #FFB454;">String</span><span>(</span><span style="color: #AAD94C;">&quot;1.X.Y&quot;</span><span>),</span></span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># config/versions.yaml</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">cilium</span><span style="color: #BFBDB6B3;">:</span><span> {</span><span style="color: #39BAE6;">repo</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> https://helm.cilium.io/</span><span style="color: #BFBDB6B3;">,</span><span style="color: #39BAE6;"> version</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> 1.X.Y</span><span>}</span></span></code></pre>
 <p><strong>Rules:</strong></p>
 <ul>
+<li>One minor at a time (1.18 → 1.19 → 1.20), each on the latest patch of its line. That is the only path Cilium tests, for upgrade and for rollback.</li>
 <li>Verify compatibility with new Talos k8s version: https://docs.cilium.io/en/stable/network/kubernetes/compatibility/</li>
+<li>Read the version's upgrade notes for removed Helm values, then render the old and new chart with the values from <code>cilium.go</code> and diff the <code>cilium-config</code> ConfigMap (<code>helm template cilium cilium/cilium --version X -f values.yaml</code>).</li>
+<li>Gateway API CRDs go first, as their own apply: each Cilium minor needs a minimum Gateway API release, and the operator only enables the controller for CRDs present when it starts.</li>
 <li>Never add <code>wt0</code> to Cilium's <code>devices</code> list in <code>cilium.go</code> — it stays <code>["ens18", "eth0"]</code>. See <a href="https://homelab.madhan.app/workloads/networking/netbird-peer/">NetBird Peer</a>.</li>
 <li>After upgrade check the <code>CiliumLoadBalancerIPPool</code> and <code>CiliumL2AnnouncementPolicy</code> CR specs in <code>cilium.go</code> for field renames</li>
 </ul>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> core platform up</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system rollout status daemonset/cilium</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get gateway</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system homelab-gateway</span></span></code></pre><h3 id="if-every-loadbalancer-ip-goes-dark-afterwards">If every LoadBalancer IP goes dark afterwards</h3>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get gateway</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system homelab-gateway</span></span></code></pre><h3 id="gates">Gates</h3>
+<p>Run all of these from the laptop on the LAN before the first change, and again
+after every apply. Do not start the next step until each one passes.</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 1. Every route Accepted by the Gateway. Any output is a failure.</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get httproute,grpcroute</span><span style="color: #95E6CB;"> -A -o</span><span style="color: #AAD94C;"> json</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> jq</span><span style="color: #95E6CB;"> -r</span><span style="color: #AAD94C;"> &#39;.items[]</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  | select([.status.parents[]?.conditions[]? | select(.type==&quot;Accepted&quot; and .status==&quot;True&quot;)] | length == 0)</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  | &quot;\(.kind) \(.metadata.namespace)/\(.metadata.name)&quot;&#39;</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get gateway</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system homelab-gateway</span><span style="color: #5A6673;font-style: italic;">   # PROGRAMMED True</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 2. Every LoadBalancer IP answers from the LAN, not just from inside the cluster.</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get svc</span><span style="color: #95E6CB;"> -A -o</span><span style="color: #AAD94C;"> json</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> jq</span><span style="color: #95E6CB;"> -r</span><span style="color: #AAD94C;"> &#39;.items[] | select(.spec.type==&quot;LoadBalancer&quot;)</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  | &quot;\(.status.loadBalancer.ingress[0].ip) \(.spec.ports[0].port) \(.metadata.namespace)/\(.metadata.name)&quot;&#39;</span><span style="color: #F29668;"> |</span></span>
+<span class="giallo-l"><span style="color: #FF8F40;">  while</span><span style="color: #AAD94C;"> read</span><span style="color: #95E6CB;"> -r</span><span style="color: #AAD94C;"> ip port name</span><span style="color: #BFBDB6B3;">;</span><span style="color: #FF8F40;"> do</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">    nc</span><span style="color: #95E6CB;"> -z -w</span><span style="color: #D2A6FF;"> 5</span><span style="color: #AAD94C;"> &quot;</span><span>$ip</span><span style="color: #AAD94C;">&quot; &quot;</span><span>$port</span><span style="color: #AAD94C;">&quot;</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #F07178;"> echo</span><span style="color: #AAD94C;"> &quot;ok   </span><span>$name $ip</span><span style="color: #AAD94C;">:</span><span>$port</span><span style="color: #AAD94C;">&quot;</span><span style="color: #F29668;"> ||</span><span style="color: #F07178;"> echo</span><span style="color: #AAD94C;"> &quot;FAIL </span><span>$name $ip</span><span style="color: #AAD94C;">:</span><span>$port</span><span style="color: #AAD94C;">&quot;</span></span>
+<span class="giallo-l"><span style="color: #FF8F40;">  done</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get lease</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #AAD94C;"> l2announce</span><span style="color: #5A6673;font-style: italic;">   # one lease per LoadBalancer Service</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 3. Host TCP on every node — the 1.19 regression killed this while ICMP still worked.</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">talosctl</span><span style="color: #95E6CB;"> --talosconfig</span><span style="color: #AAD94C;"> ~/.talos/config</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> 192.168.1.211,192.168.1.212,192.168.1.213,192.168.1.221,192.168.1.222,192.168.1.223,192.168.1.224 version</span><span style="color: #95E6CB;"> --short</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> talos-health</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 4. No LoadBalancer IP is also a node IP. Any output: stop, see below.</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">comm</span><span style="color: #95E6CB;"> -12 \</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  &lt;(</span><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get svc</span><span style="color: #95E6CB;"> -A -o</span><span style="color: #AAD94C;"> jsonpath=&#39;{range .items[*]}{.status.loadBalancer.ingress[*].ip}{&quot;\n&quot;}{end}&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> tr</span><span style="color: #AAD94C;"> &#39; &#39; &#39;\n&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #AAD94C;"> .</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> sort</span><span style="color: #95E6CB;"> -u</span><span style="color: #AAD94C;">)</span><span style="color: #95E6CB;"> \</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  &lt;(</span><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get nodes</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> jsonpath=&#39;{range .items[*]}{.status.addresses[?(@.type==&quot;InternalIP&quot;)].address}{&quot;\n&quot;}{end}&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> sort</span><span style="color: #95E6CB;"> -u</span><span style="color: #AAD94C;">)</span></span></code></pre>
+<p>Gate 4 exists because LB-IPAM hands out any address in the pool, node IPs
+included, and the pool in <code>config/config.yml</code> spans worker IPs. From 1.19 the
+datapath drops traffic to an LB-IPAM address on any port no Service uses
+(<a rel="external" href="https://github.com/cilium/cilium/issues/44430">cilium/cilium#44430</a>); 1.19.5
+spares only the node that owns the IP, so a worker whose IP is also an LB IP
+loses SSH-equivalent access (Talos API, kubelet) from everywhere else, and two
+nodes answer ARP for it. If gate 4 prints anything, take the node IPs out of the
+pool before touching Cilium.</p>
+<h3 id="1-18-1-20-runbook">1.18 → 1.20 runbook</h3>
+<p>Three applies, one commit each on the release branch — <code>git log --oneline -- config/versions.yaml core/platform/manifests/</code> lists them. Check out each in
+turn, run <code>just core platform preview</code> and then <code>just core platform up</code>, and
+pass every gate before the next.</p>
+<ol>
+<li><strong>Gateway API CRDs v1.6.3, Cilium stays on 1.18.12.</strong> The preview must show
+the CRDs updated, the <code>BackendLBPolicy</code> CRD deleted, the <code>safe-upgrades</code>
+admission policy created, and <code>cilium-ip-pool</code> as an in-place update to
+<code>cilium.io/v2</code> — never a replace, which would release every LoadBalancer IP.
+The experimental bundle keeps TLSRoute <code>v1alpha2</code>, which the 1.18 and 1.19
+operators refuse to start without
+(<a rel="external" href="https://github.com/cilium/cilium/issues/45139">cilium/cilium#45139</a>).
+Prove it before moving on:<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system rollout restart deployment/cilium-operator</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system rollout status deployment/cilium-operator</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system logs deploy/cilium-operator</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #95E6CB;"> -i</span><span style="color: #AAD94C;"> &#39;gateway&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #95E6CB;"> -i -E</span><span style="color: #AAD94C;"> &#39;error|failed&#39;</span><span style="color: #5A6673;font-style: italic;">   # no output</span></span></code></pre></li>
+<li><strong>Cilium 1.19.10.</strong> The minimum is 1.19.5, which carries the fix for
+<a rel="external" href="https://github.com/cilium/cilium/issues/44430">#44430</a> and
+<a rel="external" href="https://github.com/cilium/cilium/issues/46010">#46010</a>. Watch gate 3 first:
+if a node's Talos API stops answering, roll back (below) before the agent
+reaches the rest of the nodes. 1.19 is not tested against Kubernetes 1.36,
+so do not stay on it longer than the gates take.<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system rollout status daemonset/cilium</span><span style="color: #95E6CB;"> --timeout=15m</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system rollout status daemonset/cilium-envoy</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system rollout status deployment/cilium-operator</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system exec ds/cilium</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> cilium-agent</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> cilium-dbg status</span><span style="color: #95E6CB;"> --brief</span></span></code></pre></li>
+<li><strong>Cilium 1.20.4.</strong> Same commands and gates. An empty <code>l2announce</code> lease list
+with LB IPs still assigned is
+<a rel="external" href="https://github.com/cilium/cilium/issues/48799">#48799</a> (Services with
+<code>externalTrafficPolicy: Local</code> lose their announcement); the Gateway Service
+uses <code>Cluster</code> and is not affected.</li>
+</ol>
+<h3 id="rollback">Rollback</h3>
+<p>Back one minor at a time, the reverse of the way up: 1.20 → 1.19.10 → 1.18.12.
+Check out the previous commit (or revert the bump) and <code>just core platform up</code>;
+Pulumi runs a <code>helm upgrade</code> to the older chart. If the API is reachable but
+Pulumi is not an option, <code>helm history cilium -n kube-system</code> and
+<code>helm rollback cilium &lt;revision&gt; -n kube-system</code>, then re-run Pulumi from the
+matching commit so its state agrees.</p>
+<p>Leave the Gateway API CRDs and the <code>cilium.io/v2</code> pool in place: 1.18 and 1.19
+run on both. Rolling the CRDs below the 1.5 line is refused by the
+<code>safe-upgrades.gateway.networking.k8s.io</code> admission policy, and would have to
+start by deleting it.</p>
+<h3 id="if-every-loadbalancer-ip-goes-dark-afterwards">If every LoadBalancer IP goes dark afterwards</h3>
 <p>An agent restart can leave the L2 announcement lease holder renewing normally,
 still listing the IP in <code>db/show l2-announce</code>, while it has quietly stopped
 answering ARP. Nothing reports unhealthy — the Gateway stays <code>Programmed=True</code>
@@ -716,9 +847,19 @@ requests to the Gateway return 200 while the LAN times out</strong>:</p>
 another node. Ignore <code>Proxy Status: 0 redirects active</code> while debugging — with
 <code>Envoy: external</code> the Gateway listeners live in the <code>cilium-envoy</code> DaemonSet and
 are never counted there.</p>
+<p>The recipe only covers the Gateway. For any other LoadBalancer Service that
+fails gate 2 the same way, delete its lease to force a re-election:
+<code>kubectl delete lease -n kube-system cilium-l2announce-&lt;namespace&gt;-&lt;service&gt;</code>.</p>
 <p>Pulumi reports the Cilium release as failed (<code>failed to become available within allocated timeout</code>) if a single agent never goes ready, even when the DaemonSet
 reached every node on the new image. Fix the node, then re-run
 <code>just core platform up</code> — it is idempotent.</p>
+<p>A node whose agent will not recover cannot be rebooted gracefully either: the
+Longhorn RWX unmount hangs on a ClusterIP the broken datapath cannot reach.
+Power-cycle it instead (see <a href="https://homelab.madhan.app/upgrade-guide/#if-a-node-will-not-come-back">If a node will not come back</a>):</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">talosctl</span><span style="color: #95E6CB;"> --talosconfig</span><span style="color: #AAD94C;"> ~/.talos/config reboot</span><span style="color: #95E6CB;"> --nodes</span><span style="color: #F29668;"> &lt;</span><span style="color: #AAD94C;">i</span><span>p</span><span style="color: #F29668;">&gt;</span><span style="color: #95E6CB;"> --mode</span><span style="color: #AAD94C;"> powercycle</span></span></code></pre>
+<p>If the Talos API itself is dead on that node, reset the VM from Proxmox. After
+it returns, re-run the gates — a restarted agent is exactly when a stale L2
+lease shows up.</p>
 <hr />
 <h2 id="phase-3-argo-cd">Phase 3 — Argo CD</h2>
 <p><strong>Risk:</strong> Medium — GitOps engine downtime during pod restart.</p>
@@ -787,8 +928,8 @@ of it.</p>
 </tbody></table>
 <p><strong>NetBird rule:</strong> <code>netbird-server</code>, <code>reverse-proxy</code> and the agent <strong>must be on the
 same version</strong>. The dashboard is versioned independently (<code>v2.x</code>) and does not
-follow them. Also update both image tags in <code>workloads/networking/netbird_peer.go</code> — the
-<code>setup-iptables</code> init container and the main container.</p>
+follow them; take the dashboard release that was current when the server version shipped.
+Also bump <code>netbird</code> in <code>config/versions.yaml</code> — the in-cluster peer reads its image from there.</p>
 <p><strong>Authentik migration race (fixed in bootstrap.sh):</strong> On Authentik upgrades, <code>bootstrap.sh</code> now runs <code>ak migrate</code> explicitly (via a one-off server container) before starting <code>authentik-server</code> and <code>authentik-worker</code>. This prevents a crash-loop where the server queries new ORM columns that haven't been added yet. If <code>just core hetzner up</code> fails at the Authentik health check step, SSH in and run:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">docker</span><span style="color: #AAD94C;"> exec authentik-server ak migrate</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">docker</span><span style="color: #AAD94C;"> restart authentik-server authentik-worker</span></span></code></pre>
@@ -841,10 +982,35 @@ Blackwell support arrived in the 570.x driver series.</p>
 <hr />
 <h2 id="phase-10-workloads-complex">Phase 10 — Workloads: Complex</h2>
 <h3 id="n8n">n8n</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// workloads/automation/n8n.go — chart Version</span></span>
-<span class="giallo-l"><span>Version: jsii.</span><span style="color: #FFB454;">String</span><span>(</span><span style="color: #AAD94C;">&quot;2.X.Y&quot;</span><span>),</span></span></code></pre>
-<p>Check latest: <code>helm show chart oci://8gears.container-registry.com/library/n8n</code>. DB schema migrations run automatically on pod start via CNPG. Verify n8n healthy after upgrade:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> rollout status deployment n8n</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n</span></span></code></pre><h3 id="ollama">Ollama</h3>
+<p>Chart and image are pinned in <code>config/versions.yaml</code> (<code>helm.n8n</code>, <code>images.n8n</code>).
+Check latest: <code>helm show chart oci://8gears.container-registry.com/library/n8n</code>.
+n8n runs its DB schema migrations on pod start; they are one-way, so an image
+downgrade after a migrated start does not work — only a database restore does.</p>
+<p><strong>Manual steps — back up the CNPG database before sync.</strong> The CNPG cluster has
+no scheduled backup, so take a dump before the change lands on the release
+branch (CI then publishes the manifests branch and Argo CD syncs on its own):</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span>primary</span><span style="color: #F29668;">=</span><span>$(</span><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pod</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n</span><span style="color: #95E6CB;"> -l</span><span style="color: #AAD94C;"> cnpg.io/cluster=n8n-pg,cnpg.io/instanceRole=primary</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> name</span><span>)</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n &quot;</span><span>$primary</span><span style="color: #AAD94C;">&quot;</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> postgres</span><span style="color: #95E6CB;"> -- \</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  pg_dump</span><span style="color: #95E6CB;"> -U</span><span style="color: #AAD94C;"> postgres</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> n8n</span><span style="color: #95E6CB;"> -Fc</span><span style="color: #F29668;"> &gt;</span><span style="color: #AAD94C;"> n8n-</span><span>$(</span><span style="color: #59C2FF;">date</span><span style="color: #AAD94C;"> +%F</span><span>)</span><span style="color: #AAD94C;">.dump</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">ls</span><span style="color: #95E6CB;"> -lh</span><span style="color: #AAD94C;"> n8n-</span><span>$(</span><span style="color: #59C2FF;">date</span><span style="color: #AAD94C;"> +%F</span><span>)</span><span style="color: #AAD94C;">.dump</span><span style="color: #5A6673;font-style: italic;">   # non-empty, keep it off-cluster</span></span></code></pre>
+<p>The first 2.x start can take several minutes of migrations (the startup probe
+allows 10). Watch it, then verify:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> logs</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n deploy/n8n</span><span style="color: #95E6CB;"> -f</span><span style="color: #5A6673;font-style: italic;">          # migration progress, then &quot;Editor is now accessible&quot;</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> rollout status deployment n8n</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> n8n</span></span></code></pre>
+<p>To roll back: scale n8n to 0, restore the dump into an empty <code>n8n</code> database
+(<code>pg_restore -U postgres -d n8n --clean --if-exists</code>), and revert the pin.</p>
+<p><strong>1.x → 2.x behaviour changes to check in workflows</strong> (n8n's own list:
+<a rel="external" href="https://docs.n8n.io/2-0-breaking-changes/">2.0 breaking changes</a>):</p>
+<ul>
+<li>Code node runs in a task runner (internal mode, child process in the n8n container); <code>$evaluateExpression()</code> no longer works there, and Code-node access to env vars is blocked (<code>N8N_BLOCK_ENV_ACCESS_IN_NODE=true</code>).</li>
+<li>Python Code node needs an external runner (<code>n8nio/runners</code> sidecar) — not deployed here.</li>
+<li>Execute Command and Local File Trigger nodes are disabled by default (<code>NODES_EXCLUDE</code>).</li>
+<li>Read/Write File nodes are confined to <code>~/.n8n-files</code> (<code>N8N_RESTRICT_FILE_ACCESS_TO</code>).</li>
+<li>Workflow activate/deactivate became Publish/Unpublish; the legacy Start node is removed.</li>
+<li>OAuth callbacks now require an authenticated session (<code>N8N_SKIP_AUTH_ON_OAUTH_CALLBACK=false</code>).</li>
+<li>In-memory binary data is gone; <code>N8N_DEFAULT_BINARY_DATA_MODE=filesystem</code> keeps it on the PVC.</li>
+</ul>
+<h3 id="ollama">Ollama</h3>
 <p>Bump the chart in <code>cdk8s.yaml</code>. There is no image tag to change: it is left
 unset so Ollama tracks the chart's appVersion. Downloaded models stay in the
 PVC — no re-pull needed.</p>
@@ -862,7 +1028,17 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
 <span class="giallo-l"><span>Image: jsii.</span><span style="color: #FFB454;">String</span><span>(</span><span style="color: #AAD94C;">&quot;netbirdio/netbird:0.X.Y&quot;</span><span>),</span></span></code></pre>
 <p>Must match Bifrost docker-compose NetBird version exactly. Upgrade Bifrost and k8s peer in the same commit.</p>
 <h3 id="kubeflow">Kubeflow</h3>
-<p>Kubeflow is deployed via Kustomize from <code>kubeflow/manifests</code>, not a Helm chart. Upgrade by updating the <code>ref</code> on each base in <code>workloads/ai/kubeflow/kustomization.yaml</code>. Check the <a rel="external" href="https://github.com/kubeflow/manifests/tags">kubeflow/manifests tags</a> for the version compatible with the current k8s version.</p>
+<p>Kubeflow is deployed via Kustomize from <code>kubeflow/community-distribution</code> (formerly <code>kubeflow/manifests</code>), not a Helm chart. Upgrade by updating the <code>ref</code> on each base in <code>workloads/ai/kubeflow/kustomization.yaml</code>. Check the <a rel="external" href="https://github.com/kubeflow/community-distribution/releases">releases</a> for the version compatible with the current k8s version, and read the "Version-Specific Upgrade Notes" in the upstream README — paths move between releases.</p>
+<p>Build locally before pushing; CI runs the same command:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #F07178;">cd</span><span style="color: #AAD94C;"> workloads</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #59C2FF;"> kustomize</span><span style="color: #AAD94C;"> build ai/kubeflow/</span><span style="color: #F29668;"> &gt;</span><span style="color: #AAD94C;"> /dev/null</span></span></code></pre>
+<p><strong>Manual steps, 1.11.0 → 26.03.1</strong> (dashboard moved to <code>kubeflow/dashboard</code> v2, notebooks to <code>notebooks-v1/</code>, Trainer 2.2.0):</p>
+<p>Two Deployments changed their immutable <code>spec.selector</code>, so Argo CD cannot update them in place. Once the new manifests branch is published, delete them and let the sync recreate them:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> delete deployment jobset-controller-manager</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kubeflow-system</span><span style="color: #95E6CB;"> --ignore-not-found</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> delete deployment profiles-deployment</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kubeflow</span><span style="color: #95E6CB;"> --ignore-not-found</span></span></code></pre>
+<p>The old <code>centraldashboard</code> and <code>admission-webhook</code> resources are no longer rendered, so Argo CD prunes them. The dashboard Service is now <code>dashboard</code>; the HTTPRoute in <code>workloads/ai/kubeflow.go</code> points at it.</p>
+<blockquote>
+<p><strong>Never delete the <code>profiles.kubeflow.org</code> CRD</strong> — it cascades to every Profile and its namespace.</p>
+</blockquote>
 <hr />
 <h2 id="cdk8s-import-regeneration">cdk8s Import Regeneration</h2>
 <p>After changing any chart version in <code>cdk8s.yaml</code>, regenerate typed Go bindings:</p>
@@ -903,13 +1079,18 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
 <table><thead><tr><th>Upgrade</th><th>Breaking change</th></tr></thead><tbody>
 <tr><td>Talos minor bump</td><td>k8s version embedded — check <code>cdk8s.yaml</code> <code>k8s@</code> version</td></tr>
 <tr><td>Cilium any</td><td><code>CiliumLoadBalancerIPPool</code> / <code>CiliumL2AnnouncementPolicy</code> field renames — check <code>cilium.go</code></td></tr>
+<tr><td>Cilium 1.18 → 1.19</td><td>Datapath drops LB-IPAM traffic on unused ports — an LB IP equal to a node IP cuts that node off; use 1.19.5+ and pass gate 4</td></tr>
+<tr><td>Cilium 1.19 → 1.20</td><td>Needs Gateway API CRDs v1.6.1+ applied first; keep the experimental channel while any TLSRoute <code>v1alpha2</code> reader remains</td></tr>
 <tr><td>Grafana 10 → 11</td><td>Angular plugins removed; datasource API changed</td></tr>
 <tr><td>Longhorn minor</td><td>Upgrade one minor at a time only</td></tr>
 <tr><td>NetBird any</td><td>All components (server/dashboard/proxy/agent/peer) must be on identical version</td></tr>
 <tr><td>Authentik any</td><td>Migration race: <code>bootstrap.sh</code> runs <code>ak migrate</code> first; if health check times out SSH + force-migrate (see Phase 7)</td></tr>
+<tr><td>Authentik 2026.5 → 2026.8</td><td>Forwarded headers are honoured only from <code>AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS</code> (the default covers <code>172.16.0.0/12</code>, so Traefik on <code>bifrost_net</code> qualifies). Upgrades refuse to skip a minor: the newest row of <code>authentik_version_history</code> must be the previous minor</td></tr>
 <tr><td>Authentik any</td><td>After <code>netbird-agent</code> restart, verify <code>ip rule show | grep 7120</code> — missing rules = restart agent again</td></tr>
 <tr><td>Trivy any</td><td><code>trivyVersion</code> const in <code>trivy.go</code> drives the CRD bundle; the chart comes from <code>cdk8s.yaml</code></td></tr>
 <tr><td>ComfyUI any</td><td>Needs a CUDA 12.8+ tag for sm_120; the <code>cu128</code> line is discontinued</td></tr>
+<tr><td>n8n 1.x → 2.x</td><td>One-way DB migration — dump the CNPG database first; Code node moves to task runners, Execute Command node disabled, in-memory binary data removed</td></tr>
+<tr><td>Kubeflow 1.11 → 26.03</td><td>Repo renamed to <code>kubeflow/community-distribution</code>; dashboard, PodDefaults and profiles moved under <code>applications/dashboard/</code>, notebook apps under <code>applications/notebooks-v1/</code>; NetworkPolicies now ship in <code>common/kubeflow-namespace/base</code>; dashboard Service renamed <code>centraldashboard</code> → <code>dashboard</code></td></tr>
 </tbody></table>
 
 
@@ -1094,6 +1275,10 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
                                     <a href="https://homelab.madhan.app/upgrade-guide/#if-a-node-will-not-come-back" class="toc-link">If a node will not come back</a>
                                 </li>
                             
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#talos-1-13-1-14" class="toc-link">Talos 1.13 → 1.14</a>
+                                </li>
+                            
                         </ul>
                     </details>
                     
@@ -1106,6 +1291,18 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
                             <a href="https://homelab.madhan.app/upgrade-guide/#phase-2-cilium" class="toc-link">Phase 2 — Cilium</a>
                         </summary>
                         <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#gates" class="toc-link">Gates</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#1-18-1-20-runbook" class="toc-link">1.18 → 1.20 runbook</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/upgrade-guide/#rollback" class="toc-link">Rollback</a>
+                                </li>
                             
                                 <li>
                                     <a href="https://homelab.madhan.app/upgrade-guide/#if-every-loadbalancer-ip-goes-dark-afterwards" class="toc-link">If every LoadBalancer IP goes dark afterwards</a>
@@ -1715,6 +1912,22 @@ tags will not run. The <code>cu128-megapak</code> line stopped building in May 2
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

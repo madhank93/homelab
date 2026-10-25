@@ -609,7 +609,7 @@
 <h2 id="app-catalog">App Catalog</h2>
 <p>One row per chart in 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;main.go"><code>workloads&#x2F;main.go</code></a>
- — 23 of them.</p>
+ — 24 of them.</p>
 <table><thead><tr><th>App</th><th>Namespace</th><th>URL</th><th>UI</th><th>Purpose</th></tr></thead><tbody>
 <tr><td>ComfyUI</td><td><code>comfyui</code></td><td>https://comfyui.madhan.app</td><td>Yes</td><td>Image generation — <strong>off by default</strong>, see <a href="https://homelab.madhan.app/workloads/ai/comfyui/">ComfyUI</a></td></tr>
 <tr><td>Ollama</td><td><code>ollama</code></td><td>https://ollama.madhan.app</td><td>No (REST)</td><td>LLM inference server</td></tr>
@@ -633,6 +633,7 @@
 <tr><td>Harbor</td><td><code>harbor</code></td><td>https://harbor.madhan.app</td><td>Yes</td><td>Container registry</td></tr>
 <tr><td>Longhorn</td><td><code>longhorn-system</code></td><td>https://longhorn.madhan.app</td><td>Yes</td><td>Distributed block storage</td></tr>
 <tr><td>NetBird peer</td><td><code>netbird</code></td><td>—</td><td>No</td><td>In-cluster WireGuard routing peer</td></tr>
+<tr><td>Counter-Strike 2</td><td><code>cs2</code></td><td><code>192.168.1.230:27015</code></td><td>No</td><td>LAN-only game server, see <a href="https://homelab.madhan.app/workloads/gaming/cs2/">Counter-Strike 2</a></td></tr>
 <tr><td>Reloader</td><td><code>reloader</code></td><td>—</td><td>No</td><td>Auto-reload pods on ConfigMap/Secret changes</td></tr>
 </tbody></table>
 <h2 id="runtime-secrets-openbao-csi-driver">Runtime Secrets (OpenBao + CSI Driver)</h2>
@@ -1271,6 +1272,22 @@ secret has to be a k8s Secret because Grafana reads it as a <code>GF_</code> env
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

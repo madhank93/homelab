@@ -617,7 +617,7 @@ in a console.</p>
 <tr><td>Argo CD</td><td>Sync state, diffs, rollbacks</td></tr>
 </tbody></table>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Headlamp runs in the <code>headlamp</code> namespace, accessible at <code>https://headlamp.madhan.app</code>. It uses a long-lived ServiceAccount token with <code>cluster-admin</code> ClusterRoleBinding.</p>
+<p>Headlamp runs in the <code>headlamp</code> namespace, accessible at <code>https://headlamp.madhan.app</code>. You log in with a short-lived token for the <code>headlamp-admin</code> ServiceAccount, which is bound to <code>cluster-admin</code>. No static token Secret exists.</p>
 <p>Source: 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/workloads&#x2F;management&#x2F;headlamp.go"><code>workloads&#x2F;management&#x2F;headlamp.go</code></a>
 </p>
@@ -627,13 +627,12 @@ in a console.</p>
 <tr><td>HTTPRoute</td><td><code>headlamp.madhan.app</code> → <code>headlamp:80</code></td><td>Gateway API (LAN only)</td></tr>
 <tr><td>ServiceAccount</td><td><code>headlamp-admin</code></td><td>cluster-admin access</td></tr>
 <tr><td>ClusterRoleBinding</td><td><code>cluster-admin</code></td><td>Full read/write access to all resources</td></tr>
-<tr><td>Token Secret</td><td><code>headlamp-admin-token</code></td><td>Long-lived SA token (kubernetes.io/service-account-token)</td></tr>
 <tr><td>Resources (limits)</td><td><code>500m</code> / <code>512Mi</code></td><td>Lightweight dashboard</td></tr>
 </tbody></table>
 <h2 id="authentication">Authentication</h2>
-<p>Headlamp uses token-based authentication. Retrieve the long-lived token:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get secret headlamp-admin-token</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> headlamp</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #95E6CB;">  -o</span><span style="color: #AAD94C;"> jsonpath=&#39;{.data.token}&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> base64</span><span style="color: #95E6CB;"> -d</span></span></code></pre>
+<p>Headlamp uses token-based authentication. Mint a short-lived token (optional duration, e.g. <code>8h</code>):</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> headlamp-token</span><span> [duration]</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># equivalent to: kubectl create token headlamp-admin -n headlamp [--duration=&lt;duration&gt;]</span></span></code></pre>
 <p>Paste the token into the Headlamp login screen.</p>
 <h2 id="resource-views">Resource Views</h2>
 <p>Headlamp shows pod CPU and memory usage if Metrics Server is installed. Without Metrics Server, the resource columns show <code>N/A</code>.</p>
@@ -644,9 +643,8 @@ in a console.</p>
 <p><img src="/assets/screenshots/headlamp/cluster-overview.png" alt="Headlamp cluster overview showing namespace list, pod health, and node resources" /></p>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <h3 id="token-expired-invalid">Token Expired / Invalid</h3>
-<p>Long-lived SA tokens do not expire (unlike projected tokens), but if the ServiceAccount is deleted and recreated, the token must be re-retrieved:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get secret headlamp-admin-token</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> headlamp</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #95E6CB;">  -o</span><span style="color: #AAD94C;"> jsonpath=&#39;{.data.token}&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> base64</span><span style="color: #95E6CB;"> -d</span></span></code></pre><h3 id="resource-metrics-not-showing">Resource Metrics Not Showing</h3>
+<p>Tokens from <code>kubectl create token</code> expire, and recreating the ServiceAccount invalidates them early. Mint a new one:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> headlamp-token</span></span></code></pre><h3 id="resource-metrics-not-showing">Resource Metrics Not Showing</h3>
 <p>Ensure Metrics Server is running:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get deployment metrics-server</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> kube-system</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> top nodes</span><span style="color: #5A6673;font-style: italic;">  # should return data</span></span></code></pre>
@@ -1291,6 +1289,22 @@ in a console.</p>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

@@ -598,11 +598,11 @@
 <p>A single Pulumi command (<code>just core hetzner up</code>) provisions the Hetzner VPS, uploads all config, and runs <code>bootstrap.sh</code> which starts Traefik, Authentik, NetBird server, and a WireGuard peer in dependency order — fully unattended. The VPS sits in front of every public <code>madhan.app</code> service and routes traffic through the NetBird WireGuard mesh to the cluster's Cilium gateway at <code>192.168.1.220</code>.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>just core hetzner up</span></span>
 <span class="giallo-l"><span>    │</span></span>
-<span class="giallo-l"><span>    ├─ generateBifrostSecretsEnv()   writes .secrets.env from SOPS</span></span>
-<span class="giallo-l"><span>    ├─ generateBifrostDotEnv()       writes .env from SOPS</span></span>
+<span class="giallo-l"><span>    ├─ bifrostEnvFiles               writes env/&lt;consumer&gt;.env from SOPS (mode 0600)</span></span>
 <span class="giallo-l"><span>    ├─ CopyToRemote                  uploads /etc/bifrost/ to VPS</span></span>
 <span class="giallo-l"><span>    └─ remote.Command → bootstrap.sh</span></span>
-<span class="giallo-l"><span>           ├─ pre-flight             validate secrets, wait for cloud-init</span></span>
+<span class="giallo-l"><span>           ├─ pre-flight             validate secrets, wait for cloud-init, delete legacy .env/.secrets.env</span></span>
+<span class="giallo-l"><span>           ├─ harden_host()          key-only SSH, fail2ban, unattended-upgrades</span></span>
 <span class="giallo-l"><span>           ├─ 1/8  traefik           TLS termination + routing</span></span>
 <span class="giallo-l"><span>           ├─ 2/8  authentik-postgres</span></span>
 <span class="giallo-l"><span>           ├─ 3/8  authentik         DB migrations (one-off, before the servers)</span></span>
@@ -611,7 +611,7 @@
 <span class="giallo-l"><span>           │         sed: substitute ${NB_RELAY_SECRET}, ${NB_DATA_STORE_KEY}</span></span>
 <span class="giallo-l"><span>           │         python: bcrypt hash NB_OWNER_PASSWORD → ${NB_OWNER_HASH}</span></span>
 <span class="giallo-l"><span>           ├─ 5/8  netbird-server + netbird-dashboard</span></span>
-<span class="giallo-l"><span>           ├─ 6/8  netbird-agent     WireGuard peer (only if NB_BIFROST_SETUP_KEY set)</span></span>
+<span class="giallo-l"><span>           ├─ 6/8  netbird-agent     WireGuard peer (only if NB_SETUP_KEY set)</span></span>
 <span class="giallo-l"><span>           ├─ 7/8  netbird-proxy     (only if NB_PROXY_TOKEN set)</span></span>
 <span class="giallo-l"><span>           └─ 8/8  gatus             uptime monitoring</span></span></code></pre>
 <blockquote>
@@ -668,8 +668,8 @@ report healthy before starting.</p>
 <h3 id="netbird-config-yaml-template-substitution">netbird/config.yaml template substitution</h3>
 <p>NetBird does not expand <code>${VAR}</code> in its config file — the YAML is read verbatim. <code>bootstrap.sh</code> substitutes three placeholders before starting <code>netbird-server</code>:</p>
 <table><thead><tr><th>Placeholder</th><th>Substituted with</th><th>Method</th></tr></thead><tbody>
-<tr><td><code>${NB_RELAY_SECRET}</code></td><td>relay auth secret from <code>.secrets.env</code></td><td><code>sed</code> (base64 — safe)</td></tr>
-<tr><td><code>${NB_DATA_STORE_KEY}</code></td><td>SQLite encryption key from <code>.secrets.env</code></td><td><code>sed</code> (base64 — safe)</td></tr>
+<tr><td><code>${NB_RELAY_SECRET}</code></td><td>relay auth secret from <code>env/bootstrap.env</code></td><td><code>sed</code> (base64 — safe)</td></tr>
+<tr><td><code>${NB_DATA_STORE_KEY}</code></td><td>SQLite encryption key from <code>env/bootstrap.env</code></td><td><code>sed</code> (base64 — safe)</td></tr>
 <tr><td><code>${NB_OWNER_HASH}</code></td><td>bcrypt hash of <code>NB_OWNER_PASSWORD</code></td><td>Python (bcrypt contains <code>$</code> and <code>/</code> — breaks sed)</td></tr>
 </tbody></table>
 <p>The bcrypt hash is generated at runtime inside <code>process_netbird_config()</code>:</p>
@@ -681,36 +681,23 @@ report healthy before starting.</p>
 <span class="giallo-l"><span>)</span></span></code></pre>
 <p>The password is passed via an environment variable, never via command-line arguments, and never logged.</p>
 <p>This substitution is idempotent: on re-runs <code>CopyToRemote</code> restores the original template from the laptop, then the placeholders are substituted again.</p>
-<h3 id="netbird-agent-setup-key-docker-compose-env-var-caveat">netbird-agent setup key — Docker Compose env var caveat</h3>
-<p><code>docker-compose.yml</code> uses Compose-level interpolation for <code>netbird-agent</code>'s setup key:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">netbird-agent</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  network_mode</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> host</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">  environment</span><span style="color: #BFBDB6B3;">:</span></span>
-<span class="giallo-l"><span>    -</span><span style="color: #AAD94C;"> NB_SETUP_KEY=${NB_BIFROST_SETUP_KEY}</span></span></code></pre>
-<p>Docker Compose <code>${VAR}</code> interpolation reads from the OS environment or <code>.env</code> file — <strong>not</strong> from <code>env_file:</code>. Since <code>NB_BIFROST_SETUP_KEY</code> is only in <code>.secrets.env</code> (container-level), it was always blank when using <code>$COMPOSE up -d netbird-agent</code> directly.</p>
-<p><code>bootstrap.sh</code> works around this by exporting the secret to the OS environment for that specific command:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span>NB_BIFROST_SETUP_KEY</span><span style="color: #F29668;">=</span><span>$(</span><span style="color: #59C2FF;">read_secret</span><span style="color: #AAD94C;"> NB_BIFROST_SETUP_KEY</span><span>) $COMPOSE</span><span style="color: #AAD94C;"> up</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> netbird-agent</span></span></code></pre>
+<h3 id="netbird-agent-setup-key">netbird-agent setup key</h3>
+<p><code>netbird-agent</code> reads <code>NB_SETUP_KEY</code> from its own <code>env/netbird-agent.env</code> via <code>env_file:</code>, so a plain <code>$COMPOSE up -d netbird-agent</code> picks it up. <code>bootstrap.sh</code> skips the agent until that key is set.</p>
 <hr />
 <h2 id="generated-files">Generated Files</h2>
 <p>Pulumi writes these files on the <strong>laptop</strong> before uploading:</p>
-<h3 id="core-cloud-bifrost-secrets-env"><code>core/cloud/bifrost/.secrets.env</code></h3>
-<p>Generated by <code>generateBifrostSecretsEnv()</code> from SOPS env vars:</p>
-<table><thead><tr><th>Variable</th><th>SOPS key</th><th>Required</th></tr></thead><tbody>
-<tr><td><code>CF_DNS_API_TOKEN</code></td><td><code>CLOUDFLARE_API_TOKEN</code></td><td>Yes</td></tr>
-<tr><td><code>NB_DATA_STORE_KEY</code></td><td><code>NB_DATA_STORE_KEY</code></td><td>Yes</td></tr>
-<tr><td><code>NB_RELAY_SECRET</code></td><td><code>NB_RELAY_SECRET</code></td><td>Yes</td></tr>
-<tr><td><code>AUTHENTIK_BOOTSTRAP_TOKEN</code></td><td><code>AUTHENTIK_TOKEN</code></td><td>Yes</td></tr>
-<tr><td><code>NB_OWNER_PASSWORD</code></td><td><code>NB_OWNER_PASSWORD</code></td><td>Yes</td></tr>
-<tr><td><code>NB_PROXY_TOKEN</code></td><td><code>NB_PROXY_TOKEN</code></td><td>No (optional)</td></tr>
-<tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td><code>NB_BIFROST_SETUP_KEY</code></td><td>No (optional)</td></tr>
+<p>Pulumi writes one env file per consumer under <code>core/cloud/bifrost/env/</code> (mode <code>0600</code>), from the <code>bifrostEnvFiles</code> list in <code>hetzner.go</code>. Each file has exactly one consumer, so no container sees another service's secrets:</p>
+<table><thead><tr><th>File</th><th>Consumer</th><th>Variables (SOPS key)</th></tr></thead><tbody>
+<tr><td><code>traefik.env</code></td><td><code>traefik</code></td><td><code>CF_DNS_API_TOKEN</code> (<code>CLOUDFLARE_API_TOKEN</code>)</td></tr>
+<tr><td><code>authentik-postgres.env</code></td><td><code>authentik-postgres</code></td><td><code>POSTGRES_PASSWORD</code> (<code>AUTHENTIK_POSTGRESQL_PASSWORD</code>)</td></tr>
+<tr><td><code>authentik-server.env</code></td><td><code>authentik-server</code></td><td><code>AUTHENTIK_SECRET_KEY</code>, <code>AUTHENTIK_POSTGRESQL__PASSWORD</code> (<code>AUTHENTIK_POSTGRESQL_PASSWORD</code>), <code>AUTHENTIK_BOOTSTRAP_TOKEN</code> (<code>AUTHENTIK_TOKEN</code>)</td></tr>
+<tr><td><code>authentik-worker.env</code></td><td><code>authentik-worker</code></td><td><code>AUTHENTIK_SECRET_KEY</code>, <code>AUTHENTIK_POSTGRESQL__PASSWORD</code></td></tr>
+<tr><td><code>netbird-proxy.env</code></td><td><code>netbird-proxy</code></td><td><code>NB_PROXY_TOKEN</code> (optional)</td></tr>
+<tr><td><code>netbird-agent.env</code></td><td><code>netbird-agent</code></td><td><code>NB_SETUP_KEY</code> (<code>NB_BIFROST_SETUP_KEY</code>)</td></tr>
+<tr><td><code>bootstrap.env</code></td><td><code>bootstrap.sh</code></td><td><code>NB_DATA_STORE_KEY</code>, <code>NB_RELAY_SECRET</code>, <code>NB_OWNER_PASSWORD</code></td></tr>
 </tbody></table>
-<h3 id="core-cloud-bifrost-env"><code>core/cloud/bifrost/.env</code></h3>
-<p>Generated by <code>generateBifrostDotEnv()</code>. Docker Compose reads this file for <code>${VAR}</code> interpolation in <code>docker-compose.yml</code> (required for <code>POSTGRES_PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}</code>):</p>
-<table><thead><tr><th>Variable</th><th>SOPS key</th></tr></thead><tbody>
-<tr><td><code>AUTHENTIK_SECRET_KEY</code></td><td><code>AUTHENTIK_SECRET_KEY</code></td></tr>
-<tr><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td></tr>
-</tbody></table>
-<p>Both files are gitignored and regenerated on every <code>just core hetzner up</code>.</p>
+<p><code>netbird-server</code> has no env file: its secrets are substituted into <code>netbird/config.yaml</code> (see above).</p>
+<p>All files are gitignored and regenerated on every <code>just core hetzner up</code>.</p>
 <hr />
 <h2 id="re-running-updating">Re-running / Updating</h2>
 <p><code>bootstrap.sh</code> is triggered by a SHA-256 hash of all bifrost config files plus all secret values. Pulumi re-runs the script automatically when:</p>
@@ -730,10 +717,23 @@ report healthy before starting.</p>
 <tr><td>TCP</td><td>22</td><td>SSH (management)</td></tr>
 <tr><td>TCP</td><td>80</td><td>HTTP → Traefik (redirects to HTTPS)</td></tr>
 <tr><td>TCP</td><td>443</td><td>HTTPS → Traefik</td></tr>
-<tr><td>TCP + UDP</td><td>3478</td><td>STUN (NetBird NAT traversal)</td></tr>
-<tr><td>TCP + UDP</td><td>5349</td><td>TURNS (TLS TURN relay)</td></tr>
-<tr><td>UDP</td><td>50000–50500</td><td>TURN ephemeral relay range</td></tr>
+<tr><td>UDP</td><td>3478</td><td>STUN (NetBird NAT traversal)</td></tr>
 </tbody></table>
+<p>No TURN ports are open: the NetBird relay runs over WebSocket on 443.</p>
+<hr />
+<h2 id="host-hardening">Host Hardening</h2>
+<p><code>harden_host()</code> in <code>bootstrap.sh</code> runs before any container starts:</p>
+<ul>
+<li><strong>SSH</strong> — drop-in <code>/etc/ssh/sshd_config.d/10-bifrost-hardening.conf</code> sets <code>PasswordAuthentication no</code>, <code>KbdInteractiveAuthentication no</code> and <code>PermitRootLogin prohibit-password</code> (Pulumi still connects as root with a key). It is validated with <code>sshd -t</code> before the reload; an invalid drop-in is removed and the bootstrap stops.</li>
+<li><strong>fail2ban</strong> — installed and enabled with Debian's default <code>sshd</code> jail.</li>
+<li><strong>unattended-upgrades</strong> — daily security updates.</li>
+</ul>
+<p>Traefik and Gatus are hardened too:</p>
+<ul>
+<li><strong>TLS 1.2 minimum</strong> (<code>tls.options.default</code>) and an <code>hsts</code> middleware (1 year; no <code>includeSubDomains</code>, no preload) on the <code>websecure</code> entrypoint, so it covers every HTTPS router.</li>
+<li><strong>ForwardAuth <code>trustForwardHeader: false</code></strong> — Traefik is the edge, so client-sent <code>X-Forwarded-*</code> headers are never trusted.</li>
+<li><strong>Gatus</strong> — the status page is public, so every endpoint hides connection errors (they embed resolved IPs); the API VIP endpoint also hides its hostname, port and URL.</li>
+</ul>
 <hr />
 <h2 id="dns-records">DNS Records</h2>
 <p>Managed by <code>core/cloud/cloudflare.go</code>:</p>
@@ -745,7 +745,7 @@ report healthy before starting.</p>
 <tr><td><code>grafana.madhan.app</code></td><td><code>178.156.199.250</code></td><td>Traefik → WireGuard → cluster</td></tr>
 </tbody></table>
 <blockquote>
-<p><strong>Adding a new public service:</strong> add the service name to <code>publicServices</code> in <code>core/cloud/cloudflare.go</code>, then run <code>just core cloudflare up</code> and <code>just core hetzner up</code>. The DNS record and Traefik route (with ForwardAuth) are created automatically.</p>
+<p><strong>Adding a new public service:</strong> add the service name to <code>publicServices</code> in <code>core/cloud/cloudflare.go</code>, then run <code>just core cloudflare up</code> and <code>just core hetzner up</code>. The DNS record and Traefik route are created automatically; the route gets Authentik ForwardAuth unless the entry sets <code>SkipAuth: true</code> (as Grafana does, since it runs its own OIDC login).</p>
 </blockquote>
 <hr />
 <h2 id="after-the-first-deploy">After the First Deploy</h2>
@@ -888,7 +888,7 @@ report healthy before starting.</p>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#netbird-agent-setup-key-docker-compose-env-var-caveat" class="toc-link">netbird-agent setup key — Docker Compose env var caveat</a>
+                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#netbird-agent-setup-key" class="toc-link">netbird-agent setup key</a>
                                 </li>
                             
                         </ul>
@@ -898,22 +898,7 @@ report healthy before starting.</p>
             
                 <li>
                     
-                    <details class="toc-details" >
-                        <summary>
-                            <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#generated-files" class="toc-link">Generated Files</a>
-                        </summary>
-                        <ul>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#core-cloud-bifrost-secrets-env" class="toc-link">core&#x2F;cloud&#x2F;bifrost&#x2F;.secrets.env</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#core-cloud-bifrost-env" class="toc-link">core&#x2F;cloud&#x2F;bifrost&#x2F;.env</a>
-                                </li>
-                            
-                        </ul>
-                    </details>
+                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#generated-files" class="toc-link">Generated Files</a>
                     
                 </li>
             
@@ -926,6 +911,12 @@ report healthy before starting.</p>
                 <li>
                     
                     <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#firewall" class="toc-link">Firewall</a>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/infrastructure/hetzner-bifrost/#host-hardening" class="toc-link">Host Hardening</a>
                     
                 </li>
             
@@ -1409,6 +1400,22 @@ report healthy before starting.</p>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

@@ -613,7 +613,7 @@
 <span class="giallo-l"><span>    Values:</span><span style="color: #59C2FF;"> pulumi</span><span>.</span><span style="color: #59C2FF;">Map</span><span>{</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">        &quot;server&quot;</span><span>:</span><span style="color: #59C2FF;"> pulumi</span><span>.</span><span style="color: #59C2FF;">Map</span><span>{</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">            &quot;service&quot;</span><span>:</span><span style="color: #59C2FF;"> pulumi</span><span>.</span><span style="color: #59C2FF;">Map</span><span>{</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">                &quot;type&quot;</span><span>: pulumi.</span><span style="color: #FFB454;">String</span><span>(</span><span style="color: #AAD94C;">&quot;LoadBalancer&quot;</span><span>),</span><span style="color: #5A6673;font-style: italic;"> // Cilium L2 assigns IP</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">                &quot;type&quot;</span><span>: pulumi.</span><span style="color: #FFB454;">String</span><span>(</span><span style="color: #AAD94C;">&quot;ClusterIP&quot;</span><span>),</span><span style="color: #5A6673;font-style: italic;"> // reached only through the Gateway HTTPRoute</span></span>
 <span class="giallo-l"><span>            },</span></span>
 <span class="giallo-l"><span>        },</span></span>
 <span class="giallo-l"><span>    },</span></span>
@@ -1360,6 +1360,22 @@ is nothing for a passthrough route to attach to.</p>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

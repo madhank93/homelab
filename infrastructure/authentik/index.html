@@ -632,7 +632,7 @@
 <tr><td>Scopes</td><td><code>openid email profile groups offline_access</code></td></tr>
 <tr><td>Token validity</td><td>1 hour access, 10 min authorization code</td></tr>
 </tbody></table>
-<p>The <code>groups</code> scope is a custom property mapping that returns the list of Authentik group names the user belongs to. Grafana uses this via <code>role_attribute_path</code> to assign the <strong>Admin</strong> role to members of the <code>grafana-admins</code> group.</p>
+<p>The <code>groups</code> scope is a custom property mapping that returns the list of Authentik group names the user belongs to. Grafana's <code>org_mapping</code> reads it to make members of <code>grafana-admins</code> <strong>Admin</strong> of the main org; everyone else lands in the Public org as <strong>Viewer</strong>.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="python"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># groups scope expression (in Authentik)</span></span>
 <span class="giallo-l"><span style="color: #FF8F40;">return</span><span> [group</span><span style="color: #BFBDB6B3;">.</span><span>name</span><span style="color: #FF8F40;"> for</span><span> group</span><span style="color: #FF8F40;"> in</span><span> request</span><span style="color: #BFBDB6B3;">.</span><span>user</span><span style="color: #BFBDB6B3;">.</span><span>ak_groups</span><span style="color: #BFBDB6B3;">.</span><span style="color: #FFB454;">all</span><span>()]</span></span></code></pre><pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Add a user to grafana-admins via Authentik UI → Directory → Groups → grafana-admins</span></span></code></pre><h3 id="netbird">NetBird</h3>
 <p>NetBird uses Authentik through its <strong>embedded Dex OIDC connector</strong>. Authentik acts as the upstream provider; Dex federates to it.</p>
@@ -1342,6 +1342,22 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

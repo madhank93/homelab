@@ -633,7 +633,7 @@
     end
 
     subgraph RELAY[&quot;WireGuard Relay&quot;]
-        RE[&quot;NetBird TURN&#x2F;STUN&lt;br&#x2F;&gt;via netbird-server&lt;br&#x2F;&gt;UDP 3478 &#x2F; TCP 5349&quot;]
+        RE[&quot;NetBird relay + STUN&lt;br&#x2F;&gt;via netbird-server&lt;br&#x2F;&gt;WebSocket 443 &#x2F; UDP 3478&quot;]
     end
 
     subgraph K8S[&quot;Kubernetes · routing-peer node&quot;]
@@ -725,8 +725,8 @@
 <h2 id="server-configuration">Server Configuration</h2>
 <p><code>core/cloud/bifrost/netbird/config.yaml</code> is a <strong>template</strong> — <code>bootstrap.sh</code> substitutes <code>${VAR}</code> placeholders before starting <code>netbird-server</code>.</p>
 <table><thead><tr><th>Config field</th><th>Template value</th><th>Final value</th></tr></thead><tbody>
-<tr><td><code>server.authSecret</code></td><td><code>${NB_RELAY_SECRET}</code></td><td>base64 secret from <code>.secrets.env</code></td></tr>
-<tr><td><code>store.encryptionKey</code></td><td><code>${NB_DATA_STORE_KEY}</code></td><td>base64 key from <code>.secrets.env</code></td></tr>
+<tr><td><code>server.authSecret</code></td><td><code>${NB_RELAY_SECRET}</code></td><td>base64 secret from <code>env/bootstrap.env</code></td></tr>
+<tr><td><code>store.encryptionKey</code></td><td><code>${NB_DATA_STORE_KEY}</code></td><td>base64 key from <code>env/bootstrap.env</code></td></tr>
 <tr><td><code>auth.owner.password</code></td><td><code>${NB_OWNER_HASH}</code></td><td>bcrypt hash generated from <code>NB_OWNER_PASSWORD</code></td></tr>
 <tr><td><code>auth.issuer</code></td><td><code>https://netbird.madhan.app/oauth2</code></td><td>embedded Dex's own issuer URL</td></tr>
 <tr><td><code>server.exposedAddress</code></td><td><code>https://netbird.madhan.app:443</code></td><td>static</td></tr>
@@ -747,7 +747,7 @@
 <tr><td><code>NB_PROXY_TOKEN</code></td><td>Personal access token for netbird-proxy</td><td>NetBird UI → Settings → Access Tokens</td><td>Yes</td></tr>
 <tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td>Setup key for netbird-agent on Bifrost</td><td>NetBird UI → Setup Keys</td><td>Yes</td></tr>
 </tbody></table>
-<p><code>NB_OWNER_PASSWORD</code> is only written to <code>.secrets.env</code> (and bcrypt-hashed at runtime). It enables the initial local admin login before an external identity provider is connected.</p>
+<p><code>NB_OWNER_PASSWORD</code> is only written to <code>env/bootstrap.env</code> (and bcrypt-hashed into <code>config.yaml</code> at runtime). It enables the initial local admin login before an external identity provider is connected.</p>
 <hr />
 <h2 id="traefik-routing">Traefik Routing</h2>
 <p>NetBird traffic on <code>netbird.madhan.app</code> is split across three Traefik routers (defined in <code>core/cloud/bifrost/traefik/dynamic/services.yml</code>):</p>
@@ -785,7 +785,7 @@ once in <a href="https://homelab.madhan.app/architecture/network-flow/#public-re
 <p>Two peers, two setup keys, two storage locations — matching where each consumer reads secrets:</p>
 <table><thead><tr><th>Peer</th><th>Setup key stored in</th><th>Key name</th><th>Reason</th></tr></thead><tbody>
 <tr><td><code>k8s-routing-peer</code> (k8s pod)</td><td><strong>OpenBao</strong> <code>secret/data/netbird</code></td><td><code>NETBIRD_SETUP_KEY</code></td><td>Read by k8s workload via CSI driver</td></tr>
-<tr><td><code>netbird-agent</code> (Bifrost Docker)</td><td><strong>SOPS</strong> <code>bootstrap.sops.yaml</code></td><td><code>NB_BIFROST_SETUP_KEY</code></td><td>Read by Pulumi → <code>.secrets.env</code> → Docker</td></tr>
+<tr><td><code>netbird-agent</code> (Bifrost Docker)</td><td><strong>SOPS</strong> <code>bootstrap.sops.yaml</code></td><td><code>NB_BIFROST_SETUP_KEY</code></td><td>Read by Pulumi → <code>env/netbird-agent.env</code> (as <code>NB_SETUP_KEY</code>) → Docker</td></tr>
 </tbody></table>
 <p>Both keys can share the same <strong>Reusable</strong> setup key value from the NetBird UI — they just live in different stores because each consumer has different access patterns.</p>
 <hr />
@@ -800,7 +800,7 @@ floats to any available worker for resilience. It connects to the WireGuard mesh
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span>NB_PROXY_MANAGEMENT_ADDRESS</span><span style="color: #F29668;">=</span><span style="color: #AAD94C;">netbird-server:80</span></span>
 <span class="giallo-l"><span>NB_PROXY_DOMAIN</span><span style="color: #F29668;">=</span><span style="color: #AAD94C;">proxy.madhan.app</span></span>
 <span class="giallo-l"><span>NB_PROXY_ACME_CERTIFICATES</span><span style="color: #F29668;">=</span><span style="color: #AAD94C;">true</span></span></code></pre>
-<p><code>NB_PROXY_TOKEN</code> is injected from <code>.secrets.env</code>. The proxy container is only started by <code>bootstrap.sh</code> if <code>NB_PROXY_TOKEN</code> is present. If missing, bootstrap prints setup instructions and skips it.</p>
+<p><code>NB_PROXY_TOKEN</code> is injected from <code>env/netbird-proxy.env</code>. The proxy container is only started by <code>bootstrap.sh</code> if <code>NB_PROXY_TOKEN</code> is present. If missing, bootstrap prints setup instructions and skips it.</p>
 <hr />
 <h2 id="first-time-setup-checklist">First-Time Setup Checklist</h2>
 <p>After the initial <code>just core hetzner up</code> succeeds and all containers are running:</p>
@@ -852,8 +852,10 @@ Setup Keys → Add key <code>k8s-routing-peer</code> (Reusable) → copy key val
 <h3 id="step-5-configure-k8s-routing-peer">Step 5 — Configure K8s routing peer</h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
-Add the setup key to OpenBao:<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> env BAO_TOKEN=</span><span>$ROOT_TOKEN</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  bao kv patch secret/netbird NETBIRD_SETUP_KEY=</span><span style="color: #F29668;">&lt;</span><span style="color: #AAD94C;">value from Step</span><span style="color: #F29668;"> 3&gt;</span></span></code></pre>
+Add the setup key to OpenBao:<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #FF8F40;">export</span><span> ROOT_TOKEN</span><span style="color: #F29668;">=</span><span>$(</span><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-token</span><span>)</span></span>
+<span class="giallo-l"><span style="color: #F07178;">printf</span><span style="color: #AAD94C;"> &#39;%s\n%s&#39; &quot;</span><span>$ROOT_TOKEN</span><span style="color: #AAD94C;">&quot; &#39;&lt;value from Step 3&gt;&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -i -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> openbao</span><span style="color: #95E6CB;"> -- \</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  sh</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> &#39;read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-&#39;</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-revoke</span></span></code></pre>
 <ul>
 <li>This is the key the <code>netbird-peer</code> pod uses to join the mesh at startup</li>
 </ul>
@@ -1591,6 +1593,22 @@ disconnected duplicates under <strong>Peers</strong> and re-assign the route.</p
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

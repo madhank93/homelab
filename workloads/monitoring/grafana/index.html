@@ -618,11 +618,18 @@
 <tr><td>Admin password</td><td>File at <code>/mnt/secrets/ADMIN_PASSWORD</code></td><td>Pattern A (CSI file mount)</td></tr>
 <tr><td>OAuth secret</td><td><code>grafana-oauth-secret</code> k8s Secret</td><td>Pattern B (CSI secretObjects sync)</td></tr>
 </tbody></table>
+<h2 id="organizations">Organizations</h2>
+<p>Grafana runs two orgs so that SSO users who are not admins never see logs:</p>
+<table><thead><tr><th>Org</th><th>ID</th><th>Who</th><th>Role</th><th>Datasources</th><th>Dashboards</th></tr></thead><tbody>
+<tr><td>Main Org.</td><td><code>1</code></td><td>Authentik group <code>grafana-admins</code> only</td><td>Admin</td><td>VictoriaMetrics, VictoriaLogs</td><td>All sidecar ConfigMaps</td></tr>
+<tr><td>Public</td><td><code>2</code></td><td>Every other SSO user</td><td>Viewer</td><td>VictoriaMetrics only</td><td>Kubernetes Views Global, NVIDIA DCGM</td></tr>
+</tbody></table>
+<p>Grafana cannot create orgs through provisioning, and it refuses to start while provisioning references an org that does not exist. <code>just grafana-init</code> creates the Public org and checks it got ID <code>2</code> (see <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#one-time-sso-setup-managed-by-pulumi">One-Time Setup</a>).</p>
 <h2 id="datasources">Datasources</h2>
 <p>Configured statically in Helm values:</p>
-<table><thead><tr><th>Name</th><th>Type</th><th>URL</th><th>Notes</th></tr></thead><tbody>
-<tr><td>VictoriaMetrics</td><td><code>prometheus</code> (default)</td><td><code>http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428</code></td><td><code>timeInterval: 30s</code></td></tr>
-<tr><td>VictoriaLogs</td><td><code>loki</code></td><td><code>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select</code></td><td><code>logsVolumeEnabled: false</code> (VictoriaLogs doesn't implement Loki index/volume API)</td></tr>
+<table><thead><tr><th>Name</th><th>Org</th><th>Type</th><th>URL</th><th>Notes</th></tr></thead><tbody>
+<tr><td>VictoriaMetrics</td><td>1 and 2</td><td><code>prometheus</code> (default)</td><td><code>http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428</code></td><td><code>timeInterval: 30s</code></td></tr>
+<tr><td>VictoriaLogs</td><td>1 only</td><td><code>loki</code></td><td><code>http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select</code></td><td><code>logsVolumeEnabled: false</code> (VictoriaLogs doesn't implement Loki index/volume API)</td></tr>
 </tbody></table>
 <blockquote>
 <p><strong>Important:</strong> The VictoriaLogs URL ends at <code>/select</code> — Grafana's Loki plugin appends <code>/loki/api/v1/...</code> automatically. The <code>logsVolumeEnabled</code> flag is disabled to suppress the unsupported <code>/index/volume</code> endpoint error in Drilldown → Logs.</p>
@@ -646,7 +653,9 @@
 <span class="giallo-l"><span style="color: #39BAE6;">    grafana_folder</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &quot;My Folder&quot;</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">data</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">  my-dashboard.json</span><span style="color: #BFBDB6B3;">:</span><span style="color: #FF8F40;"> |</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">    { ... Grafana dashboard JSON ... }</span></span></code></pre><h2 id="secrets-openbao">Secrets (OpenBao)</h2>
+<span class="giallo-l"><span style="color: #AAD94C;">    { ... Grafana dashboard JSON ... }</span></span></code></pre>
+<p>Sidecar dashboards always land in the main org. The Public org's two dashboards — Kubernetes Views Global (<code>gnetId 15757</code>) and NVIDIA DCGM (<code>gnetId 12239</code>) — come from a separate <code>public</code> dashboard provider and are downloaded from grafana.com by the chart's init container at pod start, so the pod needs outbound internet access to start cleanly.</p>
+<h2 id="secrets-openbao">Secrets (OpenBao)</h2>
 <p>Secrets at <code>secret/data/grafana</code> in OpenBao:</p>
 <table><thead><tr><th>Key</th><th>Pattern</th><th>How read by Grafana</th></tr></thead><tbody>
 <tr><td><code>ADMIN_PASSWORD</code></td><td>A (file)</td><td><code>GF_SECURITY_ADMIN_PASSWORD__FILE=/mnt/secrets/ADMIN_PASSWORD</code></td></tr>
@@ -669,24 +678,32 @@
 <li>GitHub OAuth consent screen appears — authorise the app</li>
 <li>GitHub redirects back to Authentik, which creates an Authentik user (using the <code>default-source-enrollment</code> flow)</li>
 <li>Authentik issues an OIDC token and redirects back to Grafana</li>
-<li>Grafana reads the <code>groups</code> claim and assigns role: <strong>Admin</strong> if in <code>grafana-admins</code>, otherwise <strong>Viewer</strong></li>
+<li>Grafana reads the <code>groups</code> claim through <code>org_mapping</code>: members of <code>grafana-admins</code> become <strong>Admin</strong> of the main org; everyone else becomes <strong>Viewer</strong> of the Public org</li>
 </ol>
 <blockquote>
-<p>First-time users get the <strong>Viewer</strong> role automatically. To promote to Admin, add the user to the <code>grafana-admins</code> group in Authentik → Directory → Groups.</p>
+<p>First-time users land in the Public org as <strong>Viewer</strong>. To promote to Admin, add the user to the <code>grafana-admins</code> group in Authentik → Directory → Groups. Org membership is re-evaluated on every login, so anyone who was a Viewer of the main org loses that membership on their next login.</p>
 </blockquote>
+<p>There is no anonymous access and no login form — every user signs in through Authentik.</p>
 <h3 id="oidc-configuration">OIDC Configuration</h3>
 <p>Set in <code>workloads/monitoring/grafana.go</code>:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="go"><span class="giallo-l"><span style="color: #AAD94C;">&quot;auth.generic_oauth&quot;</span><span>:</span><span style="color: #FF8F40;"> map</span><span>[</span><span style="color: #39BAE6;">string</span><span>]</span><span style="color: #59C2FF;">any</span><span>{</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;enabled&quot;</span><span>:</span><span style="color: #D2A6FF;">              true</span><span>,</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;name&quot;</span><span>:</span><span style="color: #AAD94C;">                 &quot;GitHub via Authentik&quot;</span><span>,</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;client_id&quot;</span><span>:</span><span style="color: #AAD94C;">            &quot;grafana-homelab&quot;</span><span>,</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">    &quot;scopes&quot;</span><span>:</span><span style="color: #AAD94C;">               &quot;openid email profile&quot;</span><span>,</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">    &quot;scopes&quot;</span><span>:</span><span style="color: #AAD94C;">               &quot;openid email profile groups&quot;</span><span>,</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;auth_url&quot;</span><span>:</span><span style="color: #AAD94C;">             &quot;https://auth.madhan.app/application/o/authorize/&quot;</span><span>,</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;token_url&quot;</span><span>:</span><span style="color: #AAD94C;">            &quot;https://auth.madhan.app/application/o/token/&quot;</span><span>,</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;api_url&quot;</span><span>:</span><span style="color: #AAD94C;">              &quot;https://auth.madhan.app/application/o/userinfo/&quot;</span><span>,</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;use_pkce&quot;</span><span>:</span><span style="color: #D2A6FF;">             true</span><span>,</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    &quot;allow_sign_up&quot;</span><span>:</span><span style="color: #D2A6FF;">        true</span><span>,</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">    &quot;role_attribute_path&quot;</span><span>:</span><span style="color: #AAD94C;">  &quot;contains(groups[*], &#39;grafana-admins&#39;) &amp;&amp; &#39;Admin&#39; || &#39;Viewer&#39;&quot;</span><span>,</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;">    // grafana-admins → Admin of org 1; everyone → Viewer of org 2 (Public)</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">    &quot;org_attribute_path&quot;</span><span>:</span><span style="color: #AAD94C;">    &quot;groups&quot;</span><span>,</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">    &quot;org_mapping&quot;</span><span>:</span><span style="color: #AAD94C;">           &quot;grafana-admins:1:Admin *:2:Viewer&quot;</span><span>,</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">    &quot;role_attribute_path&quot;</span><span>:</span><span style="color: #AAD94C;">   &quot;contains(groups[*], &#39;grafana-admins&#39;) &amp;&amp; &#39;Admin&#39; || &#39;Viewer&#39;&quot;</span><span>,</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">    &quot;role_attribute_strict&quot;</span><span>:</span><span style="color: #D2A6FF;"> true</span><span>,</span></span>
+<span class="giallo-l"><span>},</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">&quot;auth&quot;</span><span>:</span><span style="color: #FF8F40;"> map</span><span>[</span><span style="color: #39BAE6;">string</span><span>]</span><span style="color: #59C2FF;">any</span><span>{</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">    &quot;disable_login_form&quot;</span><span>:</span><span style="color: #D2A6FF;"> true</span><span>,</span><span style="color: #5A6673;font-style: italic;"> // SSO only</span></span>
 <span class="giallo-l"><span>},</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// root_url forces https:// in redirect_uri — TLS terminates at Bifrost/Traefik,</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;">// so without this Grafana would construct an http:// callback that mismatches</span></span>
@@ -696,14 +713,16 @@
 <span class="giallo-l"><span>},</span></span></code></pre><h3 id="one-time-sso-setup-managed-by-pulumi">One-Time SSO Setup (Managed by Pulumi)</h3>
 <p>The Authentik configuration is fully automated via <code>just core authentik up</code> (<code>core/cloud/authentik.go</code>). Manual steps are only needed to:</p>
 <ol>
+<li><strong>Create the Public org</strong> — once, against the running Grafana, <em>before</em> Argo CD syncs the two-org config:<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> grafana-init</span></span></code></pre>On a fresh cluster this is a chicken-and-egg: Grafana will not start while its provisioning references org <code>2</code>. Deploy it first without the org-2 datasource, dashboard provider and <code>org_mapping</code>, run <code>just grafana-init</code>, then sync the full config.</li>
 <li><strong>Grant Admin role</strong> — Authentik UI → Directory → Groups → <code>grafana-admins</code> → Add user</li>
 <li><strong>Store Client Secret in OpenBao</strong> — run once after creating the Grafana OIDC provider:<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-get secret/grafana</span><span style="color: #5A6673;font-style: italic;">   # verify current value</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">bao</span><span style="color: #AAD94C;"> kv patch secret/grafana OAUTH_CLIENT_SECRET=</span><span style="color: #F29668;">&lt;</span><span style="color: #AAD94C;">secre</span><span>t</span><span style="color: #F29668;">&gt;</span></span></code></pre></li>
 </ol>
-<h3 id="admin-login-bypass-sso">Admin Login (Bypass SSO)</h3>
-<p>The local <code>admin</code> account is always available at <code>/login</code>:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Get admin password</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-get secret/grafana ADMIN_PASSWORD</span></span></code></pre><h2 id="how-it-connects">How It Connects</h2>
+<h3 id="break-glass-admin-access">Break-Glass Admin Access</h3>
+<p>The login form is disabled, so the local <code>admin</code> account cannot sign in through the UI. If SSO is broken, reset its password inside the pod and use the HTTP API with basic auth (still enabled):</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> grafana deploy/grafana</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> grafana-cli admin reset-admin-password &#39;&lt;new-password&gt;&#39;</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">curl</span><span style="color: #95E6CB;"> -u</span><span style="color: #AAD94C;"> admin https://grafana.madhan.app/api/org</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># curl prompts for the password, keeping it out of shell history</span></span></code></pre><h2 id="how-it-connects">How It Connects</h2>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Browser → grafana.madhan.app</span></span>
 <span class="giallo-l"><span>  → Cloudflare → Traefik on Bifrost (public only)</span></span>
 <span class="giallo-l"><span>  → homelab-gateway → HTTPRoute → Grafana pod</span></span>
@@ -846,6 +865,12 @@
             
                 <li>
                     
+                    <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#organizations" class="toc-link">Organizations</a>
+                    
+                </li>
+            
+                <li>
+                    
                     <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#datasources" class="toc-link">Datasources</a>
                     
                 </li>
@@ -883,7 +908,7 @@
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#admin-login-bypass-sso" class="toc-link">Admin Login (Bypass SSO)</a>
+                                    <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#break-glass-admin-access" class="toc-link">Break-Glass Admin Access</a>
                                 </li>
                             
                         </ul>
@@ -1400,6 +1425,22 @@
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

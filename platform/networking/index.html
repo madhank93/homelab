@@ -600,7 +600,7 @@
 <table><thead><tr><th>Setting</th><th>Value</th><th>Purpose</th></tr></thead><tbody>
 <tr><td><code>ipam.mode</code></td><td><code>kubernetes</code></td><td>IPAM managed by Kubernetes</td></tr>
 <tr><td><code>kubeProxyReplacement</code></td><td><code>true</code></td><td>Full eBPF kube-proxy replacement</td></tr>
-<tr><td><code>l2Announcements.enabled</code></td><td><code>true</code></td><td>L2 ARP announcements for LoadBalancer IPs</td></tr>
+<tr><td><code>l2announcements.enabled</code></td><td><code>true</code></td><td>L2 ARP announcements for LoadBalancer IPs (the chart key is all lowercase)</td></tr>
 <tr><td><code>gatewayAPI.enabled</code></td><td><code>true</code></td><td>Kubernetes Gateway API support</td></tr>
 <tr><td><code>hubble.enabled</code></td><td><code>true</code></td><td>Network observability</td></tr>
 <tr><td><code>hubble.relay.enabled</code></td><td><code>true</code></td><td>Hubble relay for cross-node visibility</td></tr>
@@ -652,6 +652,8 @@
 <span class="giallo-l"><span style="color: #39BAE6;">    matchExpressions</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span>      -</span><span style="color: #39BAE6;"> key</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> node-role.kubernetes.io/control-plane</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">        operator</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> DoesNotExist</span></span></code></pre>
+<p>The policy announces <code>loadBalancerIPs</code> only (<code>externalIPs: false</code>).</p>
+<p><strong>Service <code>externalIPs</code> are blocked.</strong> With <code>kubeProxyReplacement</code> on, Cilium always serves <code>spec.externalIPs</code>, so no Helm flag can turn it off — and an author who sets it can capture traffic to any IP (CVE-2020-8554). A <code>ValidatingAdmissionPolicy</code> named <code>deny-service-external-ips</code> (with its binding) rejects any Service that sets the field; use <code>type: LoadBalancer</code> instead.</p>
 <p><strong>Traffic flow for a LoadBalancer Service:</strong></p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>Client ARP: &quot;Who has 192.168.1.220?&quot;</span></span>
 <span class="giallo-l"><span>  → Worker node responds (Cilium L2 announcement leader)</span></span>
@@ -673,9 +675,15 @@
 <p>The CRDs are <strong>not</strong> bundled with the Cilium chart. They are vendored into the
 repo at
 
-<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;manifests&#x2F;gateway-api-v1.2.1-experimental-install.yaml"><code>core/platform/manifests/</code></a>
+<a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;manifests&#x2F;gateway-api-v1.6.3-experimental-install.yaml"><code>core/platform/manifests/</code></a>
 
-and applied by <code>InstallGateway</code> before the Gateway itself.</p>
+and applied by <code>InstallGatewayAPICRDs</code> before Cilium and the Gateway: the Cilium
+operator only enables Gateway API support for CRDs present when it starts. The
+bundle is the experimental channel, because Cilium before 1.20 needs TLSRoute
+<code>v1alpha2</code>, which the standard channel no longer serves. It also installs the
+<code>safe-upgrades.gateway.networking.k8s.io</code> admission policy, which rejects any
+Gateway API CRD older than the 1.5 line — delete that policy first if you ever
+have to roll the CRDs back.</p>
 <p>They used to be fetched from the upstream GitHub release URL on every <code>pulumi up</code>. One rate-limited fetch returned an HTML error page, which the YAML decoder
 parsed as a bare string, and the whole platform stack failed with <code>cannot unmarshal string into Go value of type map[string]interface{}</code> — an error that
 names nothing useful. Vendoring pins the CRDs in git like every other
@@ -1421,6 +1429,22 @@ certificate into that namespace by hand. See
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

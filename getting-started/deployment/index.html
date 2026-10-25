@@ -669,38 +669,23 @@
 <p>Wait for OpenBao to be running (but sealed) after Phase 1:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao</span><span style="color: #5A6673;font-style: italic;">   # wait for Running</span></span></code></pre><h3 id="2a-initialise-openbao-one-time">2a. Initialise OpenBao (one-time)</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-init</span></span></code></pre>
-<p>This generates the root token and unseal key and writes them to
-<code>/tmp/openbao-init.json</code>. It does <strong>not</strong> unseal OpenBao — that happens in 2c, once
-the key is in SOPS and the sidecar can read it.</p>
+<p>This initialises and unseals OpenBao, revokes the init root token straight away,
+and writes only the unseal key to <code>~/openbao-unseal-key</code> (mode 600). No root token
+is ever stored: later admin work mints a short-lived one from the unseal key.</p>
 <h3 id="2b-store-the-unseal-key-in-sops">2b. Store the unseal key in SOPS</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span>UNSEAL_KEY</span><span style="color: #F29668;">=</span><span>$(</span><span style="color: #59C2FF;">python3</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> &quot;import json; print(json.load(open(&#39;/tmp/openbao-init.json&#39;))[&#39;unseal_keys_b64&#39;][0])&quot;</span><span>)</span></span>
-<span class="giallo-l"><span style="color: #F07178;">echo</span><span style="color: #AAD94C;"> &quot;OPENBAO_UNSEAL_KEY: </span><span>$UNSEAL_KEY</span><span style="color: #AAD94C;">&quot;</span></span>
-<span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Add to SOPS (replaces the placeholder from Phase 0)</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">sops</span><span style="color: #AAD94C;"> secrets/bootstrap.sops.yaml</span></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># → update OPENBAO_UNSEAL_KEY with the value above</span></span></code></pre><h3 id="2c-update-the-bootstrap-secret">2c. Update the bootstrap secret</h3>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">sops</span><span style="color: #AAD94C;"> secrets/bootstrap.sops.yaml</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># → set OPENBAO_UNSEAL_KEY to the contents of ~/openbao-unseal-key</span></span></code></pre><h3 id="2c-update-the-bootstrap-secret">2c. Update the bootstrap secret</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> create-secrets</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> rollout restart statefulset/openbao</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao</span></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># The unseal sidecar reads the updated secret and unseals on startup</span></span></code></pre><h3 id="2d-configure-k8s-auth-policies-roles">2d. Configure K8s auth + policies + roles</h3>
+<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> delete pod</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #5A6673;font-style: italic;">   # StatefulSet is OnDelete</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">rm</span><span style="color: #AAD94C;"> ~/openbao-unseal-key</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># The unseal sidecar reads the updated secret and unseals on startup</span></span></code></pre><h3 id="2d-configure-k8s-auth-policies-roles-app-secrets">2d. Configure K8s auth + policies + roles + app secrets</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-setup</span></span></code></pre>
-<p>This enables Kubernetes auth, creates per-app policies and roles, and writes placeholder secrets at each path.</p>
-<h3 id="2e-write-real-app-secrets">2e. Write real app secrets</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Grafana — admin password + Authentik OAuth client secret (set OAUTH_CLIENT_SECRET after Phase 7)</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao kv put secret/grafana</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  ADMIN_PASSWORD=&quot;&lt;strong password&gt;&quot;</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  OAUTH_CLIENT_SECRET=&quot;placeholder&quot;</span></span>
-<span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Harbor</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao kv put secret/harbor</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  HARBOR_ADMIN_PASSWORD=&quot;&lt;strong password&gt;&quot;</span></span>
-<span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># N8n (DB password managed by CNPG — only encryption key needed)</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao kv put secret/n8n</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  N8N_ENCRYPTION_KEY=&quot;&lt;32-char random — record this, required on every rebuild&gt;&quot;</span></span>
-<span class="giallo-l"></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># NetBird — add the setup key after Phase 6</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao kv put secret/netbird</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  NETBIRD_SETUP_KEY=&quot;placeholder&quot;</span></span></code></pre>
+<p>This enables Kubernetes auth, creates per-app policies and roles, and seeds every
+key the apps read with a random value — Grafana's <code>OAUTH_CLIENT_SECRET</code> comes from
+<code>GRAFANA_OAUTH_CLIENT_SECRET</code> in SOPS. It is safe to re-run: keys that already
+exist are never overwritten, so n8n's <code>ENCRYPTION_KEY</code> stays stable.</p>
+<p><code>NETBIRD_SETUP_KEY</code> starts as a random placeholder; the real key is written in
+<a href="https://homelab.madhan.app/getting-started/deployment/#6c-write-k8s-routing-peer-setup-key-to-openbao">6c</a>.</p>
 <blockquote>
 <p>After writing secrets, Argo CD syncs and app pods start. Apps will become <code>Healthy</code> progressively as their CSI volumes mount.</p>
 </blockquote>
@@ -711,11 +696,13 @@ the key is in SOPS and the sidecar can read it.</p>
 <span class="giallo-l"></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Deploy/update Hetzner VPS + run bootstrap sequence</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> core hetzner up</span></span></code></pre><h3 id="what-just-core-hetzner-up-does">What <code>just core hetzner up</code> does</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>1. Reads SOPS secrets → writes .secrets.env and .env on laptop</span></span>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>1. Reads SOPS secrets → writes one env/&lt;container&gt;.env per consumer on laptop (mode 0600)</span></span>
 <span class="giallo-l"><span>2. Uploads entire ./cloud/bifrost/ directory to /etc/bifrost/ on VPS</span></span>
 <span class="giallo-l"><span>3. Runs bootstrap.sh on the VPS, which:</span></span>
 <span class="giallo-l"></span>
-<span class="giallo-l"><span>   Preflight      — validates 5 required secrets, waits for cloud-init</span></span>
+<span class="giallo-l"><span>   Preflight      — validates 7 required secrets, waits for cloud-init,</span></span>
+<span class="giallo-l"><span>                    deletes legacy .env/.secrets.env</span></span>
+<span class="giallo-l"><span>   harden_host()  — key-only SSH, fail2ban, unattended-upgrades</span></span>
 <span class="giallo-l"><span>   Step 1/5  traefik            → wait healthy (60s)</span></span>
 <span class="giallo-l"><span>   Step 2/5  authentik-postgres → wait healthy (120s)</span></span>
 <span class="giallo-l"><span>   Step 3/5  authentik-server   → wait healthy (300s)</span></span>
@@ -794,8 +781,11 @@ the key is in SOPS and the sidecar can read it.</p>
 <li><code>NB_BIFROST_SETUP_KEY</code> is set → <code>netbird-agent</code> connects to the mesh</li>
 </ul>
 <h3 id="6c-write-k8s-routing-peer-setup-key-to-openbao">6c. Write K8s routing peer setup key to OpenBao</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao kv patch secret/netbird</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  NETBIRD_SETUP_KEY=&quot;&lt;k8s-routing-peer key from step 6a&gt;&quot;</span></span></code></pre>
+<p>Values go through stdin, so neither the root token nor the secret lands in a process list:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #FF8F40;">export</span><span> ROOT_TOKEN</span><span style="color: #F29668;">=</span><span>$(</span><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-token</span><span>)</span></span>
+<span class="giallo-l"><span style="color: #F07178;">printf</span><span style="color: #AAD94C;"> &#39;%s\n%s&#39; &quot;</span><span>$ROOT_TOKEN</span><span style="color: #AAD94C;">&quot; &#39;&lt;k8s-routing-peer key from step 6a&gt;&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -i -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> openbao</span><span style="color: #95E6CB;"> -- \</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  sh</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> &#39;read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-&#39;</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-revoke</span></span></code></pre>
 <p>The <code>netbird-peer</code> StatefulSet CSI volume mounts the secret and the pod starts.</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get pods</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> netbird</span><span style="color: #5A6673;font-style: italic;">   # → netbird-peer-0 Running</span></span></code></pre><h3 id="6d-configure-the-lan-route">6d. Configure the LAN route</h3>
 <p>In the NetBird dashboard, <strong>Network → Routes → Add Route</strong>:</p>
@@ -814,7 +804,7 @@ the key is in SOPS and the sidecar can read it.</p>
 <tr><td>Name</td><td><code>Grafana</code></td></tr>
 <tr><td>Client type</td><td><code>Confidential</code></td></tr>
 <tr><td>Redirect URI</td><td><code>https://grafana.madhan.app/login/generic_oauth</code></td></tr>
-<tr><td>Scopes</td><td><code>openid</code>, <code>email</code>, <code>profile</code></td></tr>
+<tr><td>Scopes</td><td><code>openid</code>, <code>email</code>, <code>profile</code>, <code>groups</code></td></tr>
 </tbody></table>
 <p>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong>.</p>
 <h3 id="7b-create-application-in-authentik">7b. Create Application in Authentik</h3>
@@ -831,9 +821,15 @@ the key is in SOPS and the sidecar can read it.</p>
 Authentik provider with that same Client ID and there is nothing to change here. If
 you used a different one, update the Go value, then:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> synth</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #59C2FF;"> git</span><span style="color: #AAD94C;"> add</span><span style="color: #95E6CB;"> -A</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #59C2FF;"> git</span><span style="color: #AAD94C;"> commit</span><span style="color: #95E6CB;"> -m</span><span style="color: #AAD94C;"> &quot;feat: set Grafana Authentik client_id&quot;</span><span style="color: #BFBDB6B3;"> &amp;&amp;</span><span style="color: #59C2FF;"> git</span><span style="color: #AAD94C;"> push</span></span></code></pre><h3 id="7e-write-client-secret-to-openbao">7e. Write client secret to OpenBao</h3>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> --</span><span style="color: #AAD94C;"> bao kv patch secret/grafana</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">  OAUTH_CLIENT_SECRET=&quot;&lt;client-secret-from-7a&gt;&quot;</span></span></code></pre>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #FF8F40;">export</span><span> ROOT_TOKEN</span><span style="color: #F29668;">=</span><span>$(</span><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-token</span><span>)</span></span>
+<span class="giallo-l"><span style="color: #F07178;">printf</span><span style="color: #AAD94C;"> &#39;%s\n%s&#39; &quot;</span><span>$ROOT_TOKEN</span><span style="color: #AAD94C;">&quot; &#39;&lt;client-secret-from-7a&gt;&#39;</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> kubectl</span><span style="color: #AAD94C;"> exec</span><span style="color: #95E6CB;"> -i -n</span><span style="color: #AAD94C;"> openbao openbao-0</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> openbao</span><span style="color: #95E6CB;"> -- \</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">  sh</span><span style="color: #95E6CB;"> -c</span><span style="color: #AAD94C;"> &#39;read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret grafana OAUTH_CLIENT_SECRET=-&#39;</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-revoke</span></span></code></pre>
 <p>Grafana pod will start and SSO will work.</p>
+<h3 id="7f-create-grafana-s-public-org">7f. Create Grafana's Public org</h3>
+<p>Run once against the running Grafana, before Argo CD syncs the two-org config (Grafana will not start while provisioning references a missing org — on a fresh cluster, deploy it first without the org-2 settings):</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> grafana-init</span></span></code></pre>
+<p>See <a href="https://homelab.madhan.app/workloads/monitoring/grafana/#organizations">Grafana — Organizations</a>.</p>
 <hr />
 <h2 id="phase-8-publish-cdk8s-manifests">Phase 8 — Publish CDK8s Manifests</h2>
 <p><code>app/</code> is gitignored — manifests are never committed from a laptop. CI synthesizes
@@ -860,7 +856,7 @@ watches. Push your source change and let the pipeline run:</p>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Full browser flow</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 1. Open https://grafana.madhan.app</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 2. Redirected to Authentik → log in with GitHub</span></span>
-<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 3. Land on Grafana as Viewer (or Admin if in grafana-admins group)</span></span>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># 3. Land in Grafana&#39;s Public org as Viewer (or the main org as Admin if in grafana-admins)</span></span>
 <span class="giallo-l"></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># All apps healthy</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> get applications</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> argocd</span></span></code></pre>
@@ -870,17 +866,17 @@ watches. Push your source change and let the pipeline run:</p>
 <tr><td><code>HCLOUD_TOKEN</code></td><td>SOPS</td><td>Phase 0</td><td>Hetzner API access</td></tr>
 <tr><td><code>PROXMOX_PASSWORD</code></td><td>SOPS</td><td>Phase 0</td><td>Proxmox API access</td></tr>
 <tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>SOPS → k8s Secret <code>cert-manager/cloudflare-api-token</code></td><td>Phase 0</td><td>cert-manager + Traefik ACME</td></tr>
-<tr><td><code>AUTHENTIK_TOKEN</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td>Authentik akadmin API token</td></tr>
-<tr><td><code>AUTHENTIK_SECRET_KEY</code></td><td>SOPS → <code>.env</code></td><td>Phase 0</td><td>Django secret key</td></tr>
-<tr><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td><td>SOPS → <code>.env</code></td><td>Phase 0</td><td>Authentik Postgres</td></tr>
+<tr><td><code>AUTHENTIK_TOKEN</code></td><td>SOPS → <code>env/authentik-server.env</code></td><td>Phase 0</td><td>Authentik akadmin API token</td></tr>
+<tr><td><code>AUTHENTIK_SECRET_KEY</code></td><td>SOPS → <code>env/authentik-{server,worker}.env</code></td><td>Phase 0</td><td>Django secret key</td></tr>
+<tr><td><code>AUTHENTIK_POSTGRESQL_PASSWORD</code></td><td>SOPS → <code>env/authentik-{postgres,server,worker}.env</code></td><td>Phase 0</td><td>Authentik Postgres</td></tr>
 <tr><td><code>AUTHENTIK_GITHUB_SECRET</code></td><td>SOPS</td><td>Phase 0</td><td>GitHub OAuth app secret</td></tr>
-<tr><td><code>NB_DATA_STORE_KEY</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td><strong>Never rotate</strong></td></tr>
-<tr><td><code>NB_RELAY_SECRET</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td></td></tr>
-<tr><td><code>NB_OWNER_PASSWORD</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 0</td><td>Local admin for first NetBird login</td></tr>
+<tr><td><code>NB_DATA_STORE_KEY</code></td><td>SOPS → <code>env/bootstrap.env</code></td><td>Phase 0</td><td><strong>Never rotate</strong></td></tr>
+<tr><td><code>NB_RELAY_SECRET</code></td><td>SOPS → <code>env/bootstrap.env</code></td><td>Phase 0</td><td></td></tr>
+<tr><td><code>NB_OWNER_PASSWORD</code></td><td>SOPS → <code>env/bootstrap.env</code></td><td>Phase 0</td><td>Local admin for first NetBird login</td></tr>
 <tr><td><code>NETBIRD_CLIENT_SECRET</code></td><td>SOPS (used by Pulumi)</td><td>Phase 0</td><td>Dex→Authentik OIDC connector</td></tr>
 <tr><td><code>OPENBAO_UNSEAL_KEY</code></td><td>SOPS → k8s Secret <code>openbao/openbao-unseal-key</code></td><td>Phase 2</td><td>Generated by <code>just openbao-init</code></td></tr>
-<tr><td><code>NB_PROXY_TOKEN</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 6</td><td></td></tr>
-<tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td>SOPS → <code>.secrets.env</code></td><td>Phase 6</td><td></td></tr>
+<tr><td><code>NB_PROXY_TOKEN</code></td><td>SOPS → <code>env/netbird-proxy.env</code></td><td>Phase 6</td><td></td></tr>
+<tr><td><code>NB_BIFROST_SETUP_KEY</code></td><td>SOPS → <code>env/netbird-agent.env</code> (as <code>NB_SETUP_KEY</code>)</td><td>Phase 6</td><td></td></tr>
 <tr><td><code>ADMIN_PASSWORD</code> (Grafana)</td><td>OpenBao <code>secret/grafana</code></td><td>Phase 2</td><td></td></tr>
 <tr><td><code>OAUTH_CLIENT_SECRET</code> (Grafana)</td><td>OpenBao <code>secret/grafana</code></td><td>Phase 7</td><td>Authentik OIDC client secret</td></tr>
 <tr><td><code>HARBOR_ADMIN_PASSWORD</code></td><td>OpenBao <code>secret/harbor</code></td><td>Phase 2</td><td></td></tr>
@@ -1115,11 +1111,7 @@ watches. Push your source change and let the pipeline run:</p>
                                 </li>
                             
                                 <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#2d-configure-k8s-auth-policies-roles" class="toc-link">2d. Configure K8s auth + policies + roles</a>
-                                </li>
-                            
-                                <li>
-                                    <a href="https://homelab.madhan.app/getting-started/deployment/#2e-write-real-app-secrets" class="toc-link">2e. Write real app secrets</a>
+                                    <a href="https://homelab.madhan.app/getting-started/deployment/#2d-configure-k8s-auth-policies-roles-app-secrets" class="toc-link">2d. Configure K8s auth + policies + roles + app secrets</a>
                                 </li>
                             
                         </ul>
@@ -1230,6 +1222,10 @@ watches. Push your source change and let the pipeline run:</p>
                             
                                 <li>
                                     <a href="https://homelab.madhan.app/getting-started/deployment/#7e-write-client-secret-to-openbao" class="toc-link">7e. Write client secret to OpenBao</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/getting-started/deployment/#7f-create-grafana-s-public-org" class="toc-link">7f. Create Grafana&#x27;s Public org</a>
                                 </li>
                             
                         </ul>
@@ -1729,6 +1725,22 @@ watches. Push your source change and let the pipeline run:</p>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>

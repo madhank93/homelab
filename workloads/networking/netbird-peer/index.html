@@ -599,10 +599,10 @@
 <span class="giallo-l"><span>    │  WireGuard tunnel via relay</span></span>
 <span class="giallo-l"><span>    ↓</span></span>
 <span class="giallo-l"><span>netbird-peer-0 (any worker · wt0: 100.109.244.71)</span></span>
-<span class="giallo-l"><span>    │  kernel IP forward: wt0 → ens18</span></span>
+<span class="giallo-l"><span>    │  kernel IP forward: wt0 → LAN NIC</span></span>
 <span class="giallo-l"><span>    │  CILIUM_POST_nat MASQUERADE: src → &lt;worker node IP&gt;</span></span>
 <span class="giallo-l"><span>    ↓</span></span>
-<span class="giallo-l"><span>192.168.1.220 (Cilium Gateway · another node&#39;s ens18)</span></span>
+<span class="giallo-l"><span>192.168.1.220 (Cilium Gateway · another node&#39;s LAN NIC)</span></span>
 <span class="giallo-l"><span>    │  Cilium BPF L7LB DNAT → Envoy :13507</span></span>
 <span class="giallo-l"><span>    ↓</span></span>
 <span class="giallo-l"><span>Grafana / other cluster pod</span></span></code></pre>
@@ -642,17 +642,18 @@
 <hr />
 <h2 id="masquerade-initcontainer">MASQUERADE initContainer</h2>
 <p>The StatefulSet includes an <code>initContainer</code> that adds an iptables rule before the NetBird agent starts:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">iptables</span><span style="color: #95E6CB;"> -t</span><span style="color: #AAD94C;"> nat</span><span style="color: #95E6CB;"> -C</span><span style="color: #AAD94C;"> POSTROUTING</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> ens18</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> 192.168.1.0/24</span><span style="color: #95E6CB;"> -j</span><span style="color: #AAD94C;"> MASQUERADE</span><span style="color: #F29668;"> 2&gt;</span><span style="color: #AAD94C;">/dev/null</span><span style="color: #95E6CB;"> \</span></span>
-<span class="giallo-l"><span style="color: #F29668;">  ||</span><span style="color: #59C2FF;"> iptables</span><span style="color: #95E6CB;"> -t</span><span style="color: #AAD94C;"> nat</span><span style="color: #95E6CB;"> -A</span><span style="color: #AAD94C;"> POSTROUTING</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> ens18</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> 192.168.1.0/24</span><span style="color: #95E6CB;"> -j</span><span style="color: #AAD94C;"> MASQUERADE</span></span></code></pre>
-<p>The rule matches on the <strong>outbound interface</strong> (<code>-o ens18</code>), not a source range: anything
-leaving the node toward the cluster LAN is source-NAT'd to that node's own IP, so
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">iptables</span><span style="color: #95E6CB;"> -t</span><span style="color: #AAD94C;"> nat</span><span style="color: #95E6CB;"> -C</span><span style="color: #AAD94C;"> POSTROUTING !</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> wt0</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> 192.168.1.0/24</span><span style="color: #95E6CB;"> -j</span><span style="color: #AAD94C;"> MASQUERADE</span><span style="color: #F29668;"> 2&gt;</span><span style="color: #AAD94C;">/dev/null</span><span style="color: #95E6CB;"> \</span></span>
+<span class="giallo-l"><span style="color: #F29668;">  ||</span><span style="color: #59C2FF;"> iptables</span><span style="color: #95E6CB;"> -t</span><span style="color: #AAD94C;"> nat</span><span style="color: #95E6CB;"> -A</span><span style="color: #AAD94C;"> POSTROUTING !</span><span style="color: #95E6CB;"> -o</span><span style="color: #AAD94C;"> wt0</span><span style="color: #95E6CB;"> -d</span><span style="color: #AAD94C;"> 192.168.1.0/24</span><span style="color: #95E6CB;"> -j</span><span style="color: #AAD94C;"> MASQUERADE</span></span></code></pre>
+<p>The rule matches on the <strong>outbound interface</strong> (<code>! -o wt0</code>), not a source range or a
+NIC name — the LAN NIC is <code>ens18</code> or <code>eth0</code> depending on Talos interface naming. Anything
+leaving the node toward the cluster LAN, other than back out the tunnel, is source-NAT'd to that node's own IP, so
 replies come back via normal LAN routing instead of trying to find the WireGuard
 overlay. The <code>-C</code> check makes it idempotent across pod restarts.</p>
 <p>In practice the actual NAT is performed by Cilium's <code>CILIUM_POST_nat</code> BPF chain, not the raw iptables rule. Both coexist without conflict.</p>
 <hr />
 <h2 id="cilium-constraint-wt0-must-not-be-in-devices">Cilium Constraint — wt0 Must NOT Be in Devices</h2>
 <p>Do <strong>not</strong> add <code>wt0</code> to Cilium's <code>devices</code> list in <code>core/platform/cilium.go</code>. WireGuard interfaces are <code>NOARP/POINTOPOINT</code> with no Ethernet header — Cilium's <code>cil_from_netdev</code> TC BPF silently drops all packets without monitor events, breaking all traffic from Bifrost.</p>
-<p><code>wt0</code> must never appear in Cilium <code>devices</code>. Traffic from <code>wt0</code> reaches Cilium BPF via the node's <code>ens18</code> after kernel IP forwarding and MASQUERADE. See <a href="/architecture/network-flow/#why-wt0-is-not-in-cilium-devices">Network Flow — Why wt0 is NOT in Cilium Devices</a>.</p>
+<p><code>wt0</code> must never appear in Cilium <code>devices</code>. Traffic from <code>wt0</code> reaches Cilium BPF via the node's LAN NIC after kernel IP forwarding and MASQUERADE. See <a href="/architecture/network-flow/#why-wt0-is-not-in-cilium-devices">Network Flow — Why wt0 is NOT in Cilium Devices</a>.</p>
 <hr />
 <h2 id="route-configuration">Route Configuration</h2>
 <p>The peer registers in NetBird but does <strong>not</strong> automatically advertise routes. Routes must be configured in the NetBird Management UI:</p>
@@ -722,7 +723,8 @@ fwmark, so management traffic loops back through the WireGuard tunnel and the
 relay connection never establishes.</p>
 <h3 id="netbird-agent-not-running-on-bifrost">netbird-agent not running on Bifrost</h3>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">ssh</span><span style="color: #AAD94C;"> root@178.156.199.250 &#39;docker ps | grep netbird-agent&#39;</span></span>
-<span class="giallo-l"><span style="color: #59C2FF;">ssh</span><span style="color: #AAD94C;"> root@178.156.199.250 &#39;NB_BIFROST_SETUP_KEY=$(grep NB_BIFROST_SETUP_KEY /etc/bifrost/.secrets.env | cut -d= -f2) docker compose -f /etc/bifrost/docker-compose.yml up -d netbird-agent&#39;</span></span></code></pre><h3 id="masquerade-rule-not-taking-effect">MASQUERADE rule not taking effect</h3>
+<span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># netbird-agent reads NB_SETUP_KEY from /etc/bifrost/env/netbird-agent.env</span></span>
+<span class="giallo-l"><span style="color: #59C2FF;">ssh</span><span style="color: #AAD94C;"> root@178.156.199.250 &#39;docker compose -f /etc/bifrost/docker-compose.yml up -d netbird-agent&#39;</span></span></code></pre><h3 id="masquerade-rule-not-taking-effect">MASQUERADE rule not taking effect</h3>
 <p>The iptables MASQUERADE rule requires the pod to have <code>NET_ADMIN</code> capability. Check the initContainer ran:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #AAD94C;"> describe pod</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> netbird netbird-peer-0</span><span style="color: #F29668;"> |</span><span style="color: #59C2FF;"> grep</span><span style="color: #95E6CB;"> -A5</span><span style="color: #AAD94C;"> &quot;Init Containers&quot;</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># setup-iptables should show: State: Terminated, Reason: Completed</span></span>
@@ -1427,6 +1429,22 @@ relay connection never establishes.</p>
                                                 
                                                 
                                                     <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/support/reloader">Reloader</a></li>
+                                                
+                                                
+                                            </ul>
+                                        </details>
+                                    
+                                </li>
+                            
+                                
+                                <li>
+                                    
+                                        <details open>
+                                            <summary ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming">Gaming</a></summary>
+                                            <ul>
+                                                
+                                                
+                                                    <li ><a class="hover:no-underline" href="https://homelab.madhan.app/workloads/gaming/cs2">Counter-Strike 2</a></li>
                                                 
                                                 
                                             </ul>
