@@ -14,13 +14,16 @@ GITLEAKS=ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a6
 TRUFFLEHOG=trufflesecurity/trufflehog:3.99.2@sha256:47a84bc18a0d04a165498bbbd3bacfd84176661cbc91f8e0f85467f6a771e99a
 
 repo=$(git rev-parse --show-toplevel)
+# In a worktree, .git is a file pointing into the main repo's git dir; mount that
+# at its own path too, or the scanners see no repository.
+common=$(git rev-parse --path-format=absolute --git-common-dir)
 
 if ! docker info >/dev/null 2>&1; then
   echo "secret-scan: Docker is not running; start it or skip once with --no-verify." >&2
   exit 1
 fi
 
-run() { docker run --rm -v "$repo:/repo" -w /repo "$@"; }
+run() { docker run --rm -v "$repo:/repo" -v "$common:$common" -w /repo "$@"; }
 
 gitleaks() { run "$GITLEAKS" git --no-banner --redact "$@" /repo; }
 
