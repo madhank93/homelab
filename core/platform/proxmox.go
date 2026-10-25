@@ -3,9 +3,8 @@ package platform
 import (
 	"fmt"
 
-	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve"
-	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/download"
-	"github.com/muhlba91/pulumi-proxmoxve/sdk/v7/go/proxmoxve/vm"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve/download"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/madhank93/homelab/config"
@@ -45,8 +44,8 @@ func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, error) {
 //     re-downloads — eliminating the "refusing to override existing file" error.
 //   - OverwriteUnmanaged: safety net for files that exist on Proxmox but were never
 //     in Pulumi state (e.g. manually uploaded files with the same name).
-func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceName, nodeName, url, fileName, compression string) (*download.File, error) {
-	return download.NewFile(ctx, resourceName, &download.FileArgs{
+func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceName, nodeName, url, fileName, compression string) (*download.FileLegacy, error) {
+	return download.NewFileLegacy(ctx, resourceName, &download.FileLegacyArgs{
 		ContentType:            pulumi.String("iso"),
 		DatastoreId:            pulumi.String("local"),
 		NodeName:               pulumi.String(nodeName),
@@ -57,6 +56,8 @@ func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceNa
 		OverwriteUnmanaged:     pulumi.Bool(true),
 	},
 		pulumi.Provider(provider),
+		// v8 renamed the type token without an SDK alias; keeps v7 URNs.
+		pulumi.Aliases([]pulumi.Alias{{Type: pulumi.String("proxmoxve:Download/file:File")}}),
 		pulumi.IgnoreChanges([]string{"fileName"}),
 		pulumi.DeleteBeforeReplace(true),
 	)
@@ -66,8 +67,8 @@ func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceNa
 // It uses OVMF BIOS + q35 machine type, virtio-scsi-single, and an EFI disk.
 // Each of the node's PcieIDs becomes a PCIe passthrough device with Xvga=false
 // (compute-only; no VGA BAR constraints).
-func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string, node config.Node, imageID pulumi.IDInput) (*vm.VirtualMachine, error) {
-	diskArgs := vm.VirtualMachineDiskArgs{
+func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string, node config.Node, imageID pulumi.IDInput) (*proxmoxve.VmLegacy, error) {
+	diskArgs := proxmoxve.VmLegacyDiskArgs{
 		Size:        pulumi.Int(node.Disk),
 		Interface:   pulumi.String("scsi0"),
 		Iothread:    pulumi.Bool(true),
@@ -76,29 +77,29 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 		DatastoreId: pulumi.String("local-lvm"),
 	}
 
-	args := &vm.VirtualMachineArgs{
+	args := &proxmoxve.VmLegacyArgs{
 		NodeName: pulumi.String(nodeName),
 		Name:     pulumi.String(node.Name),
-		Agent:    vm.VirtualMachineAgentArgs{Enabled: pulumi.Bool(true)},
-		Cpu: &vm.VirtualMachineCpuArgs{
+		Agent:    proxmoxve.VmLegacyAgentArgs{Enabled: pulumi.Bool(true)},
+		Cpu: &proxmoxve.VmLegacyCpuArgs{
 			Cores: pulumi.Int(node.Cores),
 			Type:  pulumi.String("host"),
 			Units: pulumi.Int(node.CPUUnits), // CPU Weight
 		},
-		Memory: &vm.VirtualMachineMemoryArgs{
+		Memory: &proxmoxve.VmLegacyMemoryArgs{
 			Dedicated: pulumi.Int(node.Memory),
 			Shared:    pulumi.Int(node.Balloon), // Balloon Minimum (Guaranteed)
 		},
-		Disks: &vm.VirtualMachineDiskArray{
+		Disks: &proxmoxve.VmLegacyDiskArray{
 			diskArgs,
 		},
 		BootOrders:   pulumi.StringArray{pulumi.String("scsi0")},
 		ScsiHardware: pulumi.String("virtio-scsi-single"),
-		OperatingSystem: vm.VirtualMachineOperatingSystemArgs{
+		OperatingSystem: proxmoxve.VmLegacyOperatingSystemArgs{
 			Type: pulumi.String("l26"), // Linux 2.6+
 		},
-		NetworkDevices: vm.VirtualMachineNetworkDeviceArray{
-			vm.VirtualMachineNetworkDeviceArgs{
+		NetworkDevices: proxmoxve.VmLegacyNetworkDeviceArray{
+			proxmoxve.VmLegacyNetworkDeviceArgs{
 				Model:  pulumi.String("virtio"),
 				Bridge: pulumi.String("vmbr0"),
 			},
@@ -106,7 +107,7 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 		OnBoot:  pulumi.Bool(true),
 		Bios:    pulumi.String("ovmf"),
 		Machine: pulumi.String("q35"),
-		EfiDisk: &vm.VirtualMachineEfiDiskArgs{
+		EfiDisk: &proxmoxve.VmLegacyEfiDiskArgs{
 			DatastoreId: pulumi.String("local-lvm"),
 			FileFormat:  pulumi.String("raw"),
 			Type:        pulumi.String("4m"),
@@ -114,9 +115,9 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 	}
 
 	if node.HasGPU() {
-		var hostpcis vm.VirtualMachineHostpciArray
+		var hostpcis proxmoxve.VmLegacyHostpciArray
 		for i, pcieID := range node.PcieIDs {
-			hostpcis = append(hostpcis, vm.VirtualMachineHostpciArgs{
+			hostpcis = append(hostpcis, proxmoxve.VmLegacyHostpciArgs{
 				Device: pulumi.String(fmt.Sprintf("hostpci%d", i)),
 				Pcie:   pulumi.Bool(true),
 				Id:     pulumi.String(pcieID),
@@ -130,8 +131,10 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 
 	// Prevent accidental VM replacement; controllers are etcd members.
 	// Unprotect explicitly for intentional rebuilds.
-	return vm.NewVirtualMachine(ctx, node.Name, args,
+	return proxmoxve.NewVmLegacy(ctx, node.Name, args,
 		pulumi.Provider(provider),
 		pulumi.Protect(true),
+		// v8 renamed the type token without an SDK alias; keeps v7 URNs.
+		pulumi.Aliases([]pulumi.Alias{{Type: pulumi.String("proxmoxve:VM/virtualMachine:VirtualMachine")}}),
 	)
 }
