@@ -598,7 +598,7 @@
 <tr><td><strong>Pattern A / Pattern B</strong></td><td>The two ways a pod consumes an OpenBao secret. A mounts it as a file only; B additionally syncs a Kubernetes Secret. Defined in <a href="https://homelab.madhan.app/platform/secrets/">Secrets</a></td></tr>
 <tr><td><strong>ForwardAuth</strong></td><td>Traefik middleware that asks Authentik whether a request is authenticated before proxying it. Public services either use it or handle their own auth</td></tr>
 <tr><td><strong>schematic</strong></td><td>A Talos image built by factory.talos.dev with a specific set of system extensions. This cluster uses two: a base one and a GPU one</td></tr>
-<tr><td><strong>manifests branch</strong></td><td><code>v0.1.7-manifests</code>. CI synthesizes CDK8s output and force-pushes it there; Argo CD watches it. Never edited by hand</td></tr>
+<tr><td><strong>manifests branch</strong></td><td><code>v0.1.8-manifests</code>. CI synthesizes CDK8s output and force-pushes it there; Argo CD watches it. Never edited by hand</td></tr>
 <tr><td><strong>share-manager</strong></td><td>The NFS server pod Longhorn starts for each RWX volume, letting several pods attach at once</td></tr>
 <tr><td><strong>VMAgent / VMAlert / VMSingle</strong></td><td>VictoriaMetrics components: the scraper, the rule evaluator, and the single-node store. This cluster does not run cluster mode</td></tr>
 <tr><td><strong>time-slicing</strong></td><td>Splitting one physical GPU into several schedulable <code>nvidia.com/gpu</code> units. It divides compute time, <strong>not</strong> VRAM — see <a href="https://homelab.madhan.app/hardware/gpu/#sharing-the-16-gb-of-vram">GPU</a></td></tr>
@@ -858,7 +858,7 @@
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+            <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
 
             
@@ -870,7 +870,7 @@
             
             
 
-            <li class="rounded bg-gray-500/15"><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
         
             

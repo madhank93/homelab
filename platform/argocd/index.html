@@ -595,7 +595,7 @@
 <h2 id="why-argo-cd">Why Argo CD?</h2>
 <p>GitOps with Argo CD ensures the cluster state is always derivable from code — there are no manual steps that can't be reproduced. Its ApplicationSet directory generator means adding a new workload requires only pushing a new directory to the manifests branch; no Argo CD config changes are needed.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>Argo CD is bootstrapped once by Pulumi (<code>core/platform/argocd.go</code>) and then self-manages via GitOps from the <code>v0.1.7-manifests</code> branch. A single <code>ApplicationSet</code> watches every top-level directory on that branch and creates one Application per directory, with <code>prune=true</code> and <code>selfHeal=true</code> enforcing git as the single source of truth.</p>
+<p>Argo CD is bootstrapped once by Pulumi (<code>core/platform/argocd.go</code>) and then self-manages via GitOps from the <code>v0.1.8-manifests</code> branch. A single <code>ApplicationSet</code> watches every top-level directory on that branch and creates one Application per directory, with <code>prune=true</code> and <code>selfHeal=true</code> enforcing git as the single source of truth.</p>
 <p><strong>Code:</strong> 
 <a href="https:&#x2F;&#x2F;github.com&#x2F;madhank93&#x2F;homelab/blob/v0.1.7/core&#x2F;platform&#x2F;argocd.go"><code>core&#x2F;platform&#x2F;argocd.go</code></a>
  · <strong>Namespace:</strong> <code>argocd</code> · <strong>Versions:</strong> <a href="https://homelab.madhan.app/architecture/software-inventory/">Software Inventory</a></p>
@@ -618,7 +618,7 @@
 <span class="giallo-l"><span>        },</span></span>
 <span class="giallo-l"><span>    },</span></span>
 <span class="giallo-l"><span>})</span></span></code></pre><h2 id="applicationset">ApplicationSet</h2>
-<p>One <code>ApplicationSet</code> named <code>cots-applications</code> watches the <code>v0.1.7-manifests</code> branch. Every top-level directory automatically becomes an Argo CD Application:</p>
+<p>One <code>ApplicationSet</code> named <code>cots-applications</code> watches the <code>v0.1.8-manifests</code> branch. Every top-level directory automatically becomes an Argo CD Application:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">apiVersion</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> argoproj.io/v1alpha1</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">kind</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> ApplicationSet</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">metadata</span><span style="color: #BFBDB6B3;">:</span></span>
@@ -628,7 +628,7 @@
 <span class="giallo-l"><span style="color: #39BAE6;">  generators</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span>    -</span><span style="color: #39BAE6;"> git</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">        repoURL</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> https://github.com/madhank93/homelab.git</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">        revision</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> v0.1.7-manifests</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">        revision</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> v0.1.8-manifests</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">        directories</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span>          -</span><span style="color: #39BAE6;"> path</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &quot;*&quot;</span><span style="color: #5A6673;font-style: italic;">      # Every top-level directory = one Application</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">  template</span><span style="color: #BFBDB6B3;">:</span></span>
@@ -638,7 +638,7 @@
 <span class="giallo-l"><span style="color: #39BAE6;">      project</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> default</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">      source</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">        repoURL</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> https://github.com/madhank93/homelab.git</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">        targetRevision</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> v0.1.7-manifests</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">        targetRevision</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> v0.1.8-manifests</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">        path</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &quot;{{path}}&quot;</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">      destination</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">        server</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> https://kubernetes.default.svc</span></span>
@@ -1003,7 +1003,7 @@ is nothing for a passthrough route to attach to.</p>
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
 
             
@@ -1015,7 +1015,7 @@ is nothing for a passthrough route to attach to.</p>
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
         
             

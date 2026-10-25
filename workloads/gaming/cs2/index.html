@@ -613,9 +613,46 @@ Change the <code>CS2_*</code> env in <code>cs2.go</code>.</li>
 <p><code>RCON_PASSWORD</code> and <code>JOIN_PASSWORD</code> live in OpenBao at <code>secret/cs2</code>, seeded by
 <code>just openbao-setup</code> and mirrored into the <code>cs2-secrets</code> Secret by the CSI
 driver. Read the join password to hand out:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-get secret/cs2 JOIN_PASSWORD</span></span></code></pre><h2 id="playing">Playing</h2>
-<p>From the CS2 console (enable it under Settings → Game → Enable Developer Console):</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>connect 192.168.1.230; password &lt;JOIN_PASSWORD&gt;</span></span></code></pre><h2 id="updating-the-game">Updating the game</h2>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> openbao-get secret/cs2 JOIN_PASSWORD</span></span></code></pre><h2 id="player-setup">Player setup</h2>
+<p>The server is LAN only: players must be on the home network (a <code>192.168.1.x</code>
+address). Wi-Fi works; wired is steadier.</p>
+<ol>
+<li>
+<p><strong>Install Steam</strong> from <a rel="external" href="https://store.steampowered.com/about/">store.steampowered.com</a>
+and sign in (a free account is enough).</p>
+</li>
+<li>
+<p><strong>Install CS2.</strong> Search <em>Counter-Strike 2</em> in the Steam store and click
+<em>Play Game</em>. It is free to play; Steam asks for ~85 GB of free disk space.</p>
+</li>
+<li>
+<p><strong>Launch it once</strong> and finish the intro so the game writes its settings.</p>
+</li>
+<li>
+<p><strong>Enable the console:</strong> Settings → Game → <em>Enable Developer Console</em> → Yes.
+Press <kbd>~</kbd> (the key under <kbd>Esc</kbd>) to open it.</p>
+</li>
+<li>
+<p><strong>Join</strong> with the password from the host:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>connect 192.168.1.230; password &lt;JOIN_PASSWORD&gt;</span></span></code></pre></li>
+</ol>
+<p>If the connect times out, check that the PC is on the home network rather than
+a guest network or VPN.</p>
+<h3 id="low-spec-pcs">Low-spec PCs</h3>
+<p>CS2 needs 4 CPU threads, 8 GB RAM and a DirectX 11 GPU. Laptops on integrated
+graphics (e.g. Intel UHD 620) run it at roughly 20–35 FPS; to get the most out
+of one:</p>
+<ul>
+<li>Plug in the charger and set Windows power mode to <em>Best performance</em>.</li>
+<li>Run RAM in dual channel (two sticks) — the biggest gain for integrated graphics.</li>
+<li>Install the latest GPU driver from the vendor (Intel, AMD or NVIDIA).</li>
+<li>In Video settings: 1280×720 or 1024×768, every option on lowest, and
+FidelityFX Super Resolution on <em>Performance</em>.</li>
+<li>On laptops with a dedicated GPU, set <code>cs2.exe</code> to <em>High performance</em> under
+Windows Settings → System → Display → Graphics.</li>
+<li>Close the browser and overlays before playing.</li>
+</ul>
+<h2 id="updating-the-game">Updating the game</h2>
 <p>A CS2 patch only needs a restart; the container updates before it starts:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> cs2 rollout restart deployment/cs2</span></span></code></pre>
 
@@ -780,7 +817,18 @@ driver. Read the join password to hand out:</p>
             
                 <li>
                     
-                    <a href="https://homelab.madhan.app/workloads/gaming/cs2/#playing" class="toc-link">Playing</a>
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/workloads/gaming/cs2/#player-setup" class="toc-link">Player setup</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/workloads/gaming/cs2/#low-spec-pcs" class="toc-link">Low-spec PCs</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
                     
                 </li>
             
@@ -901,7 +949,7 @@ driver. Read the join password to hand out:</p>
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
 
             
@@ -913,7 +961,7 @@ driver. Read the join password to hand out:</p>
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
         
             

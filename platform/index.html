@@ -614,7 +614,7 @@
 <h2 id="gitops-layer">GitOps Layer</h2>
 <ul>
 <li><strong>No secrets in git</strong> — CDK8s generates zero <code>Secret</code> resources. Bootstrap secrets are created by <code>just create-secrets</code> from a laptop.</li>
-<li><strong>Manifests are generated, not hand-written</strong> — The <code>v0.1.7-manifests</code> branch is machine-generated YAML. Never edit it by hand.</li>
+<li><strong>Manifests are generated, not hand-written</strong> — The <code>v0.1.8-manifests</code> branch is machine-generated YAML. Never edit it by hand.</li>
 <li><strong>One CDK8s app per Argo CD Application</strong> — Each <code>main.go</code> entry writes to a separate <code>app/&lt;name&gt;/</code> directory, which becomes one Argo CD Application.</li>
 <li><strong>Argo CD is the single source of truth</strong> — All drift is auto-corrected (<code>selfHeal: true</code>), all removed resources are pruned (<code>prune: true</code>).</li>
 <li><strong>The chart pins the version; never float a tag</strong> — Every Helm release carries an explicit chart version, and any image tag we set is pinned. <code>latest</code> is never used.</li>
@@ -892,7 +892,7 @@ between the two is nothing but the image tag. Both numbers are in the
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
 
             
@@ -904,7 +904,7 @@ between the two is nothing but the image tag. Both numbers are in the
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
         
             

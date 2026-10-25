@@ -601,7 +601,7 @@
 </tbody></table>
 <p>CDK8s enables Go functions to generate manifests, making it easy to share patterns (like the OpenBao CSI volume + SecretProviderClass pattern) across all apps without duplicating YAML.</p>
 <h2 id="how-it-s-used-here">How It's Used Here</h2>
-<p>All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in <code>workloads/</code>. A CI pipeline runs <code>go run .</code> on every push to synthesize YAML into <code>app/</code> and force-pushes that output to the <code>v0.1.7-manifests</code> branch, which Argo CD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero <code>Secret</code> resources.</p>
+<p>All workloads — Helm releases, CRDs, HTTPRoutes, SecretProviderClasses — are defined as Go structs in <code>workloads/</code>. A CI pipeline runs <code>go run .</code> on every push to synthesize YAML into <code>app/</code> and force-pushes that output to the <code>v0.1.8-manifests</code> branch, which Argo CD watches. No Kubernetes credentials are needed in CI because CDK8s generates zero <code>Secret</code> resources.</p>
 <h2 id="structure">Structure</h2>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>workloads/</span></span>
 <span class="giallo-l"><span>├── main.go              # Entrypoint — one CDK8s App per workload</span></span>
@@ -646,14 +646,14 @@
 <li>Checkout source</li>
 <li>Set up Go</li>
 <li><code>go run .</code> — synthesizes all manifests to <code>app/</code></li>
-<li>Force-pushes <code>app/</code> content to <code>${branch}-manifests</code> branch (e.g. <code>v0.1.7-manifests</code>)</li>
+<li>Force-pushes <code>app/</code> content to <code>${branch}-manifests</code> branch (e.g. <code>v0.1.8-manifests</code>)</li>
 </ol>
-<p>The manifests branch is the Argo CD source. Argo CD's <code>ApplicationSet</code> directory generator watches every top-level directory in <code>v0.1.7-manifests</code> and creates an Application for each.</p>
+<p>The manifests branch is the Argo CD source. Argo CD's <code>ApplicationSet</code> directory generator watches every top-level directory in <code>v0.1.8-manifests</code> and creates an Application for each.</p>
 <h2 id="synthesis-flow">Synthesis Flow</h2>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>workloads/main.go (Go source)</span></span>
 <span class="giallo-l"><span>  → cdk8s.Synth()</span></span>
 <span class="giallo-l"><span>  → YAML files per resource in app/&lt;workload&gt;/</span></span>
-<span class="giallo-l"><span>  → CI pushes to v0.1.7-manifests branch</span></span>
+<span class="giallo-l"><span>  → CI pushes to v0.1.8-manifests branch</span></span>
 <span class="giallo-l"><span>  → Argo CD detects new/changed directories</span></span>
 <span class="giallo-l"><span>  → Argo CD syncs to cluster</span></span></code></pre><h2 id="no-secrets-in-generated-manifests">No Secrets in Generated Manifests</h2>
 <p>CDK8s never generates <code>Secret</code> resources. The CI pipeline requires <strong>zero GitHub Actions secrets</strong>.</p>
@@ -941,7 +941,7 @@
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
 
             
@@ -953,7 +953,7 @@
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
         
             

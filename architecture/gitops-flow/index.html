@@ -619,7 +619,7 @@
     subgraph GITHUB[&quot;GitHub&quot;]
         REPO[&quot;main branch&lt;br&#x2F;&gt;code changes&quot;]
         CI[&quot;GitHub Actions&lt;br&#x2F;&gt;CDK8s publish workflow&quot;]
-        MBRANCH[&quot;v0.1.7-manifests branch&lt;br&#x2F;&gt;app&#x2F;*&#x2F;  (synthesized manifests)&quot;]
+        MBRANCH[&quot;v0.1.8-manifests branch&lt;br&#x2F;&gt;app&#x2F;*&#x2F;  (synthesized manifests)&quot;]
     end
 
     subgraph CLUSTER[&quot;Kubernetes Cluster&quot;]
@@ -706,12 +706,12 @@
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># Local synthesis (run from repo root)</span></span>
 <span class="giallo-l"><span style="color: #59C2FF;">just</span><span style="color: #AAD94C;"> synth</span></span>
 <span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># → cd workloads &amp;&amp; go run . → writes to ../app/</span></span></code></pre>
-<p>In CI, a GitHub Actions workflow runs <code>go run .</code> and pushes the output to the <code>v0.1.7-manifests</code> branch:</p>
+<p>In CI, a GitHub Actions workflow runs <code>go run .</code> and pushes the output to the <code>v0.1.8-manifests</code> branch:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #5A6673;font-style: italic;"># .github/workflows/publish.yml (simplified)</span></span>
 <span class="giallo-l"><span>-</span><span style="color: #39BAE6;"> run</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> go run .</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">  working-directory</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> workloads</span></span>
 <span class="giallo-l"><span>-</span><span style="color: #39BAE6;"> run</span><span style="color: #BFBDB6B3;">:</span><span style="color: #FF8F40;"> |</span></span>
-<span class="giallo-l"><span style="color: #AAD94C;">    git checkout v0.1.7-manifests</span></span>
+<span class="giallo-l"><span style="color: #AAD94C;">    git checkout v0.1.8-manifests</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    cp -r app/* .</span></span>
 <span class="giallo-l"><span style="color: #AAD94C;">    git add . &amp;&amp; git commit -m &quot;chore: Synthesize manifests&quot; &amp;&amp; git push</span></span></code></pre><h3 id="adding-a-new-workload-app">Adding a new workload app</h3>
 <ol>
@@ -726,7 +726,7 @@
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="yaml"><span class="giallo-l"><span style="color: #39BAE6;">generators</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span>  -</span><span style="color: #39BAE6;"> git</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">      repoURL</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> https://github.com/madhank93/homelab.git</span></span>
-<span class="giallo-l"><span style="color: #39BAE6;">      revision</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> v0.1.7-manifests</span></span>
+<span class="giallo-l"><span style="color: #39BAE6;">      revision</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> v0.1.8-manifests</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">      directories</span><span style="color: #BFBDB6B3;">:</span></span>
 <span class="giallo-l"><span>        -</span><span style="color: #39BAE6;"> path</span><span style="color: #BFBDB6B3;">:</span><span style="color: #AAD94C;"> &quot;*&quot;</span></span>
 <span class="giallo-l"><span style="color: #39BAE6;">template</span><span style="color: #BFBDB6B3;">:</span></span>
@@ -1008,7 +1008,7 @@
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
 
             
@@ -1020,7 +1020,7 @@
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
         
             
