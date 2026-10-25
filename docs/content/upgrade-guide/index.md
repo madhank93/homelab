@@ -94,7 +94,7 @@ kubernetes: {version: X.Y.Z}
 
 **Rules:**
 - Upgrade one minor version at a time (1.12 → 1.13, not 1.12 → 1.15)
-- Workers first, then control planes one at a time, then the GPU worker last — verify health between nodes
+- Control planes first, one at a time, then workers, then the GPU worker last — verify health between nodes. Talos upgrades both roles the same way and leaves Kubernetes alone; `just talos-upgrade-k8s` orders the Kubernetes rollout itself
 - Schematic IDs hash only the extension list, so they survive a version bump; check that every extension still exists for the new release: `curl -s https://factory.talos.dev/version/vX.Y.Z/extensions/official | jq -r '.[].name'`
 - Kubernetes is pinned on its own line and must stay inside Cilium's supported range; when it moves a minor, update `k8s@X.Y.Z` in `workloads/cdk8s.yaml` and re-run `cdk8s import`
 - Never lower `talos.version` and run `just core talos up`: the provider regenerates the cluster secrets on a downgrade (the resource is protected, so the run fails instead)
@@ -163,16 +163,16 @@ after a node is already back). Then, one node at a time:
 just talos-versions                         # every node on 1.13.x
 just talos-health
 
+# Control planes, one at a time. Talos refuses an upgrade that breaks quorum.
+just talos-upgrade 192.168.1.211
+just talos-upgrade 192.168.1.212
+just talos-upgrade 192.168.1.213
+
 # Workers. Start with one and prove Longhorn attaches there before the rest.
 # worker1 runs the NetBird routing peer: public traffic drops while it reboots.
 just talos-upgrade 192.168.1.223
 just talos-upgrade 192.168.1.222
 just talos-upgrade 192.168.1.221
-
-# Control planes, one at a time. Talos refuses an upgrade that breaks quorum.
-just talos-upgrade 192.168.1.211
-just talos-upgrade 192.168.1.212
-just talos-upgrade 192.168.1.213
 
 # GPU worker last: new NVIDIA driver build, and its PDBs need drain=false.
 just talos-upgrade 192.168.1.224 gpu false

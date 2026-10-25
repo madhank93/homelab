@@ -195,7 +195,7 @@ ping_scan:
     nmap -sn {{SUBNET}}
 
 # Upgrade one running Talos node.
-# Upgrade workers first, then controllers one at a time, then the GPU worker
+# Upgrade controllers one at a time first, then workers, then the GPU worker
 # last; verify cluster health between nodes.
 #
 # Never pass --preserve: it forces the deprecated MachineService.Upgrade path,
