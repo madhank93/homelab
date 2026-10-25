@@ -287,7 +287,9 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 	}
 
 	// cilium.io/v2 is served from Cilium 1.18; v2alpha1 is deprecated from 1.19.
-	// Pulumi updates apiVersion in place, so the pool and its allocations survive.
+	// The apiVersion is part of the Pulumi type, so without the alias a version
+	// change plans create-v2 + delete-v2alpha1 of the same object, deleting the
+	// pool and releasing every LoadBalancer IP.
 	_, err = apiextensions.NewCustomResource(ctx, "cilium-ip-pool", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("cilium.io/v2"),
 		Kind:       pulumi.String("CiliumLoadBalancerIPPool"),
@@ -299,7 +301,8 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 				"blocks": blocks,
 			},
 		},
-	}, pulumi.Provider(k8sProvider))
+	}, pulumi.Provider(k8sProvider),
+		pulumi.Aliases([]pulumi.Alias{{Type: pulumi.String("kubernetes:cilium.io/v2alpha1:CiliumLoadBalancerIPPool")}}))
 	if err != nil {
 		return err
 	}
