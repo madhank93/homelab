@@ -56,8 +56,6 @@ func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceNa
 		OverwriteUnmanaged:     pulumi.Bool(true),
 	},
 		pulumi.Provider(provider),
-		// v8 renamed the type token without an SDK alias; keeps v7 URNs.
-		pulumi.Aliases([]pulumi.Alias{{Type: pulumi.String("proxmoxve:Download/file:File")}}),
 		pulumi.IgnoreChanges([]string{"fileName"}),
 		pulumi.DeleteBeforeReplace(true),
 	)
@@ -104,9 +102,12 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 				Bridge: pulumi.String("vmbr0"),
 			},
 		},
-		OnBoot:  pulumi.Bool(true),
-		Bios:    pulumi.String("ovmf"),
-		Machine: pulumi.String("q35"),
+		OnBoot: pulumi.Bool(true),
+		// Nodes reboot only through talosctl, one at a time; a config update must
+		// never restart every VM at once.
+		RebootAfterUpdate: pulumi.Bool(false),
+		Bios:              pulumi.String("ovmf"),
+		Machine:           pulumi.String("q35"),
 		EfiDisk: &proxmoxve.VmLegacyEfiDiskArgs{
 			DatastoreId: pulumi.String("local-lvm"),
 			FileFormat:  pulumi.String("raw"),
@@ -134,7 +135,8 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 	return proxmoxve.NewVmLegacy(ctx, node.Name, args,
 		pulumi.Provider(provider),
 		pulumi.Protect(true),
-		// v8 renamed the type token without an SDK alias; keeps v7 URNs.
-		pulumi.Aliases([]pulumi.Alias{{Type: pulumi.String("proxmoxve:VM/virtualMachine:VirtualMachine")}}),
+		// The image only seeds a new VM's disk; a newer image must not replace
+		// running nodes, which upgrade in place via `just talos-upgrade`.
+		pulumi.IgnoreChanges([]string{"disks[0].fileId"}),
 	)
 }
