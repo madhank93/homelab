@@ -1,6 +1,6 @@
 module github.com/madhank93/homelab/core
 
-go 1.26.6
+go 1.26.10
 
 replace github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2025 => ./sdks/authentik
 
