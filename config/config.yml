@@ -31,7 +31,7 @@ openbao_addr: http://openbao.openbao.svc.cluster.local:8200
 # Branch Argo CD syncs from; CI publishes synth output to it.
 manifests_branch: v0.1.7-manifests
 # true pauses Argo CD auto-sync; sync apps one at a time with `just argocd-sync <app>`.
-argocd_manual_sync: false
+argocd_manual_sync: true
 
 cloudflare:
   zone_id: ab8d029e91fb2bb38cb8bc91b9f0b218
