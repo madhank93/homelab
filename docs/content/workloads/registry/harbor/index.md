@@ -61,10 +61,10 @@ existingSecretAdminPassword: harbor-admin  # CSI-synced from OpenBao
 To rotate, change it in Harbor first, then write the same value to OpenBao (`secret/harbor`) so a rebuilt database seeds the same password:
 
 - UI: log in as admin, then **admin (top right) → Change Password**.
-- API (the admin user ID is 1):
+- API (the admin user ID is 1; curl prompts for the current password):
 
 ```bash
-curl -u admin:OLD -X PUT https://harbor.madhan.app/api/v2.0/users/1/password \
+curl -u admin -X PUT https://harbor.madhan.app/api/v2.0/users/1/password \
   -H 'Content-Type: application/json' \
   -d '{"old_password":"OLD","new_password":"NEW"}'
 ```
