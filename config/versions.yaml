@@ -34,4 +34,5 @@ images:
   netbird: {image: netbirdio/netbird, tag: 0.80.0}
   pause: {image: registry.k8s.io/pause, tag: "3.10"}
   otel-collector-contrib: {image: otel/opentelemetry-collector-contrib, tag: 0.162.0}
+  cs2: {image: joedwards32/cs2, tag: 5.0.0}
   comfyui: {image: yanwk/comfyui-boot, tag: cu130-megapak-pt211-20260812}

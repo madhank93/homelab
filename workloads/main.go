@@ -6,6 +6,7 @@ import (
 	"github.com/madhank93/homelab/workloads/ai"
 	"github.com/madhank93/homelab/workloads/automation"
 	"github.com/madhank93/homelab/workloads/databases"
+	"github.com/madhank93/homelab/workloads/gaming"
 	"github.com/madhank93/homelab/workloads/hardware"
 	"github.com/madhank93/homelab/workloads/management"
 	"github.com/madhank93/homelab/workloads/monitoring"
@@ -53,6 +54,7 @@ var apps = []struct {
 	{"netbird", func(a cdk8s.App) { networking.NewNetbirdPeerChart(a, "netbird-app", "netbird") }},
 	{"headlamp", func(a cdk8s.App) { management.NewHeadlampChart(a, "headlamp-app", "headlamp") }},
 	{"reloader", func(a cdk8s.App) { support.NewReloaderChart(a, "reloader-app", "reloader") }},
+	{"cs2", func(a cdk8s.App) { gaming.NewCS2Chart(a, "cs2-app", "cs2") }},
 	{"metrics-server", func(a cdk8s.App) { monitoring.NewMetricsServerChart(a, "metrics-server-app") }},
 }
 

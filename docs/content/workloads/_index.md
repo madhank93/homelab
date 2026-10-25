@@ -9,7 +9,7 @@ All applications are defined as CDK8s Go code in `workloads/`, synthesized to YA
 
 ## App Catalog
 
-One row per chart in {{ src(path="workloads/main.go") }} — 23 of them.
+One row per chart in {{ src(path="workloads/main.go") }} — 24 of them.
 
 | App | Namespace | URL | UI | Purpose |
 |-----|-----------|-----|----|---------|
@@ -35,6 +35,7 @@ One row per chart in {{ src(path="workloads/main.go") }} — 23 of them.
 | Harbor | `harbor` | https://harbor.madhan.app | Yes | Container registry |
 | Longhorn | `longhorn-system` | https://longhorn.madhan.app | Yes | Distributed block storage |
 | NetBird peer | `netbird` | — | No | In-cluster WireGuard routing peer |
+| Counter-Strike 2 | `cs2` | `192.168.1.230:27015` | No | LAN-only game server, see [Counter-Strike 2](@/workloads/gaming/cs2/index.md) |
 | Reloader | `reloader` | — | No | Auto-reload pods on ConfigMap/Secret changes |
 
 ## Runtime Secrets (OpenBao + CSI Driver)

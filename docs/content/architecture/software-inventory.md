@@ -133,6 +133,12 @@ Ollama's image tag is deliberately unset so it tracks the chart's appVersion —
 the chart is the pin. ComfyUI's tag encodes its CUDA line: the card is Blackwell
 (sm_120) and needs CUDA 12.8 or newer, so a `cu126` tag will not run.
 
+### Gaming
+
+| Software | Version | Pinned in |
+|---|---|---|
+| Counter-Strike 2 server | 5.0.0 | {{ src(path="config/versions.yaml") }} |
+
 ## Checking for updates
 
 `helm search repo` compares **chart** versions. A chart can lag the software it
