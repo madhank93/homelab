@@ -12,8 +12,8 @@ import (
 //
 // Falco runs as a DaemonSet and observes Linux system calls to detect anomalous
 // container behaviour. The namespace is labelled privileged because the DaemonSet
-// pods need host-level access (hostPID, hostNetwork, /dev/falco, kernel module or eBPF probe).
-// Falco Sidekick is also deployed to forward alerts to VictoriaLogs.
+// pods need host-level access (hostPID, hostNetwork, the modern eBPF probe).
+// Falco Sidekick receives alerts over the chart-wired http_output.
 func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -39,8 +39,6 @@ func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8
 			"sysfsMountPath": "/sys/kernel",
 		},
 		"falco": map[string]any{
-			"grpc":        map[string]any{"enabled": true},
-			"grpc_output": map[string]any{"enabled": true},
 			// JSON output is forwarded to VictoriaLogs via OTel.
 			"json_output":                  true,
 			"json_include_output_property": true,

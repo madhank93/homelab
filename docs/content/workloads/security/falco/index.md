@@ -26,7 +26,7 @@ Falco runs as a DaemonSet on every node (including control plane, via `toleratio
 ```
 Falco DaemonSet (every node)
   → JSON alert to stdout
-  → falcosidekick (collects from gRPC)
+  → falcosidekick (receives over http_output)
   → OTel Agent filelog receiver (from falcosidekick stdout logs)
   → VictoriaLogs
   → Grafana (LogQL query)
@@ -43,15 +43,14 @@ Source: {{ src(path="workloads/security/falco.go") }}
 | `driver.kind` | `modern_ebpf` | Required on Talos — see below |
 | `driver.sysfsMountPath` | `/sys/kernel` | Exposes BTF at `/sys/kernel/btf/vmlinux` |
 | `json_output` | `true` | Machine-readable alert format |
-| `grpc.enabled` | `true` | falcosidekick connection |
-| `falcosidekick.enabled` | `true` | Collects alerts from gRPC, exposes metrics |
+| `falcosidekick.enabled` | `true` | Chart wires `http_output` to it; exposes metrics |
 | `falcosidekick.webui.enabled` | `true` | Alert dashboard UI |
 | Falco resources limit | `1000m` / `1024Mi` | eBPF program compilation is CPU-intensive |
 | HTTPRoute | `falco.madhan.app` → falcosidekick-ui:2802 | Gateway API |
 
 ## Talos-Specific Configuration
 
-Talos Linux locks down kernel module loading — the `kmod` and `legacy_ebpf` Falco drivers cannot be used.
+Talos Linux locks down kernel module loading — the `kmod` Falco driver cannot be used.
 
 `modern_ebpf` uses CO-RE (Compile Once, Run Everywhere) eBPF programs that load without a pre-compiled kernel module. These programs use BTF (BPF Type Format) for kernel struct layout information.
 
@@ -75,16 +74,12 @@ Talos Linux locks down kernel module loading — the `kmod` and `legacy_ebpf` Fa
 
 ## Chart Version Notes
 
-The chart uses **snake_case** config keys:
+The chart uses **snake_case** config keys (`json_output`, `http_output`).
+Chart 8 renamed these from camelCase; on an upgrade from an older chart they
+must be rewritten or Falco silently ignores them.
 
-```yaml
-json_output: true
-grpc_output:
-  enabled: true
-```
-
-Chart 8 renamed these from camelCase (`jsonOutput`, `grpcOutput`); on an upgrade
-from an older chart they must be rewritten or Falco silently ignores them.
+Chart 9 (Falco 0.44+) dropped the gRPC output/server and the legacy eBPF probe.
+Setting `falco.grpc`, `falco.grpc_output` or `driver.kind=ebpf` fails the render.
 
 ## How It Connects
 
@@ -92,7 +87,7 @@ from an older chart they must be rewritten or Falco silently ignores them.
 Kernel syscalls on every node
   → Falco modern_ebpf probe (CO-RE, uses BTF from /sys/kernel/btf/vmlinux)
   → Falco DaemonSet (evaluates rules)
-  → JSON alert to stdout + gRPC to falcosidekick
+  → JSON alert to stdout + http_output to falcosidekick
   → falcosidekick (aggregates, exposes metrics at :2801/metrics)
   → OTel Agent filelog receiver (collects stdout logs)
   → VictoriaLogs (log storage)

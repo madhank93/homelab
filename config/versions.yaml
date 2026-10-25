@@ -22,7 +22,7 @@ charts:
   kube-prometheus-stack: {repo: https://prometheus-community.github.io/helm-charts, version: 82.0.1}
   secrets-store-csi-driver: {repo: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts, version: 1.6.1}
   openbao: {repo: https://openbao.github.io/openbao-helm, version: 0.30.4}
-  falco: {repo: https://falcosecurity.github.io/charts, version: 8.0.5}
+  falco: {repo: https://falcosecurity.github.io/charts, version: 9.2.1}
   reloader: {repo: https://stakater.github.io/stakater-charts, version: 2.2.18}
   trivy-operator: {repo: https://aquasecurity.github.io/helm-charts, version: 0.37.0}
   n8n: {repo: oci://8gears.container-registry.com/library, version: 2.1.1}
