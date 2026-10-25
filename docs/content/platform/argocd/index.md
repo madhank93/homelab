@@ -14,7 +14,7 @@ GitOps with Argo CD ensures the cluster state is always derivable from code — 
 
 ## How It's Used Here
 
-Argo CD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.7-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
+Argo CD is bootstrapped once by Pulumi (`core/platform/argocd.go`) and then self-manages via GitOps from the `v0.1.8-manifests` branch. A single `ApplicationSet` watches every top-level directory on that branch and creates one Application per directory, with `prune=true` and `selfHeal=true` enforcing git as the single source of truth.
 
 **Code:** {{ src(path="core/platform/argocd.go") }} · **Namespace:** `argocd` · **Versions:** [Software Inventory](@/architecture/software-inventory.md)
 
@@ -45,7 +45,7 @@ helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 
 ## ApplicationSet
 
-One `ApplicationSet` named `cots-applications` watches the `v0.1.7-manifests` branch. Every top-level directory automatically becomes an Argo CD Application:
+One `ApplicationSet` named `cots-applications` watches the `v0.1.8-manifests` branch. Every top-level directory automatically becomes an Argo CD Application:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -57,7 +57,7 @@ spec:
   generators:
     - git:
         repoURL: https://github.com/madhank93/homelab.git
-        revision: v0.1.7-manifests
+        revision: v0.1.8-manifests
         directories:
           - path: "*"      # Every top-level directory = one Application
   template:
@@ -67,7 +67,7 @@ spec:
       project: default
       source:
         repoURL: https://github.com/madhank93/homelab.git
-        targetRevision: v0.1.7-manifests
+        targetRevision: v0.1.8-manifests
         path: "{{path}}"
       destination:
         server: https://kubernetes.default.svc

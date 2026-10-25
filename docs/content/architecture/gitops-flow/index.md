@@ -38,7 +38,7 @@ flowchart TB
     subgraph GITHUB["GitHub"]
         REPO["main branch<br/>code changes"]
         CI["GitHub Actions<br/>CDK8s publish workflow"]
-        MBRANCH["v0.1.7-manifests branch<br/>app/*/  (synthesized manifests)"]
+        MBRANCH["v0.1.8-manifests branch<br/>app/*/  (synthesized manifests)"]
     end
 
     subgraph CLUSTER["Kubernetes Cluster"]
@@ -117,14 +117,14 @@ just synth
 # → cd workloads && go run . → writes to ../app/
 ```
 
-In CI, a GitHub Actions workflow runs `go run .` and pushes the output to the `v0.1.7-manifests` branch:
+In CI, a GitHub Actions workflow runs `go run .` and pushes the output to the `v0.1.8-manifests` branch:
 
 ```yaml
 # .github/workflows/publish.yml (simplified)
 - run: go run .
   working-directory: workloads
 - run: |
-    git checkout v0.1.7-manifests
+    git checkout v0.1.8-manifests
     cp -r app/* .
     git add . && git commit -m "chore: Synthesize manifests" && git push
 ```
@@ -147,7 +147,7 @@ One `ApplicationSet` watches the manifests branch. Every top-level directory und
 generators:
   - git:
       repoURL: https://github.com/madhank93/homelab.git
-      revision: v0.1.7-manifests
+      revision: v0.1.8-manifests
       directories:
         - path: "*"
 template:

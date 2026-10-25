@@ -14,7 +14,7 @@ Homelab-specific names and the jargon that shows up without introduction.
 | **Pattern A / Pattern B** | The two ways a pod consumes an OpenBao secret. A mounts it as a file only; B additionally syncs a Kubernetes Secret. Defined in [Secrets](@/platform/secrets/index.md) |
 | **ForwardAuth** | Traefik middleware that asks Authentik whether a request is authenticated before proxying it. Public services either use it or handle their own auth |
 | **schematic** | A Talos image built by factory.talos.dev with a specific set of system extensions. This cluster uses two: a base one and a GPU one |
-| **manifests branch** | `v0.1.7-manifests`. CI synthesizes CDK8s output and force-pushes it there; Argo CD watches it. Never edited by hand |
+| **manifests branch** | `v0.1.8-manifests`. CI synthesizes CDK8s output and force-pushes it there; Argo CD watches it. Never edited by hand |
 | **share-manager** | The NFS server pod Longhorn starts for each RWX volume, letting several pods attach at once |
 | **VMAgent / VMAlert / VMSingle** | VictoriaMetrics components: the scraper, the rule evaluator, and the single-node store. This cluster does not run cluster mode |
 | **time-slicing** | Splitting one physical GPU into several schedulable `nvidia.com/gpu` units. It divides compute time, **not** VRAM — see [GPU](@/hardware/gpu/index.md#sharing-the-16-gb-of-vram) |
