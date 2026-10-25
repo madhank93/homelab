@@ -8,7 +8,7 @@ set lazy
 core stack action:
     SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
       sops exec-env ../secrets/bootstrap.sops.yaml \
-      'pulumi stack select {{stack}} && pulumi {{action}} --yes'
+      'pulumi stack select {{stack}} && pulumi {{action}}{{ if action == "preview" { "" } else { " --yes" } }}'
 
 # CDK8s synthesis → writes to app/
 [working-directory: 'workloads']
