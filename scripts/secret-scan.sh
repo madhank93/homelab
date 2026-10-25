@@ -23,7 +23,8 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-run() { docker run --rm -v "$repo:/repo" -v "$common:$common" -w /repo "$@"; }
+# `commit -a` stages into a temporary index named by GIT_INDEX_FILE (an absolute path).
+run() { docker run --rm -v "$repo:/repo" -v "$common:$common" ${GIT_INDEX_FILE:+-e GIT_INDEX_FILE} -w /repo "$@"; }
 
 gitleaks() { run "$GITLEAKS" git --no-banner --redact "$@" /repo; }
 
