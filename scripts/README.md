@@ -20,7 +20,7 @@ just talos-health                      # must be clean before the next node
 just talos-upgrade-k8s                 # Kubernetes, after all nodes are done
 ```
 
-Upgrade workers first, then controllers one at a time, then the GPU worker
+Upgrade controllers one at a time first, then workers, then the GPU worker
 last. The target versions and both schematic IDs are read from
 `config/versions.yaml`, so they cannot drift from what Pulumi provisions.
 
