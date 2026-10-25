@@ -19,6 +19,8 @@ const executorBaseModel = "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q3
 // the iSCSI path.
 const modelCacheStorageClass = "longhorn-model-cache"
 
+const ollamaLoadBalancerIP = "192.168.1.225"
+
 // NewOllamaChart deploys Ollama LLM inference server via the official Helm chart.
 //
 // Ollama is pinned to the GPU worker node via nodeSelector nvidia.com/gpu.present=true
@@ -84,9 +86,11 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 				"storageClass": modelCacheStorageClass,
 				"accessModes":  []string{"ReadWriteOnce"},
 			},
+			// Fixed IP: the laptop's OLLAMA_API_BASE (aider/offload) points at it.
 			"service": map[string]any{
-				"type": "LoadBalancer",
-				"port": 11434,
+				"type":        "LoadBalancer",
+				"port":        11434,
+				"annotations": map[string]any{"lbipam.cilium.io/ips": ollamaLoadBalancerIP},
 			},
 			"nodeSelector": gpuNodeSelector,
 			"tolerations": []map[string]any{

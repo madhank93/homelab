@@ -273,9 +273,17 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 	if err != nil {
 		return err
 	}
+	// The pool range shares addresses with the nodes; announcing a node's own IP
+	// over L2 takes that node off the LAN, so node IPs are never handed out.
+	nodeIPs := map[string]bool{}
+	for _, n := range config.C.Cluster.Nodes {
+		nodeIPs[n.IP] = true
+	}
 	var blocks []any
 	for ip := start; ip.Compare(stop) <= 0; ip = ip.Next() {
-		blocks = append(blocks, map[string]string{"cidr": ip.String() + "/32"})
+		if !nodeIPs[ip.String()] {
+			blocks = append(blocks, map[string]string{"cidr": ip.String() + "/32"})
+		}
 	}
 
 	// cilium.io/v2 is served from Cilium 1.18; v2alpha1 is deprecated from 1.19.
