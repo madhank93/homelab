@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	cf "github.com/pulumi/pulumi-cloudflare/sdk/v5/go/cloudflare"
+	cf "github.com/pulumi/pulumi-cloudflare/sdk/v6/go/cloudflare"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/madhank93/homelab/config"
@@ -50,13 +50,15 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 
 	zoneID := config.C.Cloudflare.ZoneID
 
+	// The v6 SDK registers DnsRecord with an alias to cloudflare:index/record:Record,
+	// so records created by the v5 provider keep their URNs.
 	newRecord := func(name, logicalName, ip, comment string) error {
-		_, err := cf.NewRecord(ctx, logicalName, &cf.RecordArgs{
+		_, err := cf.NewDnsRecord(ctx, logicalName, &cf.DnsRecordArgs{
 			ZoneId:  pulumi.String(zoneID),
 			Name:    pulumi.String(name),
 			Type:    pulumi.String("A"),
 			Content: pulumi.String(ip),
-			Ttl:     pulumi.Int(1),
+			Ttl:     pulumi.Float64(1),
 			Proxied: pulumi.Bool(false),
 			Comment: pulumi.StringPtr(comment),
 		}, pulumi.Provider(provider))

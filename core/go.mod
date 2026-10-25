@@ -10,7 +10,7 @@ require (
 	github.com/knadh/koanf/providers/file v1.2.0
 	github.com/knadh/koanf/v2 v2.2.1
 	github.com/muhlba91/pulumi-proxmoxve/sdk/v7 v7.13.0
-	github.com/pulumi/pulumi-cloudflare/sdk/v5 v5.49.1
+	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.23.1
 	github.com/pulumi/pulumi-command/sdk v1.2.1
 	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.34.2
 	github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2025 v2025.0.0
