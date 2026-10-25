@@ -33,8 +33,8 @@ jobs:
 
     env:
       # Bump both together; checksum from the release's checksums.txt.
-      KUSTOMIZE_VERSION: v5.8.1
-      KUSTOMIZE_SHA256: 029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d
+      KUSTOMIZE_VERSION: v5.8.3
+      KUSTOMIZE_SHA256: cb9e31198d3f63b44848bd0afc4c8efc56e6cfef9c93a4a39a211940e6decd61
 
     steps:
       - name: Checkout source repo
