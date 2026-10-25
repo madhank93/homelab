@@ -83,6 +83,7 @@ allow=(
   '-manifests'              # the Argo CD source branch, checked separately below
   'HTTP/1.1'                # curl output in troubleshooting examples
   'HTTP/2'
+  '/api/v2.0/'               # Harbor API path
   '192.168.'                # LAN addresses
   '178.156.199.250'         # Bifrost VPS
   '100.109.'                # NetBird overlay

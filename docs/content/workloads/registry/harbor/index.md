@@ -54,6 +54,21 @@ Pattern B (secretObjects sync). The `HARBOR_ADMIN_PASSWORD` is fetched from Open
 existingSecretAdminPassword: harbor-admin  # CSI-synced from OpenBao
 ```
 
+### Rotating the Admin Password
+
+`HARBOR_ADMIN_PASSWORD` only seeds the admin account on the first database init. Once the password is in the database, harbor-core ignores the variable and logs a warning, so changing it in OpenBao does not rotate a running install.
+
+To rotate, change it in Harbor first, then write the same value to OpenBao (`secret/harbor`) so a rebuilt database seeds the same password:
+
+- UI: log in as admin, then **admin (top right) → Change Password**.
+- API (the admin user ID is 1):
+
+```bash
+curl -u admin:OLD -X PUT https://harbor.madhan.app/api/v2.0/users/1/password \
+  -H 'Content-Type: application/json' \
+  -d '{"old_password":"OLD","new_password":"NEW"}'
+```
+
 ## RWX PVCs
 
 Harbor's registry and jobservice PVCs use `ReadWriteMany` via Longhorn's NFS share-manager. This eliminates the `Multi-Attach error` that occurs during rolling updates when both old and new pods need to mount the same volume simultaneously.
