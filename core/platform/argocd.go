@@ -149,6 +149,15 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 	}
 
 	// 5. Create ApplicationSet to Bootstrap GitOps (watches config manifests_branch)
+	// argocd_manual_sync pauses auto-sync so a release can be rolled out app by app.
+	syncPolicy := map[string]any{
+		// ServerSideApply=true: required for kube-prometheus-stack CRDs which
+		// exceed the 262KB kubectl.kubernetes.io/last-applied-configuration limit
+		"syncOptions": []string{"CreateNamespace=true", "ServerSideApply=true"},
+	}
+	if !config.C.ArgoCDManualSync {
+		syncPolicy["automated"] = map[string]any{"prune": true, "selfHeal": true}
+	}
 	_, err = apiextensions.NewCustomResource(ctx, "bootstrap-appset", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("argoproj.io/v1alpha1"),
 		Kind:       pulumi.String("ApplicationSet"),
@@ -184,15 +193,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 							"server":    "https://kubernetes.default.svc",
 							"namespace": "{{path.basename}}",
 						},
-						"syncPolicy": map[string]any{
-							"automated": map[string]any{
-								"prune":    true,
-								"selfHeal": true,
-							},
-							// ServerSideApply=true: required for kube-prometheus-stack CRDs which
-							// exceed the 262KB kubectl.kubernetes.io/last-applied-configuration limit
-							"syncOptions": []string{"CreateNamespace=true", "ServerSideApply=true"},
-						},
+						"syncPolicy": syncPolicy,
 						"ignoreDifferences": []map[string]any{
 							// VM operator regenerates TLS cert on every restart — ignore dynamic fields.
 							{

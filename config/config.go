@@ -44,12 +44,13 @@ type ClusterConfig struct {
 }
 
 type Config struct {
-	Domain          string                           `yaml:"domain"`
-	Cluster         ClusterConfig                    `yaml:"cluster"`
-	Gateway         struct{ Name, Namespace string } `yaml:"gateway"`
-	OpenBaoAddr     string                           `yaml:"openbao_addr"`
-	ManifestsBranch string                           `yaml:"manifests_branch"`
-	Cloudflare      struct {
+	Domain           string                           `yaml:"domain"`
+	Cluster          ClusterConfig                    `yaml:"cluster"`
+	Gateway          struct{ Name, Namespace string } `yaml:"gateway"`
+	OpenBaoAddr      string                           `yaml:"openbao_addr"`
+	ManifestsBranch  string                           `yaml:"manifests_branch"`
+	ArgoCDManualSync bool                             `yaml:"argocd_manual_sync"`
+	Cloudflare       struct {
 		ZoneID string `yaml:"zone_id"`
 	} `yaml:"cloudflare"`
 	Proxmox struct {

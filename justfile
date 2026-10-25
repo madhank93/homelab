@@ -111,6 +111,13 @@ openbao-get path field='':
     trap 'bao token revoke -self >/dev/null' EXIT
     if [[ -n "{{field}}" ]]; then bao kv get -field="{{field}}" "{{path}}"; else bao kv get "{{path}}"; fi
 
+# Sync one Argo CD Application from git, without the argocd CLI.
+# Used while argocd_manual_sync is true. Example: just argocd-sync openbao
+argocd-sync app:
+    kubectl patch application {{app}} -n argocd --type merge \
+      -p '{"operation":{"initiatedBy":{"username":"just"},"sync":{"prune":true,"syncOptions":["CreateNamespace=true","ServerSideApply=true"]}}}'
+    @echo "watch: kubectl get application {{app}} -n argocd -w"
+
 # Revoke a root token from openbao-token (argument, or $ROOT_TOKEN if omitted)
 openbao-revoke $token='':
     #!/usr/bin/env bash
