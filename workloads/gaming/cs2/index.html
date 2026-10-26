@@ -629,15 +629,36 @@ and sign in (a free account is enough).</p>
 <p><strong>Launch it once</strong> and finish the intro so the game writes its settings.</p>
 </li>
 <li>
-<p><strong>Enable the console:</strong> Settings → Game → <em>Enable Developer Console</em> → Yes.
-Press <kbd>~</kbd> (the key under <kbd>Esc</kbd>) to open it.</p>
+<p><strong>Enable the console:</strong> gear icon (Settings) → Game →
+<em>Enable Developer Console (~)</em> → Yes. Press <kbd>~</kbd> (the key under
+<kbd>Esc</kbd>, left of <kbd>1</kbd>) to open it. If nothing opens — common
+on non-US keyboards — bind another key under Settings → Keyboard / Mouse →
+<em>Toggle Console</em>.</p>
 </li>
 <li>
-<p><strong>Join</strong> with the password from the host:</p>
-<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>connect 192.168.1.230; password &lt;JOIN_PASSWORD&gt;</span></span></code></pre></li>
+<p><strong>Join from the console.</strong> Type <code>connect 192.168.1.230; password </code> (with
+the trailing space), paste the password the host shared with
+<kbd>Ctrl</kbd>+<kbd>V</kbd>, and press <kbd>Enter</kbd>:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>connect 192.168.1.230; password &lt;JOIN_PASSWORD&gt;</span></span></code></pre>
+<p>Paste rather than type: the password is long and random, and one wrong
+character is rejected.</p>
+</li>
 </ol>
-<p>If the connect times out, check that the PC is on the home network rather than
-a guest network or VPN.</p>
+<h3 id="server-browser">Server browser</h3>
+<p>The <strong>LAN</strong> tab stays empty: it finds servers by broadcast, which the
+LoadBalancer IP does not answer. Add the server to <strong>Favorites</strong> instead —
+Play → Community Server Browser → Favorites → <em>Add a server</em> →
+<code>192.168.1.230:27015</code>.</p>
+<p>The browser's password prompt closes as soon as it opens and joins with an
+empty password (<code>NETWORK_DISCONNECT_REJECT_BADPASSWORD</code>). Set the password in
+the console first with <code>password &lt;JOIN_PASSWORD&gt;</code>, then double-click the
+favorite.</p>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<table><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody>
+<tr><td>Connect times out</td><td>The PC is not on the home network (guest Wi-Fi or a VPN). Check with <code>Test-NetConnection 192.168.1.230 -Port 27015</code> in PowerShell; it should print <code>TcpTestSucceeded : True</code>.</td></tr>
+<tr><td>"Bad password"</td><td>The password was empty or mistyped. Paste it in the console as above.</td></tr>
+<tr><td>Ping above ~40 ms or spiky</td><td>Move to a wired connection or closer to the router. 1–10 ms is normal on the LAN.</td></tr>
+</tbody></table>
 <h3 id="low-spec-pcs">Low-spec PCs</h3>
 <p>CS2 needs 4 CPU threads, 8 GB RAM and a DirectX 11 GPU. Laptops on integrated
 graphics (e.g. Intel UHD 620) run it at roughly 20–35 FPS; to get the most out
@@ -652,7 +673,11 @@ FidelityFX Super Resolution on <em>Performance</em>.</li>
 Windows Settings → System → Display → Graphics.</li>
 <li>Close the browser and overlays before playing.</li>
 </ul>
-<h2 id="updating-the-game">Updating the game</h2>
+<h2 id="changing-the-map">Changing the map</h2>
+<p>From any connected client's console, with <code>RCON_PASSWORD</code> from <code>secret/cs2</code>:</p>
+<pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>rcon_address 192.168.1.230:27015</span></span>
+<span class="giallo-l"><span>rcon_password &lt;RCON_PASSWORD&gt;</span></span>
+<span class="giallo-l"><span>rcon changelevel de_mirage</span></span></code></pre><h2 id="updating-the-game">Updating the game</h2>
 <p>A CS2 patch only needs a restart; the container updates before it starts:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="shellscript"><span class="giallo-l"><span style="color: #59C2FF;">kubectl</span><span style="color: #95E6CB;"> -n</span><span style="color: #AAD94C;"> cs2 rollout restart deployment/cs2</span></span></code></pre>
 
@@ -824,11 +849,25 @@ Windows Settings → System → Display → Graphics.</li>
                         <ul>
                             
                                 <li>
+                                    <a href="https://homelab.madhan.app/workloads/gaming/cs2/#server-browser" class="toc-link">Server browser</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/workloads/gaming/cs2/#troubleshooting" class="toc-link">Troubleshooting</a>
+                                </li>
+                            
+                                <li>
                                     <a href="https://homelab.madhan.app/workloads/gaming/cs2/#low-spec-pcs" class="toc-link">Low-spec PCs</a>
                                 </li>
                             
                         </ul>
                     </details>
+                    
+                </li>
+            
+                <li>
+                    
+                    <a href="https://homelab.madhan.app/workloads/gaming/cs2/#changing-the-map" class="toc-link">Changing the map</a>
                     
                 </li>
             
@@ -949,6 +988,12 @@ Windows Settings → System → Display → Graphics.</li>
             
             
 
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
+        
+
+            
+            
+
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
 
@@ -956,12 +1001,6 @@ Windows Settings → System → Display → Graphics.</li>
             
 
             <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
-        
-
-            
-            
-
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/upgrade-guide">Version Upgrade Guide</a></li>
         
         
             
