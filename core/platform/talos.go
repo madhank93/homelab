@@ -113,6 +113,16 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
     nodeIP:
       validSubnets:
         - %s
+    # Images and Longhorn replicas share /var, so the 15%% imagefs default
+    # evicts Longhorn itself before it can free space. Setting one threshold
+    # zeroes the rest, hence the full list.
+    extraConfig:
+      evictionHard:
+        memory.available: 100Mi
+        nodefs.available: 10%%
+        nodefs.inodesFree: 5%%
+        imagefs.available: 10%%
+        imagefs.inodesFree: 5%%
   kernel:
     modules:
       - name: nbd
