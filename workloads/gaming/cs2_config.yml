@@ -1,0 +1,41 @@
+# CS2 server settings. Pushing a change restarts the server (about 2 minutes).
+# Every flag and value is documented in docs/content/workloads/gaming/cs2/index.md.
+
+server:
+  name: homelab LAN
+  # competitive, casual, wingman, deathmatch, armsrace
+  game_alias: competitive
+  # Map pool for the end-of-match vote; mg_active is the current Active Duty pool.
+  map_group: mg_active
+  start_map: de_inferno
+  max_players: 10
+
+# Written to gamemode_<mode>_server.cfg, which CS2 runs after its own mode
+# defaults on every map load. Values below are the competitive defaults.
+convars:
+  # Economy
+  mp_startmoney: 800
+  mp_maxmoney: 16000
+  mp_buytime: 20
+  mp_buy_anywhere: 0
+  mp_afterroundmoney: 0
+  cash_team_loser_bonus: 1400
+  cash_team_loser_bonus_consecutive_rounds: 500
+  cash_player_killed_enemy_default: 300
+
+  # Round and match timing
+  mp_roundtime: 1.92
+  mp_roundtime_defuse: 1.92
+  mp_roundtime_hostage: 1.92
+  mp_freezetime: 15
+  mp_maxrounds: 24
+  mp_halftime: 1
+  mp_match_can_clinch: 1
+  mp_warmuptime: 120
+  mp_warmuptime_all_players_connected: 15
+
+  # Gameplay
+  mp_friendlyfire: 1
+  mp_solid_teammates: 1
+  bot_quota: 0
+  bot_difficulty: 2

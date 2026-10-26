@@ -8,7 +8,7 @@ require (
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.70.91
 )
 
-require go.yaml.in/yaml/v3 v3.0.4 // indirect
+require go.yaml.in/yaml/v3 v3.0.4
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect

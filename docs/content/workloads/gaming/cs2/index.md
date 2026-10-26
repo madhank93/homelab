@@ -93,6 +93,72 @@ of one:
   Windows Settings → System → Display → Graphics.
 - Close the browser and overlays before playing.
 
+## Server settings
+
+Edit `workloads/gaming/cs2_config.yml` and push. Reloader restarts the server
+(about 2 minutes) and the new values apply from the first map load.
+
+`convars` are written to `gamemode_<mode>_server.cfg`, which CS2 runs after its
+own `gamemode_<mode>.cfg` on every map load, so they win over Valve's mode
+defaults. Any other server convar can be added there too.
+
+### `server`
+
+| Key | Image env var | Meaning |
+|---|---|---|
+| `name` | `CS2_SERVERNAME` | Name shown in the server browser and scoreboard. |
+| `game_alias` | `CS2_GAMEALIAS` | Game mode: `competitive`, `casual`, `wingman`, `deathmatch`, `armsrace`. |
+| `map_group` | `CS2_MAPGROUP` | Map pool for the end-of-match vote. `mg_active` is the Active Duty pool. |
+| `start_map` | `CS2_STARTMAP` | Map loaded at startup. |
+| `max_players` | `CS2_MAXPLAYERS` | Player slots. |
+
+Source: [joedwards32/CS2](https://github.com/joedwards32/CS2) (the server image).
+
+### `convars`
+
+*Engine* is the built-in default; *competitive* is what
+`gamemode_competitive.cfg` sets, and what `cs2_config.yml` ships with.
+
+| Convar | Engine | Competitive | Meaning |
+|---|---|---|---|
+| **Economy** | | | |
+| `mp_startmoney` | 800 | 800 | Money each player starts with. |
+| `mp_maxmoney` | 16000 | 16000 | Most money a player can hold. |
+| `mp_buytime` | 90 | 20 | Seconds after round start that buying stays open. |
+| `mp_buy_anywhere` | 0 | 0 | Buy outside buy zones: 0 off, 1 both teams, 2 T, 3 CT. |
+| `mp_afterroundmoney` | 0 | 0 | Money given to every player after each round. |
+| `cash_team_loser_bonus` | 1400 | 1400 | Base money for the losing team. |
+| `cash_team_loser_bonus_consecutive_rounds` | 500 | 500 | Extra loss bonus per consecutive loss. |
+| `cash_player_killed_enemy_default` | 300 | 300 | Kill reward (weapons with their own reward override it). |
+| **Round and match timing** | | | |
+| `mp_roundtime` | 5 | 1.92 | Round length in minutes (1.92 = 1:55). |
+| `mp_roundtime_defuse` | 0 | 1.92 | Round length on bomb maps; 0 uses `mp_roundtime`. |
+| `mp_roundtime_hostage` | 0 | 1.92 | Round length on hostage maps; 0 uses `mp_roundtime`. |
+| `mp_freezetime` | 6 | 15 | Seconds players are frozen at round start (0–60). |
+| `mp_maxrounds` | 0 | 24 | Rounds per match before the map changes. |
+| `mp_halftime` | 0 | 1 | Swap sides at half time. |
+| `mp_match_can_clinch` | 1 | 1 | End early once a team can no longer be caught. |
+| `mp_warmuptime` | 30 | 120 | Warmup length in seconds. |
+| `mp_warmuptime_all_players_connected` | 0 | 15 | Warmup once everyone is connected; 0 disables. |
+| **Gameplay** | | | |
+| `mp_friendlyfire` | 0 | 1 | Teammates can damage each other. |
+| `mp_solid_teammates` | 1 | 1 | 0 pass through, 1 solid, 2 can stand on heads. |
+| `bot_quota` | 10 | 0 | Number of bots. |
+| `bot_difficulty` | 1 | 2 | 0 easy, 1 normal, 2 hard, 3 expert. |
+
+Sources:
+
+- Engine defaults, ranges and descriptions:
+  [SteamDatabase/GameTracking-CS2 `DumpSource2/convars.txt`](https://github.com/SteamDatabase/GameTracking-CS2/blob/master/DumpSource2/convars.txt),
+  dumped from the CS2 binaries on every update. Search it for any other convar.
+- Competitive defaults:
+  [`game/csgo/cfg/gamemode_competitive.cfg`](https://github.com/SteamDatabase/GameTracking-CS2/blob/master/game/csgo/cfg/gamemode_competitive.cfg),
+  also on the server at `/home/steam/cs2-dedicated/game/csgo/cfg/`.
+- [Valve Developer Community: CS2 console commands](https://developer.valvesoftware.com/wiki/List_of_Counter-Strike_2_console_commands).
+
+A value set live with `rcon <convar> <value>` lasts until the next map load,
+when `cs2_config.yml` applies again.
+
 ## Changing the map
 
 From any connected client's console, with `RCON_PASSWORD` from `secret/cs2`:
