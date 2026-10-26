@@ -35,6 +35,7 @@ spec:
             - --http.shutdownDelay=15s
             - --httpListenAddr=:9428
             - --loggerFormat=json
+            - --retention.maxDiskSpaceUsageBytes=40GiB
             - --retentionPeriod=30d
             - --storageDataPath=/storage
           image: victoriametrics/victoria-logs:v1.53.0

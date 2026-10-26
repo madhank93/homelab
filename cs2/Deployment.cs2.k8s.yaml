@@ -31,8 +31,6 @@ spec:
               value: de_inferno
             - name: CS2_MAXPLAYERS
               value: "10"
-            - name: CS2_BOT_QUOTA
-              value: "0"
             - name: CS2_SERVER_HIBERNATE
               value: "0"
             - name: CS2_RCONPW
@@ -67,6 +65,19 @@ spec:
             - mountPath: /mnt/secrets
               name: openbao-secrets
               readOnly: true
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - mkdir -p "$0" && cp /cs2-config/* "$0"/
+            - /home/steam/cs2-dedicated/game/csgo/cfg
+          image: joedwards32/cs2:5.0.0
+          name: server-cfg
+          volumeMounts:
+            - mountPath: /home/steam/cs2-dedicated
+              name: data
+            - mountPath: /cs2-config
+              name: config
       securityContext:
         fsGroup: 1000
       serviceAccountName: cs2
@@ -74,6 +85,9 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: cs2-data
+        - configMap:
+            name: cs2-config
+          name: config
         - csi:
             driver: secrets-store.csi.k8s.io
             readOnly: true
