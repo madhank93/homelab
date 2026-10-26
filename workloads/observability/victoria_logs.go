@@ -23,6 +23,9 @@ func NewVictoriaLogsChart(scope constructs.Construct, id string, namespace strin
 				"size":    "100Gi",
 			},
 			"retentionPeriod": "30d",
+			// GiB. Each replica lands on a worker disk shared with every other
+			// Longhorn volume, so cap by size as well as age.
+			"retentionDiskSpaceUsage": 40,
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
 				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},
