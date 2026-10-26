@@ -259,7 +259,8 @@ preflight
 harden_host
 
 log_step "1/8  traefik — TLS termination + routing"
-$COMPOSE up -d traefik
+# --remove-orphans clears containers for services dropped from the compose file.
+$COMPOSE up -d --remove-orphans traefik
 wait_healthy traefik 60
 
 log_step "2/8  authentik-postgres — database"

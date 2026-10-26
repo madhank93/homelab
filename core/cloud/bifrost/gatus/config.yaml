@@ -156,14 +156,6 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
 
-  - name: ComfyUI
-    group: Applications
-    url: https://comfyui.madhan.app
-    interval: 2m
-    ui: *private
-    conditions:
-      - "[STATUS] == 200"
-
   - name: Falco UI
     group: Applications
     url: https://falco.madhan.app
