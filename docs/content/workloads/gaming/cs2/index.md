@@ -42,16 +42,41 @@ address). Wi-Fi works; wired is steadier.
 2. **Install CS2.** Search *Counter-Strike 2* in the Steam store and click
    *Play Game*. It is free to play; Steam asks for ~85 GB of free disk space.
 3. **Launch it once** and finish the intro so the game writes its settings.
-4. **Enable the console:** Settings → Game → *Enable Developer Console* → Yes.
-   Press <kbd>~</kbd> (the key under <kbd>Esc</kbd>) to open it.
-5. **Join** with the password from the host:
+4. **Enable the console:** gear icon (Settings) → Game →
+   *Enable Developer Console (~)* → Yes. Press <kbd>~</kbd> (the key under
+   <kbd>Esc</kbd>, left of <kbd>1</kbd>) to open it. If nothing opens — common
+   on non-US keyboards — bind another key under Settings → Keyboard / Mouse →
+   *Toggle Console*.
+5. **Join from the console.** Type `connect 192.168.1.230; password ` (with
+   the trailing space), paste the password the host shared with
+   <kbd>Ctrl</kbd>+<kbd>V</kbd>, and press <kbd>Enter</kbd>:
 
    ```text
    connect 192.168.1.230; password <JOIN_PASSWORD>
    ```
 
-If the connect times out, check that the PC is on the home network rather than
-a guest network or VPN.
+   Paste rather than type: the password is long and random, and one wrong
+   character is rejected.
+
+### Server browser
+
+The **LAN** tab stays empty: it finds servers by broadcast, which the
+LoadBalancer IP does not answer. Add the server to **Favorites** instead —
+Play → Community Server Browser → Favorites → *Add a server* →
+`192.168.1.230:27015`.
+
+The browser's password prompt closes as soon as it opens and joins with an
+empty password (`NETWORK_DISCONNECT_REJECT_BADPASSWORD`). Set the password in
+the console first with `password <JOIN_PASSWORD>`, then double-click the
+favorite.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Connect times out | The PC is not on the home network (guest Wi-Fi or a VPN). Check with `Test-NetConnection 192.168.1.230 -Port 27015` in PowerShell; it should print `TcpTestSucceeded : True`. |
+| "Bad password" | The password was empty or mistyped. Paste it in the console as above. |
+| Ping above ~40 ms or spiky | Move to a wired connection or closer to the router. 1–10 ms is normal on the LAN. |
 
 ### Low-spec PCs
 
@@ -67,6 +92,16 @@ of one:
 - On laptops with a dedicated GPU, set `cs2.exe` to *High performance* under
   Windows Settings → System → Display → Graphics.
 - Close the browser and overlays before playing.
+
+## Changing the map
+
+From any connected client's console, with `RCON_PASSWORD` from `secret/cs2`:
+
+```text
+rcon_address 192.168.1.230:27015
+rcon_password <RCON_PASSWORD>
+rcon changelevel de_mirage
+```
 
 ## Updating the game
 
