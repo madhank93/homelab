@@ -673,6 +673,62 @@ FidelityFX Super Resolution on <em>Performance</em>.</li>
 Windows Settings → System → Display → Graphics.</li>
 <li>Close the browser and overlays before playing.</li>
 </ul>
+<h2 id="server-settings">Server settings</h2>
+<p>Edit <code>workloads/gaming/cs2_config.yml</code> and push. Reloader restarts the server
+(about 2 minutes) and the new values apply from the first map load.</p>
+<p><code>convars</code> are written to <code>gamemode_&lt;mode&gt;_server.cfg</code>, which CS2 runs after its
+own <code>gamemode_&lt;mode&gt;.cfg</code> on every map load, so they win over Valve's mode
+defaults. Any other server convar can be added there too.</p>
+<h3 id="server"><code>server</code></h3>
+<table><thead><tr><th>Key</th><th>Image env var</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>CS2_SERVERNAME</code></td><td>Name shown in the server browser and scoreboard.</td></tr>
+<tr><td><code>game_alias</code></td><td><code>CS2_GAMEALIAS</code></td><td>Game mode: <code>competitive</code>, <code>casual</code>, <code>wingman</code>, <code>deathmatch</code>, <code>armsrace</code>.</td></tr>
+<tr><td><code>map_group</code></td><td><code>CS2_MAPGROUP</code></td><td>Map pool for the end-of-match vote. <code>mg_active</code> is the Active Duty pool.</td></tr>
+<tr><td><code>start_map</code></td><td><code>CS2_STARTMAP</code></td><td>Map loaded at startup.</td></tr>
+<tr><td><code>max_players</code></td><td><code>CS2_MAXPLAYERS</code></td><td>Player slots.</td></tr>
+</tbody></table>
+<p>Source: <a rel="external" href="https://github.com/joedwards32/CS2">joedwards32/CS2</a> (the server image).</p>
+<h3 id="convars"><code>convars</code></h3>
+<p><em>Engine</em> is the built-in default; <em>competitive</em> is what
+<code>gamemode_competitive.cfg</code> sets, and what <code>cs2_config.yml</code> ships with.</p>
+<table><thead><tr><th>Convar</th><th>Engine</th><th>Competitive</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><strong>Economy</strong></td><td></td><td></td><td></td></tr>
+<tr><td><code>mp_startmoney</code></td><td>800</td><td>800</td><td>Money each player starts with.</td></tr>
+<tr><td><code>mp_maxmoney</code></td><td>16000</td><td>16000</td><td>Most money a player can hold.</td></tr>
+<tr><td><code>mp_buytime</code></td><td>90</td><td>20</td><td>Seconds after round start that buying stays open.</td></tr>
+<tr><td><code>mp_buy_anywhere</code></td><td>0</td><td>0</td><td>Buy outside buy zones: 0 off, 1 both teams, 2 T, 3 CT.</td></tr>
+<tr><td><code>mp_afterroundmoney</code></td><td>0</td><td>0</td><td>Money given to every player after each round.</td></tr>
+<tr><td><code>cash_team_loser_bonus</code></td><td>1400</td><td>1400</td><td>Base money for the losing team.</td></tr>
+<tr><td><code>cash_team_loser_bonus_consecutive_rounds</code></td><td>500</td><td>500</td><td>Extra loss bonus per consecutive loss.</td></tr>
+<tr><td><code>cash_player_killed_enemy_default</code></td><td>300</td><td>300</td><td>Kill reward (weapons with their own reward override it).</td></tr>
+<tr><td><strong>Round and match timing</strong></td><td></td><td></td><td></td></tr>
+<tr><td><code>mp_roundtime</code></td><td>5</td><td>1.92</td><td>Round length in minutes (1.92 = 1:55).</td></tr>
+<tr><td><code>mp_roundtime_defuse</code></td><td>0</td><td>1.92</td><td>Round length on bomb maps; 0 uses <code>mp_roundtime</code>.</td></tr>
+<tr><td><code>mp_roundtime_hostage</code></td><td>0</td><td>1.92</td><td>Round length on hostage maps; 0 uses <code>mp_roundtime</code>.</td></tr>
+<tr><td><code>mp_freezetime</code></td><td>6</td><td>15</td><td>Seconds players are frozen at round start (0–60).</td></tr>
+<tr><td><code>mp_maxrounds</code></td><td>0</td><td>24</td><td>Rounds per match before the map changes.</td></tr>
+<tr><td><code>mp_halftime</code></td><td>0</td><td>1</td><td>Swap sides at half time.</td></tr>
+<tr><td><code>mp_match_can_clinch</code></td><td>1</td><td>1</td><td>End early once a team can no longer be caught.</td></tr>
+<tr><td><code>mp_warmuptime</code></td><td>30</td><td>120</td><td>Warmup length in seconds.</td></tr>
+<tr><td><code>mp_warmuptime_all_players_connected</code></td><td>0</td><td>15</td><td>Warmup once everyone is connected; 0 disables.</td></tr>
+<tr><td><strong>Gameplay</strong></td><td></td><td></td><td></td></tr>
+<tr><td><code>mp_friendlyfire</code></td><td>0</td><td>1</td><td>Teammates can damage each other.</td></tr>
+<tr><td><code>mp_solid_teammates</code></td><td>1</td><td>1</td><td>0 pass through, 1 solid, 2 can stand on heads.</td></tr>
+<tr><td><code>bot_quota</code></td><td>10</td><td>0</td><td>Number of bots.</td></tr>
+<tr><td><code>bot_difficulty</code></td><td>1</td><td>2</td><td>0 easy, 1 normal, 2 hard, 3 expert.</td></tr>
+</tbody></table>
+<p>Sources:</p>
+<ul>
+<li>Engine defaults, ranges and descriptions:
+<a rel="external" href="https://github.com/SteamDatabase/GameTracking-CS2/blob/master/DumpSource2/convars.txt">SteamDatabase/GameTracking-CS2 <code>DumpSource2/convars.txt</code></a>,
+dumped from the CS2 binaries on every update. Search it for any other convar.</li>
+<li>Competitive defaults:
+<a rel="external" href="https://github.com/SteamDatabase/GameTracking-CS2/blob/master/game/csgo/cfg/gamemode_competitive.cfg"><code>game/csgo/cfg/gamemode_competitive.cfg</code></a>,
+also on the server at <code>/home/steam/cs2-dedicated/game/csgo/cfg/</code>.</li>
+<li><a rel="external" href="https://developer.valvesoftware.com/wiki/List_of_Counter-Strike_2_console_commands">Valve Developer Community: CS2 console commands</a>.</li>
+</ul>
+<p>A value set live with <code>rcon &lt;convar&gt; &lt;value&gt;</code> lasts until the next map load,
+when <code>cs2_config.yml</code> applies again.</p>
 <h2 id="changing-the-map">Changing the map</h2>
 <p>From any connected client's console, with <code>RCON_PASSWORD</code> from <code>secret/cs2</code>:</p>
 <pre class="giallo" style="color: #BFBDB6; background-color: #0D1017;"><code data-lang="plain"><span class="giallo-l"><span>rcon_address 192.168.1.230:27015</span></span>
@@ -867,6 +923,27 @@ Windows Settings → System → Display → Graphics.</li>
             
                 <li>
                     
+                    <details class="toc-details" >
+                        <summary>
+                            <a href="https://homelab.madhan.app/workloads/gaming/cs2/#server-settings" class="toc-link">Server settings</a>
+                        </summary>
+                        <ul>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/workloads/gaming/cs2/#server" class="toc-link">server</a>
+                                </li>
+                            
+                                <li>
+                                    <a href="https://homelab.madhan.app/workloads/gaming/cs2/#convars" class="toc-link">convars</a>
+                                </li>
+                            
+                        </ul>
+                    </details>
+                    
+                </li>
+            
+                <li>
+                    
                     <a href="https://homelab.madhan.app/workloads/gaming/cs2/#changing-the-map" class="toc-link">Changing the map</a>
                     
                 </li>
@@ -994,13 +1071,13 @@ Windows Settings → System → Display → Graphics.</li>
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
         
 
             
             
 
-            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/troubleshooting">Troubleshooting</a></li>
+            <li ><a class="hover:no-underline" href="https://homelab.madhan.app/glossary">Glossary</a></li>
         
         
             
