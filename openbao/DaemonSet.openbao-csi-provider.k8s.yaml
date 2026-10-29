@@ -76,7 +76,7 @@ spec:
               value: info
             - name: BAO_LOG_FORMAT
               value: standard
-          image: quay.io/openbao/openbao:2.6.4
+          image: quay.io/openbao/openbao:2.6.5
           imagePullPolicy: IfNotPresent
           name: openbao-agent
           ports:

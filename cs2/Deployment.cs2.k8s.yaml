@@ -43,7 +43,7 @@ spec:
                 secretKeyRef:
                   key: JOIN_PASSWORD
                   name: cs2-secrets
-          image: joedwards32/cs2:5.0.0
+          image: joedwards32/cs2:5.0.1
           name: cs2
           ports:
             - containerPort: 27015
@@ -71,7 +71,7 @@ spec:
             - -c
             - mkdir -p "$0" && cp /cs2-config/* "$0"/
             - /home/steam/cs2-dedicated/game/csgo/cfg
-          image: joedwards32/cs2:5.0.0
+          image: joedwards32/cs2:5.0.1
           name: server-cfg
           volumeMounts:
             - mountPath: /home/steam/cs2-dedicated

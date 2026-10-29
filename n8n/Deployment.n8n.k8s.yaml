@@ -42,7 +42,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: n8n-app-config
-          image: n8nio/n8n:2.44.6
+          image: n8nio/n8n:2.45.5
           imagePullPolicy: IfNotPresent
           lifecycle: {}
           livenessProbe:

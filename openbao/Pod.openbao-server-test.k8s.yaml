@@ -30,7 +30,7 @@ spec:
       env:
         - name: VAULT_ADDR
           value: http://openbao.openbao.svc:8200
-      image: quay.io/openbao/openbao:2.6.4
+      image: quay.io/openbao/openbao:2.6.5
       imagePullPolicy: IfNotPresent
       name: openbao-server-test
       securityContext:

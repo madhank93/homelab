@@ -4,7 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: grafana
     app.kubernetes.io/name: grafana
-    app.kubernetes.io/version: 13.2.4
+    app.kubernetes.io/version: 13.2.5
     helm.sh/chart: grafana-14.0.1
   name: grafana
   namespace: grafana
@@ -28,7 +28,7 @@ spec:
       labels:
         app.kubernetes.io/instance: grafana
         app.kubernetes.io/name: grafana
-        app.kubernetes.io/version: 13.2.4
+        app.kubernetes.io/version: 13.2.5
         helm.sh/chart: grafana-14.0.1
     spec:
       automountServiceAccountToken: true
@@ -90,7 +90,7 @@ spec:
           envFrom:
             - secretRef:
                 name: grafana-oauth-secret
-          image: docker.io/grafana/grafana:13.2.4-distroless
+          image: docker.io/grafana/grafana:13.2.5-distroless
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10

@@ -80,7 +80,7 @@ spec:
               value: https://$(HOSTNAME).openbao-internal:8201
             - name: HOME
               value: /home/openbao
-          image: quay.io/openbao/openbao:2.6.4
+          image: quay.io/openbao/openbao:2.6.5
           imagePullPolicy: IfNotPresent
           lifecycle:
             preStop:
@@ -136,7 +136,7 @@ spec:
                   name: openbao-unseal-key
             - name: BAO_ADDR
               value: http://127.0.0.1:8200
-          image: openbao/openbao:2.6.4
+          image: openbao/openbao:2.6.5
           name: unseal
       hostNetwork: false
       securityContext:
