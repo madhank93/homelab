@@ -30,6 +30,9 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 			// 300% of a 120Gi disk leaves room for new 50Gi replicas (AI model
 			// volumes); 200% was exhausted.
 			"storageOverProvisioningPercentage": 300,
+			// Moves volume engines onto the chart's engine image after a Longhorn
+			// upgrade without manual per-volume upgrades; one volume per node at a time.
+			"concurrentAutomaticEngineUpgradePerNodeLimit": 1,
 		},
 		"persistence": map[string]any{
 			"defaultClass":             true,
