@@ -30,6 +30,9 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 	//   - Secret  "n8n-pg-app"  → username/password for the "n8n" app user
 	//   - Service "n8n-pg-rw"   → read-write endpoint (primary)
 	// No manual password management required; CNPG owns the credential lifecycle.
+	// imageName is the operand: a minor bump within one major is an in-place
+	// rolling update, a major bump needs a new cluster or pg_upgrade.
+	pg := config.ContainerImage("n8n-postgres")
 	cdk8s.NewApiObject(chart, jsii.String("n8n-pg-cluster"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("postgresql.cnpg.io/v1"),
 		Kind:       jsii.String("Cluster"),
@@ -39,6 +42,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"instances": 1,
+		"imageName": pg.Image + ":" + pg.Tag,
 		"storage": map[string]any{
 			"size":         "10Gi",
 			"storageClass": "longhorn",

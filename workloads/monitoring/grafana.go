@@ -2,6 +2,7 @@ package monitoring
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -54,8 +55,18 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		[]string{"ADMIN_PASSWORD", "OAUTH_CLIENT_SECRET"}, "grafana-oauth-secret",
 		kit.Sync{Object: "OAUTH_CLIENT_SECRET", Key: "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"})
 
+	// The chart renders "<registry>/<repository>:<tag>", so the pinned image
+	// is split at its registry host.
+	img := config.ContainerImage("grafana")
+	registry, repository, _ := strings.Cut(img.Image, "/")
+
 	auth := "https://" + config.C.Host("auth")
 	values := map[string]any{
+		"image": map[string]any{
+			"registry":   registry,
+			"repository": repository,
+			"tag":        img.Tag,
+		},
 		"podAnnotations": map[string]any{
 			"reloader.stakater.com/auto": "true",
 		},
