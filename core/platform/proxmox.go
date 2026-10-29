@@ -137,6 +137,8 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 		pulumi.Protect(true),
 		// The image only seeds a new VM's disk; a newer image must not replace
 		// running nodes, which upgrade in place via `just talos-upgrade`.
-		pulumi.IgnoreChanges([]string{"disks[0].fileId"}),
+		// The provider reads an unset speed block back as null, which would
+		// otherwise plan a no-op disk update on every run.
+		pulumi.IgnoreChanges([]string{"disks[0].fileId", "disks[0].speed"}),
 	)
 }
