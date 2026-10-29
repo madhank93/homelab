@@ -3,11 +3,11 @@
 # Pins outside Go stay where their tool reads them: core/cloud/bifrost/docker-compose.yml,
 # workloads/cdk8s.yaml, workloads/ai/kubeflow/kustomization.yaml, .devcontainer/, .github/.
 
-talos: {version: v1.14.4, base_schematic: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b, gpu_schematic: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829}
+talos: {version: v1.14.5, base_schematic: 88d1f7a5c4f1d3aba7df787c448c1d3d008ed29cfb34af53fa0df4336a56040b, gpu_schematic: 901b9afcf2f7eda57991690fc5ca00414740cc4ee4ad516109bcc58beff1b829}
 
 # Rendered into the Talos machine config and rolled out with `just talos-upgrade-k8s`;
 # a Talos upgrade never changes it. Held at 1.36.x for Cilium (renovate.json).
-kubernetes: {version: 1.36.5}
+kubernetes: {version: 1.36.6}
 
 charts:
   cilium: {repo: https://helm.cilium.io/, version: 1.20.4}
@@ -23,16 +23,18 @@ charts:
   secrets-store-csi-driver: {repo: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts, version: 1.6.1}
   openbao: {repo: https://openbao.github.io/openbao-helm, version: 0.30.4}
   falco: {repo: https://falcosecurity.github.io/charts, version: 9.2.1}
-  reloader: {repo: https://stakater.github.io/stakater-charts, version: 2.2.18}
+  reloader: {repo: https://stakater.github.io/stakater-charts, version: 2.2.19}
   trivy-operator: {repo: https://aquasecurity.github.io/helm-charts, version: 0.37.0}
   n8n: {repo: oci://8gears.container-registry.com/library, version: 2.1.1}
 
 images:
   argocd: {image: quay.io/argoproj/argocd, tag: v3.5.6}
-  openbao: {image: openbao/openbao, tag: 2.6.4}
-  n8n: {image: n8nio/n8n, tag: 2.44.6}
+  openbao: {image: openbao/openbao, tag: 2.6.5}
+  n8n: {image: n8nio/n8n, tag: 2.45.5}
   netbird: {image: netbirdio/netbird, tag: 0.80.0}
   pause: {image: registry.k8s.io/pause, tag: "3.10"}
   otel-collector-contrib: {image: otel/opentelemetry-collector-contrib, tag: 0.162.0}
-  cs2: {image: joedwards32/cs2, tag: 5.0.0}
+  cs2: {image: joedwards32/cs2, tag: 5.0.1}
   comfyui: {image: yanwk/comfyui-boot, tag: cu130-megapak-pt211-20260812}
+  grafana: {image: docker.io/grafana/grafana, tag: 13.2.5-distroless}
+  n8n-postgres: {image: ghcr.io/cloudnative-pg/postgresql, tag: 18.6-system-trixie}
