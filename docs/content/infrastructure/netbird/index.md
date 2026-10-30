@@ -62,7 +62,7 @@ flowchart LR
 
     subgraph K8S["Kubernetes · routing-peer node"]
         NBPEER["netbird-peer-0<br/>hostNetwork · wt0: 100.109.244.71<br/>routes 192.168.1.0/24"]
-        MASQ["CILIUM_POST_nat<br/>MASQUERADE<br/>100.109.x → 192.168.1.221"]
+        MASQ["POSTROUTING<br/>MASQUERADE<br/>100.109.x → peer node IP"]
         CILBPF["Cilium BPF (other node eth0)<br/>L7LB DNAT → Envoy :13507"]
     end
 

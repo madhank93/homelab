@@ -31,16 +31,14 @@ type Node struct {
 func (n Node) HasGPU() bool { return len(n.PcieIDs) > 0 }
 
 type ClusterConfig struct {
-	Name          string                       `yaml:"name"`
-	VIP           string                       `yaml:"vip"`
-	Subnet        string                       `yaml:"subnet"`
-	Router        string                       `yaml:"router"`
-	Nameservers   []string                     `yaml:"nameservers"`
-	GatewayIP     string                       `yaml:"gateway_ip"`
-	LBPool        struct{ Start, Stop string } `yaml:"lb_pool"`
-	NetbirdCIDR   string                       `yaml:"netbird_cidr"`
-	NetbirdRouter string                       `yaml:"netbird_router"`
-	Nodes         []Node                       `yaml:"nodes"`
+	Name        string                       `yaml:"name"`
+	VIP         string                       `yaml:"vip"`
+	Subnet      string                       `yaml:"subnet"`
+	Router      string                       `yaml:"router"`
+	Nameservers []string                     `yaml:"nameservers"`
+	GatewayIP   string                       `yaml:"gateway_ip"`
+	LBPool      struct{ Start, Stop string } `yaml:"lb_pool"`
+	Nodes       []Node                       `yaml:"nodes"`
 }
 
 type Config struct {

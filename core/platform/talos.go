@@ -326,8 +326,7 @@ machine:
 // It performs two transformations:
 //  1. Drops the HostnameConfig document (auto-generated; we set hostname explicitly).
 //  2. Sets machine.network.hostname and nameservers, converts DHCP to a static
-//     address in cl.Subnet, adds a default route via cl.Router, and adds a route for
-//     cl.NetbirdCIDR via cl.NetbirdRouter so return traffic reaches the WireGuard tunnel.
+//     address in cl.Subnet, and adds a default route via cl.Router.
 func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (string, error) {
 	prefix := cl.Subnet[strings.Index(cl.Subnet, "/"):]
 	reader := strings.NewReader(rawConfig)
@@ -362,15 +361,6 @@ func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (
 							iface["routes"] = []any{
 								map[string]any{
 									"gateway": cl.Router,
-								},
-								// Static route: return traffic to Bifrost's NetBird subnet
-								// must go via k8s-routing-peer (worker1). Cilium's eBPF
-								// bypasses iptables MASQUERADE, so a kernel route is required
-								// on every node so SYN-ACKs reach worker1's wt0 tunnel.
-								map[string]any{
-									"network": cl.NetbirdCIDR,
-									"gateway": cl.NetbirdRouter,
-									"metric":  1024,
 								},
 							}
 						}

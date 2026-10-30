@@ -12,9 +12,6 @@ cluster:
   # Gateway LB address; the public wildcard DNS record points here.
   gateway_ip: 192.168.1.220
   lb_pool: {start: 192.168.1.220, stop: 192.168.1.230}
-  # Return route for Bifrost's NetBird subnet via the k8s routing peer (worker1).
-  netbird_cidr: 100.109.0.0/16
-  netbird_router: 192.168.1.221
   # Host RAM 92 GB, 8 GB reserved for Proxmox: control planes 8 GB, workers 14 GB, GPU worker 16 GB.
   nodes:
     - {name: k8s-controller1, ip: 192.168.1.211, role: control, cores: 4, memory: 8192, disk: 50, cpu_units: 1024, balloon: 4096}

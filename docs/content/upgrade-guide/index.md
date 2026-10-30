@@ -169,7 +169,7 @@ just talos-upgrade 192.168.1.212
 just talos-upgrade 192.168.1.213
 
 # Workers. Start with one and prove Longhorn attaches there before the rest.
-# worker1 runs the NetBird routing peer: public traffic drops while it reboots.
+# Public traffic drops while the node running netbird-peer-0 drains.
 just talos-upgrade 192.168.1.223
 just talos-upgrade 192.168.1.222
 just talos-upgrade 192.168.1.221

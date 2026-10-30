@@ -56,7 +56,7 @@ flowchart TB
 
     subgraph K8S["Talos Cluster · routing-peer node"]
         NBPEER["netbird-peer pod<br/>hostNetwork · wt0: 100.109.244.71<br/>routes 192.168.1.0/24"]
-        MASQ["iptables MASQUERADE<br/>src 100.109.x → 192.168.1.221"]
+        MASQ["iptables MASQUERADE<br/>src 100.109.x → peer node IP"]
         CILIUMETH["Cilium BPF · eth0<br/>L7LB DNAT → Envoy :13507"]
     end
 
@@ -127,9 +127,9 @@ sequenceDiagram
     NA->>RE: WireGuard UDP (encrypted)<br/>src:100.109.47.211 → dst:100.109.244.71
     RE->>NP: relay → decapsulated on wt0<br/>src:100.109.47.211 dst:192.168.1.220:80
 
-    Note over NP: No Cilium BPF on wt0 (NOARP/P2P)<br/>kernel IP forwards: wt0 → eth0<br/>CILIUM_POST_nat MASQUERADE:<br/>src 100.109.47.211 → 192.168.1.221
+    Note over NP: No Cilium BPF on wt0 (NOARP/P2P)<br/>kernel IP forwards: wt0 → eth0<br/>POSTROUTING MASQUERADE:<br/>src 100.109.47.211 → 192.168.1.22x
 
-    NP->>GW: src:192.168.1.221 dst:192.168.1.220:80<br/>arrives on L2-announced node eth0
+    NP->>GW: src:192.168.1.22x dst:192.168.1.220:80<br/>arrives on L2-announced node eth0
     Note over GW: Cilium cil_from_netdev (eth0)<br/>L7LB DNAT: dst → Envoy :13507<br/>Envoy matches HTTPRoute for grafana.madhan.app
     GW->>GR: HTTP GET / Host:grafana.madhan.app
     GR-->>GW: 302 Found → /login
@@ -150,7 +150,7 @@ sequenceDiagram
 | netbird-agent wt0 → relay | WireGuard encapsulated | `100.109.47.211` | `100.109.244.71` | Original IP hidden inside WireGuard |
 | relay → netbird-peer wt0 | decapsulated WireGuard | `100.109.47.211` | `192.168.1.220` | Original packet restored |
 | wt0 → eth0 (kernel fwd) | peer node | `100.109.x.x` | `192.168.1.220` | IP forwarding only |
-| MASQUERADE (CILIUM_POST_nat) | peer node eth0 | **that node's IP** | `192.168.1.220` | Source NAT — cluster can reply |
+| MASQUERADE (POSTROUTING) | peer node eth0 | **that node's IP** | `192.168.1.220` | Source NAT — cluster can reply |
 | eth0 → Cilium LB | another worker's eth0 | `192.168.1.221` | **Envoy :13507** | L7LB DNAT by Cilium BPF |
 | Envoy → Grafana pod | pod overlay | pod IP | Grafana pod IP | L7 routing by HTTPRoute |
 
@@ -166,7 +166,7 @@ During debugging of the `504 Gateway Timeout`, the `wt0` WireGuard interface was
 
 1. Packet arrives on `wt0` (decapsulated by WireGuard)
 2. Kernel IP forwarding routes it toward `eth0` (192.168.1.0/24 is directly connected)
-3. `CILIUM_POST_nat` BPF chain applies MASQUERADE (source → `192.168.1.221`)
+3. The iptables `POSTROUTING` MASQUERADE rule rewrites the source to the peer node's IP
 4. Packet goes on the LAN wire to `192.168.1.220`
 5. The node that owns ARP for `192.168.1.220` receives it on **its** `eth0`
 6. Cilium's `cil_from_netdev` on that `eth0` — a real Ethernet interface — does the L7LB DNAT correctly

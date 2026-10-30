@@ -17,7 +17,7 @@ netbird-agent (Bifrost · wt0: 100.109.47.211)
     ↓
 netbird-peer-0 (any worker · wt0: 100.109.244.71)
     │  kernel IP forward: wt0 → LAN NIC
-    │  CILIUM_POST_nat MASQUERADE: src → <worker node IP>
+    │  POSTROUTING MASQUERADE: src → <worker node IP>
     ↓
 192.168.1.220 (Cilium Gateway · another node's LAN NIC)
     │  Cilium BPF L7LB DNAT → Envoy :13507
@@ -83,7 +83,7 @@ leaving the node toward the cluster LAN, other than back out the tunnel, is sour
 replies come back via normal LAN routing instead of trying to find the WireGuard
 overlay. The `-C` check makes it idempotent across pod restarts.
 
-In practice the actual NAT is performed by Cilium's `CILIUM_POST_nat` BPF chain, not the raw iptables rule. Both coexist without conflict.
+Because of this NAT, nodes need no route back to the NetBird overlay, so the peer can run on any worker.
 
 ---
 
@@ -204,6 +204,5 @@ kubectl describe pod -n netbird netbird-peer-0 | grep -A5 "Init Containers"
 # Check the rule is installed
 kubectl exec -n netbird netbird-peer-0 -- \
   iptables -t nat -L POSTROUTING -n -v | grep -E "MASQUERADE|CILIUM"
-# CILIUM_POST_nat chain should show high packet count
-# MASQUERADE rule (backup) shows 0 packets — this is normal with Cilium BPF active
+# The MASQUERADE rule (! -o wt0, dst 192.168.1.0/24) should show a growing packet count
 ```

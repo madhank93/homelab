@@ -19,8 +19,8 @@ import (
 //
 // Key configuration decisions:
 //   - PVC mounts at /var/lib/netbird/ for peer-key persistence across restarts.
-//   - An initContainer applies iptables MASQUERADE on the CILIUM_POST_nat chain
-//     so that forwarded traffic from wt0 appears to originate from the node IP.
+//   - An initContainer adds an iptables POSTROUTING MASQUERADE so forwarded traffic
+//     from wt0 leaves as the node IP; replies need no route back to the overlay.
 //   - NB_SKIP_SOCKET_MARK must NOT be set: the routing peer relies on socket fwmark
 //     to bypass the management-server host route added to the kernel routing table.
 //   - wt0 is excluded from Cilium devices (core/platform/cilium.go) — it is
