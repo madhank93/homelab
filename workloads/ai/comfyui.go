@@ -83,9 +83,9 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 								{Name: jsii.String("CLI_ARGS"), Value: jsii.String("--listen 0.0.0.0 --port 8188")},
 							},
 							Resources: &k8s.ResourceRequirements{
-								// 6Gi so Ollama's 8Gi limit and this one together stay under
-								// worker4's 15.1Gi: a runaway workflow is then OOM-killed on
-								// its own rather than taking the node's other pods with it.
+								// 6Gi caps a runaway workflow so it is OOM-killed on its own.
+								// With Ollama's 12Gi the limits overcommit worker4's ~15Gi, but
+								// most of Ollama's usage is reclaimable mmap'd model pages.
 								// The GPU's 16Gi VRAM is not covered by any of this — no
 								// Kubernetes limit applies to it.
 								Limits: &map[string]k8s.Quantity{

@@ -37,7 +37,7 @@ func victoriaMetrics(orgID int) map[string]any {
 // gets VictoriaMetrics and a few dashboards, never logs.
 //
 // Secrets use Pattern B (secretObjects sync) via the CSI Driver:
-//   - ADMIN_PASSWORD: file-mounted at /mnt/secrets/ADMIN_PASSWORD, read via GF_SECURITY_ADMIN_PASSWORD__FILE.
+//   - ADMIN_PASSWORD: file-mounted at /mnt/secrets/ADMIN_PASSWORD, read via Grafana's $__file{} expansion.
 //   - OAUTH_CLIENT_SECRET: synced to k8s Secret "grafana-oauth-secret" for Authentik OIDC.
 //
 // Kyverno policy engine dashboards are imported via a ConfigMap with the

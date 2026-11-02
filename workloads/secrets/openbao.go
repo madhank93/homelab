@@ -33,6 +33,12 @@ func NewOpenBaoChart(scope constructs.Construct, id string, namespace string) cd
 			},
 			"csi": map[string]any{
 				"enabled": true,
+				// The provider must run wherever pods mount OpenBao secrets, GPU worker included.
+				"pod": map[string]any{
+					"tolerations": []map[string]any{
+						{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
+					},
+				},
 				"agent": map[string]any{
 					"image": map[string]any{"tag": config.ContainerImage("openbao").Tag},
 				},

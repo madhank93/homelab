@@ -11,8 +11,9 @@ import (
 // NewLonghornChart deploys Longhorn distributed block storage into the given
 // namespace.
 //
-// Each worker has a 120 Gi disk with ~100 Gi free, so the 300%
-// storageOverProvisioningPercentage below allows ~300 Gi of claims per node.
+// Worker disk sizes live in config/config.yml. The 300%
+// storageOverProvisioningPercentage below lets claims exceed free space,
+// since volumes only consume what they write.
 // The namespace is labelled privileged because the Longhorn CSI driver and
 // instance manager require elevated host access (device files, kernel modules).
 func NewLonghornChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -27,12 +28,16 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 			"defaultReplicaCount":           3,
 			"defaultDataPath":               "/var/lib/longhorn/", // Talos persistent path
 			"createDefaultDiskLabeledNodes": false,                // Auto-provision default disk on ALL nodes (not just labelled ones)
-			// 300% of a 120Gi disk leaves room for new 50Gi replicas (AI model
-			// volumes); 200% was exhausted.
+			// Volumes only consume what they write, so claims may exceed free space;
+			// 200% left no room for new 50Gi AI model replicas.
 			"storageOverProvisioningPercentage": 300,
 			// Moves volume engines onto the chart's engine image after a Longhorn
 			// upgrade without manual per-volume upgrades; one volume per node at a time.
 			"concurrentAutomaticEngineUpgradePerNodeLimit": 1,
+			// Lets the components Longhorn deploys itself (CSI plugin, engine image,
+			// instance and share managers) run on the GPU worker. Changing it restarts
+			// them, and Longhorn defers parts of it while volumes are attached.
+			"taintToleration": "dedicated=ai:NoSchedule",
 		},
 		"persistence": map[string]any{
 			"defaultClass":             true,
@@ -66,7 +71,12 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		// registers its node as a Longhorn node, and every registered node needs an
 		// engine image. Engine-image DaemonSets get no tolerations, so control planes
 		// would leave EngineImages stuck "deploying" and block volume attachment.
+		// The GPU worker's dedicated=ai taint is the exception: taintToleration
+		// above gives engine images the matching toleration.
 		"longhornManager": map[string]any{
+			"tolerations": []map[string]any{
+				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
+			},
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
 				"requests": map[string]any{"cpu": "200m", "memory": "256Mi"},

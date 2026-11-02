@@ -15,9 +15,6 @@ import (
 // mount extra volumes, so a secret-sync pod mounts the CSI volume instead.
 //
 // The HTTPRoute must target the harbor:80 nginx proxy Service, not harbor-core:80.
-//
-// Known issue: RWO PVC deadlock on rolling update — force-delete pods and scale
-// down the old ReplicaSet to zero to resolve.
 func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
