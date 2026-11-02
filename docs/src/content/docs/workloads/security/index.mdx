@@ -1,0 +1,22 @@
+---
+title: Security
+description: Admission control, vulnerability scanning and runtime detection.
+sidebar:
+  label: Overview
+  order: 30
+---
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Three tools act at three moments; only Kyverno can block anything.
+
+| Tool | Acts at | Does |
+|---|---|---|
+| Kyverno | Admission | Rejects or mutates resources (no policies yet) |
+| Trivy | After admission | Scans running workloads for CVEs and misconfig |
+| Falco | Runtime | Alerts on suspicious syscalls |
+
+<CardGrid>
+  <LinkCard title="Kyverno" href="/workloads/security/kyverno/" description="Fail-closed admission webhook." />
+  <LinkCard title="Trivy" href="/workloads/security/trivy/" description="Trivy Operator scan reports as CRDs." />
+  <LinkCard title="Falco" href="/workloads/security/falco/" description="modern_ebpf syscall monitoring on Talos." />
+</CardGrid>

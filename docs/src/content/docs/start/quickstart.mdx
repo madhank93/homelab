@@ -1,0 +1,35 @@
+---
+title: Quickstart
+description: The bootstrap commands in order, for a machine that already has the tools, the age key and a populated SOPS file.
+sidebar:
+  order: 2
+---
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+The shortest path from bare Proxmox to a synced cluster. Each step links to its phase page for details and checks.
+
+<Aside type="caution">
+Start only after [Prerequisites](/start/deploy/0-prerequisites/): the tools installed, `SOPS_AGE_KEY_FILE` exported and every Phase 0 key in `secrets/bootstrap.sops.yaml`.
+</Aside>
+
+<Steps>
+
+1. `just core talos up` — Proxmox VMs and Talos bootstrap (~15 min). [Phase 1](/start/deploy/1-cluster/)
+2. `just create-secrets` — bootstrap Secrets for OpenBao and cert-manager, after pointing `KUBECONFIG` at `core/kubeconfig` (seconds). [Phase 1](/start/deploy/1-cluster/)
+3. `just core platform up` — Cilium, Gateway API, cert-manager, Argo CD (a few minutes). [Phase 1](/start/deploy/1-cluster/)
+4. `just openbao-init` — initialise and unseal OpenBao, save the unseal key (seconds). [Phase 2](/start/deploy/2-openbao/)
+5. Put the key in SOPS, then `just create-secrets` and `kubectl delete pod -n openbao openbao-0` (~1 min). [Phase 2](/start/deploy/2-openbao/)
+6. `just openbao-setup` — Kubernetes auth, policies, roles, seeded app secrets (~1 min). [Phase 2](/start/deploy/2-openbao/)
+7. `just core cloudflare up` — DNS records (~1 min). [Phase 3](/start/deploy/3-bifrost/)
+8. `just core hetzner up` — Bifrost VPS and its bootstrap (~8 min). [Phase 3](/start/deploy/3-bifrost/)
+9. `just core authentik up` — GitHub login, OIDC apps, ForwardAuth (~2 min). [Phase 4](/start/deploy/4-authentik/)
+10. NetBird UI — log in as local admin, add Authentik as identity provider (~5 min). [Phase 5](/start/deploy/5-netbird-login/)
+11. NetBird UI — create setup keys and an access token; add them to SOPS; `just core hetzner up` again (~5 min). [Phase 6](/start/deploy/6-netbird-keys/)
+12. Write the `k8s-routing-peer` key to OpenBao and add the LAN route (~2 min). [Phase 6](/start/deploy/6-netbird-keys/)
+13. `just grafana-init` — create Grafana's Public org (seconds). [Phase 7](/start/deploy/7-grafana-sso/)
+14. `git push` — CI publishes manifests, Argo CD syncs (~3 min). [Phase 8](/start/deploy/8-manifests/)
+15. Run the checks in [Phase 9](/start/deploy/9-verify/).
+
+</Steps>
+
+Every recipe is listed in the [justfile reference](/reference/justfile/).

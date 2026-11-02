@@ -1,0 +1,62 @@
+---
+title: Workloads
+description: Every app the cluster runs, where it is reachable, and how it authenticates.
+sidebar:
+  label: Service catalog
+  order: 60
+---
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Each app is a CDK8s chart in [`main.go`](src:workloads/main.go), synthesized by CI and synced by Argo CD from the manifests branch named in [`config.yml`](src:config/config.yml). Runtime secrets come from OpenBao; see [Secrets](/concepts/secrets/).
+
+## Service catalog
+
+| App | Group | Exposure | Hostname | Auth |
+|---|---|---|---|---|
+| [ComfyUI](/workloads/ai/comfyui/) | AI | LAN (off by default) | `comfyui.madhan.app` | None |
+| [Kubeflow](/workloads/ai/kubeflow/) | AI | LAN | `kubeflow.madhan.app` | None (route injects a fixed `kubeflow-userid`) |
+| [Notebook gateway controller](/workloads/ai/notebook-gateway-controller/) | AI | none | Adds notebook paths to `kubeflow.madhan.app` | — |
+| [NVIDIA device plugin](/workloads/ai/nvidia-device-plugin/) | AI | none | — | — |
+| [Ollama](/workloads/ai/ollama/) | AI | LAN | `ollama.madhan.app`, `192.168.1.225:11434` | None |
+| [n8n](/workloads/automation/n8n/) | Automation | LAN | `n8n.madhan.app` | n8n login |
+| [CloudNativePG](/workloads/databases/cnpg/) | Databases | none | — | — |
+| [Counter-Strike 2](/workloads/gaming/cs2/) | Gaming | LAN | `192.168.1.230:27015` | Join password |
+| [Headlamp](/workloads/management/headlamp/) | Management | LAN | `headlamp.madhan.app` | ServiceAccount token |
+| [Argo CD monitor](/workloads/monitoring/argocd-monitor/) | Monitoring | none | — | — |
+| [Grafana](/workloads/monitoring/grafana/) | Monitoring | **Public** | `grafana.madhan.app` | Authentik OIDC (Grafana's own) |
+| [Metrics Server](/workloads/monitoring/metrics-server/) | Monitoring | none | — | — |
+| [OpenTelemetry](/workloads/monitoring/opentelemetry/) | Monitoring | none | — | — |
+| [VictoriaLogs](/workloads/monitoring/victoria-logs/) | Monitoring | LAN | `victorialogs.madhan.app` | None |
+| [VictoriaMetrics](/workloads/monitoring/victoria-metrics/) | Monitoring | LAN | `vmselect.madhan.app`, `alertmanager.madhan.app` | None |
+| [NetBird peer](/workloads/networking/netbird-peer/) | Networking | none (it is the VPN route) | — | — |
+| [Harbor](/workloads/registry/harbor/) | Registry | LAN | `harbor.madhan.app` | Harbor admin |
+| [OpenBao](/workloads/secrets/openbao/) | Secrets | LAN | `openbao.madhan.app` | OpenBao token |
+| [Secrets Store CSI driver](/workloads/secrets/csi-driver/) | Secrets | none | — | — |
+| [Falco](/workloads/security/falco/) | Security | LAN | `falco.madhan.app` | Sidekick UI login |
+| [Kyverno](/workloads/security/kyverno/) | Security | none | — | — |
+| [Trivy](/workloads/security/trivy/) | Security | none | — | — |
+| [Longhorn](/workloads/storage/longhorn/) | Storage | LAN | `longhorn.madhan.app` | None |
+| [Reloader](/workloads/support/reloader/) | Support | none | — | — |
+
+**Public** means listed in `publicServices` in [`cloudflare.go`](src:core/cloud/cloudflare.go), served through Bifrost. **LAN** means an HTTPRoute on the shared Gateway (or a LoadBalancer IP); NetBird VPN clients reach these too, through the routing peer. See [Exposure](/cloud/exposure/).
+
+:::caution[LAN services have no login of their own]
+Rows marked "None" trust anything that can reach the LAN or the VPN. Keep them out of `publicServices` unless Bifrost's Authentik ForwardAuth sits in front.
+:::
+
+## Groups
+
+<CardGrid>
+  <LinkCard title="AI" href="/workloads/ai/" description="Ollama, ComfyUI, Kubeflow and the GPU plumbing on worker4." />
+  <LinkCard title="Automation" href="/workloads/automation/" description="n8n workflows." />
+  <LinkCard title="Databases" href="/workloads/databases/" description="CloudNativePG operator." />
+  <LinkCard title="Gaming" href="/workloads/gaming/" description="Counter-Strike 2 server." />
+  <LinkCard title="Management" href="/workloads/management/" description="Headlamp cluster dashboard." />
+  <LinkCard title="Monitoring" href="/workloads/monitoring/" description="Grafana, VictoriaMetrics, VictoriaLogs, OpenTelemetry." />
+  <LinkCard title="Networking" href="/workloads/networking/" description="In-cluster NetBird routing peer." />
+  <LinkCard title="Registry" href="/workloads/registry/" description="Harbor image registry." />
+  <LinkCard title="Secrets" href="/workloads/secrets/" description="OpenBao and the Secrets Store CSI driver." />
+  <LinkCard title="Security" href="/workloads/security/" description="Kyverno, Trivy and Falco." />
+  <LinkCard title="Storage" href="/workloads/storage/" description="Longhorn block storage." />
+  <LinkCard title="Support" href="/workloads/support/" description="Reloader." />
+</CardGrid>

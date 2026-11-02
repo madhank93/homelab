@@ -1,0 +1,56 @@
+---
+title: Deploy from scratch
+description: Ten phases from bare Proxmox to a synced cluster, and where every bootstrap secret lives.
+sidebar:
+  order: -1
+  label: Overview
+---
+
+Each phase depends on the one before it. Most of the time is spent waiting for services to come up.
+
+## At a glance
+
+| Phase | What | Time | Page |
+|---|---|---|---|
+| 0 | Tools, age key, SOPS secrets | one-time | [Prerequisites](/start/deploy/0-prerequisites/) |
+| 1 | Proxmox VMs, Talos, platform | ~15 min | [Cluster](/start/deploy/1-cluster/) |
+| 2 | OpenBao init, auth, app secrets | ~10 min | [OpenBao](/start/deploy/2-openbao/) |
+| 3 | DNS and the Bifrost VPS | ~8 min | [Bifrost](/start/deploy/3-bifrost/) |
+| 4 | Authentik apps | ~2 min | [Authentik](/start/deploy/4-authentik/) |
+| 5 | NetBird first login | ~5 min | [NetBird login](/start/deploy/5-netbird-login/) |
+| 6 | NetBird keys, token, LAN route | ~5 min | [NetBird keys](/start/deploy/6-netbird-keys/) |
+| 7 | Grafana SSO and Public org | ~5 min | [Grafana SSO](/start/deploy/7-grafana-sso/) |
+| 8 | Publish manifests | ~3 min | [Manifests](/start/deploy/8-manifests/) |
+| 9 | End-to-end checks | — | [Verify](/start/deploy/9-verify/) |
+
+## Secrets quick reference
+
+Key names only. SOPS means `secrets/bootstrap.sops.yaml`; `env/` is `core/cloud/bifrost/env/`, written by `just core hetzner up` and gitignored. See [Secrets](/concepts/secrets/) for the full model.
+
+| Key | Where it lives | Set in |
+|---|---|---|
+| `PROXMOX_PASSWORD` | SOPS → Pulumi `talos` stack | 0 |
+| `HCLOUD_TOKEN` | SOPS → Pulumi `hetzner` stack | 0 |
+| `CLOUDFLARE_API_TOKEN` | SOPS → Secret `cert-manager/cloudflare-api-token`, `env/traefik.env` (as `CF_DNS_API_TOKEN`), Pulumi `cloudflare` stack | 0 |
+| `AUTHENTIK_TOKEN` | SOPS → `env/authentik-server.env` (as `AUTHENTIK_BOOTSTRAP_TOKEN`), Pulumi `authentik` stack | 0 |
+| `AUTHENTIK_SECRET_KEY` | SOPS → `env/authentik-server.env`, `env/authentik-worker.env` | 0 |
+| `AUTHENTIK_POSTGRESQL_PASSWORD` | SOPS → `env/authentik-postgres.env`, `env/authentik-server.env`, `env/authentik-worker.env` | 0 |
+| `AUTHENTIK_GITHUB_SECRET` | SOPS → Pulumi `authentik` stack | 0 |
+| `GRAFANA_OAUTH_CLIENT_SECRET` | SOPS → Pulumi `authentik` stack, OpenBao `secret/grafana` `OAUTH_CLIENT_SECRET` | 0 |
+| `NETBIRD_CLIENT_SECRET` | SOPS → Pulumi `authentik` stack; typed into the NetBird UI | 0 |
+| `NB_DATA_STORE_KEY` | SOPS → `env/bootstrap.env` | 0 |
+| `NB_RELAY_SECRET` | SOPS → `env/bootstrap.env` | 0 |
+| `NB_OWNER_PASSWORD` | SOPS → `env/bootstrap.env` | 0 |
+| `OPENBAO_UNSEAL_KEY` | SOPS → Secret `openbao/openbao-unseal-key` | 2 |
+| `NB_PROXY_TOKEN` | SOPS → `env/netbird-proxy.env` | 6 |
+| `NB_BIFROST_SETUP_KEY` | SOPS → `env/netbird-agent.env` (as `NB_SETUP_KEY`) | 6 |
+| `ADMIN_PASSWORD` | OpenBao `secret/grafana` (seeded) | 2 |
+| `HARBOR_ADMIN_PASSWORD` | OpenBao `secret/harbor` (seeded) | 2 |
+| `ENCRYPTION_KEY` | OpenBao `secret/n8n` (seeded) | 2 |
+| `FALCOSIDEKICK_UI_USER` | OpenBao `secret/falco` (seeded) | 2 |
+| `RCON_PASSWORD`, `JOIN_PASSWORD` | OpenBao `secret/cs2` (seeded) | 2 |
+| `NETBIRD_SETUP_KEY` | OpenBao `secret/netbird` (placeholder in 2, real key in 6) | 6 |
+
+:::danger[Never rotate these]
+`NB_DATA_STORE_KEY` encrypts the NetBird database: changing it loses every peer registration. n8n's `ENCRYPTION_KEY` decrypts saved credentials: changing it breaks every workflow credential.
+:::

@@ -1,0 +1,194 @@
+---
+// Variant: how a change reaches the cluster — infrastructure, apps and secrets
+// as three numbered swimlanes on one shared column grid.
+import { cluster, totals } from '../../data/cluster';
+import Explorer from './Explorer.astro';
+import Node from './Node.astro';
+import Arrows from './Arrows.astro';
+
+const X0 = 24;
+const W = 172;
+const P = 212; // column pitch: W + 40px gap
+const cx = (i: number) => X0 + i * P;
+const mid = (i: number) => cx(i) + W / 2;
+const gap = (i: number) => cx(i) - 20; // centre of the gap left of column i
+const STACK = 58; // pitch of compact boxes stacked in one column
+
+const L1 = 20, H1 = 286;
+const L2 = L1 + H1 + 20, H2 = 220;
+const L3 = L2 + H2 + 20, H3 = 128;
+const r1 = L1 + 50, r2 = L2 + 50, r3 = L3 + 50;
+const stackY = (r: number, k: number) => r + 6 + k * STACK;
+const stackMid = (r: number, k: number) => r + 26 + k * STACK;
+
+const nodes = ['controlplanes', 'workers', 'gpuworker'] as const;
+const platform = ['argocd', 'cilium', 'gateway', 'certmanager'] as const;
+const edge = ['cloudflare', 'bifrost', 'authentik'] as const;
+const synced = ['longhorn', 'openbao', 'netbirdpeer', 'cnpg', 'grafana', 'ollama'] as const;
+const steps: [number, number, number, string][] = [
+  [cx(0), r1, 1, 'provision'], [cx(1), r1, 2, 'provision'], [cx(2), r1, 3, 'provision'],
+  [cx(3), r1, 4, 'provision'], [cx(4), stackY(r1, 0), 5, 'provision'], [cx(5), stackY(r1, 0), 6, 'provision'],
+  [cx(0), r2, 1, 'deploy'], [cx(1), r2, 2, 'deploy'], [cx(2), r2, 3, 'deploy'],
+  [cx(3), r2, 4, 'deploy'], [cx(4), r2, 5, 'deploy'], [cx(0), r2 + 96, 6, 'deploy'],
+  [cx(0), r3, 1, 'provision'], [cx(2), r3, 2, 'runtime'], [cx(3), r3, 3, 'runtime'], [cx(5), stackY(r3, 0), 4, 'runtime'],
+];
+const hop = (from: number, to: number, y: number) => `M${cx(from) + W} ${y} H${cx(to)}`;
+const legendY = L3 + H3 + 30;
+---
+
+<Explorer label="How a change reaches the cluster: infrastructure, apps and secrets">
+  <svg viewBox={`0 0 1280 ${legendY + 22}`} role="group" aria-label="Lifecycle diagram: three numbered swimlanes showing how infrastructure, apps and secrets reach the cluster">
+    <Arrows />
+    <defs>
+      <marker id="lifecycle-arrow-runtime" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" class="head-runtime" />
+      </marker>
+    </defs>
+
+    {/* 1 · Infrastructure */}
+    <rect class="zone" x="10" y={L1} width="1260" height={H1} rx="12" />
+    <text class="zone-label" x={X0} y={L1 + 24}>Infrastructure — Pulumi, from your laptop</text>
+    <Node id="you" x={cx(0)} y={r1} w={W} />
+    <Node id="pulumi" x={cx(1)} y={r1} w={W} tone="provision" />
+    <Node id="proxmox" x={cx(2)} y={r1} w={W} />
+    <Node id="talos" x={cx(3)} y={r1} w={W} />
+    {nodes.map((id, k) => <Node id={id} x={cx(4)} y={stackY(r1, k)} w={W} h={40} compact />)}
+    <text class="label" x={mid(4)} y={r1 + 180} text-anchor="middle">{totals.nodes} VMs · VIP {cluster.vip}</text>
+    {platform.map((id, k) => <Node id={id} x={cx(5)} y={stackY(r1, k)} w={W} h={40} compact />)}
+    {edge.map((id, k) => <Node id={id} x={cx(2)} y={stackY(r1, k + 1)} w={W} h={40} compact />)}
+
+    <path class="flow provision" d={hop(0, 1, r1 + 26)} marker-end="url(#arrow-provision)" />
+    <path class="flow provision" d={hop(1, 2, r1 + 26)} marker-end="url(#arrow-provision)" />
+    <text class="flow-label provision" x={gap(2)} y={r1 + 20} text-anchor="middle">VMs</text>
+    <path class="flow provision" d={hop(2, 3, r1 + 26)} marker-end="url(#arrow-provision)" />
+    {nodes.map((_, k) => (
+      <path class="flow provision" d={`M${cx(3) + W} ${r1 + 26} H${gap(4)} V${stackMid(r1, k)} H${cx(4)}`} marker-end="url(#arrow-provision)" />
+    ))}
+    {edge.map((_, k) => (
+      <path class="flow provision" d={`M${mid(1)} ${r1 + 52} V${stackMid(r1, k + 1)} H${cx(2)}`} marker-end="url(#arrow-provision)" />
+    ))}
+    {platform.map((_, k) => (
+      <path class="flow provision" d={`M${mid(1)} ${r1} V${L1 + 34} H${gap(5)} V${stackMid(r1, k)} H${cx(5)}`} marker-end="url(#arrow-provision)" />
+    ))}
+    <text class="flow-label provision" x={gap(5) - 8} y={L1 + 29} text-anchor="end">installs the platform</text>
+
+    {/* 2 · Apps */}
+    <rect class="zone" x="10" y={L2} width="1260" height={H2} rx="12" />
+    <text class="zone-label" x={X0} y={L2 + 24}>Apps — git push, synced by Argo CD</text>
+    <Node id="gitpush" x={cx(0)} y={r2} w={W} tone="deploy" />
+    <Node id="github" x={cx(1)} y={r2} w={W} />
+    <Node id="ci" x={cx(2)} y={r2} w={W} />
+    <Node id="manifests" x={cx(3)} y={r2} w={W} />
+    <Node id="argocd" x={cx(4)} y={r2} w={W} />
+    {synced.map((id, i) => <Node id={id} x={cx(i)} y={r2 + 96} w={W} h={40} compact />)}
+
+    {[0, 1, 2, 3].map((i) => <path class="flow deploy" d={hop(i, i + 1, r2 + 26)} marker-end="url(#arrow-deploy)" />)}
+    <text class="flow-label deploy" x={gap(4)} y={r2 + 20} text-anchor="middle">pulls</text>
+    <path class="flow deploy" d={`M${mid(4)} ${r2 + 52} V${r2 + 74}`} />
+    <path class="flow deploy" d={`M${mid(0)} ${r2 + 74} H${mid(5)}`} />
+    {synced.map((_, i) => <path class="flow deploy" d={`M${mid(i)} ${r2 + 74} V${r2 + 96}`} marker-end="url(#arrow-deploy)" />)}
+    <text class="label" x={(cx(0) + cx(3) + W) / 2} y={r2 + 156} text-anchor="middle">Cluster services</text>
+    <text class="label" x={(cx(4) + cx(5) + W) / 2} y={r2 + 156} text-anchor="middle">Apps · + every app in workloads/</text>
+
+    {/* 3 · Secrets */}
+    <rect class="zone" x="10" y={L3} width="1260" height={H3} rx="12" />
+    <text class="zone-label" x={X0} y={L3 + 24}>Secrets — no values in git</text>
+    <Node id="sops" x={cx(0)} y={r3} w={W} />
+    <g class="plain">
+      <rect x={cx(2)} y={r3} width={W} height="52" rx="8" />
+      <text class="plain-name" x={cx(2) + 14} y={r3 + 22}>bootstrap Secrets</text>
+      <text class="plain-role" x={cx(2) + 14} y={r3 + 39}>unseal key · Cloudflare</text>
+    </g>
+    <Node id="openbao" x={cx(3)} y={r3} w={W} />
+    <Node id="grafana" x={cx(5)} y={stackY(r3, 0)} w={W} h={40} compact />
+    <text class="label" x={mid(5)} y={r3 + 64} text-anchor="middle">mounted as files</text>
+
+    <path class="flow provision" d={hop(0, 2, r3 + 26)} marker-end="url(#arrow-provision)" />
+    <text class="flow-label provision" x={mid(1)} y={r3 + 20} text-anchor="middle">just create-secrets</text>
+    <path class="flow runtime" d={hop(2, 3, r3 + 26)} marker-end="url(#lifecycle-arrow-runtime)" />
+    <path class="flow runtime" d={hop(3, 5, r3 + 26)} marker-end="url(#lifecycle-arrow-runtime)" />
+    <text class="flow-label runtime" x={mid(4)} y={r3 + 20} text-anchor="middle">Secrets Store CSI</text>
+
+    {steps.map(([x, y, n, tone]) => (
+      <g class:list={['step', tone]}>
+        <circle cx={x} cy={y - 1} r="9" />
+        <text x={x} y={y - 1} dy="0.35em" text-anchor="middle">{n}</text>
+      </g>
+    ))}
+
+    <g>
+      <line class="flow provision" x1="24" y1={legendY - 4} x2="54" y2={legendY - 4} />
+      <text class="label" x="62" y={legendY}>Provision (from your laptop)</text>
+      <line class="flow deploy" x1="250" y1={legendY - 4} x2="280" y2={legendY - 4} />
+      <text class="label" x="288" y={legendY}>Deploy (git → Argo CD)</text>
+      <line class="flow runtime" x1="446" y1={legendY - 4} x2="476" y2={legendY - 4} />
+      <text class="label" x="484" y={legendY}>Runtime (in the cluster)</text>
+      <rect class="owner-key provision" x="650" y={legendY - 12} width="4" height="16" rx="2" />
+      <text class="label" x="660" y={legendY}>Managed by Pulumi</text>
+      <rect class="owner-key deploy" x="800" y={legendY - 12} width="4" height="16" rx="2" />
+      <text class="label" x="810" y={legendY}>Managed by Argo CD</text>
+      <text class="label" x="970" y={legendY}>Numbers mark the order within each lane</text>
+    </g>
+  </svg>
+</Explorer>
+
+<style>
+  .flow.runtime {
+    stroke: var(--sl-color-gray-3);
+  }
+  .head-runtime {
+    fill: var(--sl-color-gray-3);
+  }
+  .flow-label.runtime {
+    fill: var(--sl-color-gray-2);
+  }
+  .plain rect {
+    fill: var(--sl-color-gray-6);
+    stroke: var(--sl-color-gray-5);
+    stroke-dasharray: 4 3;
+  }
+  .plain-name {
+    font-size: 13px;
+    font-weight: 600;
+    fill: var(--sl-color-white);
+  }
+  .plain-role {
+    font-size: 11px;
+    fill: var(--sl-color-gray-2);
+  }
+  .step {
+    pointer-events: none;
+  }
+  .step circle {
+    fill: var(--sl-color-black);
+    stroke-width: 1.5;
+  }
+  .step text {
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .step.provision circle {
+    stroke: var(--arch-provision);
+  }
+  .step.provision text {
+    fill: var(--arch-provision);
+  }
+  .step.deploy circle {
+    stroke: var(--arch-deploy);
+  }
+  .step.deploy text {
+    fill: var(--arch-deploy);
+  }
+  .step.runtime circle {
+    stroke: var(--sl-color-gray-3);
+  }
+  .step.runtime text {
+    fill: var(--sl-color-gray-2);
+  }
+  .owner-key.provision {
+    fill: var(--arch-provision);
+  }
+  .owner-key.deploy {
+    fill: var(--arch-deploy);
+  }
+</style>

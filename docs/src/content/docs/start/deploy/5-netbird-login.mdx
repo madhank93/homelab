@@ -1,0 +1,40 @@
+---
+title: NetBird first login
+description: Log in to NetBird as the local admin and connect Authentik as its identity provider.
+sidebar:
+  order: 5
+  label: 5 · NetBird login
+---
+import { Steps } from '@astrojs/starlight/components';
+
+Goal: NetBird signs users in through Authentik and GitHub. About 5 minutes, in the NetBird UI.
+
+NetBird runs an embedded Dex. On a fresh deploy no external identity provider is connected, so the first login uses the local admin.
+
+## Procedure
+
+<Steps>
+
+1. Open `https://netbird.madhan.app` and sign in as `admin@madhan.app` with `NB_OWNER_PASSWORD` from SOPS.
+
+2. Go to **Settings → Identity Providers → Add → Authentik** and enter:
+
+   | Field | Value |
+   |---|---|
+   | Client ID | `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT` |
+   | Client Secret | `NETBIRD_CLIENT_SECRET` from SOPS |
+   | Issuer | `https://auth.madhan.app/application/o/netbird/` |
+
+3. Save. The redirect URI shown must be `https://netbird.madhan.app/oauth2/callback`, the one [`authentik.go`](src:core/cloud/authentik.go) registers.
+
+</Steps>
+
+:::note
+Pulumi creates the Authentik side of this connector; the NetBird side has no API in this setup, so it stays a manual step.
+:::
+
+## Check
+
+In a private window, open `https://netbird.madhan.app`, choose **Login with Authentik**, and confirm the GitHub button appears and signs you in.
+
+Details: [NetBird](/cloud/netbird/).

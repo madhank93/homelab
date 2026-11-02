@@ -1,0 +1,97 @@
+---
+title: Counter-Strike 2
+description: LAN-only Counter-Strike 2 dedicated server at a fixed address, configured from one YAML file.
+sidebar:
+  order: 10
+  badge: { text: LAN, variant: note }
+---
+import { Steps } from '@astrojs/starlight/components';
+
+A single-replica CS2 dedicated server on the [joedwards32/cs2](https://github.com/joedwards32/CS2) image. `CS2_LAN=1` starts it with `sv_lan 1`: no Steam game server token, no public listing, private-address clients only.
+
+| | |
+|---|---|
+| Namespace | `cs2` |
+| Source | [`cs2.go`](src:workloads/gaming/cs2.go), [`cs2_config.yml`](src:workloads/gaming/cs2_config.yml) |
+| Exposure | LAN · LoadBalancer `192.168.1.230:27015` (UDP game, TCP RCON) |
+| Storage | 80Gi on `longhorn-cs2` (1 replica) |
+| Auth | Join password; RCON password |
+
+## Configuration
+
+| Setting | Value | Why |
+|---|---|---|
+| LoadBalancer IP | `192.168.1.230` | Players' `connect` command never changes; kept clear of the node addresses that share the pool range |
+| Storage class | `longhorn-cs2`, 1 replica | The ~60 GB game is re-downloadable, so a lost replica costs one download, not another 60 GB of disk |
+| PVC | 80Gi | steamcmd stages updates next to the installed files |
+| Install | steamcmd downloads or updates the game into the PVC on every start | A restart picks up a CS2 patch; the first start takes as long as the download |
+| Strategy | `Recreate` | The RWO volume attaches to one pod |
+| `CS2_SERVER_HIBERNATE` | `0` | Hibernating when empty crashes this image |
+| Server cfg | init container copies the ConfigMap into `game/csgo/cfg` | The entrypoint runs `sed -i` over cfg files, which fails on a read-only mount |
+| Resources | requests `2000m` / `2Gi`, limits `4000m` / `4Gi` | |
+
+OpenBao keys at `secret/cs2`: `RCON_PASSWORD`, `JOIN_PASSWORD`, seeded by `just openbao-setup` and mirrored into the `cs2-secrets` Secret.
+
+### Server settings
+
+Edit `cs2_config.yml` and push. Reloader restarts the server (about 2 minutes).
+
+| `server` key | Image env | Meaning |
+|---|---|---|
+| `name` | `CS2_SERVERNAME` | Name in the browser and scoreboard |
+| `game_alias` | `CS2_GAMEALIAS` | `competitive`, `casual`, `wingman`, `deathmatch`, `armsrace` |
+| `map_group` | `CS2_MAPGROUP` | End-of-match vote pool; `mg_active` is Active Duty |
+| `start_map` | `CS2_STARTMAP` | Map at startup |
+| `max_players` | `CS2_MAXPLAYERS` | Player slots |
+
+`convars` are written to `gamemode_<mode>_server.cfg`, which CS2 runs after its own mode defaults on every map load, so they win. The shipped values are the competitive defaults (economy, round timing, `bot_quota 0`); any server convar can go there. Look up defaults and ranges in [SteamDatabase `convars.txt`](https://github.com/SteamDatabase/GameTracking-CS2/blob/master/DumpSource2/convars.txt) and [`gamemode_competitive.cfg`](https://github.com/SteamDatabase/GameTracking-CS2/blob/master/game/csgo/cfg/gamemode_competitive.cfg). A value set with `rcon` lasts until the next map load.
+
+## Operate
+
+Get the join password to hand out:
+
+```bash frame="terminal"
+just openbao-get secret/cs2 JOIN_PASSWORD
+```
+
+Change the map from any connected client's console:
+
+```txt title="CS2 console"
+rcon_address 192.168.1.230:27015
+rcon_password <RCON_PASSWORD>
+rcon changelevel de_mirage
+```
+
+Update after a CS2 patch: `kubectl -n cs2 rollout restart deployment/cs2`.
+
+## Player setup
+
+Players must be on the home network (a `192.168.1.x` address).
+
+<Steps>
+
+1. Install [Steam](https://store.steampowered.com/about/), sign in, and install Counter-Strike 2 (free, about 85 GB).
+
+2. Launch it once and finish the intro.
+
+3. Enable the console: Settings → Game → **Enable Developer Console (~)**. Press the key under <kbd>Esc</kbd> to open it; on non-US keyboards bind one under Keyboard / Mouse → **Toggle Console**.
+
+4. Join from the console, pasting the password rather than typing it:
+
+   ```txt
+   connect 192.168.1.230; password <JOIN_PASSWORD>
+   ```
+
+</Steps>
+
+The **LAN** tab in the server browser stays empty: it finds servers by broadcast, which the LoadBalancer IP does not answer. Add `192.168.1.230:27015` under **Favorites** instead, and set the password first with `password <JOIN_PASSWORD>` in the console — the browser's password prompt joins with an empty one.
+
+Low-spec laptops: plug in, use *Best performance* power mode, dual-channel RAM, the vendor's latest GPU driver, and 1280×720 with every option on lowest and FSR on *Performance*.
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| Connect times out | The PC is not on the home network (guest Wi-Fi, VPN). `Test-NetConnection 192.168.1.230 -Port 27015` in PowerShell should print `TcpTestSucceeded : True` |
+| "Bad password" or `NETWORK_DISCONNECT_REJECT_BADPASSWORD` | Empty or mistyped password. Paste it in the console |
+| Ping above ~40 ms or spiky | Use a wired connection; 1–10 ms is normal on the LAN |

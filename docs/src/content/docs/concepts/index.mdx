@@ -1,0 +1,20 @@
+---
+title: Concepts
+description: How the whole system fits together — traffic, cluster layout, the GitOps pipeline and the secrets model.
+sidebar:
+  label: Overview
+  order: 1
+---
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+import HubDiagram from '../../../components/arch/HubDiagram.astro';
+
+Pulumi builds the VMs, the cluster and the Bifrost edge from a laptop; Argo CD deploys every workload from CDK8s-synthesized manifests. These pages explain the four cross-cutting flows that component pages link back to.
+
+<HubDiagram />
+
+<CardGrid>
+  <LinkCard title="How traffic flows" href="/concepts/traffic/" description="Public, LAN and VPN paths from a client to a pod." />
+  <LinkCard title="Cluster layout" href="/concepts/cluster/" description="Node roles and what runs where." />
+  <LinkCard title="GitOps pipeline" href="/concepts/gitops/" description="Pulumi for infrastructure, CDK8s and Argo CD for workloads." />
+  <LinkCard title="Secrets model" href="/concepts/secrets/" description="SOPS for bootstrap, OpenBao and the CSI driver at runtime." />
+</CardGrid>

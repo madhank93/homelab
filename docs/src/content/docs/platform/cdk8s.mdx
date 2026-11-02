@@ -1,0 +1,93 @@
+---
+title: CDK8s
+description: Go code in workloads/ that synthesizes every manifest Argo CD applies — layout, the construct rule, and adding an app.
+sidebar:
+  order: 60
+---
+import { FileTree, Steps } from '@astrojs/starlight/components';
+
+Every workload is Go in `workloads/`; CDK8s synthesizes it to YAML that CI publishes to the manifests branch. [CDK8s docs](https://cdk8s.io/docs/latest/).
+
+| | |
+|---|---|
+| Source | [`main.go`](src:workloads/main.go), [`cdk8s.yaml`](src:workloads/cdk8s.yaml), [`kit.go`](src:workloads/kit/kit.go) |
+| Output | `app/<dir>/`, one file per resource (gitignored) |
+| CI | [`cdk8s-seal-publish.yml`](src:.github/workflows/cdk8s-seal-publish.yml) → `<branch>-manifests` |
+| Why | [GitOps with Pulumi and CDK8s](/reference/decisions/gitops-cdk8s/) |
+
+## Layout
+
+<FileTree>
+- workloads/
+  - main.go one entry per Argo CD Application
+  - cdk8s.yaml charts with typed imports
+  - imports/ generated bindings, never edited by hand
+  - kit/kit.go Namespace, Route, SecretProviderClass helpers
+  - ai/ ollama, comfyui, kubeflow, notebook gateway controller
+  - automation/ n8n
+  - databases/ cnpg
+  - gaming/ cs2
+  - hardware/ nvidia device plugin, DCGM
+  - management/ headlamp
+  - monitoring/ grafana, metrics-server
+  - networking/ netbird peer
+  - observability/ victoria-metrics, victoria-logs, otel, argocd-monitor
+  - registry/ harbor
+  - secrets/ openbao, csi-driver
+  - security/ falco, kyverno, trivy
+  - storage/ longhorn
+  - support/ reloader
+</FileTree>
+
+This is the one copy of the tree; other pages link here.
+
+## How it fits
+
+Each entry in the `apps` list in `main.go` builds its own CDK8s `App` writing to `../app/<dir>`, and each directory becomes one Argo CD Application. On push to `main` or a `v*` branch, CI runs the synthesis, builds the Kubeflow kustomize overlay, blocks any rendered Secret payload, and force-pushes `app/` to `<branch>-manifests`.
+
+No `Secret` is ever generated: bootstrap secrets come from `just create-secrets`, runtime secrets from OpenBao through the CSI driver ([Secrets](/concepts/secrets/)). The manifests branch is public.
+
+## Configuration
+
+Pick the construct in this order:
+
+| Resource | Use | Version from |
+|---|---|---|
+| Core Kubernetes objects | Typed `imports/k8s` (`k8s.NewKubeStatefulSet`, …) | `k8s@` line in `cdk8s.yaml` |
+| Helm chart listed in `cdk8s.yaml` | Its typed construct from `imports/` | `cdk8s.yaml`, baked into the import |
+| Any other Helm chart | `cdk8s.NewHelm` | `config.HelmChart(...)` → [`versions.yaml`](src:config/versions.yaml) |
+| CRD without a typed import (SecretProviderClass, Certificate, …) | `cdk8s.NewApiObject` | — |
+
+List a chart in `cdk8s.yaml` only if a construct imports its generated package. Use `kit` for namespaces, HTTPRoutes and OpenBao secret wiring rather than writing them per app.
+
+## Operate
+
+```sh frame="terminal"
+just synth                       # writes ../app/
+cd workloads && go build ./...
+cd workloads && cdk8s import     # after editing cdk8s.yaml
+```
+
+### Add an app
+
+<Steps>
+
+1. Write `workloads/<group>/<app>.go` with a `New<App>Chart(scope, id, namespace)` function.
+
+2. Add an entry to `apps` in `main.go`: `{"<dir>", func(a cdk8s.App) { group.NewAppChart(a, "<app>-app", "<namespace>") }}`. The directory name becomes the Application name and its namespace.
+
+3. Run `just synth` and inspect `app/<dir>/`.
+
+4. Push. CI publishes the directory and the ApplicationSet creates the Application.
+
+</Steps>
+
+## Troubleshooting
+
+### A Helm value has no effect
+
+An unrecognised key is silently dropped. Render the chart with `helm template --set …` to confirm the key before trusting it.
+
+### StatefulSet OutOfSync right after synth
+
+CDK8s omits `apiVersion` and `kind` in volume claim templates; Argo CD ignores them globally. See [Argo CD](/platform/argocd/).

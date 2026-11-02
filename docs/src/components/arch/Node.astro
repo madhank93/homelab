@@ -1,0 +1,112 @@
+---
+// A clickable box in an architecture diagram. Name, role and logo come from
+// the component registry, so every diagram describes a component the same way.
+import { components, type ComponentId } from '../../data/architecture';
+import Logo from './Logo.astro';
+
+interface Props {
+  id: ComponentId;
+  x: number;
+  y: number;
+  w: number;
+  h?: number;
+  /** Hide the role line for tight layouts. */
+  compact?: boolean;
+  /** Extra class on the box, e.g. a flow colour for its border. */
+  tone?: string;
+  /** Tall bar: logo on top, name and role rotated to read bottom-up. */
+  vertical?: boolean;
+}
+
+const { id, x, y, w, h = 52, compact = false, tone = '', vertical = false } = Astro.props;
+const c = components[id];
+const logo = 'logo' in c ? c.logo : undefined;
+const owner = 'owner' in c ? c.owner : undefined;
+const size = vertical ? Math.min(26, w - 16) : Math.min(26, h - 16);
+const textX = x + 14 + size + 10;
+const mid = y + h / 2;
+const cx = x + w / 2;
+const cy = y + 12 + size + (h - 12 - size) / 2;
+---
+
+<g class:list={['node', tone]} data-node={id} tabindex="0" role="button" aria-label={`${c.name}, ${c.role}. Show details`}>
+  <rect class="box" x={x} y={y} width={w} height={h} rx="8" />
+  {owner && <rect class:list={['owner', owner]} x={x + 1} y={y + 8} width="3" height={h - 16} rx="1.5" />}
+  {
+    vertical ? (
+      <>
+        <Logo logo={logo} name={c.name} x={cx - size / 2} y={y + 12} size={size} />
+        <text class="name" x={cx} y={cy - 3} text-anchor="middle" transform={`rotate(-90 ${cx} ${cy})`}>{c.name}</text>
+        <text class="role" x={cx} y={cy + 13} text-anchor="middle" transform={`rotate(-90 ${cx} ${cy})`}>{c.role}</text>
+      </>
+    ) : (
+      <Logo logo={logo} name={c.name} x={x + 12} y={mid - size / 2} size={size} />
+    )
+  }
+  {
+    vertical ? null : compact ? (
+      <text class="name" x={textX} y={mid} dy="0.35em">{c.name}</text>
+    ) : (
+      <>
+        <text class="name" x={textX} y={mid - 4}>{c.name}</text>
+        <text class="role" x={textX} y={mid + 13}>{c.role}</text>
+      </>
+    )
+  }
+  <slot />
+</g>
+
+<style>
+  .node {
+    cursor: pointer;
+    outline: none;
+    transition: opacity 0.15s;
+  }
+  .box {
+    fill: var(--sl-color-gray-6);
+    stroke: var(--sl-color-gray-5);
+    transition: stroke 0.15s, fill 0.15s;
+  }
+  .node:hover .box,
+  .node:focus-visible .box {
+    stroke: var(--sl-color-accent);
+    fill: var(--sl-color-accent-low);
+  }
+  .node:focus-visible .box {
+    stroke-width: 2;
+  }
+  .name {
+    font-size: 13px;
+    font-weight: 600;
+    fill: var(--sl-color-white);
+  }
+  .role {
+    font-size: 11px;
+    fill: var(--sl-color-gray-2);
+  }
+  :global(.has-selection) .node:not(.selected) {
+    opacity: 0.35;
+  }
+  .node.selected .box {
+    stroke: var(--sl-color-accent);
+    stroke-width: 2.5;
+  }
+  .owner {
+    fill: var(--sl-color-gray-4);
+  }
+  .owner.pulumi {
+    fill: var(--arch-provision);
+  }
+  .owner.argocd {
+    fill: var(--arch-deploy);
+  }
+  .provision .box {
+    stroke: var(--arch-provision);
+  }
+  .deploy .box {
+    stroke: var(--arch-deploy);
+  }
+  .traffic .box {
+    stroke: var(--arch-traffic);
+  }
+</style>

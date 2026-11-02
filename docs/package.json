@@ -1,0 +1,25 @@
+{
+  "name": "homelab-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "7.3.2",
+    "@astrojs/starlight": "0.42.6",
+    "@expressive-code/plugin-collapsible-sections": "0.44.2",
+    "astro": "7.3.8",
+    "astro-mermaid": "2.1.0",
+    "mermaid": "11.17.2",
+    "sharp": "0.35.5",
+    "simple-icons": "16.35.0",
+    "starlight-image-zoom": "0.16.1",
+    "starlight-links-validator": "0.27.0",
+    "starlight-llms-txt": "0.12.0",
+    "unist-util-visit": "5.2.0",
+    "yaml": "2.9.1"
+  }
+}

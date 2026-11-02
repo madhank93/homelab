@@ -2,9 +2,9 @@
 #
 # Keeps the docs honest about versions. Two rules:
 #
-#   1. Every version in docs/content/architecture/software-inventory.md must
+#   1. Every version in docs/src/content/docs/architecture/software-inventory.md must
 #      still appear in the file that page says pins it.
-#   2. No other page under docs/content/ may state a version at all — they
+#   2. No other page under docs/src/content/docs/ may state a version at all — they
 #      describe behaviour and link to the inventory.
 #
 # Rule 2 is what makes rule 1 hold: without it, numbers reappear on component
@@ -17,7 +17,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-inventory="docs/content/architecture/software-inventory.md"
+inventory="docs/src/content/docs/reference/software-inventory.md"
 failures=0
 
 fail() {
@@ -28,7 +28,7 @@ fail() {
 # --- Rule 1: inventory rows vs the files they name ---------------------------
 #
 # A row looks like:
-#   | Cilium | 1.18.12 | {{ src(path="core/platform/cilium.go") }} |
+#   | Cilium | 1.18.12 | [`cilium.go`](src:core/platform/cilium.go) |
 # "same" in the last column means "the file from the row above".
 
 echo "Checking inventory rows against source files..."
@@ -46,8 +46,8 @@ while IFS= read -r line; do
   [[ "$component" == "Software" ]] && continue
   [[ -z "$version" ]] && continue
 
-  # The path is wherever src() appears in the row; "same" reuses the row above.
-  if [[ "$line" =~ src\(path=\"([^\"]+)\" ]]; then
+  # The path is wherever a src: link appears in the row; "same" reuses the row above.
+  if [[ "$line" =~ \(src:([^\)]+)\) ]]; then
     last_path="${BASH_REMATCH[1]}"
   elif [[ "$line" != *same* ]]; then
     continue  # prose cell with no source link
@@ -99,7 +99,7 @@ allow=(
   'kustomize 5.8.0'
 )
 
-# The upgrade guide legitimately names version boundaries a change happened at
+# Upgrade runbooks and release notes legitimately name version boundaries a change happened at
 # ("Grafana 10 to 11 moved the datasource schema"). Those are historical facts,
 # not claims about what is deployed, so they cannot drift.
 echo "Checking that no other page states a version..."
@@ -126,9 +126,10 @@ while IFS= read -r hit; do
 done < <(
   # Three-component versions bare or v-prefixed, plus two-component ones only
   # when v-prefixed — "v0.66" is a version, "12.8" is usually a CUDA line.
-  grep -rnE '\bv?[0-9]+\.[0-9]+\.[0-9]+\b|\bv[0-9]+\.[0-9]+\b' docs/content \
-    --include='*.md' \
-    --exclude-dir=upgrade-guide \
+  grep -rnE '\bv?[0-9]+\.[0-9]+\.[0-9]+\b|\bv[0-9]+\.[0-9]+\b' docs/src/content/docs \
+    --include='*.md' --include='*.mdx' \
+    --exclude-dir=upgrades \
+    --exclude-dir=releases \
     | grep -v "^$inventory:" \
     || true
 )
@@ -151,14 +152,14 @@ else
     lineno="${rest%%:*}"
     fail "$file:$lineno names a manifests branch other than $argocd_branch"
   done < <(
-    grep -rnE '\bv[0-9]+\.[0-9]+\.[0-9]+-manifests\b' docs/content --include='*.md' \
+    grep -rnE '\bv[0-9]+\.[0-9]+\.[0-9]+-manifests\b' docs/src/content/docs --include='*.md' --include='*.mdx' \
       | grep -v "$argocd_branch" || true
   )
 fi
 
 # --- Rule 4: no doc links into a gitignored path -----------------------------
 #
-# A src() into app/ renders a 404: the manifests are synthesized by CI and never
+# A src: link into app/ renders a 404: the manifests are synthesized by CI and never
 # committed, so the path exists locally and nowhere on GitHub.
 
 echo "Checking source links point at tracked files..."
@@ -168,14 +169,14 @@ while IFS= read -r hit; do
   rest="${hit#*:}"
   lineno="${rest%%:*}"
   text="${rest#*:}"
-  [[ "$text" =~ src\(path=\"([^\"]+)\" ]] || continue
+  [[ "$text" =~ \(src:([^\)]+)\) ]] || continue
   target="${BASH_REMATCH[1]}"
   if [[ ! -f "$target" ]]; then
     fail "$file:$lineno links to $target, which does not exist"
   elif ! git ls-files --error-unmatch "$target" >/dev/null 2>&1; then
     fail "$file:$lineno links to $target, which is untracked — the link will 404"
   fi
-done < <(grep -rn 'src(path=' docs/content --include='*.md' || true)
+done < <(grep -rn '(src:' docs/src/content/docs --include='*.md' --include='*.mdx' || true)
 
 # --- Rule 5: mermaid line breaks ---------------------------------------------
 #
@@ -191,16 +192,16 @@ while IFS= read -r hit; do
   fail "$file:$lineno uses a literal \\n in a diagram label — use <br/>"
 done < <(
   awk '
-    /\{% *mermaid\(\)/ { inblock = 1 }
-    /\{% *end *%\}/    { inblock = 0 }
+    /^```mermaid/       { inblock = 1; next }
+    inblock && /^```/   { inblock = 0 }
     inblock && /\\n/   { print FILENAME ":" FNR ":" $0 }
-  ' $(grep -rl 'mermaid()' docs/content --include='*.md' 2>/dev/null) 2>/dev/null || true
+  ' $(grep -rl '```mermaid' docs/src/content/docs --include='*.md' --include='*.mdx' 2>/dev/null) 2>/dev/null || true
 )
 
 echo
 if [[ "$failures" -gt 0 ]]; then
   echo "$failures problem(s). The inventory is the single source of truth:"
-  echo "  docs/content/architecture/software-inventory.md"
+  echo "  docs/src/content/docs/architecture/software-inventory.md"
   exit 1
 fi
 echo "Docs agree with the code."

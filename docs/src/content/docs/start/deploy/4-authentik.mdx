@@ -1,0 +1,35 @@
+---
+title: Configure Authentik
+description: Create the GitHub login source, the Grafana and NetBird OIDC apps, and the ForwardAuth provider with Pulumi.
+sidebar:
+  order: 4
+  label: 4 · Authentik
+---
+
+Goal: Authentik offers "Login with GitHub" and holds every OIDC client the homelab uses. About 2 minutes.
+
+## Procedure
+
+```sh frame="terminal"
+just core authentik up
+```
+
+| Creates | Detail |
+|---|---|
+| GitHub OAuth source | Bound to the default identification stage, so the login page shows a GitHub button |
+| Grafana OIDC app | Confidential, client ID `grafana-homelab`, secret from `GRAFANA_OAUTH_CLIENT_SECRET` |
+| `grafana-admins` group | Members become Admin of Grafana's main org |
+| NetBird OIDC app | Confidential, secret from `NETBIRD_CLIENT_SECRET`, plus the `sa-netbird` service account |
+| Homelab ForwardAuth | Forward-domain proxy provider for `*.madhan.app` and the embedded outpost |
+
+Source: [`authentik.go`](src:core/cloud/authentik.go).
+
+:::caution[Authentik must be healthy first]
+The stack calls the Authentik API with `AUTHENTIK_TOKEN`. Run it only after Phase 3 reports `authentik-server` healthy.
+:::
+
+## Check
+
+Open `https://auth.madhan.app` in a private window. The login page shows the GitHub button, and **Applications** lists Grafana, Netbird and Homelab ForwardAuth.
+
+Details: [Authentik](/cloud/authentik/).

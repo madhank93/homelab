@@ -1,0 +1,57 @@
+---
+title: Bootstrap the cluster
+description: Create the Proxmox VMs and Talos, the bootstrap Secrets, then Cilium, cert-manager and Argo CD.
+sidebar:
+  order: 1
+  label: 1 · Cluster
+---
+import { Steps } from '@astrojs/starlight/components';
+
+Goal: seven Talos nodes running Kubernetes, with Argo CD syncing apps from the manifests branch. About 15 minutes.
+
+## Procedure
+
+<Steps>
+
+1. Create the VMs and bootstrap Talos. The stack writes `core/talosconfig` and `core/kubeconfig`.
+
+   ```sh frame="terminal"
+   just core talos up
+   ```
+
+2. Point your clients at the new cluster. The `talos-*` recipes read `~/.talos/config`.
+
+   ```sh frame="terminal"
+   cp core/talosconfig ~/.talos/config
+   export KUBECONFIG="$PWD/core/kubeconfig"
+   ```
+
+3. Create the two bootstrap Secrets, `openbao/openbao-unseal-key` and `cert-manager/cloudflare-api-token`. Both carry `Prune=false`, so Argo CD never deletes them.
+
+   ```sh frame="terminal"
+   just create-secrets
+   ```
+
+4. Install Cilium, Gateway API and its IP pool, cert-manager and Argo CD. The ApplicationSet tracks `manifests_branch` from [`config.yml`](src:config/config.yml).
+
+   ```sh frame="terminal"
+   just core platform up
+   ```
+
+</Steps>
+
+:::caution[The manifests branch must exist]
+Argo CD points every Application at `manifests_branch`. If CI has not published that branch yet, they all lose their source; see [Phase 8](/start/deploy/8-manifests/).
+:::
+
+## Check
+
+```sh frame="terminal"
+just talos-health
+kubectl get nodes
+kubectl get applications -n argocd
+```
+
+All seven nodes are `Ready`. Most applications show `Degraded`: they wait on OpenBao, which stays sealed until [Phase 2](/start/deploy/2-openbao/).
+
+Details: [Talos on Proxmox](/platform/talos/), [Argo CD](/platform/argocd/).

@@ -1,0 +1,71 @@
+---
+title: Homelab
+description: A Kubernetes homelab on Talos Linux, provisioned by Pulumi on Proxmox and run by Argo CD. Bare VMs to running apps, all in code.
+template: splash
+hero:
+  title: Homelab
+  tagline: Talos Linux on Proxmox, provisioned by Pulumi, run by Argo CD. Bare VMs to running apps — all in code, no manual steps.
+  actions:
+    - text: Get started
+      link: /start/
+      icon: right-arrow
+    - text: How it works
+      link: /concepts/
+      variant: secondary
+    - text: GitHub
+      link: https://github.com/madhank93/homelab
+      icon: external
+      variant: minimal
+---
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { totals } from '../../data/cluster';
+import { components } from '../../data/architecture';
+import FlowsDiagram from '../../components/arch/FlowsDiagram.astro';
+
+export const argoApps = Object.values(components).filter((c) => 'owner' in c && c.owner === 'argocd').length;
+
+<div class="stats">
+  <div><strong>{argoApps}</strong><span>apps synced by Argo CD</span></div>
+  <div><strong>0</strong><span>ports open at home</span></div>
+  <div><strong>0</strong><span>secrets in git</span></div>
+  <div><strong>0</strong><span>manual kubectl</span></div>
+</div>
+
+<FlowsDiagram />
+
+## Four layers, four tools
+
+<CardGrid>
+  <Card title="Apps" icon="rocket">
+    Grafana, Harbor, Ollama, ComfyUI, n8n and more. CDK8s synthesizes manifests; Argo CD syncs them.
+  </Card>
+  <Card title="Platform" icon="setting">
+    Talos Kubernetes, Cilium with Gateway API, cert-manager, Argo CD. Installed by Pulumi.
+  </Card>
+  <Card title="Infrastructure" icon="laptop">
+    {totals.nodes} Proxmox VMs and the Bifrost edge VPS on Hetzner. Provisioned by Pulumi.
+  </Card>
+  <Card title="Hardware" icon="puzzle">
+    One Proxmox host with an NVIDIA GPU passed through to a dedicated worker.
+  </Card>
+</CardGrid>
+
+## One command per layer
+
+```bash frame="terminal" title="From bare Proxmox to synced cluster"
+just create-secrets      # bootstrap Secrets from SOPS
+just core talos up       # VMs + Talos cluster
+just core platform up    # Cilium, cert-manager, Argo CD
+just core hetzner up     # Bifrost edge: Traefik, NetBird, Authentik
+```
+
+Argo CD takes it from there. The [deploy guide](/start/deploy/) walks every phase.
+
+## Start here
+
+<CardGrid>
+  <LinkCard title="Concepts" href="/concepts/" description="Traffic, GitOps and secrets — how the pieces connect." />
+  <LinkCard title="Workloads" href="/workloads/" description="Every app, where it runs and how to reach it." />
+  <LinkCard title="Operate" href="/operate/" description="Troubleshooting, repairs and upgrade runbooks." />
+  <LinkCard title="Releases" href="/releases/" description="What changed in each version." />
+</CardGrid>

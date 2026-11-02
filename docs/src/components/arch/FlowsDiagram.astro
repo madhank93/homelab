@@ -1,0 +1,372 @@
+---
+// Variant: how traffic reaches each app. Shows the main paths by default;
+// hovering or focusing a component traces its own path and names each hop.
+// Paths follow the code: kit.Route HTTPRoutes go through the Gateway, Services
+// with an lbipam.cilium.io/ips annotation bypass it, publicServices adds the edge.
+import { cluster, totals } from '../../data/cluster';
+import { components, type ComponentId } from '../../data/architecture';
+import Explorer from './Explorer.astro';
+import Node from './Node.astro';
+import Arrows from './Arrows.astro';
+
+const apps = [
+  ['AI', ['ollama', 'comfyui', 'kubeflow']],
+  ['Observability', ['grafana', 'victoriametrics', 'victorialogs', 'otel']],
+  ['Security', ['falco', 'trivy', 'kyverno']],
+  ['Tools', ['harbor', 'n8n', 'headlamp', 'cs2']],
+] as const;
+const platform = ['argocd', 'cilium', 'certmanager'] as const;
+const services = ['longhorn', 'openbao', 'cnpg'] as const;
+const edge = ['traefik', 'netbird', 'authentik', 'gatus'] as const;
+
+// Reachability, from the HTTPRoutes and LoadBalancer Services in the repo.
+const viaGateway = new Set<ComponentId>([
+  'argocd', 'cilium', 'longhorn', 'openbao', 'grafana', 'victoriametrics', 'victorialogs',
+  'falco', 'harbor', 'n8n', 'headlamp', 'kubeflow', 'comfyui', 'ollama',
+]);
+const publicApps = new Set<ComponentId>(['grafana']);
+// Own LoadBalancer IPs, and why the Gateway (HTTP/HTTPS listeners only) is not used.
+const loadBalancer: Partial<Record<ComponentId, [string, string]>> = {
+  cs2: ['192.168.1.230', 'UDP game traffic the HTTP Gateway cannot carry'],
+  ollama: ['192.168.1.225', 'a fixed IP for the laptop’s OLLAMA_API_BASE'],
+};
+
+const fan = (id: ComponentId) =>
+  (platform as readonly string[]).includes(id) ? 'fan-platform' : (services as readonly string[]).includes(id) ? 'fan-services' : 'fan-apps';
+
+const gwIp = cluster.gateway_ip;
+// What the route actually serves, where that differs from the component name.
+const routedAs: Partial<Record<ComponentId, string>> = { cilium: 'Hubble UI (Cilium)', falco: 'Falco Sidekick UI' };
+// A trace answers "how does traffic reach this box?" and stops at the box.
+// User boxes are the exception: they show where that user can go.
+type Trace = { nodes: string[]; segs: string[]; caption: string[] };
+const toGateway = {
+  public: { nodes: ['visitor', 'cloudflare', 'bifrost', 'traefik', 'netbird', 'netbirdpeer', 'gateway'], segs: ['pub-in', 'edge', 'tunnel', 'peer-gw'] },
+  lan: { nodes: ['lanuser', 'gateway'], segs: ['lan-a', 'lan-b'] },
+  vpn: { nodes: ['vpnuser', 'netbirdpeer', 'gateway'], segs: ['vpn', 'peer-gw'] },
+};
+const allFans = ['fan-platform', 'fan-apps', 'fan-services'];
+const traces: Record<string, Trace> = {};
+
+for (const id of [...platform, ...services, ...apps.flatMap(([, ids]) => ids)] as ComponentId[]) {
+  const name = routedAs[id] ?? components[id].name;
+  const t: Trace = { nodes: [id], segs: [], caption: [] };
+  const add = (path: { nodes: string[]; segs: string[] }, extra: string[], line: string) => {
+    t.nodes.push(...path.nodes);
+    t.segs.push(...path.segs, ...extra);
+    t.caption.push(line);
+  };
+  if (publicApps.has(id)) add(toGateway.public, [fan(id), `hop-${id}`], `Internet → Cloudflare DNS → Traefik → WireGuard → NetBird peer → Gateway → ${name}`);
+  if (publicApps.has(id)) {
+    t.caption.push('LAN and VPN users take this path too: its public DNS record points at the VPS (a hosts entry skips the hop)');
+  } else if (viaGateway.has(id)) {
+    add(toGateway.lan, [fan(id), `hop-${id}`], `LAN → Gateway ${gwIp} → ${name}`);
+    add(toGateway.vpn, [fan(id), `hop-${id}`], `VPN → NetBird mesh → NetBird peer → Gateway → ${name}`);
+  }
+  if (loadBalancer[id]) {
+    const [ip, why] = loadBalancer[id]!;
+    if (viaGateway.has(id)) {
+      // Drawn once, through the Gateway; the extra IP is a convenience, so caption only.
+      t.caption.push(`Also on its own LoadBalancer IP ${ip} (Cilium L2): ${why}`);
+    } else {
+      add({ nodes: ['lanuser', 'workers'], segs: ['lan-a', 'lb'] }, [`lbhop-${id}`], `LAN → own LoadBalancer IP ${ip} (Cilium L2) → ${name}: ${why}`);
+      t.caption.push(`VPN users reach ${ip} too, through the NetBird peer`);
+    }
+  }
+  if (!t.caption.length) t.caption.push(`${name} has no route in — only pods inside the cluster talk to it`);
+  traces[id] = t;
+}
+
+const only = (nodes: string[], segs: string[], ...caption: string[]): Trace => ({ nodes, segs, caption });
+
+// Users: where each can go.
+traces.visitor = only(
+  [...toGateway.public.nodes, 'grafana', 'authentik', 'gatus'],
+  [...toGateway.public.segs, 'fan-apps', 'hop-grafana', 'to-authentik', 'to-gatus'],
+  'From the internet: Grafana, through the tunnel into the home lab',
+  'Authentik and Gatus are served on the VPS itself',
+);
+traces.lanuser = only(
+  ['lanuser', 'cloudflare', 'gateway', 'workers'],
+  [...toGateway.lan.segs, ...allFans, 'lb'],
+  `Cloudflare DNS answers *.madhan.app with the Gateway ${gwIp}: every app with a route`,
+  'Plus the apps on their own LoadBalancer IPs (CS2, Ollama) · Grafana goes via the VPS: its public record wins',
+);
+traces.vpnuser = only(
+  ['vpnuser', 'cloudflare', 'netbird', 'netbirdpeer', 'gateway'],
+  [...toGateway.vpn.segs, ...allFans],
+  'Off-site: NetBird on the VPS runs the mesh; it reaches the NetBird peer, which routes the LAN subnet',
+  `*.madhan.app still points at ${gwIp}; from the peer it is the same LAN path`,
+);
+
+// Hops: how traffic reaches them, and no further.
+traces.cloudflare = only(
+  ['visitor', 'vpnuser', 'lanuser', 'cloudflare'],
+  [],
+  'Every user looks names up here, but no traffic passes through Cloudflare (DNS only, not proxied)',
+  `*.madhan.app → ${gwIp}, a private IP only reachable at home or over the VPN · public names (grafana, auth, uptime) → the VPS`,
+);
+// Edge boxes run on the VPS, which public names resolve to.
+const edgeIn = ['visitor', 'cloudflare', 'bifrost'];
+traces.bifrost = only(
+  [...edgeIn, ...edge],
+  ['pub-in', 'edge', 'to-authentik', 'to-gatus'],
+  'The Hetzner VPS: Cloudflare points public names here and Traefik takes the HTTPS',
+  'Runs Traefik, NetBird, Authentik and Gatus',
+);
+traces.traefik = only([...edgeIn, 'traefik'], ['pub-in'], 'Internet → Cloudflare DNS → Traefik on the VPS: public TLS ends here');
+traces.netbird = only([...edgeIn, 'traefik', 'netbird'], ['pub-in', 'edge'], 'Internet → Traefik → NetBird: requests for home-lab apps go down the WireGuard tunnel from here', 'It also runs the mesh that off-site VPN users join');
+for (const id of ['authentik', 'gatus'] as const) {
+  traces[id] = only([...edgeIn, 'traefik', id], ['pub-in', `to-${id}`], `Internet → Traefik → ${components[id].name}`, 'Served on the VPS itself; this traffic never enters the home lab');
+}
+traces.netbirdpeer = only(
+  [...edgeIn, 'traefik', 'netbird', 'vpnuser', 'netbirdpeer'],
+  ['pub-in', 'edge', 'tunnel', 'vpn'],
+  'Internet → Traefik → NetBird → WireGuard tunnel → NetBird peer',
+  'VPN → NetBird mesh → NetBird peer',
+);
+traces.gateway = only(
+  [...toGateway.public.nodes, 'vpnuser', 'lanuser'],
+  [...toGateway.public.segs, ...toGateway.lan.segs, 'vpn'],
+  'Every HTTP(S) request from outside arrives here — internet, VPN and LAN',
+  'It is then routed by hostname (HTTPRoute) to the app',
+);
+traces.workers = only(
+  ['lanuser', 'workers'],
+  ['lan-a', 'lb'],
+  `LoadBalancer IPs (the Gateway ${gwIp} included) are answered by a worker node via Cilium L2 — control planes never answer`,
+  'Workers run the apps and the NetBird peer',
+);
+traces.gpuworker = only(['gpuworker'], [], 'Runs only AI workloads: Ollama, ComfyUI and Kubeflow notebooks');
+traces.controlplanes = only(['controlplanes'], [], `Serve the Kubernetes API on ${cluster.vip}; no apps run here`);
+
+const C0 = 772;
+const appCol = (i: number) => C0 + i * 172;
+const col = (i: number) => C0 + i * 228;
+
+// Last hop into one box, drawn only while that box is traced: along the free
+// channel above its row, then down the gap left of its column.
+const groupMeta = { platform: { top: 114, chan: 108 }, apps: { top: 210, chan: 204 }, services: { top: 446, chan: 440 } };
+const place: Record<string, { x: number; cy: number; g: keyof typeof groupMeta }> = {};
+platform.forEach((id, i) => (place[id] = { x: col(i), cy: 140, g: 'platform' }));
+services.forEach((id, i) => (place[id] = { x: col(i), cy: 472, g: 'services' }));
+apps.forEach(([, ids], c) => ids.forEach((id, row) => (place[id] = { x: appCol(c), cy: 248 + row * 46, g: 'apps' })));
+const bracketX = C0 - 12;
+const into = (id: string, from: string) => {
+  const p = place[id];
+  return `${from} V${groupMeta[p.g].chan} H${p.x - 6} V${p.cy} H${p.x}`;
+};
+// First-column boxes sit right of the bracket: go straight in.
+const gatewayHop = (id: string) =>
+  place[id].x === C0 ? `M${bracketX} ${place[id].cy} H${C0}` : into(id, `M${bracketX} ${groupMeta[place[id].g].top}`);
+// From the worker that answers the LoadBalancer IP, up the strip between the Gateway and the brackets.
+const loadBalancerHop = (id: string) => into(id, 'M752 568');
+const peer = { x: 612, y: 88, w: 52, h: 180 };
+const edgeY = [134, 216, 278, 340];
+const gw = { x: 692, y: 88, w: 52, h: 420 };
+const defaultCaption = 'HTTP(S) from outside enters through the Gateway; hover any box to trace its path';
+---
+
+<Explorer label="Homelab network: how traffic reaches each app" hint="Hover a box to trace its path · click for details">
+  <svg viewBox="0 0 1480 760" role="group" aria-label="Network diagram" data-traces={JSON.stringify(traces)} data-default-caption={defaultCaption}>
+    <Arrows />
+
+    <text class="zone-label" x="20" y="44">Users</text>
+    <Node id="visitor" x={20} y={134} w={200} />
+    <Node id="vpnuser" x={20} y={274} w={200} />
+    <Node id="lanuser" x={20} y={476} w={200} />
+
+    <text class="zone-label" x="270" y="44">Edge · public internet</text>
+    <rect class="zone" x="262" y="56" width="246" height="356" rx="12" />
+    <Node id="bifrost" x={270} y={66} w={230} />
+    {edge.map((id, i) => <Node id={id} x={286} y={edgeY[i]} w={206} />)}
+    <Node id="cloudflare" x={270} y={430} w={230} />
+
+    <rect class="zone lab" x="600" y="20" width="860" height="632" rx="14" />
+    <text class="zone-label" x="618" y="46">Home lab · Proxmox server</text>
+
+    <rect class="zone" x="606" y="58" width="848" height="456" rx="12" />
+    <text class="zone-label" x="622" y="80">Kubernetes cluster</text>
+    <text class="label mono" x="1438" y="80" text-anchor="end">{cluster.name} · API VIP {cluster.vip}</text>
+
+    <Node id="netbirdpeer" x={peer.x} y={peer.y} w={peer.w} h={peer.h} vertical />
+    <Node id="gateway" x={gw.x} y={gw.y} w={gw.w} h={gw.h} vertical />
+
+    <text class="label" x={C0} y="102">Platform</text>
+    {platform.map((id, i) => <Node id={id} x={col(i)} y={114} w={216} />)}
+
+    <text class="label" x={C0} y="194">Apps</text>
+    {
+      apps.map(([title, ids], c) => (
+        <g>
+          <text class="zone-label" x={appCol(c)} y={218}>{title}</text>
+          {ids.map((id, row) => <Node id={id} x={appCol(c)} y={228 + row * 46} w={160} h={40} compact />)}
+        </g>
+      ))
+    }
+
+    <text class="label" x={C0} y="434">Cluster services</text>
+    {services.map((id, i) => <Node id={id} x={col(i)} y={446} w={216} />)}
+
+    <rect class="zone" x="606" y="530" width="848" height="106" rx="12" />
+    <text class="zone-label" x="676" y="554">Nodes — Talos Linux VMs</text>
+    <text class="label" x="1438" y="554" text-anchor="end">{totals.nodes} VMs · {totals.cores} vCPU · {totals.memoryGiB} GiB RAM · {totals.gpus} × 16 GB GPU</text>
+    <Node id="workers" x={622} y={568} w={270} />
+    <Node id="gpuworker" x={904} y={568} w={270} />
+    <Node id="controlplanes" x={1186} y={568} w={252} />
+
+    {/* Public: visitor → Traefik → NetBird → WireGuard → NetBird peer → Gateway */}
+    <path class="flow traffic" data-seg="pub-in" d="M220 160 H286" marker-end="url(#arrow-traffic)" />
+    <text class="flow-label traffic" data-seg="pub-in" x="230" y="152">HTTPS</text>
+    <path class="flow traffic" data-seg="edge" d="M389 186 V216" marker-end="url(#arrow-traffic)" />
+    <path class="flow traffic" data-seg="tunnel" d="M492 242 H612" marker-end="url(#arrow-traffic)" />
+    <text class="flow-label traffic" data-seg="tunnel" x="508" y="234">WireGuard tunnel</text>
+    <path class="flow traffic" data-seg="peer-gw" d={`M${peer.x + peer.w} 158 H${gw.x}`} marker-end="url(#arrow-traffic)" />
+
+    {/* Traefik → services it serves on the VPS itself */}
+    <path class="flow traffic hop" data-seg="to-authentik" d="M286 176 H276 V304 H286" marker-end="url(#arrow-traffic)" />
+    <path class="flow traffic hop" data-seg="to-gatus" d="M286 176 H276 V366 H286" marker-end="url(#arrow-traffic)" />
+
+    {/* VPN: off-site device → NetBird mesh → NetBird peer */}
+    <path class="flow traffic" data-seg="vpn" d="M220 300 H244 V420 H540 V258 H612" marker-end="url(#arrow-traffic)" />
+    <text class="flow-label traffic" data-seg="vpn" x="548" y="276">NetBird mesh</text>
+
+    {/* LAN: straight to the Gateway */}
+    <path class="flow traffic" data-seg="lan-a" d="M220 502 H650" />
+    <path class="flow traffic" data-seg="lan-b" d={`M650 502 H${gw.x}`} marker-end="url(#arrow-traffic)" />
+    <text class="flow-label traffic" data-seg="lan-a" x="520" y="494">*.madhan.app</text>
+    <path class="flow traffic lb" data-seg="lb" d="M650 502 V568" marker-end="url(#arrow-traffic)" />
+    <text class="flow-label traffic" data-seg="lb" x="658" y="524">own LB IP</text>
+
+    {/* Per-box last hops, hidden until traced */}
+    {[...viaGateway].map((id) => <path class="flow traffic hop" data-seg={`hop-${id}`} d={gatewayHop(id)} marker-end="url(#arrow-traffic)" />)}
+    {Object.keys(loadBalancer).filter((id) => !viaGateway.has(id as ComponentId)).map((id) => <path class="flow traffic hop" data-seg={`lbhop-${id}`} d={loadBalancerHop(id)} marker-end="url(#arrow-traffic)" />)}
+
+    {/* Gateway → each group it routes to; the bracket marks the whole group */}
+    {
+      [
+        ['fan-platform', 114, 166],
+        ['fan-apps', 210, 406],
+        ['fan-services', 446, 498],
+      ].map(([seg, top, bottom]) => (
+        <g>
+          <path class="flow traffic" data-seg={seg} d={`M${C0 - 6} ${top} H${C0 - 12} V${bottom} H${C0 - 6}`} />
+          <path class="flow traffic fan-arrow" data-seg={seg} d={`M${gw.x + gw.w} ${((top as number) + (bottom as number)) / 2} H${C0 - 12}`} marker-end="url(#arrow-traffic)" />
+        </g>
+      ))
+    }
+
+    <text class="caption" x="20" y="676" data-caption>{defaultCaption}</text>
+
+    <g>
+      <line class="flow traffic key" x1="20" y1="744" x2="50" y2="744" />
+      <text class="label" x="58" y="748">Traffic</text>
+      <rect class="owner-key provision" x="140" y="736" width="4" height="16" rx="2" />
+      <text class="label" x="150" y="748">Managed by Pulumi</text>
+      <rect class="owner-key deploy" x="290" y="736" width="4" height="16" rx="2" />
+      <text class="label" x="300" y="748">Managed by Argo CD</text>
+    </g>
+  </svg>
+</Explorer>
+
+<script>
+  for (const svg of document.querySelectorAll<SVGSVGElement>('svg[data-traces]')) {
+    const traces: Record<string, { nodes: string[]; segs: string[]; caption: string[] }> = JSON.parse(svg.dataset.traces!);
+    const caption = svg.querySelector('[data-caption]')!;
+    const fallback = svg.dataset.defaultCaption!;
+
+    const clear = () => {
+      svg.classList.remove('tracing', 'has-hop');
+      svg.querySelectorAll('.on').forEach((el) => el.classList.remove('on'));
+      caption.textContent = fallback;
+    };
+    const showCaption = (lines: string[]) => {
+      caption.textContent = '';
+      lines.forEach((line, i) => {
+        const span = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        span.setAttribute('x', caption.getAttribute('x')!);
+        span.setAttribute('dy', i ? '18' : '0');
+        span.textContent = line;
+        caption.append(span);
+      });
+    };
+    const trace = (id: string) => {
+      const t = traces[id];
+      if (!t) return clear();
+      clear();
+      svg.classList.add('tracing');
+      // With a last hop drawn, the arrowhead belongs at the box, not at the bracket.
+      svg.classList.toggle('has-hop', t.segs.some((s) => s.startsWith('hop-') || s.startsWith('lbhop-')));
+      for (const n of t.nodes) svg.querySelectorAll(`[data-node="${n}"]`).forEach((el) => el.classList.add('on'));
+      for (const s of t.segs) svg.querySelectorAll(`[data-seg="${s}"]`).forEach((el) => el.classList.add('on'));
+      showCaption(t.caption);
+    };
+
+    svg.querySelectorAll<SVGGElement>('[data-node]').forEach((node) => {
+      node.addEventListener('pointerenter', () => trace(node.dataset.node!));
+      node.addEventListener('focus', () => trace(node.dataset.node!));
+      node.addEventListener('pointerleave', clear);
+      node.addEventListener('blur', clear);
+    });
+  }
+</script>
+
+<style>
+  .mono {
+    font-family: var(--sl-font-mono);
+  }
+  .caption {
+    font-size: 13px;
+    font-weight: 600;
+    fill: var(--arch-traffic);
+  }
+  .owner-key.provision {
+    fill: var(--arch-provision);
+  }
+  .owner-key.deploy {
+    fill: var(--arch-deploy);
+  }
+  svg :global(.flow) {
+    transition: opacity 0.15s, stroke-width 0.15s;
+  }
+  svg.tracing :global(.node:not(.on)) {
+    opacity: 0.25;
+  }
+  svg.tracing :global(.flow:not(.on, .key)),
+  svg.tracing :global(.flow-label:not(.on)) {
+    opacity: 0.12;
+  }
+  svg.has-hop :global(.fan-arrow) {
+    marker-end: none;
+  }
+  .hop:not(.on) {
+    display: none;
+  }
+  .lb {
+    stroke-dasharray: 4 4;
+    opacity: 0.55;
+  }
+  svg.tracing :global(.flow.on) {
+    stroke-width: 3.5;
+    opacity: 1;
+    stroke-dasharray: 10 6;
+    filter: drop-shadow(0 0 4px var(--arch-traffic));
+    animation: flow-march 0.7s linear infinite;
+  }
+  @keyframes flow-march {
+    to {
+      stroke-dashoffset: -16;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    svg.tracing :global(.flow.on) {
+      animation: none;
+      stroke-dasharray: none;
+    }
+  }
+  svg.tracing :global(.node.on .box) {
+    stroke: var(--arch-traffic);
+    stroke-width: 2;
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--arch-traffic) 55%, transparent));
+  }
+</style>

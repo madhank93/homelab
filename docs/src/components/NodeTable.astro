@@ -1,0 +1,25 @@
+---
+import { nodes } from '../data/cluster';
+---
+
+<table>
+  <thead>
+    <tr><th>Node</th><th>Role</th><th>IP</th><th>vCPU</th><th>RAM</th><th>Disk</th><th>GPU</th></tr>
+  </thead>
+  <tbody>
+    {
+      nodes.map((n) => (
+        <tr>
+          <td><code>{n.name}</code></td>
+          <td>{n.role === 'control' ? 'Control plane' : 'Worker'}</td>
+          <td><code>{n.ip}</code></td>
+          <td>{n.cores}</td>
+          <td>{n.memory / 1024} GiB</td>
+          <td>{n.disk} GiB</td>
+          <td>{n.pcie_ids?.length ? 'Yes' : ''}</td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>
+<p><small>Generated from <code>config/config.yml</code> at build time.</small></p>

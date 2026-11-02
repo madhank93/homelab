@@ -1,0 +1,24 @@
+---
+title: Platform
+description: The Pulumi stacks in core/platform — Talos on Proxmox, Cilium, cert-manager and Argo CD — plus the CDK8s layer Argo CD deploys.
+sidebar:
+  label: Overview
+  order: 0
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Two Pulumi stacks build the cluster and its base services; from then on Argo CD deploys everything else from CDK8s output. Both stacks run from the laptop.
+
+| Stack | Command | Manages |
+|---|---|---|
+| `talos` | `just core talos up` | Proxmox VMs, Talos machine configs, etcd bootstrap |
+| `platform` | `just core platform up` | Gateway API CRDs, Cilium, the shared Gateway, cert-manager, Argo CD |
+
+<CardGrid>
+  <LinkCard title="Talos" href="/platform/talos/" description="VM provisioning, machine patches, bootstrap and in-place upgrades." />
+  <LinkCard title="Control plane HA" href="/platform/control-plane-ha/" description="Three control planes behind the Talos VIP: what fails over and what does not." />
+  <LinkCard title="Cilium" href="/platform/cilium/" description="CNI, kube-proxy replacement, L2 LoadBalancer IPs and the shared Gateway." />
+  <LinkCard title="cert-manager" href="/platform/cert-manager/" description="The one wildcard certificate, DNS-01 via Cloudflare, mirrored by Cilium." />
+  <LinkCard title="Argo CD" href="/platform/argocd/" description="The ApplicationSet that turns each manifests directory into an Application." />
+  <LinkCard title="CDK8s" href="/platform/cdk8s/" description="Go code in workloads/ that synthesizes every manifest Argo CD applies." />
+</CardGrid>

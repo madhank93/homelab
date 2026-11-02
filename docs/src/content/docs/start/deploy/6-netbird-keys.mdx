@@ -1,0 +1,66 @@
+---
+title: NetBird keys and route
+description: Create the setup keys and proxy token, redeploy Bifrost, give the cluster its routing-peer key, and route the LAN.
+sidebar:
+  order: 6
+  label: 6 · NetBird keys
+---
+import { Steps } from '@astrojs/starlight/components';
+
+Goal: Bifrost and the cluster peer join the mesh, and Bifrost reaches `192.168.1.0/24` through it. About 5 minutes.
+
+## Procedure
+
+<Steps>
+
+1. In the NetBird UI, logged in through GitHub, create two reusable keys under **Setup Keys → Add Key**, and one token under **Settings → Access Tokens → Create Personal Access Token**.
+
+   | Item | Stored as |
+   |---|---|
+   | Setup key `bifrost-agent` | `NB_BIFROST_SETUP_KEY` in SOPS |
+   | Setup key `k8s-routing-peer` | `NETBIRD_SETUP_KEY` in OpenBao `secret/netbird` |
+   | Personal access token | `NB_PROXY_TOKEN` in SOPS |
+
+2. Add `NB_BIFROST_SETUP_KEY` (replacing the placeholder) and `NB_PROXY_TOKEN` to SOPS, then redeploy. The bootstrap now starts `netbird-agent` and `netbird-proxy`.
+
+   ```sh frame="terminal"
+   just sops-view secrets/bootstrap.sops.yaml
+   just core hetzner up
+   ```
+
+3. Write the cluster key to OpenBao. Token and key travel on stdin, so neither shows in a process list.
+
+   ```sh frame="terminal"
+   export ROOT_TOKEN=$(just openbao-token)
+   printf '%s\n%s' "$ROOT_TOKEN" '<k8s-routing-peer key>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
+     sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-'
+   just openbao-revoke
+   ```
+
+4. Restart the peer so it mounts the new key.
+
+   ```sh frame="terminal"
+   kubectl delete pod -n netbird netbird-peer-0
+   ```
+
+5. In the NetBird UI, add **Network → Routes → Add Route**: network `192.168.1.0/24`, routing peer `k8s-routing-peer`, enabled.
+
+</Steps>
+
+:::caution[openbao-token refuses a terminal]
+It exits if stdout is a TTY, so the root token never lands in scrollback. Always capture it with `export ROOT_TOKEN=$(just openbao-token)` and revoke it after.
+:::
+
+:::danger[Never set NB_SKIP_SOCKET_MARK on the peer]
+The routing peer adds a host route that keeps management traffic off WireGuard; the socket mark is what bypasses it. Without the mark the relay connection breaks and the tunnel goes dead.
+:::
+
+## Check
+
+```sh frame="terminal"
+kubectl get pods -n netbird
+```
+
+`netbird-peer-0` is `Running`. In the NetBird UI, **Peers** shows `bifrost-agent` and `k8s-routing-peer` connected, and **Routes** shows `192.168.1.0/24` active.
+
+Details: [NetBird](/cloud/netbird/), [Traffic flow](/concepts/traffic/).

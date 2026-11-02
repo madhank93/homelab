@@ -1,0 +1,40 @@
+---
+title: Grafana SSO
+description: Grant yourself Grafana admin through Authentik and create Grafana's Public org.
+sidebar:
+  order: 7
+  label: 7 · Grafana SSO
+---
+import { Steps } from '@astrojs/starlight/components';
+
+Goal: GitHub login through Authentik lands every user in Grafana's Public org, and `grafana-admins` members in the main org. About 5 minutes.
+
+Phase 4 already created the Grafana OIDC app (`grafana-homelab`) and the `grafana-admins` group, and Phase 2 put the matching client secret in OpenBao. What remains is group membership and the second org.
+
+## Procedure
+
+<Steps>
+
+1. In Authentik, open **Directory → Groups → grafana-admins** and add your user.
+
+2. Create the Public org. It must get ID 2, which [`grafana.go`](src:workloads/monitoring/grafana.go) maps every SSO user to as Viewer. The recipe is idempotent and fails if the ID differs.
+
+   ```sh frame="terminal"
+   just grafana-init
+   ```
+
+</Steps>
+
+:::caution[Grafana will not start without the Public org]
+Provisioning references org 2, and Grafana refuses to boot while it is missing. On a fresh cluster, deploy Grafana without the org-2 settings first, run `just grafana-init`, then sync the full config.
+:::
+
+:::note
+The client secret is set once from `GRAFANA_OAUTH_CLIENT_SECRET`. To rotate it, change SOPS, run `just core authentik up`, and patch `OAUTH_CLIENT_SECRET` at `secret/grafana`: `openbao-setup` never overwrites an existing key.
+:::
+
+## Check
+
+Open `https://grafana.madhan.app`, sign in with GitHub through Authentik, and confirm you land in the main org as Admin. A user outside `grafana-admins` lands in Public as Viewer.
+
+Details: [Grafana](/workloads/monitoring/grafana/), [Authentik](/cloud/authentik/).

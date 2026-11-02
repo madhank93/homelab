@@ -1,0 +1,14 @@
+---
+title: Storage
+description: Longhorn replicated block storage, the default StorageClass.
+sidebar:
+  label: Overview
+  order: 45
+---
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Every PVC in the cluster lands on Longhorn's `longhorn` StorageClass.
+
+<CardGrid>
+  <LinkCard title="Longhorn" href="/workloads/storage/longhorn/" description="Replicas, overprovisioning, RWX and volume troubleshooting." />
+</CardGrid>

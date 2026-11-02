@@ -1,0 +1,16 @@
+---
+title: Operate
+description: Day-2 runbooks for a running cluster — find the fault, repair it, upgrade it.
+sidebar:
+  label: Overview
+  order: 1
+---
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Runbooks for a cluster that is already up. Start from the symptom; each entry links to the page with the fix.
+
+<CardGrid>
+  <LinkCard title="Troubleshooting" href="/operate/troubleshooting/" description="Symptom → likely cause → where to look." />
+  <LinkCard title="Repairs" href="/operate/repairs/" description="The just recipes that fix known failure modes." />
+  <LinkCard title="Upgrades" href="/operate/upgrades/" description="Layer order, per-component runbooks and rollback." />
+</CardGrid>

@@ -1,0 +1,131 @@
+---
+title: Workloads
+description: Workload chart and image bumps batched by risk — low, medium and complex — with the manual steps each needs.
+sidebar:
+  order: 17
+---
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Phases 8–10. Workloads are synthesized by CDK8s and delivered by Argo CD: bump the pin, run `just synth`, push, and CI republishes the manifests branch. After any `cdk8s.yaml` change, [regenerate imports](/operate/upgrades/cdk8s-imports/).
+
+```bash frame="terminal"
+just synth && git push
+kubectl get applications -n argocd   # all Synced + Healthy
+```
+
+<Tabs>
+<TabItem label="Low risk">
+
+No inter-dependencies. Update all in one commit.
+
+| Component | Pin |
+|---|---|
+| Kyverno | `cdk8s.yaml` |
+| Falco | `charts.falco` in `versions.yaml` |
+| Metrics Server | `cdk8s.yaml` |
+| Reloader | `charts.reloader` in `versions.yaml` |
+| OTel Collector | `charts.opentelemetry-collector` and `images.otel-collector-contrib` in `versions.yaml`. Drives two releases, `otel-agent` and `otel-gateway` |
+| Headlamp | `cdk8s.yaml` |
+| Trivy Operator | `cdk8s.yaml` (chart) **and** `charts.trivy-operator` in `versions.yaml`, which [`trivy.go`](src:workloads/security/trivy.go) uses to download the matching CRD bundle. Bump both together |
+
+</TabItem>
+<TabItem label="Medium risk">
+
+### VictoriaMetrics and VictoriaLogs
+
+`victoria-logs-single` is in `cdk8s.yaml`. `victoria-metrics-k8s-stack`, `victoria-metrics-operator` (CRDs) and `kube-prometheus-stack` (CRDs) are in `versions.yaml`. The values schema changes often between minors: render and diff before pushing.
+
+### Grafana
+
+Chart in `cdk8s.yaml`; image override `images.grafana` in `versions.yaml`. Read the [upgrade guide](https://grafana.com/docs/grafana/latest/upgrade-guide/) before a major bump and check every dashboard loads afterwards.
+
+### Harbor
+
+Chart in `cdk8s.yaml`. Minor bumps only. Afterwards check the HTTPRoute still targets `harbor:80` (the nginx proxy), not `harbor-core:80`.
+
+### NVIDIA device plugin and DCGM exporter
+
+`charts.nvidia-device-plugin` and `charts.dcgm-exporter` in `versions.yaml`; the full GPU Operator is not used. Check the RTX 5070 Ti (sm_120, Blackwell) is still supported, then:
+
+```bash frame="terminal"
+kubectl get node k8s-worker4 -o jsonpath='{.status.allocatable.nvidia\.com/gpu}'   # 5
+kubectl exec -n ollama deploy/ollama -- nvidia-smi
+```
+
+</TabItem>
+<TabItem label="Complex">
+
+### n8n
+
+Chart `charts.n8n` and image `images.n8n` in `versions.yaml`. Check the latest with `helm show chart oci://8gears.container-registry.com/library/n8n`. n8n migrates its schema on pod start, one way: an image downgrade after a migrated start does not work, only a database restore does.
+
+<Steps>
+
+1. Dump the CNPG database before the change lands. `n8n-pg` has no scheduled backup.
+
+   ```bash frame="terminal"
+   primary=$(kubectl get pod -n n8n -l cnpg.io/cluster=n8n-pg,cnpg.io/instanceRole=primary -o name)
+   kubectl exec -n n8n "$primary" -c postgres -- pg_dump -U postgres -d n8n -Fc > n8n-$(date +%F).dump
+   ls -lh n8n-$(date +%F).dump   # non-empty; keep it off-cluster
+   ```
+
+2. Push the bump. Migrations can take minutes; the startup probe allows ten.
+
+   ```bash frame="terminal"
+   kubectl logs -n n8n deploy/n8n -f          # until "Editor is now accessible"
+   kubectl rollout status deployment n8n -n n8n
+   ```
+
+3. Check workflows against the release's breaking changes.
+
+</Steps>
+
+To roll back: scale n8n to 0, restore the dump into an empty `n8n` database (`pg_restore -U postgres -d n8n --clean --if-exists`), and revert the pin.
+
+**1.x → 2.x behaviour changes** ([upstream list](https://docs.n8n.io/2-0-breaking-changes/)):
+
+- Code node runs in a task runner; `$evaluateExpression()` no longer works there, and env var access is blocked.
+- Python Code node needs an external runner, which is not deployed here.
+- Execute Command and Local File Trigger nodes are disabled by default.
+- Read/Write File nodes are confined to `~/.n8n-files`.
+- Activate/deactivate became Publish/Unpublish; the legacy Start node is gone.
+- In-memory binary data is gone.
+
+### Ollama
+
+Bump the chart in `cdk8s.yaml`. No image tag is set, so Ollama tracks the chart's appVersion. Models stay on the PVC.
+
+```bash frame="terminal"
+kubectl exec -n ollama deploy/ollama -- ollama list
+kubectl exec -n ollama deploy/ollama -- ollama run executor 'hello'
+```
+
+### ComfyUI
+
+`images.comfyui` in `versions.yaml`. Pick from the [yanwk/comfyui-boot tags](https://hub.docker.com/r/yanwk/comfyui-boot/tags). The card needs CUDA 12.8 or newer, so `cu126` tags will not run; the `cu128-megapak` line stopped building in May 2026 and `cu130-megapak-pt*` is current. There is no `latest-*` tag. It ships scaled to zero: `just comfyui on` to test, `just comfyui off` after.
+
+### NetBird peer
+
+`images.netbird` in `versions.yaml`, used by both containers in [`netbird_peer.go`](src:workloads/networking/netbird_peer.go). Must match the Bifrost NetBird version exactly: [upgrade both](/operate/upgrades/bifrost/) in the same commit.
+
+### Kubeflow
+
+Kustomize from `kubeflow/community-distribution`, not Helm. Bump the `ref` on every base in [`kustomization.yaml`](src:workloads/ai/kubeflow/kustomization.yaml) to a release compatible with the cluster's Kubernetes, and read the upstream version-specific upgrade notes: paths move between releases. Build locally first; CI runs the same:
+
+```bash frame="terminal"
+cd workloads && kustomize build ai/kubeflow/ > /dev/null
+```
+
+1.11.0 → 26.03.1 changed the immutable `spec.selector` of two Deployments. Once the new manifests branch is published, delete them and let the sync recreate them:
+
+```bash frame="terminal"
+kubectl delete deployment jobset-controller-manager -n kubeflow-system --ignore-not-found
+kubectl delete deployment profiles-deployment -n kubeflow --ignore-not-found
+```
+
+<Aside type="danger" title="Never delete the profiles.kubeflow.org CRD">
+It cascades to every Profile and its namespace.
+</Aside>
+
+</TabItem>
+</Tabs>

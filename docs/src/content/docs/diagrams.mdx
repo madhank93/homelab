@@ -1,0 +1,43 @@
+---
+title: Architecture diagram variants
+description: Five ways to draw the homelab. Pick one for the landing page.
+pagefind: false
+template: splash
+---
+import FlowsDiagram from '../../components/arch/FlowsDiagram.astro';
+import LayersDiagram from '../../components/arch/LayersDiagram.astro';
+import JourneyDiagram from '../../components/arch/JourneyDiagram.astro';
+import LifecycleDiagram from '../../components/arch/LifecycleDiagram.astro';
+import HubDiagram from '../../components/arch/HubDiagram.astro';
+
+Every box is clickable. Ctrl or ⌘ + scroll (or pinch) zooms, drag pans once zoomed, ⛶ goes fullscreen.
+
+## 1 · Flows
+
+How the project works: Pulumi provisions, git deploys, users reach apps.
+
+<FlowsDiagram />
+
+## 2 · Layers
+
+The stack from hardware to apps, and which tool owns each layer.
+
+<LayersDiagram />
+
+## 3 · Request journey
+
+Follow one request hop by hop. Press Play, or Step through.
+
+<JourneyDiagram />
+
+## 4 · Hub map
+
+The cluster at the centre, with everything that feeds it around the edge.
+
+<HubDiagram />
+
+## 5 · Lifecycle
+
+How a change reaches the cluster: infrastructure, apps and secrets, stage by stage.
+
+<LifecycleDiagram />

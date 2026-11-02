@@ -1,0 +1,15 @@
+---
+title: Hardware
+description: The single Proxmox host, its seven Talos VMs, and the GPU passed through to one of them.
+sidebar:
+  label: Overview
+  order: 0
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+One Proxmox host runs every cluster node as a VM; one worker owns the GPU via PCIe passthrough. Specs come from [`config.yml`](src:config/config.yml).
+
+<CardGrid>
+  <LinkCard title="Nodes" href="/hardware/nodes/" description="VM sizes, IPs, roles, Talos images and per-role machine patches." />
+  <LinkCard title="GPU" href="/hardware/gpu/" description="The passthrough GPU on k8s-worker4: taint, time-slicing, and sharing VRAM." />
+</CardGrid>

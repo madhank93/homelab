@@ -1,5 +1,5 @@
 # CS2 server settings. Pushing a change restarts the server (about 2 minutes).
-# Every flag and value is documented in docs/content/workloads/gaming/cs2/index.md.
+# Every flag and value is documented at https://homelab.madhan.app/workloads/gaming/cs2/.
 
 server:
   name: homelab LAN

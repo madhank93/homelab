@@ -1,0 +1,102 @@
+---
+title: Cilium and Gateway API
+description: Step Cilium one minor at a time behind four gates, with Gateway API CRDs applied first.
+sidebar:
+  order: 11
+---
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Phase 2. Risk: high, the CNI restart interrupts pod networking and can blackhole LoadBalancer IPs. Pins: `charts.cilium` in [`config/versions.yaml`](src:config/versions.yaml); Gateway API CRDs vendored in [`core/platform/manifests/`](src:core/platform/manifests/gateway-api-v1.6.3-experimental-install.yaml). Applied with `just core platform up`.
+
+## Rules
+
+- One minor at a time (1.18 → 1.19 → 1.20), each on the latest patch of its line. It is the only path Cilium tests, up and down.
+- Check the [Kubernetes compatibility matrix](https://docs.cilium.io/en/stable/network/kubernetes/compatibility/) against the pinned Kubernetes.
+- Read the version's upgrade notes for removed Helm values. Render the old and new chart with the values from [`cilium.go`](src:core/platform/cilium.go) and diff the `cilium-config` ConfigMap.
+- Gateway API CRDs go first, as their own apply: each Cilium minor needs a minimum Gateway API release, and the operator enables the controller only for CRDs present when it starts.
+- After each bump, check the `CiliumLoadBalancerIPPool` and `CiliumL2AnnouncementPolicy` specs in `cilium.go` for field renames.
+
+<Aside type="danger" title="Never add wt0 to devices">
+`devices` stays `ens18` and `eth0`. `wt0` is NOARP/POINTOPOINT and Cilium's TC BPF silently drops its frames. See [NetBird peer](/workloads/networking/netbird-peer/).
+</Aside>
+
+## Gates
+
+Run every gate from a laptop on the LAN before the first change and after every apply. Do not start the next step until all pass.
+
+```bash title="Gates" collapse={2-4,8-12,20-22}
+# 1. Every route Accepted by the Gateway. Any output is a failure.
+kubectl get httproute,grpcroute -A -o json | jq -r '.items[]
+  | select([.status.parents[]?.conditions[]? | select(.type=="Accepted" and .status=="True")] | length == 0)
+  | "\(.kind) \(.metadata.namespace)/\(.metadata.name)"'
+kubectl get gateway -n kube-system homelab-gateway   # PROGRAMMED True
+
+# 2. Every LoadBalancer IP answers from the LAN, not just in-cluster.
+kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer")
+  | "\(.status.loadBalancer.ingress[0].ip) \(.spec.ports[0].port) \(.metadata.namespace)/\(.metadata.name)"' |
+  while read -r ip port name; do
+    nc -z -w 5 "$ip" "$port" && echo "ok   $name $ip:$port" || echo "FAIL $name $ip:$port"
+  done
+kubectl get lease -n kube-system | grep l2announce   # one lease per LoadBalancer Service
+
+# 3. Host TCP on every node (the 1.19 regression killed this while ICMP still worked).
+talosctl --talosconfig ~/.talos/config -n 192.168.1.211,192.168.1.212,192.168.1.213,192.168.1.221,192.168.1.222,192.168.1.223,192.168.1.224 version --short
+just talos-health
+
+# 4. No LoadBalancer IP is also a node IP. Any output: stop.
+comm -12 \
+  <(kubectl get svc -A -o jsonpath='{range .items[*]}{.status.loadBalancer.ingress[*].ip}{"\n"}{end}' | tr ' ' '\n' | grep . | sort -u) \
+  <(kubectl get nodes -o jsonpath='{range .items[*]}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}' | sort -u)
+```
+
+Gate 4 exists because the LB pool in `config/config.yml` spans worker IPs. From 1.19 the datapath drops traffic to an LB-IPAM address on any port no Service uses ([cilium/cilium#44430](https://github.com/cilium/cilium/issues/44430)); 1.19.5 spares only the node owning the IP, so a worker whose IP is also an LB IP loses Talos API and kubelet access from everywhere else. `ConfigureCiliumIPPool` now skips node IPs when it builds the pool, so gate 4 should always be empty.
+
+## 1.18 → 1.20 runbook
+
+Three applies, one commit each. For each: `just core platform preview`, then `just core platform up`, then every gate. **Abort on any replace**, above all on `cilium-ip-pool`, `cilium-gateway`, `cilium-l2-policy`, a Helm release, or a Gateway API CRD (a CRD replace deletes every route).
+
+<Steps>
+
+1. **Gateway API CRDs v1.6.3, Cilium stays on 1.18.12.** The preview must show the CRDs updated, the `BackendLBPolicy` CRD deleted, the `safe-upgrades` admission policy created, and `cilium-ip-pool` as an in-place update to `cilium.io/v2` — never a replace, which releases every LoadBalancer IP. The experimental bundle keeps TLSRoute `v1alpha2`, which the 1.18 and 1.19 operators need to start ([cilium/cilium#45139](https://github.com/cilium/cilium/issues/45139)).
+
+   ```bash frame="terminal"
+   kubectl -n kube-system rollout restart deployment/cilium-operator
+   kubectl -n kube-system rollout status deployment/cilium-operator
+   kubectl -n kube-system logs deploy/cilium-operator | grep -i gateway | grep -iE 'error|failed'   # empty
+   ```
+
+2. **Cilium 1.19.10.** Never below 1.19.5, which fixes [#44430](https://github.com/cilium/cilium/issues/44430) and [#46010](https://github.com/cilium/cilium/issues/46010). Watch gate 3 while the DaemonSet rolls: if a node's Talos API stops answering, roll back before the agent reaches the rest. 1.19 is untested on Kubernetes 1.36, so move on as soon as the gates pass.
+
+   ```bash frame="terminal"
+   kubectl -n kube-system rollout status daemonset/cilium --timeout=15m
+   kubectl -n kube-system rollout status daemonset/cilium-envoy
+   kubectl -n kube-system rollout status deployment/cilium-operator
+   kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg status --brief
+   ```
+
+3. **Cilium 1.20.4.** Same commands and gates. An empty `l2announce` lease list with LB IPs still assigned is [#48799](https://github.com/cilium/cilium/issues/48799) (`externalTrafficPolicy: Local` Services lose their announcement); the Gateway uses `Cluster` and is unaffected.
+
+</Steps>
+
+## Rollback
+
+<Aside type="danger" title="Back one minor at a time">
+Reverse the way up: 1.20 → 1.19.10 → 1.18.12. Never jump two minors down.
+</Aside>
+
+Check out the previous commit (or revert the bump) and run `just core platform up`; Pulumi runs a `helm upgrade` to the older chart. If Pulumi is not an option, `helm history cilium -n kube-system` and `helm rollback cilium <revision> -n kube-system`, then re-run Pulumi from the matching commit so its state agrees.
+
+Leave the Gateway API CRDs and the `cilium.io/v2` pool in place: 1.18 and 1.19 run on both. The `safe-upgrades.gateway.networking.k8s.io` admission policy refuses rolling the CRDs below the 1.5 line.
+
+## If every LoadBalancer IP goes dark afterwards
+
+An agent restart can leave the L2 lease holder renewing normally, still listing the IP in `db/show l2-announce`, while it has stopped answering ARP. The Gateway stays `Programmed=True` and Envoy stays ready. The fingerprint: **in-cluster requests to the Gateway succeed while the LAN times out.**
+
+```bash frame="terminal"
+just gateway-repair-l2
+kubectl delete lease -n kube-system cilium-l2announce-<namespace>-<service>   # any other Service
+```
+
+Ignore `Proxy Status: 0 redirects active`: with `Envoy: external` the Gateway listeners live in the `cilium-envoy` DaemonSet and are never counted there.
+
+Pulumi reports the release failed (`failed to become available within allocated timeout`) if one agent never goes ready, even when the DaemonSet reached every node. Fix the node, then re-run `just core platform up`; it is idempotent. A node whose agent will not recover cannot reboot gracefully either — [power-cycle it](/operate/upgrades/talos/). If its Talos API is dead, reset the VM from Proxmox, then re-run the gates.

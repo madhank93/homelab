@@ -1,0 +1,20 @@
+---
+title: Reference
+description: Lookup tables — versions, recipes, network addresses, terms, design decisions and the development setup.
+sidebar:
+  label: Overview
+  order: 1
+---
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Facts to look up rather than read through.
+
+<CardGrid>
+  <LinkCard title="Software inventory" href="/reference/software-inventory/" description="Every pinned version and the file that pins it." />
+  <LinkCard title="justfile" href="/reference/justfile/" description="Every recipe, its arguments and what it does." />
+  <LinkCard title="Network" href="/reference/network/" description="Node IPs, VIP, LB pool, CIDRs, ports and DNS." />
+  <LinkCard title="Glossary" href="/reference/glossary/" description="Homelab-specific names and jargon." />
+  <LinkCard title="Development" href="/reference/development/" description="Devcontainer and the docs site." />
+</CardGrid>
+
+Design decisions are listed under **Decisions** in the sidebar.

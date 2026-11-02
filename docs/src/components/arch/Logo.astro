@@ -1,0 +1,59 @@
+---
+// Brand mark inside an SVG diagram, on a white tile so every brand colour —
+// including near-black and white-only marks — reads the same in both themes.
+// `logo` is a file in public/assets/logos/ (has an extension) or a
+// simple-icons slug; without either, a lettered badge.
+import * as icons from 'simple-icons';
+
+interface Props {
+  logo?: string;
+  name: string;
+  x: number;
+  y: number;
+  size?: number;
+}
+
+const { logo, name, x, y, size = 24 } = Astro.props;
+const isFile = logo?.includes('.');
+const icon = logo && !isFile ? Object.values(icons).find((i) => typeof i === 'object' && i.slug === logo) : undefined;
+const pad = size * 0.14;
+const inner = size - pad * 2;
+const initials = name.replace(/[^A-Za-z0-9 ]/g, '').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+---
+
+{
+  isFile || icon ? (
+    <g aria-hidden="true">
+      <rect class="tile" x={x} y={y} width={size} height={size} rx={size / 4.5} />
+      {isFile ? (
+        <image href={`/assets/logos/${logo}`} x={x + pad} y={y + pad} width={inner} height={inner} preserveAspectRatio="xMidYMid meet" />
+      ) : (
+        <svg x={x + pad} y={y + pad} width={inner} height={inner} viewBox="0 0 24 24">
+          <path d={icon!.path} fill={`#${icon!.hex}`} />
+        </svg>
+      )}
+    </g>
+  ) : (
+    <g aria-hidden="true">
+      <rect class="badge" x={x} y={y} width={size} height={size} rx={size / 4.5} />
+      <text class="badge-text" x={x + size / 2} y={y + size / 2} dy="0.35em" text-anchor="middle" font-size={size * 0.4}>
+        {initials}
+      </text>
+    </g>
+  )
+}
+
+<style>
+  .tile {
+    fill: #fff;
+    stroke: rgb(0 0 0 / 0.08);
+  }
+  .badge {
+    fill: var(--sl-color-accent-low);
+    stroke: var(--sl-color-accent);
+  }
+  .badge-text {
+    fill: var(--sl-color-text-accent);
+    font-weight: 700;
+  }
+</style>

@@ -1,0 +1,58 @@
+---
+title: Deploy Bifrost
+description: Create the Cloudflare DNS records, then provision and bootstrap the Hetzner VPS that runs Traefik, Authentik and NetBird.
+sidebar:
+  order: 3
+  label: 3 · Bifrost
+---
+import { Steps } from '@astrojs/starlight/components';
+
+Goal: Traefik, Authentik, NetBird and Gatus running on the Bifrost VPS, reachable on their public hostnames. About 8 minutes, fully automated.
+
+## Procedure
+
+<Steps>
+
+1. Create the DNS records: the `*` wildcard to the LAN gateway, plus `auth`, `netbird`, `proxy`, `uptime` and every `publicServices` entry to the VPS.
+
+   ```sh frame="terminal"
+   just core cloudflare up
+   ```
+
+2. Provision the VPS and run its bootstrap.
+
+   ```sh frame="terminal"
+   just core hetzner up
+   ```
+
+</Steps>
+
+## What the bootstrap does
+
+`just core hetzner up` writes one `env/<container>.env` per consumer (mode 600), copies `core/cloud/bifrost/` to `/etc/bifrost/` on the VPS and runs [`bootstrap.sh`](src:core/cloud/bifrost/bootstrap.sh). It re-runs whenever a config file or secret changes.
+
+| Step | Does |
+|---|---|
+| Preflight | Checks the seven required secrets in `env/`, waits for cloud-init |
+| Hardening | Key-only SSH, fail2ban, unattended-upgrades |
+| 1–4 | Traefik, Authentik Postgres, Authentik migrations, Authentik server and worker |
+| — | Substitutes `NB_RELAY_SECRET`, `NB_DATA_STORE_KEY` and a bcrypt hash of `NB_OWNER_PASSWORD` into `netbird/config.yaml` |
+| 5 | NetBird server and dashboard |
+| 6 | `netbird-agent`, only if `NB_SETUP_KEY` is set |
+| 7 | `netbird-proxy`, only if `NB_PROXY_TOKEN` is set — skipped on the first run |
+| 8 | Gatus |
+
+:::note
+NetBird does not expand `${VAR}` in its config file, which is why the bootstrap substitutes secrets with `sed` and Python.
+:::
+
+## Check
+
+```sh frame="terminal"
+curl -sI https://auth.madhan.app | head -1
+curl -sI https://netbird.madhan.app | head -1
+```
+
+Both return `200`. The bootstrap ends with a container table and `Bootstrap complete.`
+
+Details: [Bifrost](/cloud/bifrost/), [Exposure](/cloud/exposure/).

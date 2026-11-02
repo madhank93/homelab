@@ -1,0 +1,61 @@
+---
+title: Verify
+description: End-to-end checks for DNS, OpenBao, the NetBird mesh, SSO and Argo CD, plus LAN access without the Hetzner hop.
+sidebar:
+  order: 9
+  label: 9 · Verify
+---
+import { Steps } from '@astrojs/starlight/components';
+
+Goal: confirm every layer works together. Run each check; any failure points back to its phase.
+
+## Checks
+
+<Steps>
+
+1. DNS split: public services resolve to the VPS, everything else to the LAN gateway.
+
+   ```sh frame="terminal"
+   dig +short grafana.madhan.app    # 178.156.199.250
+   dig +short headlamp.madhan.app   # 192.168.1.220
+   ```
+
+2. OpenBao is unsealed.
+
+   ```sh frame="terminal"
+   kubectl exec -n openbao openbao-0 -c openbao -- bao status | grep Sealed   # false
+   ```
+
+3. Mesh: in the NetBird UI, **Peers** shows `bifrost-agent` and `k8s-routing-peer` connected; **Routes** shows `192.168.1.0/24` active.
+
+4. SSO: open `https://grafana.madhan.app`, sign in with GitHub through Authentik, land in Grafana.
+
+5. Apps: every Argo CD application is `Synced` and `Healthy`.
+
+   ```sh frame="terminal"
+   kubectl get applications -n argocd
+   ```
+
+</Steps>
+
+| Failing check | Go back to |
+|---|---|
+| DNS | [Phase 3](/start/deploy/3-bifrost/) |
+| Sealed | [Phase 2](/start/deploy/2-openbao/) |
+| Peers or route | [Phase 6](/start/deploy/6-netbird-keys/) |
+| SSO | [Phase 4](/start/deploy/4-authentik/), [Phase 7](/start/deploy/7-grafana-sso/) |
+| Applications | [Phase 8](/start/deploy/8-manifests/), [Troubleshooting](/operate/troubleshooting/) |
+
+## LAN access without the Hetzner hop
+
+Public hostnames resolve to the VPS for every client, LAN included, so LAN traffic leaves the house and comes back through the tunnel. Override the record locally to go straight to the gateway:
+
+```txt title="/etc/hosts"
+192.168.1.220  grafana.madhan.app
+```
+
+:::tip
+For the whole LAN, add the same override in the router's DNS (Pi-hole, Unbound) instead of each machine's hosts file.
+:::
+
+Details: [Traffic flow](/concepts/traffic/), [Exposure](/cloud/exposure/).

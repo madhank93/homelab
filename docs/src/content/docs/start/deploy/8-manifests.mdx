@@ -1,0 +1,38 @@
+---
+title: Publish manifests
+description: Push a source change and let CI synthesize the CDK8s manifests to the branch Argo CD watches.
+sidebar:
+  order: 8
+  label: 8 · Manifests
+---
+
+Goal: the manifests branch matches `workloads/`, and Argo CD has synced it. About 3 minutes.
+
+`app/` is gitignored: manifests are never committed from a laptop. CI synthesizes them and force-pushes the result to `<branch>-manifests`, which `manifests_branch` in [`config.yml`](src:config/config.yml) selects.
+
+## Procedure
+
+```sh frame="terminal"
+just synth   # optional: confirm it synthesizes before pushing
+git push
+```
+
+[`cdk8s-seal-publish.yml`](src:.github/workflows/cdk8s-seal-publish.yml) runs on pushes to `main` and `v*` branches that touch `workloads/`, and when a `v*` branch is created.
+
+:::caution[A push outside workloads/ publishes nothing]
+Commits that only touch `core/`, `docs/` or `config/` do not trigger the workflow. Run it by hand from the Actions tab (`workflow_dispatch`) if the manifests branch must refresh.
+:::
+
+:::caution[CI blocks rendered Secrets]
+The manifests branch is public. [`manifest-secret-guard.sh`](src:scripts/manifest-secret-guard.sh) fails the run if synthesis emits a Secret payload not in the allowlist.
+:::
+
+## Check
+
+```sh frame="terminal"
+kubectl get applications -n argocd
+```
+
+Every application `Synced`. With `argocd_manual_sync: true` in `config.yml`, sync one app at a time with `just argocd-sync <app>` instead.
+
+Details: [GitOps](/concepts/gitops/), [CDK8s](/platform/cdk8s/).

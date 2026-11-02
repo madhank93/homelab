@@ -1,0 +1,17 @@
+---
+title: Releases
+description: What changed in each release, the manual steps it needs, and links to the full notes.
+sidebar:
+  label: Overview
+  order: 0
+---
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Each release is a branch (`v0.1.8`), and CI publishes its synthesized manifests to a matching `-manifests` branch that Argo CD watches. Pages condense the full notes kept in `docs/releases/`.
+
+<CardGrid>
+  <LinkCard title="v0.1.8" href="/releases/v0-1-8/" description="Config refactor, security hardening, Talos 1.14, Cilium 1.20, n8n 2.x." />
+  <LinkCard title="v0.1.7" href="/releases/v0-1-7/" description="Talos upgrades fixed, Longhorn and TLS outages, docs with a version guard." />
+  <LinkCard title="v0.1.6" href="/releases/v0-1-6/" description="Version sweep, Rancher removed, Gatus added." />
+  <LinkCard title="v0.1.5" href="/releases/v0-1-5/" description="Infisical replaced by OpenBao; n8n on CloudNativePG." />
+</CardGrid>

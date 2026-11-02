@@ -1,0 +1,47 @@
+---
+title: Overview
+description: What this homelab runs, the four layers that build it, and the rules every change follows.
+sidebar:
+  order: 1
+---
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import FlowsDiagram from '../../../components/arch/FlowsDiagram.astro';
+
+A seven-node Talos Kubernetes cluster on one Proxmox host, with a Hetzner VPS as the public edge and an RTX 5070 Ti for AI workloads. Everything above the bare metal is declared in this repo and rebuilt from it.
+
+<FlowsDiagram />
+
+## Layers
+
+<CardGrid>
+  <Card title="Apps" icon="puzzle">
+    Ollama, ComfyUI, Grafana, Harbor, n8n, Falco and the rest. **Argo CD + CDK8s.**
+  </Card>
+  <Card title="Platform" icon="setting">
+    Talos, Cilium, Gateway API, cert-manager, Argo CD. **Pulumi.**
+  </Card>
+  <Card title="Infrastructure" icon="laptop">
+    Seven Proxmox VMs and the Bifrost VPS on Hetzner. **Pulumi.**
+  </Card>
+  <Card title="Hardware" icon="seti:config">
+    The Proxmox host and its GPU. **Manual.**
+  </Card>
+</CardGrid>
+
+## Principles
+
+| Rule | What it means here |
+|---|---|
+| Everything as code | Pulumi in `core/`, CDK8s in `workloads/`, shared values in `config/config.yml`. |
+| No manual cluster changes | `kubectl edit` and `kubectl scale` are reverted by Argo CD self-heal; change git instead. |
+| No plaintext secrets in git | Bootstrap secrets are SOPS-encrypted; runtime secrets live in OpenBao. CDK8s renders no Secret objects. |
+| Zero-touch automation | `just` recipes drive every phase; the only manual steps are in third-party UIs (NetBird). |
+
+## Where to next
+
+<CardGrid>
+  <LinkCard title="Quickstart" href="/start/quickstart/" description="Every command in order, for when the prerequisites are ready." />
+  <LinkCard title="Deploy from scratch" href="/start/deploy/" description="Phase-by-phase build from bare Proxmox to a synced cluster." />
+  <LinkCard title="Concepts" href="/concepts/" description="How traffic, GitOps and secrets flow through the system." />
+  <LinkCard title="Operate" href="/operate/troubleshooting/" description="Fixes for the failures this cluster has actually had." />
+</CardGrid>

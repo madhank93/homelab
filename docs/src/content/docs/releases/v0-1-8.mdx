@@ -1,0 +1,44 @@
+---
+title: v0.1.8
+description: Config refactor, security hardening, and latest stable on every layer — Talos 1.14, Cilium 1.20, Longhorn 1.13, n8n 2.x.
+sidebar:
+  order: 1
+---
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Released 2026-10-29. Full notes: [`v0.1.8-RELEASE-NOTES.md`](src:docs/releases/v0.1.8-RELEASE-NOTES.md).
+
+## Highlights
+
+- **Config in one place.** `config/config.yml` (domain, subnet, VIP, nodes, LB pool, manifests branch) and `config/versions.yaml` (every chart, image and Talos pin), read by Pulumi, CDK8s and the justfile. Shared helpers in `workloads/kit`.
+- **Security.** No OpenBao root token on disk (`just openbao-token` over an in-pod socket). Grafana split into an admin org and a metrics-only Public org. VPS key-only SSH with fail2ban. CI actions pinned to SHAs, SBOM per release, gitleaks + trufflehog hooks (`just hooks`).
+- **Platform.** Talos 1.14 with Kubernetes held on 1.36, Gateway API CRDs v1.6.3, Cilium 1.18 → 1.19 → 1.20, Argo CD chart 10.10.5. Node IPs removed from the LB pool.
+- **Workloads.** Longhorn 1.13, n8n 2.x (one-way DB migration), Kubeflow 26.03, Falco 9, Grafana chart 14, and every other chart to latest stable.
+- **New.** LAN-only Counter-Strike 2 server on `192.168.1.230`.
+- **Pre-release security patches.** Harbor, Kyverno, OpenBao, n8n, Grafana, the `n8n-pg` operand and Talos patch bumps; Longhorn engines now auto-upgrade.
+
+## Manual steps
+
+Pass each step's gate before the next. Runbooks: [Upgrades](/operate/upgrades/).
+
+<Steps>
+
+1. **Back up.** `pg_dump` the n8n database off-cluster, snapshot Longhorn volumes that cannot be re-downloaded, confirm the OpenBao unseal key is in SOPS, record a hash of `N8N_ENCRYPTION_KEY`, and check your SSH key logs in to the VPS. No Service may use `externalIPs`: admission now denies them.
+2. **Talos 1.14**, one node at a time, `talosctl` 1.14.1+. Pass `drain=false` on the GPU worker and on whichever worker hosts `n8n-pg-1`. See [Talos](/operate/upgrades/talos/).
+3. **Kubernetes**, then Pulumi: `just talos-upgrade-k8s`, `just core talos preview` (stop on any replace), `just core talos up`.
+4. **Gateway API CRDs, then Cilium 1.19.10, then 1.20.4** as three applies with the four gates between each. See [Cilium](/operate/upgrades/cilium/).
+5. **Argo CD and cert-manager**: `just core platform up` on unmodified HEAD.
+6. **Grafana org**: `just grafana-init` before the Grafana change syncs. Then set `argocd_manual_sync: true` and apply.
+7. **Repoint Argo CD** to `v0.1.8-manifests`, `just argocd-sync openbao`, delete `openbao-0` (OnDelete), then `just openbao-setup`. Sync Falco now.
+8. **Workloads by risk** with `just argocd-sync <app>`: low → storage (CNPG, then Longhorn) → observability → Ollama → Kubeflow (delete `jobset-controller-manager` and `profiles-deployment`) → n8n → CS2.
+9. **Verify Falco**, then set `argocd_manual_sync: false` and apply.
+10. **Bifrost**: `just core hetzner preview` (no server replace), then `up`.
+11. **Pulumi providers** (cloudflare v6, proxmoxve v8): preview every stack and stop on any VM or DNS record replace.
+
+</Steps>
+
+<Aside type="caution" title="Open after rollout">
+k8s-worker1 host DNS is flaky; each Cilium agent rollout darkens the Gateway IP for about 35 s; there is no Longhorn backup target. Ollama with flash attention on Blackwell may crash at warmup ([ollama/ollama#18276](https://github.com/ollama/ollama/issues/18276)) — set `OLLAMA_FLASH_ATTENTION=0` if it does. Harbor keeps its existing admin password; rotate it and update OpenBao.
+</Aside>
+
+Deferred: Kubernetes 1.37, SSO in front of every UI, default-deny NetworkPolicies, Kyverno enforce mode, image digest pins, NetBird 0.81.x.

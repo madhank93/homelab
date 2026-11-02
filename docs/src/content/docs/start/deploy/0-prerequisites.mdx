@@ -1,0 +1,88 @@
+---
+title: Prerequisites
+description: Install the tools, create the age key, and fill the SOPS file every later phase reads.
+sidebar:
+  order: 0
+  label: 0 · Prerequisites
+---
+import { Steps } from '@astrojs/starlight/components';
+
+Goal: a laptop that can decrypt `secrets/bootstrap.sops.yaml`, and a file that holds every Phase 0 key.
+
+## Requirements
+
+| Need | Detail |
+|---|---|
+| Proxmox host | Room for 32 vCPU, 82 GiB RAM and 1000 GiB disk across seven VMs; API access as `root@pam`; an NVIDIA GPU to pass through to `k8s-worker4` |
+| Accounts | Hetzner Cloud, Cloudflare (zone for `madhan.app`), a GitHub OAuth app for Authentik |
+| Tools | `pulumi`, `talosctl`, `kubectl`, `just`, `sops`, `age`, `go`, `yq`, `jq`, `cdk8s` — all in the [devcontainer](/reference/development/devcontainer/) |
+
+VM sizes come from `cluster.nodes` in [`config.yml`](src:config/config.yml); the Go toolchain is pinned in [`.mise.toml`](src:.mise.toml).
+
+## Procedure
+
+<Steps>
+
+1. Install the tools, or open the devcontainer:
+
+   ```sh frame="terminal"
+   brew install pulumi talosctl kubectl just sops age go yq jq
+   npm install -g cdk8s-cli
+   ```
+
+2. Create the age key and export its path. sops does not find the key file on its own.
+
+   ```sh frame="terminal"
+   mkdir -p ~/.config/sops/age
+   age-keygen -o ~/.config/sops/age/keys.txt
+   echo 'export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"' >> ~/.zshrc
+   ```
+
+3. Put the public key in [`.sops.yaml`](src:.sops.yaml) under `creation_rules[*].age`.
+
+4. Open the secrets file. sops decrypts it in your editor and re-encrypts on save.
+
+   ```sh frame="terminal"
+   just sops-view secrets/bootstrap.sops.yaml
+   ```
+
+5. Add every key below. Generate random values with the command shown.
+
+   ```yaml title="secrets/bootstrap.sops.yaml (keys only)"
+   PROXMOX_PASSWORD:              # Proxmox root password
+   HCLOUD_TOKEN:                  # Hetzner Cloud API token
+   CLOUDFLARE_API_TOKEN:          # Zone:DNS edit — cert-manager and Traefik ACME
+   AUTHENTIK_TOKEN:               # openssl rand -hex 30; becomes the akadmin API token
+   AUTHENTIK_SECRET_KEY:          # openssl rand -base64 48
+   AUTHENTIK_POSTGRESQL_PASSWORD: # openssl rand -hex 16
+   AUTHENTIK_GITHUB_SECRET:       # GitHub OAuth app secret
+   GRAFANA_OAUTH_CLIENT_SECRET:   # openssl rand -hex 32
+   NETBIRD_CLIENT_SECRET:         # openssl rand -hex 32
+   NB_DATA_STORE_KEY:             # openssl rand -base64 32
+   NB_RELAY_SECRET:               # openssl rand -base64 32
+   NB_OWNER_PASSWORD:             # first NetBird login only
+   OPENBAO_UNSEAL_KEY: placeholder   # real value in Phase 2
+   NB_BIFROST_SETUP_KEY: placeholder # real value in Phase 6
+   ```
+
+</Steps>
+
+:::danger[Back up the age key]
+`~/.config/sops/age/keys.txt` is the only way to decrypt the secrets file. Lose it and every SOPS value must be regenerated, including `NB_DATA_STORE_KEY`.
+:::
+
+:::caution[NB_DATA_STORE_KEY is permanent]
+It encrypts the NetBird database. Changing it after the first deploy loses every peer registration.
+:::
+
+:::caution[NB_BIFROST_SETUP_KEY needs a value now]
+`hetzner.go` refuses to run while it is empty, but the real key only exists after Phase 6. A placeholder gets Phase 3 through; `netbird-agent` cannot join the mesh until it is replaced.
+:::
+
+## Check
+
+```sh frame="terminal"
+sops -d secrets/bootstrap.sops.yaml >/dev/null && echo decrypts
+```
+
+`decrypts` means the key and `.sops.yaml` match. Never print the decrypted output.

@@ -31,8 +31,9 @@ core/sdks/
 # ── Generated / build outputs ─────────────────────────────────────────
 # CDK8s synthesis output (published to *-manifests branch by CI)
 app/
-# Zola static site build
-docs/public/
+# Astro docs build output and cache
+docs/dist/
+docs/.astro/
 
 # ── Infra generated files ─────────────────────────────────────────────
 # Written by infra/cloud/hetzner.go at deploy time
@@ -42,3 +43,4 @@ core/cloud/bifrost/traefik/dynamic/public-services.yml
 backups/
 
 node_modules
+.aider*

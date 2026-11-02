@@ -1,0 +1,31 @@
+---
+title: AI
+description: GPU workloads on k8s-worker4 — Ollama, ComfyUI, Kubeflow and the NVIDIA device plugin that shares the card between them.
+sidebar:
+  label: Overview
+  order: 10
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Every AI workload runs on k8s-worker4 (`192.168.1.224`), the only node with a GPU. The device plugin splits the one RTX 5070 Ti into five time-sliced `nvidia.com/gpu` units; see [GPU](/hardware/gpu/) for the hardware.
+
+## GPU consumers
+
+VRAM is not partitioned: each unit is a time slice of the whole 16 GB card, and no Kubernetes limit applies to GPU memory.
+
+| Consumer | `nvidia.com/gpu` | Host RAM limit | Default | How it shares |
+|---|---|---|---|---|
+| [Ollama](/workloads/ai/ollama/) | 1 | 12Gi | Running | Holds the loaded model in VRAM until it unloads |
+| [ComfyUI](/workloads/ai/comfyui/) | 1 | 6Gi | Scaled to 0 | Keeps its model in VRAM after a run; `just comfyui off` is the only reliable release |
+| [Kubeflow](/workloads/ai/kubeflow/) notebooks, training jobs, Katib trials | 1 each | per spawn | On demand | Up to the three remaining units |
+| DCGM exporter | 0 | — | Running | Reads GPU metrics through NVML only |
+
+All GPU pods need `runtimeClassName: nvidia`, the `nvidia.com/gpu.present: "true"` node selector and a toleration for the `dedicated=ai:NoSchedule` taint on worker4.
+
+<CardGrid>
+  <LinkCard title="NVIDIA device plugin" href="/workloads/ai/nvidia-device-plugin/" description="GPU advertisement, time-slicing and DCGM metrics on Talos." />
+  <LinkCard title="Ollama" href="/workloads/ai/ollama/" description="LLM inference server and the aider offload endpoint." />
+  <LinkCard title="ComfyUI" href="/workloads/ai/comfyui/" description="Node-graph image generation. Off by default." />
+  <LinkCard title="Kubeflow" href="/workloads/ai/kubeflow/" description="Notebooks, pipelines and Katib, without Istio." />
+  <LinkCard title="Notebook gateway controller" href="/workloads/ai/notebook-gateway-controller/" description="Creates an HTTPRoute for every notebook, TensorBoard and PVC viewer." />
+</CardGrid>

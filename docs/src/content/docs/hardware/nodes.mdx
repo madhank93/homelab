@@ -1,0 +1,58 @@
+---
+title: Nodes
+description: Seven Talos VMs on one Proxmox host — sizes, addresses, roles and the machine patches each role gets.
+sidebar:
+  order: 10
+---
+import NodeTable from '../../../components/NodeTable.astro';
+import { totals } from '../../../data/cluster';
+
+Pulumi creates every node as a Proxmox VM from [`config.yml`](src:config/config.yml) and configures it with [`talos.go`](src:core/platform/talos.go). The cluster has {totals.controlPlanes} control planes and {totals.workers} workers: {totals.cores} vCPU and {totals.memoryGiB} GiB RAM in all.
+
+<NodeTable />
+
+| | |
+|---|---|
+| API endpoint | `https://192.168.1.210:6443` (Talos VIP, see [Control plane HA](/platform/control-plane-ha/)) |
+| LB pool | `192.168.1.220`–`230`, node IPs excluded (see [Cilium](/platform/cilium/)) |
+| Source | [`config.yml`](src:config/config.yml), [`proxmox.go`](src:core/platform/proxmox.go), [`talos.go`](src:core/platform/talos.go) |
+
+## VM settings
+
+| Setting | Value | Why |
+|---|---|---|
+| Firmware / machine | OVMF, q35 | Required for PCIe passthrough |
+| CPU type | `host` | Exposes host CPU flags to the guest |
+| CPU units | Control planes `1024`, workers `100` | The scheduler favours etcd and the API server when the host is contended |
+| Balloon floor | Control planes 4 GiB, workers 8 GiB | Guaranteed memory; on worker4 it keeps CUDA-pinned memory resident |
+| Disk | One `scsi0` disk on `local-lvm`, `virtio-scsi-single`, iothread | `install.disk: /dev/sda` relies on it being the only disk |
+| `RebootAfterUpdate` | `false` | A config change must never restart every VM at once; nodes reboot one at a time via `talosctl` |
+| Pulumi `protect` | `true` | Controllers are etcd members; unprotect explicitly to rebuild |
+
+The host has 92 GB RAM; 8 GB stays with Proxmox.
+
+## Talos images
+
+Two Image Factory schematics, both pinned in [`versions.yaml`](src:config/versions.yaml):
+
+| Image | Extensions | Nodes |
+|---|---|---|
+| Base | `iscsi-tools`, `util-linux-tools`, `qemu-guest-agent` | Control planes, worker1–3 |
+| GPU | Base + `nvidia-open-gpu-kernel-modules-production`, `nvidia-container-toolkit-production` | worker4 |
+
+The image only seeds a new VM's disk. Existing nodes upgrade in place with `just talos-upgrade <ip>`; see [Talos](/platform/talos/).
+
+## Per-role machine patches
+
+| Role | Adds |
+|---|---|
+| All | No CNI (Cilium), kube-proxy disabled, `install.disk: /dev/sda` |
+| Control plane | VIP `192.168.1.210` on the physical interface |
+| Worker | Label `node.longhorn.io/create-default-disk: config`; modules `nbd`, `iscsi_tcp`, `iscsi_generic`, `configfs`; tuned `evictionHard` |
+| GPU worker | Taint `dedicated=ai:NoSchedule`; modules `nvidia`, `nvidia_uvm`, `nvidia_drm`, `nvidia_modeset` |
+
+Workers lower `imagefs.available` to 10%: images and Longhorn replicas share `/var`, and the default 15% evicts Longhorn before it can free space.
+
+## Addressing
+
+Each node gets a **static** address: Pulumi rewrites the DHCP interface in the generated config to the IP from `config.yml`, a default route via `192.168.1.254`, and nameservers `1.1.1.1` and `192.168.1.254`. To change a node's IP, edit `config.yml` and re-run `just core talos up`.

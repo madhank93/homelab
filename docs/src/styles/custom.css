@@ -1,0 +1,25 @@
+/* Landing-page stat strip. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 1rem;
+  margin-block: 1rem 2rem;
+}
+.stats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0.5rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  background: var(--sl-color-gray-7, var(--sl-color-gray-6));
+}
+.stats strong {
+  font-size: var(--sl-text-2xl);
+  color: var(--sl-color-text-accent);
+  line-height: 1.2;
+}
+.stats span {
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}

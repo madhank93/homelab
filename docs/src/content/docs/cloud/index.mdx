@@ -1,0 +1,23 @@
+---
+title: Cloud
+description: The Pulumi stacks in core/cloud — the Bifrost VPS, Authentik SSO, NetBird mesh and Cloudflare DNS.
+sidebar:
+  label: Overview
+  order: 0
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Everything outside the house: a Hetzner VPS that is the public edge, the SSO and VPN it hosts, and the DNS that decides what is public. Each is a Pulumi stack in `core/cloud/`, run from the laptop with `just core <stack> up`, never from CI.
+
+| Stack | Command | Manages |
+|---|---|---|
+| `hetzner` | `just core hetzner up` | VPS, firewall, Bifrost config upload and bootstrap |
+| `authentik` | `just core authentik up` | GitHub source, OIDC apps, ForwardAuth provider |
+| `cloudflare` | `just core cloudflare up` | Every DNS record in the zone |
+
+<CardGrid>
+  <LinkCard title="Bifrost" href="/cloud/bifrost/" description="The Hetzner VPS: Traefik, Authentik, NetBird, Gatus and its bootstrap." />
+  <LinkCard title="NetBird" href="/cloud/netbird/" description="WireGuard mesh from Bifrost and laptops into the LAN, with first-time setup." />
+  <LinkCard title="Authentik" href="/cloud/authentik/" description="GitHub SSO, OIDC for Grafana and NetBird, ForwardAuth for public routes." />
+  <LinkCard title="Exposure" href="/cloud/exposure/" description="What is reachable from LAN, VPN and internet, and how to make a service public." />
+</CardGrid>

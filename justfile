@@ -29,10 +29,10 @@ secret-scan-history:
 docs-check:
     ./scripts/docs-version-check.sh
 
-# Serve the docs locally at http://127.0.0.1:1111
+# Serve the docs locally at http://localhost:4321
 [working-directory: 'docs']
 docs-serve:
-    zola serve
+    npm run dev
 
 # Build and push a custom image to Harbor
 # Usage: just build-push <image-name> <tag>

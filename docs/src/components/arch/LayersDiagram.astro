@@ -1,0 +1,121 @@
+---
+// Variant: the stack. Four layers from hardware up to apps, each paired with
+// the tool that manages it.
+import { cluster, totals } from '../../data/cluster';
+import Explorer from './Explorer.astro';
+import Node from './Node.astro';
+import Arrows from './Arrows.astro';
+
+const L = 20; // band left edge
+const R = 1000; // band right edge
+const X0 = 40; // band content left
+const IW = 940; // band content width
+const GAP = 24; // between bands
+const MX = 1050; // "managed by" column
+const MW = 170;
+const thin = 'stroke-width: 1.5';
+
+const apps = [
+  ['AI', ['ollama', 'comfyui', 'kubeflow']],
+  ['Observability', ['grafana', 'victoriametrics', 'victorialogs', 'otel']],
+  ['Security', ['falco', 'trivy', 'kyverno']],
+  ['Tools', ['harbor', 'n8n', 'headlamp', 'cs2']],
+  ['Services', ['longhorn', 'openbao', 'netbirdpeer', 'cnpg']],
+] as const;
+const platform = ['argocd', 'cilium', 'gateway', 'certmanager'] as const;
+const nodesIds = ['talos', 'controlplanes', 'workers'] as const;
+const edge = ['bifrost', 'cloudflare'] as const;
+
+const appCol = 176;
+const appColGap = (IW - apps.length * appCol) / (apps.length - 1);
+const platW = 223;
+const platGap = (IW - 4 * platW) / 3;
+const infraW = 170;
+const infraGap = 16;
+const edgeX = R - 20 - 2 * infraW - infraGap;
+
+const appsBand = { y: 56, h: 284 };
+const platBand = { y: appsBand.y + appsBand.h + GAP, h: 122 };
+const infraBand = { y: platBand.y + platBand.h + GAP, h: 148 };
+const hwBand = { y: infraBand.y + infraBand.h + GAP, h: 114 };
+const bands = [
+  ['Apps and cluster services', appsBand],
+  ['Platform', platBand],
+  ['Infrastructure', infraBand],
+  ['Hardware', hwBand],
+] as const;
+const mid = (b: { y: number; h: number }) => b.y + b.h / 2;
+
+const workers = totals.workers - totals.gpus;
+const legendY = hwBand.y + hwBand.h + 36;
+---
+
+<Explorer label="Homelab architecture: the four layers and what manages each">
+  <svg viewBox={`0 0 1240 ${legendY + 20}`} role="group" aria-label="Layered stack: hardware, infrastructure, platform and apps, each with the tool that manages it">
+    <Arrows />
+
+    <text class="zone-label" x={MX} y="40">Managed by</text>
+
+    {
+      bands.map(([title, b]) => (
+        <g>
+          <rect class="zone" x={L} y={b.y} width={R - L} height={b.h} rx="12" />
+          <text class="zone-label" x={X0} y={b.y + 26}>{title}</text>
+        </g>
+      ))
+    }
+
+    {
+      apps.map(([title, ids], col) => (
+        <g>
+          <text class="label" x={X0 + col * (appCol + appColGap)} y={appsBand.y + 58}>{title}</text>
+          {ids.map((id, row) => (
+            <Node id={id} x={X0 + col * (appCol + appColGap)} y={appsBand.y + 68 + row * 52} w={appCol} h={40} compact />
+          ))}
+        </g>
+      ))
+    }
+
+    {
+      platform.map((id, i) => (
+        <Node id={id} x={X0 + (i % 4) * (platW + platGap)} y={platBand.y + 42 + Math.floor(i / 4) * 66} w={platW} />
+      ))
+    }
+
+    <text class="label" x={X0} y={infraBand.y + 52}>Cluster · Talos Linux VMs</text>
+    {nodesIds.map((id, i) => <Node id={id} x={X0 + i * (infraW + infraGap)} y={infraBand.y + 62} w={infraW} />)}
+    <text class="label" x={X0 + infraW + infraGap + infraW / 2} y={infraBand.y + 132} text-anchor="middle">{totals.controlPlanes} nodes · VIP {cluster.vip}</text>
+    <text class="label" x={X0 + 2 * (infraW + infraGap) + infraW / 2} y={infraBand.y + 132} text-anchor="middle">{workers} nodes</text>
+    <text class="label" x={edgeX} y={infraBand.y + 52}>Bifrost edge · Hetzner VPS</text>
+    {edge.map((id, i) => <Node id={id} x={edgeX + i * (infraW + infraGap)} y={infraBand.y + 62} w={infraW} />)}
+
+    <Node id="proxmox" x={X0} y={hwBand.y + 42} w={220} />
+    <Node id="gpuworker" x={X0 + 236} y={hwBand.y + 42} w={220} />
+    <text class="label" x={X0 + 472} y={hwBand.y + 72}>GPU passed through to one VM</text>
+
+    <Node id="gitpush" x={MX} y={mid(appsBand) - 98} w={MW} tone="deploy" />
+    <path class="flow deploy" style={thin} d={`M${MX + MW / 2} ${mid(appsBand) - 46} V${mid(appsBand) - 28}`} marker-end="url(#arrow-deploy)" />
+    <Node id="argocd" x={MX} y={mid(appsBand) - 26} w={MW} tone="deploy" />
+    <path class="flow deploy" style={thin} d={`M${MX} ${mid(appsBand)} H${R + 2}`} marker-end="url(#arrow-deploy)" />
+
+    {
+      [platBand, infraBand].map((b) => (
+        <g>
+          <Node id="pulumi" x={MX} y={mid(b) - 26} w={MW} tone="provision" />
+          <path class="flow provision" style={thin} d={`M${MX} ${mid(b)} H${R + 2}`} marker-end="url(#arrow-provision)" />
+        </g>
+      ))
+    }
+
+    <rect class="zone" x={MX} y={mid(hwBand) - 20} width={MW} height="40" rx="8" />
+    <text class="label" x={MX + MW / 2} y={mid(hwBand)} dy="0.35em" text-anchor="middle">by hand</text>
+    <line class="zone" x1={MX} y1={mid(hwBand)} x2={R} y2={mid(hwBand)} />
+
+    <g>
+      <line class="flow provision" x1={L} y1={legendY} x2={L + 30} y2={legendY} />
+      <text class="label" x={L + 38} y={legendY + 4}>Provisioned by Pulumi from the laptop</text>
+      <line class="flow deploy" x1={L + 340} y1={legendY} x2={L + 370} y2={legendY} />
+      <text class="label" x={L + 378} y={legendY + 4}>Deployed by git push → CI → Argo CD</text>
+    </g>
+  </svg>
+</Explorer>

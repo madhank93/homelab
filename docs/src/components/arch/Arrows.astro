@@ -1,0 +1,13 @@
+---
+// Arrowheads for the three flows. Reference as marker-end="url(#arrow-deploy)".
+---
+
+<defs>
+  {
+    ['provision', 'deploy', 'traffic'].map((f) => (
+      <marker id={`arrow-${f}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" class={`head ${f}`} />
+      </marker>
+    ))
+  }
+</defs>

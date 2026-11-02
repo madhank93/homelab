@@ -1,0 +1,340 @@
+---
+// Interactive frame for an architecture diagram: zoom, pan, fullscreen, and a
+// details panel for whichever [data-node] box is clicked. The slot is one <svg>.
+import { components, owners } from '../../data/architecture';
+
+interface Props {
+  label: string;
+  hint?: string;
+}
+
+const { label, hint = 'Click any box for details' } = Astro.props;
+---
+
+<figure class="explorer" data-explorer aria-label={label}>
+  <div class="toolbar">
+    <span class="hint">{hint}</span>
+    <div class="buttons">
+      <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
+      <button type="button" data-zoom="reset" aria-label="Reset view">Reset</button>
+      <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+      <button type="button" data-fullscreen aria-label="Toggle fullscreen">⛶</button>
+    </div>
+  </div>
+  <div class="stage">
+    <slot />
+    <div class="backdrop" hidden></div>
+    <aside class="panel" hidden role="dialog" aria-modal="true" aria-label="Component details">
+      <button type="button" class="close" aria-label="Close details">×</button>
+      <p class="panel-role"></p>
+      <h4 class="panel-name"></h4>
+      <p class="panel-info"></p>
+      <p class="panel-owner"></p>
+      <a class="panel-link">Read more →</a>
+    </aside>
+  </div>
+  <script type="application/json" data-registry set:html={JSON.stringify({ components, owners })} />
+</figure>
+
+<script>
+  type Entry = { name: string; role: string; info: string; href?: string; owner?: string };
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-explorer]')) {
+    const svg = root.querySelector<SVGSVGElement>('.stage > svg')!;
+    const panel = root.querySelector<HTMLElement>('.panel')!;
+    const backdrop = root.querySelector<HTMLElement>('.backdrop')!;
+    let opener: HTMLElement | null = null;
+    const { components: registry, owners } = JSON.parse(root.querySelector('[data-registry]')!.textContent!) as {
+      components: Record<string, Entry>;
+      owners: Record<string, string>;
+    };
+    const base = svg.viewBox.baseVal;
+    const home = { x: base.x, y: base.y, w: base.width, h: base.height };
+    let view = { ...home };
+
+    const apply = () => svg.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`);
+    const zoom = (factor: number, cx = view.x + view.w / 2, cy = view.y + view.h / 2) => {
+      const w = Math.min(home.w, Math.max(home.w / 6, view.w / factor));
+      const h = (w / view.w) * view.h;
+      view = { x: cx - ((cx - view.x) * w) / view.w, y: cy - ((cy - view.y) * h) / view.h, w, h };
+      apply();
+    };
+    const toSvg = (e: { clientX: number; clientY: number }) => {
+      const r = svg.getBoundingClientRect();
+      return { x: view.x + ((e.clientX - r.left) / r.width) * view.w, y: view.y + ((e.clientY - r.top) / r.height) * view.h };
+    };
+
+    root.querySelectorAll<HTMLButtonElement>('[data-zoom]').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (b.dataset.zoom === 'reset') {
+          view = { ...home };
+          apply();
+        } else zoom(b.dataset.zoom === 'in' ? 1.4 : 1 / 1.4);
+      }),
+    );
+    root.querySelector('[data-fullscreen]')!.addEventListener('click', () =>
+      document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen(),
+    );
+
+    // Plain wheel keeps scrolling the page; Ctrl/Cmd + wheel (and trackpad pinch) zooms.
+    svg.addEventListener(
+      'wheel',
+      (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        const p = toSvg(e);
+        zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15, p.x, p.y);
+      },
+      { passive: false },
+    );
+
+    let drag: { x: number; y: number; moved: boolean } | null = null;
+    svg.addEventListener('pointerdown', (e) => {
+      if (view.w >= home.w) return; // nothing to pan at full view
+      drag = { x: e.clientX, y: e.clientY, moved: false };
+      svg.setPointerCapture(e.pointerId);
+    });
+    svg.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const r = svg.getBoundingClientRect();
+      const dx = ((e.clientX - drag.x) / r.width) * view.w;
+      const dy = ((e.clientY - drag.y) / r.height) * view.h;
+      if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
+      view = { ...view, x: view.x - dx, y: view.y - dy };
+      drag.x = e.clientX;
+      drag.y = e.clientY;
+      apply();
+    });
+    svg.addEventListener('pointerup', () => setTimeout(() => (drag = null)));
+
+    const close = () => {
+      if (panel.hidden) return;
+      panel.hidden = true;
+      backdrop.hidden = true;
+      opener?.focus();
+      svg.classList.remove('has-selection');
+      svg.querySelectorAll('.node.selected').forEach((n) => n.classList.remove('selected'));
+    };
+    const open = (node: Element) => {
+      const c = registry[(node as HTMLElement).dataset.node!];
+      if (!c) return;
+      close();
+      opener = node as HTMLElement;
+      node.classList.add('selected');
+      svg.classList.add('has-selection');
+      panel.querySelector('.panel-name')!.textContent = c.name;
+      panel.querySelector('.panel-role')!.textContent = c.role;
+      panel.querySelector('.panel-info')!.textContent = c.info;
+      const owner = panel.querySelector<HTMLElement>('.panel-owner')!;
+      owner.hidden = !c.owner;
+      owner.textContent = c.owner ? `Managed by ${owners[c.owner]}` : '';
+      const link = panel.querySelector<HTMLAnchorElement>('.panel-link')!;
+      link.hidden = !c.href;
+      if (c.href) link.href = c.href;
+      panel.hidden = false;
+      backdrop.hidden = false;
+      panel.querySelector<HTMLElement>('.close')!.focus();
+    };
+
+    svg.addEventListener('click', (e) => {
+      if (drag?.moved) return;
+      const node = (e.target as Element).closest('[data-node]');
+      node ? open(node) : close();
+    });
+    svg.addEventListener('keydown', (e) => {
+      const node = (e.target as Element).closest('[data-node]');
+      if (node && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        open(node);
+      }
+    });
+    root.addEventListener('keydown', (e) => e.key === 'Escape' && close());
+    panel.querySelector('.close')!.addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+  }
+</script>
+
+<style>
+  .explorer {
+    --arch-provision: #7c3aed;
+    --arch-deploy: #15803d;
+    --arch-traffic: #2563eb;
+    margin-block: 1.5rem 2rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+    background: var(--sl-color-black);
+    overflow: hidden;
+  }
+  :global(:root[data-theme='dark']) .explorer {
+    --arch-provision: #a78bfa;
+    --arch-deploy: #4ade80;
+    --arch-traffic: #60a5fa;
+  }
+  .explorer:fullscreen {
+    display: flex;
+    flex-direction: column;
+    border-radius: 0;
+  }
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--sl-color-gray-5);
+    font-size: var(--sl-text-sm);
+  }
+  .hint {
+    color: var(--sl-color-gray-3);
+  }
+  .buttons {
+    display: flex;
+    gap: 0.25rem;
+  }
+  button {
+    min-width: 2rem;
+    /* Starlight's markdown sibling margin would stagger the row. */
+    margin: 0;
+    padding: 0.2rem 0.6rem;
+    line-height: 1.4;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.4rem;
+    background: var(--sl-color-gray-6);
+    color: var(--sl-color-white);
+    cursor: pointer;
+    font: inherit;
+  }
+  button:hover {
+    border-color: var(--sl-color-accent);
+  }
+  .stage {
+    position: relative;
+    overflow-x: auto;
+  }
+  .explorer:fullscreen .stage {
+    flex: 1;
+    display: grid;
+    place-items: center;
+  }
+  .stage :global(> svg) {
+    display: block;
+    width: 100%;
+    min-width: 760px;
+    height: auto;
+    font-family: var(--sl-font);
+    touch-action: pan-y;
+    user-select: none;
+  }
+  .explorer:fullscreen .stage :global(> svg) {
+    max-height: 100%;
+  }
+  /* Centred on screen so it is visible wherever the box sits in a tall diagram. */
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgb(0 0 0 / 0.45);
+  }
+  .backdrop[hidden] {
+    display: none;
+  }
+  .panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 101;
+    transform: translate(-50%, -50%);
+    width: min(24rem, calc(100vw - 2rem));
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--sl-color-accent);
+    border-radius: 0.6rem;
+    background: var(--sl-color-gray-6);
+    box-shadow: var(--sl-shadow-lg);
+    font-size: var(--sl-text-sm);
+  }
+  .panel[hidden] {
+    display: none;
+  }
+  .panel h4 {
+    margin: 0 0 0.4rem;
+    font-size: var(--sl-text-lg);
+  }
+  .panel p {
+    margin: 0 0 0.6rem;
+  }
+  .panel-owner {
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-xs);
+  }
+  .panel-role {
+    color: var(--sl-color-gray-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: var(--sl-text-xs);
+  }
+  .close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    min-width: auto;
+    padding: 0 0.45rem;
+    border: none;
+    background: none;
+    font-size: 1.2rem;
+  }
+  /* Shared marks for diagram content rendered inside the slot. */
+  .stage :global(.zone) {
+    fill: none;
+    stroke: var(--sl-color-gray-5);
+    stroke-dasharray: 6 5;
+  }
+  .stage :global(.zone.lab) {
+    stroke: var(--sl-color-accent);
+  }
+  .stage :global(.zone-label) {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    fill: var(--sl-color-gray-3);
+  }
+  .stage :global(.label) {
+    font-size: 12px;
+    fill: var(--sl-color-gray-2);
+  }
+  .stage :global(.flow) {
+    fill: none;
+    stroke-width: 2;
+  }
+  .stage :global(.flow.provision) {
+    stroke: var(--arch-provision);
+  }
+  .stage :global(.flow.deploy) {
+    stroke: var(--arch-deploy);
+  }
+  .stage :global(.flow.traffic) {
+    stroke: var(--arch-traffic);
+  }
+  .stage :global(.head.provision) {
+    fill: var(--arch-provision);
+  }
+  .stage :global(.head.deploy) {
+    fill: var(--arch-deploy);
+  }
+  .stage :global(.head.traffic) {
+    fill: var(--arch-traffic);
+  }
+  .stage :global(.flow-label) {
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .stage :global(.flow-label.provision) {
+    fill: var(--arch-provision);
+  }
+  .stage :global(.flow-label.deploy) {
+    fill: var(--arch-deploy);
+  }
+  .stage :global(.flow-label.traffic) {
+    fill: var(--arch-traffic);
+  }
+</style>

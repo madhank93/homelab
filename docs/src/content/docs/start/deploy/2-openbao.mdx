@@ -1,0 +1,70 @@
+---
+title: Initialise OpenBao
+description: Initialise and unseal OpenBao, store the unseal key in SOPS, then configure Kubernetes auth and seed app secrets.
+sidebar:
+  order: 2
+  label: 2 · OpenBao
+---
+import { Steps } from '@astrojs/starlight/components';
+
+Goal: OpenBao unsealed and auto-unsealing, with a policy, a role and seeded secrets for every app. About 10 minutes.
+
+## Procedure
+
+<Steps>
+
+1. Wait for the OpenBao pod to run. It stays sealed.
+
+   ```sh frame="terminal"
+   kubectl get pods -n openbao -w
+   ```
+
+2. Initialise and unseal. The recipe revokes the init root token at once and writes only the unseal key, to `~/openbao-unseal-key` (mode 600).
+
+   ```sh frame="terminal"
+   just openbao-init
+   ```
+
+3. Set `OPENBAO_UNSEAL_KEY` in SOPS to the contents of that file.
+
+   ```sh frame="terminal"
+   just sops-view secrets/bootstrap.sops.yaml
+   ```
+
+4. Push the real key into the cluster and restart the pod. The StatefulSet uses `OnDelete`, so a rollout does nothing; the unseal sidecar reads the new Secret on start.
+
+   ```sh frame="terminal"
+   just create-secrets
+   kubectl delete pod -n openbao openbao-0
+   rm ~/openbao-unseal-key
+   ```
+
+5. Enable Kubernetes auth and KV v2, write a read-only policy and role per app, and seed every missing key.
+
+   ```sh frame="terminal"
+   just openbao-setup
+   ```
+
+</Steps>
+
+`openbao-setup` is idempotent: it rewrites auth, policies and roles, but never overwrites a key that exists. Grafana's `OAUTH_CLIENT_SECRET` comes from `GRAFANA_OAUTH_CLIENT_SECRET` in SOPS; everything else is random. `NETBIRD_SETUP_KEY` starts as a placeholder so the CSI mount succeeds, and gets its real value in [Phase 6](/start/deploy/6-netbird-keys/).
+
+:::caution[openbao-init refuses to run twice]
+It stops if `~/openbao-unseal-key` exists. Move the key into SOPS and delete the file first.
+:::
+
+:::caution[openbao-setup stops on a missing SOPS key]
+It exits if `GRAFANA_OAUTH_CLIENT_SECRET` is not in the SOPS file. Add it (see [Phase 0](/start/deploy/0-prerequisites/)) and re-run.
+:::
+
+## Check
+
+```sh frame="terminal"
+kubectl exec -n openbao openbao-0 -c openbao -- bao status | grep Sealed
+just openbao-sa-get grafana grafana grafana secret/grafana ADMIN_PASSWORD >/dev/null && echo policy-ok
+kubectl get applications -n argocd
+```
+
+`Sealed false`, then `policy-ok`. Apps turn `Healthy` as their CSI volumes mount.
+
+Details: [Secrets](/concepts/secrets/), [OpenBao](/workloads/secrets/openbao/).

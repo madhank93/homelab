@@ -1,0 +1,286 @@
+---
+// Variant: follow one request hop by hop, from the internet to Grafana and
+// from the LAN to Headlamp, with Play / Step controls that light each hop.
+import { components, type ComponentId } from '../../data/architecture';
+import { cluster } from '../../data/cluster';
+import Explorer from './Explorer.astro';
+import Node from './Node.astro';
+import Arrows from './Arrows.astro';
+
+const W = 1300;
+const M = 20;
+const H = 520;
+const NODE_H = 52;
+
+const width = (id: ComponentId) => {
+  const c = components[id];
+  return Math.ceil(Math.max(120, 60 + c.name.length * 7.5, 60 + c.role.length * 6));
+};
+
+// Seven columns; the LAN lane reuses columns 0, 1, 5 and 6 so the skipped edge shows as a gap.
+const top: ComponentId[] = ['visitor', 'cloudflare', 'traefik', 'wireguard', 'netbirdpeer', 'gateway', 'grafana'];
+const bottom: (ComponentId | null)[] = ['lanuser', 'cloudflare', null, null, null, 'gateway', 'headlamp'];
+const colW = top.map((id, i) => Math.max(width(id), bottom[i] ? width(bottom[i]!) : 0));
+const gap = (W - 2 * M - colW.reduce((a, b) => a + b, 0)) / (top.length - 1);
+const colX = colW.map((_, i) => M + colW.slice(0, i).reduce((a, b) => a + b, 0) + i * gap);
+
+const PUB_Y = 92;
+const LAN_Y = 356;
+const pubMid = PUB_Y + NODE_H / 2;
+const lanMid = LAN_Y + NODE_H / 2;
+
+const traefikCx = colX[2] + colW[2] / 2;
+const authW = width('authentik');
+const auth = { x: traefikCx - authW / 2, y: PUB_Y + NODE_H + 50, w: authW };
+
+const pubHops = ['p1', 'p2', 'p3', 'p5', 'p6', 'p7', 'p8'];
+const lanCols = [0, 1, 5, 6];
+const lanHops = ['l1', 'l2', 'l3', 'l4'];
+
+const ip = cluster.gateway_ip;
+const steps = [
+  { hop: 'p1', lane: 'public', text: 'A visitor opens grafana.madhan.app from the internet.' },
+  { hop: 'p2', lane: 'public', text: 'Cloudflare DNS (DNS only, not proxied) answers with the Bifrost VPS address.' },
+  { hop: 'p3', lane: 'public', text: 'Traefik on the Hetzner VPS terminates public TLS and picks the route for the hostname.' },
+  { hop: 'p4', lane: 'public', text: 'Other apps would pass Authentik ForwardAuth here; Grafana skips it and uses its own OIDC login.' },
+  { hop: 'p5', lane: 'public', text: 'The bifrost-agent sends the request through the WireGuard tunnel into the home network.' },
+  { hop: 'p6', lane: 'public', text: 'The netbird-peer pod ends the tunnel and MASQUERADEs the traffic onto the LAN.' },
+  { hop: 'p7', lane: 'public', text: `It reaches the Cilium Gateway on its LoadBalancer IP ${ip}.` },
+  { hop: 'p8', lane: 'public', text: 'An HTTPRoute hands it to the Grafana pod, the only service exposed to the internet.' },
+  { hop: 'l1', lane: 'lan', text: 'On the LAN, or off-site after joining the NetBird mesh, a user opens headlamp.madhan.app.' },
+  { hop: 'l2', lane: 'lan', text: `The *.madhan.app wildcard resolves straight to the gateway IP ${ip}.` },
+  { hop: 'l3', lane: 'lan', text: 'The request goes directly to the Cilium Gateway: no VPS, no tunnel.' },
+  { hop: 'l4', lane: 'lan', text: 'An HTTPRoute delivers it to Headlamp, which is reachable only this way.' },
+];
+const num = (hop: string) => steps.findIndex((s) => s.hop === hop) + 1;
+
+const BTN_W = 96;
+const BTN_H = 40;
+const CAP_Y = 448;
+const CAP_H = 56;
+const btnY = CAP_Y + (CAP_H - BTN_H) / 2;
+const stepX = W - M - BTN_W;
+const playX = stepX - 12 - BTN_W;
+const capW = playX - 16 - M;
+const captionId = `journey-caption-${crypto.randomUUID().slice(0, 8)}`;
+---
+
+<Explorer label="Follow one request: internet to Grafana, LAN to Headlamp" hint="Press Play or Step · click any box for details">
+  <svg
+    viewBox={`0 0 ${W} ${H}`}
+    role="group"
+    aria-label="Request journey: a public request crosses Cloudflare DNS, Traefik, the WireGuard tunnel and the NetBird peer to reach Grafana; a LAN request goes from DNS straight to the Cilium Gateway and Headlamp"
+    aria-describedby={captionId}
+    data-journey
+    data-steps={JSON.stringify(steps)}
+  >
+    <Arrows />
+
+    <rect class="zone" x="10" y="16" width={W - 20} height="248" rx="12" />
+    <text class="zone-label" x="28" y="42">Public request · internet → Grafana</text>
+    {
+      top.map((id, i) => (
+        <>
+          <Node id={id} x={colX[i]} y={PUB_Y} w={colW[i]} tone={`hop-${pubHops[i]}`} />
+          <g class={`hopnum hop-${pubHops[i]}`}>
+            <circle cx={colX[i] + 16} cy={PUB_Y - 16} r="10" />
+            <text x={colX[i] + 16} y={PUB_Y - 16} dy="0.35em">{num(pubHops[i])}</text>
+          </g>
+          {i > 0 && (
+            <path
+              class={`flow traffic hop-${pubHops[i]}`}
+              d={`M${colX[i - 1] + colW[i - 1]} ${pubMid} H${colX[i] - 2}`}
+              marker-end="url(#arrow-traffic)"
+            />
+          )}
+        </>
+      ))
+    }
+
+    <path
+      class="flow traffic branch hop-p4"
+      d={`M${traefikCx} ${PUB_Y + NODE_H + 4} V${auth.y - 2}`}
+      marker-start="url(#arrow-traffic)"
+      marker-end="url(#arrow-traffic)"
+    />
+    <text class="flow-label traffic" x={traefikCx + 10} y={PUB_Y + NODE_H + 29}>ForwardAuth · skipped for Grafana</text>
+    <Node id="authentik" x={auth.x} y={auth.y} w={auth.w} tone="hop-p4" />
+    <g class="hopnum hop-p4">
+      <circle cx={auth.x - 16} cy={auth.y + NODE_H / 2} r="10" />
+      <text x={auth.x - 16} y={auth.y + NODE_H / 2} dy="0.35em">{num('p4')}</text>
+    </g>
+
+    <rect class="zone" x="10" y="280" width={W - 20} height="148" rx="12" />
+    <text class="zone-label" x="28" y="306">LAN or VPN request · straight to the gateway</text>
+    {
+      lanCols.map((col, i) => (
+        <>
+          <Node id={bottom[col]!} x={colX[col]} y={LAN_Y} w={colW[col]} tone={`hop-${lanHops[i]}`} />
+          <g class={`hopnum hop-${lanHops[i]}`}>
+            <circle cx={colX[col] + 16} cy={LAN_Y - 16} r="10" />
+            <text x={colX[col] + 16} y={LAN_Y - 16} dy="0.35em">{num(lanHops[i])}</text>
+          </g>
+          {i > 0 && (
+            <path
+              class={`flow traffic hop-${lanHops[i]}`}
+              d={`M${colX[lanCols[i - 1]] + colW[lanCols[i - 1]]} ${lanMid} H${colX[col] - 2}`}
+              marker-end="url(#arrow-traffic)"
+            />
+          )}
+        </>
+      ))
+    }
+    <text class="flow-label traffic" x={(colX[1] + colW[1] + colX[5]) / 2} y={lanMid - 10} text-anchor="middle">
+      wildcard *.madhan.app → {ip} · skips the edge
+    </text>
+
+    <rect class="caption-box" x={M} y={CAP_Y} width={capW} height={CAP_H} rx="10" />
+    <text class="caption" id={captionId} x={M + 16} y={CAP_Y + CAP_H / 2} dy="0.35em" aria-live="polite" data-caption>
+      Press Play or Step to follow a request from the internet to Grafana, then one from the LAN to Headlamp.
+    </text>
+
+    <g class="ctl" data-play role="button" tabindex="0" aria-label="Play the request journey">
+      <rect x={playX} y={btnY} width={BTN_W} height={BTN_H} rx="8" />
+      <text x={playX + BTN_W / 2} y={btnY + BTN_H / 2} dy="0.35em">▶ Play</text>
+    </g>
+    <g class="ctl" data-step role="button" tabindex="0" aria-label="Next hop">
+      <rect x={stepX} y={btnY} width={BTN_W} height={BTN_H} rx="8" />
+      <text x={stepX + BTN_W / 2} y={btnY + BTN_H / 2} dy="0.35em">Step →</text>
+    </g>
+  </svg>
+</Explorer>
+
+<script>
+  type Step = { hop: string; lane: string; text: string };
+
+  for (const svg of document.querySelectorAll<SVGSVGElement>('svg[data-journey]')) {
+    const steps: Step[] = JSON.parse(svg.dataset.steps!);
+    const last = steps.length - 1;
+    const caption = svg.querySelector('[data-caption]')!;
+    const intro = caption.textContent;
+    const play = svg.querySelector<SVGGElement>('[data-play]')!;
+    const playLabel = play.querySelector('text')!;
+    const step = svg.querySelector<SVGGElement>('[data-step]')!;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) play.setAttribute('display', 'none');
+
+    let i = -1;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
+    const show = (n: number) => {
+      i = n;
+      svg.querySelectorAll('.lit').forEach((el) => el.classList.remove('lit'));
+      svg.classList.toggle('stepping', n >= 0);
+      if (n < 0) {
+        caption.textContent = intro;
+        return;
+      }
+      // Light the trail so far within the current lane.
+      for (const s of steps.slice(0, n + 1).filter((s) => s.lane === steps[n].lane))
+        svg.querySelectorAll(`.hop-${s.hop}`).forEach((el) => el.classList.add('lit'));
+      caption.textContent = `${n + 1}/${steps.length} · ${steps[n].text}`;
+    };
+    const stop = () => {
+      clearInterval(timer);
+      timer = undefined;
+      playLabel.textContent = '▶ Play';
+    };
+    const advance = () => {
+      show(i + 1);
+      if (i === last) stop();
+    };
+
+    const onPlay = () => {
+      if (timer) return stop();
+      if (i === last) show(-1);
+      playLabel.textContent = '❚❚ Pause';
+      timer = setInterval(advance, 1600);
+      advance();
+    };
+    const onStep = () => {
+      stop();
+      i === last ? show(-1) : show(i + 1);
+    };
+
+    for (const [el, fn] of [[play, onPlay], [step, onStep]] as const) {
+      el.addEventListener('click', fn);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          fn();
+        }
+      });
+    }
+  }
+</script>
+
+<style is:global>
+  [data-journey] .flow.branch {
+    stroke-dasharray: 5 4;
+  }
+  [data-journey] .hopnum circle {
+    fill: var(--sl-color-gray-6);
+    stroke: var(--sl-color-gray-4);
+  }
+  [data-journey] .hopnum text {
+    font-size: 11px;
+    font-weight: 700;
+    text-anchor: middle;
+    fill: var(--sl-color-gray-2);
+  }
+  [data-journey] .hopnum.lit circle {
+    fill: var(--arch-traffic);
+    stroke: var(--arch-traffic);
+  }
+  [data-journey] .hopnum.lit text {
+    fill: var(--sl-color-black);
+  }
+  [data-journey] .node.lit .box {
+    stroke: var(--arch-traffic);
+    stroke-width: 2.5;
+  }
+  [data-journey] .flow.lit {
+    stroke-width: 3;
+  }
+  [data-journey].stepping .node:not(.lit),
+  [data-journey].stepping .flow:not(.lit),
+  [data-journey].stepping .hopnum:not(.lit) {
+    opacity: 0.3;
+  }
+  [data-journey] .flow,
+  [data-journey] .hopnum {
+    transition: opacity 0.2s;
+  }
+  [data-journey] .caption-box {
+    fill: var(--sl-color-gray-6);
+    stroke: var(--sl-color-gray-5);
+  }
+  [data-journey] .caption {
+    font-size: 14px;
+    fill: var(--sl-color-white);
+  }
+  [data-journey] .ctl {
+    cursor: pointer;
+    outline: none;
+  }
+  [data-journey] .ctl rect {
+    fill: var(--sl-color-gray-6);
+    stroke: var(--sl-color-gray-5);
+  }
+  [data-journey] .ctl:hover rect,
+  [data-journey] .ctl:focus-visible rect {
+    stroke: var(--arch-traffic);
+    stroke-width: 2;
+  }
+  [data-journey] .ctl text {
+    font-size: 13px;
+    font-weight: 600;
+    text-anchor: middle;
+    fill: var(--sl-color-white);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-journey] .flow,
+    [data-journey] .hopnum {
+      transition: none;
+    }
+  }
+</style>

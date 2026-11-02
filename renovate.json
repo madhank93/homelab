@@ -11,6 +11,7 @@
     "docker-compose",
     "devcontainer",
     "mise",
+    "npm",
     "custom.regex"
   ],
   "postUpdateOptions": ["gomodTidy"],
@@ -59,7 +60,7 @@
     },
     {
       "description": "CI tarballs are checksum-pinned next to the version; kept out of the non-major group.",
-      "matchPackageNames": ["kubernetes-sigs/kustomize", "getzola/zola"],
+      "matchPackageNames": ["kubernetes-sigs/kustomize"],
       "groupName": "checksum-pinned CI tools",
       "prBodyNotes": ["Update the matching `*_SHA256` in the workflow before merging; CI fails the checksum until then."]
     },
@@ -67,6 +68,12 @@
       "description": "cdk8s typed imports are generated code.",
       "matchFileNames": ["workloads/cdk8s.yaml"],
       "prBodyNotes": ["Regenerate the typed imports before merging: `cd workloads && cdk8s import`."]
+    },
+    {
+      "description": "Docs site: one PR, and only for releases two weeks old so a broken patch never lands.",
+      "matchFileNames": ["docs/package.json"],
+      "groupName": "docs site",
+      "minimumReleaseAge": "14 days"
     }
   ],
   "customManagers": [
@@ -150,15 +157,6 @@
       "depNameTemplate": "kubernetes-sigs/kustomize",
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^kustomize/(?<version>v.+)$"
-    },
-    {
-      "customType": "regex",
-      "description": "CI: Zola (bump ZOLA_SHA256 in the same PR)",
-      "managerFilePatterns": ["/^\\.github/workflows/docs\\.yml$/"],
-      "matchStrings": ["ZOLA_VERSION: (?<currentValue>\\S+)"],
-      "depNameTemplate": "getzola/zola",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v(?<version>.+)$"
     },
     {
       "customType": "regex",

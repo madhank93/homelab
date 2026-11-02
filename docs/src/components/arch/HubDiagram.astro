@@ -1,0 +1,164 @@
+---
+// Variant: the cluster at the centre as a map, with the operator, GitHub, the
+// Bifrost edge and users as satellites linked by the three flows.
+import { cluster, totals } from '../../data/cluster';
+import Explorer from './Explorer.astro';
+import Node from './Node.astro';
+import Arrows from './Arrows.astro';
+
+// Left satellites
+const L = 40;
+const LW = 180;
+
+// Cluster region: entry row, two centred rows of three, then four app columns
+const CZ = { x: 246, y: 110, w: 760, h: 550 };
+const mid = CZ.x + CZ.w / 2;
+const gw = { x: mid - 110, y: 146, w: 220, h: 52 };
+const rowW = 166;
+const rowX = [-1, 0, 1].map((i) => mid - rowW / 2 + i * (rowW + 24));
+const platY = 232;
+const svcY = 316;
+const appW = 170;
+const appX = [0, 1, 2, 3].map((i) => CZ.x + 16 + i * (appW + 16));
+const peerX = appX[3];
+const lanY = svcY + 70;
+const lanX = rowX[0] + rowW + 12;
+const deployX = 470;
+
+// Foundation strip below the cluster
+const FZ = { x: CZ.x, y: 676, w: CZ.w, h: 172 };
+const fW = (FZ.w - 64) / 3;
+const fX = [0, 1, 2].map((i) => FZ.x + 16 + i * (fW + 16));
+const halfW = (FZ.w - 48) / 2;
+const routeY = FZ.y + FZ.h + 24;
+
+// Right satellites
+const R = 1048;
+const RW = 180;
+const BZ = { x: 1036, y: 20, w: 196, h: 304 };
+const trunkR = 1020;
+const visitX = R + 120;
+
+const platform = ['argocd', 'cilium', 'certmanager'] as const;
+const services = ['longhorn', 'openbao', 'cnpg'] as const;
+const apps = [
+  ['AI', ['ollama', 'comfyui', 'kubeflow']],
+  ['Observability', ['grafana', 'victoriametrics', 'victorialogs', 'otel']],
+  ['Security', ['falco', 'trivy', 'kyverno']],
+  ['Tools', ['harbor', 'n8n', 'headlamp', 'cs2']],
+] as const;
+const edge = ['traefik', 'authentik', 'netbird', 'gatus'] as const;
+const workers = totals.workers - totals.gpus;
+---
+
+<Explorer label="Homelab architecture: the cluster at the centre with its satellites">
+  <svg viewBox="0 0 1240 960" role="group" aria-label="Map of the Kubernetes cluster at the centre, with the operator, GitHub, the Bifrost edge and users around it">
+    <Arrows />
+    <g transform="translate(0 28)">
+      {/* Top-left: GitHub pipeline */}
+      <text class="zone-label" x={L} y="-8">Cloud services</text>
+      <Node id="github" x={L} y={20} w={170} />
+      <Node id="ci" x={238} y={20} w={170} />
+      <Node id="manifests" x={436} y={20} w={190} />
+
+      {/* Left: operator and LAN users */}
+      <text class="zone-label" x={L} y="100">Operator &amp; users</text>
+      <Node id="gitpush" x={L} y={110} w={LW} tone="deploy" />
+      <Node id="you" x={L} y={174} w={LW} />
+      <Node id="pulumi" x={L} y={238} w={LW} tone="provision" />
+      <Node id="lanuser" x={L} y={lanY - 26} w={LW} />
+
+      {/* Right: edge, DNS, internet visitor */}
+      <text class="zone-label" x={BZ.x} y="-8">Cloud services</text>
+      <rect class="zone" x={BZ.x} y={BZ.y} width={BZ.w} height={BZ.h} rx="12" />
+      <Node id="bifrost" x={R} y={30} w={RW} />
+      {edge.map((id, i) => <Node id={id} x={BZ.x + 16} y={96 + i * 56} w={BZ.w - 32} h={44} />)}
+      <Node id="cloudflare" x={R} y={400} w={RW} />
+      <Node id="visitor" x={R} y={500} w={RW} />
+
+      {/* Home lab: cluster */}
+      <text class="zone-label" x={CZ.x} y="102">Home lab · Proxmox server</text>
+      <rect class="zone lab" x={CZ.x} y={CZ.y} width={CZ.w} height={CZ.h} rx="16" />
+      <text class="zone-label" x={CZ.x + 16} y="136">Kubernetes cluster</text>
+      <Node id="gateway" x={gw.x} y={gw.y} w={gw.w} h={gw.h} tone="traffic" />
+      <Node id="netbirdpeer" x={peerX} y={gw.y} w={appW} h={gw.h} />
+
+      <text class="label" x={rowX[2] + rowW} y={platY - 10} text-anchor="end">Platform — installed by Pulumi</text>
+      {platform.map((id, i) => <Node id={id} x={rowX[i]} y={platY} w={rowW} />)}
+      <text class="label" x={rowX[2] + rowW} y={svcY - 10} text-anchor="end">Cluster services — synced by Argo CD</text>
+      {services.map((id, i) => <Node id={id} x={rowX[i]} y={svcY} w={rowW} />)}
+
+      <text class="label" x={appX[0]} y="424">Apps — synced by Argo CD</text>
+      {
+        apps.map(([title, ids], c) => (
+          <g>
+            <text class="zone-label" x={appX[c]} y="446">{title}</text>
+            {ids.map((id, row) => <Node id={id} x={appX[c]} y={456 + row * 48} w={appW} h={40} compact />)}
+          </g>
+        ))
+      }
+
+      {/* Home lab: nodes */}
+      <rect class="zone" x={FZ.x} y={FZ.y} width={FZ.w} height={FZ.h} rx="12" />
+      <text class="zone-label" x={FZ.x + 16} y={FZ.y + 22}>Nodes — Talos Linux VMs, created by Pulumi</text>
+      <text class="label" x={FZ.x + FZ.w - 16} y={FZ.y + 22} text-anchor="end">
+        {totals.nodes} nodes · {totals.cores} cores · {totals.memoryGiB} GiB
+      </text>
+      <Node id="controlplanes" x={fX[0]} y={710} w={fW} />
+      <Node id="workers" x={fX[1]} y={710} w={fW} />
+      <Node id="gpuworker" x={fX[2]} y={710} w={fW} />
+      <text class="label" x={fX[0] + fW / 2} y="780" text-anchor="middle">{totals.controlPlanes} nodes · VIP {cluster.vip}</text>
+      <text class="label" x={fX[1] + fW / 2} y="780" text-anchor="middle">{workers} nodes</text>
+      <text class="label" x={fX[2] + fW / 2} y="780" text-anchor="middle">{totals.gpus} node · AI only</text>
+      <Node id="talos" x={FZ.x + 16} y={794} w={halfW} h={40} compact />
+      <Node id="proxmox" x={FZ.x + 32 + halfW} y={794} w={halfW} h={40} compact />
+
+      {/* Provision: Pulumi → nodes and platform, Bifrost, Cloudflare */}
+      <path class="flow provision" d={`M${L} 264 H22 V${routeY} H${trunkR} V364 H1080 V${BZ.y + BZ.h}`} marker-end="url(#arrow-provision)" />
+      <path class="flow provision" d={`M${mid} ${routeY} V${FZ.y + FZ.h}`} marker-end="url(#arrow-provision)" />
+      <path class="flow provision" d={`M${trunkR} 426 H${R}`} marker-end="url(#arrow-provision)" />
+      <text class="flow-label provision" x={FZ.x + 16} y={routeY - 6}>VMs · Talos · Cilium · Gateway · cert-manager · Argo CD</text>
+      <text class="flow-label provision" x={trunkR - 10} y={routeY - 6} text-anchor="end">Hetzner VPS · Authentik · DNS</text>
+
+      {/* Deploy: git push → GitHub → CI → manifests branch → Argo CD */}
+      <path class="flow deploy" d={`M200 110 V72`} marker-end="url(#arrow-deploy)" />
+      <path class="flow deploy" d="M210 46 H238" marker-end="url(#arrow-deploy)" />
+      <path class="flow deploy" d="M408 46 H436" marker-end="url(#arrow-deploy)" />
+      <path class="flow deploy" d={`M${deployX} 72 V${platY}`} marker-end="url(#arrow-deploy)" />
+      <text class="flow-label deploy" x={deployX + 8} y="118" transform={`rotate(90 ${deployX + 8} 118)`}>Argo CD pulls</text>
+
+      {/* Traffic: visitor → DNS → edge → WireGuard → NetBird peer → Gateway; LAN/VPN → Gateway */}
+      <path class="flow traffic" d={`M${visitX} 500 V452`} marker-end="url(#arrow-traffic)" />
+      <text class="flow-label traffic" x={visitX + 8} y="480">DNS</text>
+      <path class="flow traffic" d={`M${visitX} 400 V${BZ.y + BZ.h}`} marker-end="url(#arrow-traffic)" />
+      <text class="flow-label traffic" x={visitX + 8} y="368">HTTPS</text>
+      <path class="flow traffic" d={`M${BZ.x} 96 H${peerX + appW / 2} V${gw.y}`} marker-end="url(#arrow-traffic)" />
+      <text class="flow-label traffic" x={(BZ.x + peerX + appW / 2) / 2} y="90" text-anchor="middle">WireGuard tunnel</text>
+      <path class="flow traffic" d={`M${peerX} ${gw.y + gw.h / 2} H${gw.x + gw.w}`} marker-end="url(#arrow-traffic)" />
+      <path class="flow traffic" d={`M${L + LW} ${lanY} H${lanX} V${gw.y + gw.h}`} marker-end="url(#arrow-traffic)" />
+      <text class="flow-label traffic" x={CZ.x + 16} y={lanY + 16}>LAN / VPN: *.madhan.app → {cluster.gateway_ip}</text>
+
+      <g>
+        <line class="flow provision" x1={L} y1="900" x2={L + 30} y2="900" />
+        <text class="label" x={L + 38} y="904">Provision (Pulumi)</text>
+        <line class="flow deploy" x1="220" y1="900" x2="250" y2="900" />
+        <text class="label" x="258" y="904">Deploy (git → Argo CD)</text>
+        <line class="flow traffic" x1="420" y1="900" x2="450" y2="900" />
+        <text class="label" x="458" y="904">Traffic</text>
+        <rect class="owner-key provision" x="580" y="892" width="4" height="16" rx="2" />
+        <text class="label" x="590" y="904">Managed by Pulumi</text>
+        <rect class="owner-key deploy" x="730" y="892" width="4" height="16" rx="2" />
+        <text class="label" x="740" y="904">Managed by Argo CD</text>
+      </g>
+    </g>
+  </svg>
+</Explorer>
+
+<style>
+  .owner-key.provision {
+    fill: var(--arch-provision);
+  }
+  .owner-key.deploy {
+    fill: var(--arch-deploy);
+  }
+</style>
