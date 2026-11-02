@@ -4,14 +4,6 @@
 
 > Talos Linux on Proxmox, provisioned by Pulumi, run by Argo CD. Bare VMs to running apps — all in code, no manual steps.
 
-**18**apps synced by Argo CD
-
-**0**ports open at home
-
-**0**secrets in git
-
-**0**manual kubectl
-
 Hover a box to trace its path · click for details
 
 −Reset+⛶

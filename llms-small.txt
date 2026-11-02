@@ -4,7 +4,7 @@
 
 > Talos Linux on Proxmox, provisioned by Pulumi, run by Argo CD. Bare VMs to running apps — all in code, no manual steps.
 
-**18**apps synced by Argo CD **0**ports open at home **0**secrets in git **0**manual kubectl Hover a box to trace its path · click for details −Reset+⛶ × #### [Read more →]() ## Four layers, four tools [Section titled “Four layers, four tools”](#four-layers-four-tools) Apps Grafana, Harbor, Ollama, ComfyUI, n8n and more. CDK8s synthesizes manifests; Argo CD syncs them. Platform Talos Kubernetes, Cilium with Gateway API, cert-manager, Argo CD. Installed by Pulumi. Infrastructure 7 Proxmox VMs and the Bifrost edge VPS on Hetzner. Provisioned by Pulumi. Hardware One Proxmox host with an NVIDIA GPU passed through to a dedicated worker. ## One command per layer [Section titled “One command per layer”](#one-command-per-layer) From bare Proxmox to synced cluster 
+Hover a box to trace its path · click for details −Reset+⛶ × #### [Read more →]() ## Four layers, four tools [Section titled “Four layers, four tools”](#four-layers-four-tools) Apps Grafana, Harbor, Ollama, ComfyUI, n8n and more. CDK8s synthesizes manifests; Argo CD syncs them. Platform Talos Kubernetes, Cilium with Gateway API, cert-manager, Argo CD. Installed by Pulumi. Infrastructure 7 Proxmox VMs and the Bifrost edge VPS on Hetzner. Provisioned by Pulumi. Hardware One Proxmox host with an NVIDIA GPU passed through to a dedicated worker. ## One command per layer [Section titled “One command per layer”](#one-command-per-layer) From bare Proxmox to synced cluster 
 ```bash
 just create-secrets      # bootstrap Secrets from SOPS
 just core talos up       # VMs + Talos cluster
