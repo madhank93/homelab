@@ -4,6 +4,9 @@ description: A Kubernetes homelab on Talos Linux, provisioned by Pulumi on Proxm
 template: splash
 hero:
   title: Homelab
+  image:
+    file: ../../assets/logo.svg
+    alt: Homelab logo — a roof over a stack of servers
   tagline: Talos Linux on Proxmox, provisioned by Pulumi, run by Argo CD. Bare VMs to running apps — all in code, no manual steps.
   actions:
     - text: Get started
@@ -19,17 +22,7 @@ hero:
 ---
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 import { totals } from '../../data/cluster';
-import { components } from '../../data/architecture';
 import FlowsDiagram from '../../components/arch/FlowsDiagram.astro';
-
-export const argoApps = Object.values(components).filter((c) => 'owner' in c && c.owner === 'argocd').length;
-
-<div class="stats">
-  <div><strong>{argoApps}</strong><span>apps synced by Argo CD</span></div>
-  <div><strong>0</strong><span>ports open at home</span></div>
-  <div><strong>0</strong><span>secrets in git</span></div>
-  <div><strong>0</strong><span>manual kubectl</span></div>
-</div>
 
 <FlowsDiagram />
 

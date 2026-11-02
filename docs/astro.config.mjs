@@ -57,6 +57,13 @@ export default defineConfig({
     mermaid({ autoTheme: true }),
     starlight({
       title: 'Homelab',
+      logo: { src: './src/assets/logo.svg' },
+      favicon: '/favicon.svg',
+      head: [
+        { tag: 'meta', attrs: { property: 'og:image', content: 'https://homelab.madhan.app/og.png' } },
+        { tag: 'meta', attrs: { property: 'og:image:alt', content: 'Homelab: Kubernetes on Talos Linux and Proxmox' } },
+        { tag: 'meta', attrs: { name: 'twitter:image', content: 'https://homelab.madhan.app/og.png' } },
+      ],
       description:
         'Documentation for a Kubernetes homelab on Talos Linux, provisioned by Pulumi on Proxmox',
       social: [{ icon: 'github', label: 'GitHub', href: repo }],
