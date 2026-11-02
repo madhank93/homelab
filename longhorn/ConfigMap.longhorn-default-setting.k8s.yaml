@@ -15,6 +15,7 @@ data:
     default-data-path: "/var/lib/longhorn/"
     storage-over-provisioning-percentage: "300"
     default-replica-count: "3"
+    taint-toleration: "dedicated=ai:NoSchedule"
     priority-class: "longhorn-critical"
     disable-revision-counter: "{\"v1\":\"true\"}"
     concurrent-automatic-engine-upgrade-per-node-limit: "1"

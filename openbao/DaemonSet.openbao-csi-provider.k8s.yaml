@@ -97,6 +97,11 @@ spec:
             - mountPath: /var/run/vault
               name: agent-unix-socket
       serviceAccountName: openbao-csi-provider
+      tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai
       volumes:
         - hostPath:
             path: /etc/kubernetes/secrets-store-csi-providers

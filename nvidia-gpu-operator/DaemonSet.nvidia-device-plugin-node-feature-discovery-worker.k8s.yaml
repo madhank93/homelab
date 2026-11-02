@@ -112,6 +112,10 @@ spec:
           key: nvidia.com/gpu
           operator: Equal
           value: present
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai
       volumes:
         - hostPath:
             path: /boot

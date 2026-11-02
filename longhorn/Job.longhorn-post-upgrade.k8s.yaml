@@ -40,3 +40,8 @@ spec:
       priorityClassName: longhorn-critical
       restartPolicy: OnFailure
       serviceAccountName: longhorn-service-account
+      tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai

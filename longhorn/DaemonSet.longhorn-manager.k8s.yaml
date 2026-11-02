@@ -113,6 +113,11 @@ spec:
           name: pre-pull-share-manager-image
       priorityClassName: longhorn-critical
       serviceAccountName: longhorn-service-account
+      tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai
       volumes:
         - hostPath:
             path: /boot/
