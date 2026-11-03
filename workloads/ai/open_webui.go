@@ -67,6 +67,11 @@ func NewOpenWebUIChart(scope constructs.Construct, id string, namespace string) 
 								{Name: jsii.String("OLLAMA_BASE_URL"), Value: jsii.String("http://ollama.ollama.svc.cluster.local:11434")},
 								// New sign-ups wait for the admin to approve them; only the first account is admin.
 								{Name: jsii.String("DEFAULT_USER_ROLE"), Value: jsii.String("pending")},
+								// Settings come from env only; admin UI changes reset on restart.
+								{Name: jsii.String("ENABLE_PERSISTENT_CONFIG"), Value: jsii.String("false")},
+								{Name: jsii.String("ENABLE_SIGNUP"), Value: jsii.String("false")},
+								// Built-in tools make the local Qwen models answer with raw tool-call JSON.
+								{Name: jsii.String("DEFAULT_MODEL_METADATA"), Value: jsii.String(`{"capabilities":{"builtin_tools":false}}`)},
 							},
 							Resources: &k8s.ResourceRequirements{
 								Limits: &map[string]k8s.Quantity{
