@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/instance: falco
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: falcosidekick
-    helm.sh/chart: falcosidekick-0.12.1
+    helm.sh/chart: falcosidekick-0.14.1
   name: falco-falcosidekick-test-connection
   namespace: falco
 spec:
@@ -15,9 +15,9 @@ spec:
     - args:
         - -X
         - POST
-        - falco-falcosidekick:2801/ping
+        - falco-falcosidekick:2801/healthz
       command:
         - curl
-      image: appropriate/curl
+      image: curlimages/curl
       name: curl
   restartPolicy: Never

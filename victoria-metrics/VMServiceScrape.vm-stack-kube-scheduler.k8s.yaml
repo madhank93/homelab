@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: victoria-metrics
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-metrics-k8s-stack
-    app.kubernetes.io/version: v1.137.0
-    helm.sh/chart: victoria-metrics-k8s-stack-0.72.4
+    app.kubernetes.io/version: v1.154.0
+    helm.sh/chart: victoria-metrics-k8s-stack-0.96.0
   name: vm-stack-kube-scheduler
   namespace: victoria-metrics
 spec:
@@ -16,13 +16,12 @@ spec:
       scheme: https
       tlsConfig:
         caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-  jobLabel: jobLabel
+  jobLabel: app.kubernetes.io/component
   namespaceSelector:
     matchNames:
       - kube-system
   selector:
     matchLabels:
-      app: vm-stack-kube-scheduler
+      app.kubernetes.io/component: kube-scheduler
       app.kubernetes.io/instance: victoria-metrics
       app.kubernetes.io/name: victoria-metrics-k8s-stack
-      jobLabel: kube-scheduler

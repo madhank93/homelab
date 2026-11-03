@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: falcosidekick
     app.kubernetes.io/part-of: falcosidekick
     app.kubernetes.io/version: 2.31.1
-    helm.sh/chart: falcosidekick-0.12.1
+    helm.sh/chart: falcosidekick-0.14.1
   name: falco-falcosidekick-ui
   namespace: falco
 spec:
@@ -20,6 +20,8 @@ spec:
       app.kubernetes.io/name: falcosidekick
   template:
     metadata:
+      annotations:
+        reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/component: ui
         app.kubernetes.io/instance: falco
@@ -27,7 +29,7 @@ spec:
         app.kubernetes.io/name: falcosidekick
         app.kubernetes.io/part-of: falcosidekick
         app.kubernetes.io/version: 2.31.1
-        helm.sh/chart: falcosidekick-0.12.1
+        helm.sh/chart: falcosidekick-0.14.1
     spec:
       containers:
         - args:
@@ -40,6 +42,8 @@ spec:
           envFrom:
             - secretRef:
                 name: falco-falcosidekick-ui
+            - secretRef:
+                name: falcosidekick-ui-auth
           image: docker.io/falcosecurity/falcosidekick-ui:2.2.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -74,7 +78,9 @@ spec:
           envFrom:
             - secretRef:
                 name: falco-falcosidekick-ui
-          image: docker.io/redis/redis-stack:7.2.0-v11
+            - secretRef:
+                name: falcosidekick-ui-auth
+          image: docker.io/redis/redis-stack-server:7.2.0-v11
           name: wait-redis
           volumeMounts:
             - mountPath: /scripts/ping-redis.sh

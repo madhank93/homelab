@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: victoria-metrics
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-metrics-k8s-stack
-    app.kubernetes.io/version: v1.137.0
-    helm.sh/chart: victoria-metrics-k8s-stack-0.72.4
+    app.kubernetes.io/version: v1.154.0
+    helm.sh/chart: victoria-metrics-k8s-stack-0.96.0
   name: vm-stack-prometheus-node-exporter
   namespace: victoria-metrics
 spec:

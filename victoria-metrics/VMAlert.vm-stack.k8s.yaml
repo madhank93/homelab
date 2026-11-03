@@ -2,12 +2,12 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
   labels:
-    app.kubernetes.io/component: victoria-metrics-k8s-stack-vmalert
+    app.kubernetes.io/component: vmalert
     app.kubernetes.io/instance: victoria-metrics
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-metrics-k8s-stack
-    app.kubernetes.io/version: v1.137.0
-    helm.sh/chart: victoria-metrics-k8s-stack-0.72.4
+    app.kubernetes.io/version: v1.154.0
+    helm.sh/chart: victoria-metrics-k8s-stack-0.96.0
   name: vm-stack
   namespace: victoria-metrics
 spec:
@@ -20,8 +20,7 @@ spec:
     http.pathPrefix: /
     remoteWrite.disablePathAppend: "true"
   image:
-    tag: v1.137.0
-  license: {}
+    tag: v1.154.0
   notifiers:
     - url: http://vmalertmanager-vm-stack-0.vmalertmanager-vm-stack.victoria-metrics.svc.cluster.local.:9093
   port: "8080"

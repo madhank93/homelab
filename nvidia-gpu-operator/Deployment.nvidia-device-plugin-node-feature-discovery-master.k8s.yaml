@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: nvidia-device-plugin
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/version: v0.17.3
-    helm.sh/chart: nfd-0.17.3
+    app.kubernetes.io/version: v0.19.0
+    helm.sh/chart: nfd-0.19.0
     role: master
   name: nvidia-device-plugin-node-feature-discovery-master
   namespace: nvidia-gpu-operator
@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: f9523383505429f37f2c31838dde1f90c24af38a79ca60169133b53f0ce577f5
+        checksum/config: 57356655ea7827fc997065978b58ae9f63dc90214755cd1f7ff1ccf6922d472a
       labels:
         app.kubernetes.io/instance: nvidia-device-plugin
         app.kubernetes.io/name: node-feature-discovery
@@ -31,13 +31,6 @@ spec:
           preferredDuringSchedulingIgnoredDuringExecution:
             - preference:
                 matchExpressions:
-                  - key: node-role.kubernetes.io/master
-                    operator: In
-                    values:
-                      - ""
-              weight: 1
-            - preference:
-                matchExpressions:
                   - key: node-role.kubernetes.io/control-plane
                     operator: In
                     values:
@@ -45,10 +38,7 @@ spec:
               weight: 1
       containers:
         - args:
-            - -enable-leader-election
-            - -feature-gates=NodeFeatureGroupAPI=false
-            - -metrics=8081
-            - -grpc-health=8082
+            - -port=8080
           command:
             - nfd-master
           env:
@@ -56,21 +46,21 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          image: registry.k8s.io/nfd/node-feature-discovery:v0.17.3
+          image: registry.k8s.io/nfd/node-feature-discovery:v0.19.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
-            grpc:
-              port: 8082
+            httpGet:
+              path: /healthz
+              port: http
           name: master
           ports:
-            - containerPort: 8081
-              name: metrics
-            - containerPort: 8082
-              name: health
+            - containerPort: 8080
+              name: http
           readinessProbe:
             failureThreshold: 10
-            grpc:
-              port: 8082
+            httpGet:
+              path: /healthz
+              port: http
           resources:
             limits:
               memory: 4Gi
@@ -86,21 +76,19 @@ spec:
             runAsNonRoot: true
           startupProbe:
             failureThreshold: 30
-            grpc:
-              port: 8082
+            httpGet:
+              path: /healthz
+              port: http
           volumeMounts:
             - mountPath: /etc/kubernetes/node-feature-discovery
               name: nfd-master-conf
               readOnly: true
+      dnsPolicy: ClusterFirstWithHostNet
       enableServiceLinks: false
       hostNetwork: false
       securityContext: {}
       serviceAccountName: node-feature-discovery
       tolerations:
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/master
-          operator: Equal
-          value: ""
         - effect: NoSchedule
           key: node-role.kubernetes.io/control-plane
           operator: Equal

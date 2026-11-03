@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.15.2
+    app.kubernetes.io/version: 2.15.4
     chart: harbor
     component: core
     heritage: Helm
@@ -26,9 +26,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: df188037cf84ea474100883eaebbc43c6341dbea8a97eda83578971b02ca7803
-        checksum/secret: 34281675e01d40b102a0219173a5ae5e701f368cde20f786e4b035e70abfd358
-        checksum/secret-jobservice: 0cf0a9c4c927fa7c6e4bb2716bd73f63a0f4562d121a57564f2c06b4da7b3635
+        checksum/configmap: 468c796b07af88fd2b8d53c5e860afd6bb51c648ea8b8e469b1a748a156c3b00
+        checksum/secret: aa883ee41009b8f4e73563590577de9cc25e7ee62a9a8e94d387ade2bb4cf71c
+        checksum/secret-jobservice: 3a65019b944d079b0eccc6731cb6a61b428669fcdabd9e5796270063a33b0e50
       labels:
         app: harbor
         app.kubernetes.io/component: core
@@ -36,7 +36,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.15.2
+        app.kubernetes.io/version: 2.15.4
         chart: harbor
         component: core
         heritage: Helm
@@ -55,12 +55,17 @@ spec:
                 secretKeyRef:
                   key: JOBSERVICE_SECRET
                   name: harbor-jobservice
+            - name: HARBOR_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: HARBOR_ADMIN_PASSWORD
+                  name: harbor-admin
           envFrom:
             - configMapRef:
                 name: harbor-core
             - secretRef:
                 name: harbor-core
-          image: docker.io/goharbor/harbor-core:v2.15.2
+          image: docker.io/goharbor/harbor-core:v2.15.4
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 2

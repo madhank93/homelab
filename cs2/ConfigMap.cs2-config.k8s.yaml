@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cs2-config
+  namespace: cs2
+data:
+  gamemode_competitive_server.cfg: |
+    bot_difficulty 2
+    bot_quota 0
+    cash_player_killed_enemy_default 300
+    cash_team_loser_bonus 1400
+    cash_team_loser_bonus_consecutive_rounds 500
+    mp_afterroundmoney 0
+    mp_buy_anywhere 0
+    mp_buytime 20
+    mp_freezetime 15
+    mp_friendlyfire 1
+    mp_halftime 1
+    mp_match_can_clinch 1
+    mp_maxmoney 16000
+    mp_maxrounds 24
+    mp_roundtime 1.92
+    mp_roundtime_defuse 1.92
+    mp_roundtime_hostage 1.92
+    mp_solid_teammates 1
+    mp_startmoney 800
+    mp_warmuptime 120
+    mp_warmuptime_all_players_connected 15

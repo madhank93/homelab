@@ -5,14 +5,15 @@ metadata:
     app.kubernetes.io/instance: victoria-metrics
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-metrics-operator
-    app.kubernetes.io/version: v0.68.2
-    helm.sh/chart: victoria-metrics-operator-0.59.2
+    app.kubernetes.io/version: v0.75.0
+    helm.sh/chart: victoria-metrics-operator-0.68.1
   name: victoria-metrics-victoria-metrics-operator
   namespace: victoria-metrics
 rules:
   - nonResourceURLs:
       - /metrics
       - /metrics/resources
+      - /metrics/slis
     verbs:
       - get
       - watch
@@ -111,13 +112,7 @@ rules:
     resources:
       - ingresses
       - ingresses/finalizers
-    verbs:
-      - "*"
-  - apiGroups:
-      - gateway.networking.k8s.io
-    resources:
-      - httproutes
-      - httproutes/finalizers
+      - networkpolicies
     verbs:
       - "*"
   - apiGroups:
@@ -144,6 +139,9 @@ rules:
       - vlclusters
       - vlclusters/finalizers
       - vlclusters/status
+      - vldistributed
+      - vldistributed/finalizers
+      - vldistributed/status
       - vlogs
       - vlogs/finalizers
       - vlogs/status
@@ -165,6 +163,9 @@ rules:
       - vmanomalies
       - vmanomalies/finalizers
       - vmanomalies/status
+      - vmanomalyconfigs
+      - vmanomalyconfigs/finalizers
+      - vmanomalyconfigs/status
       - vmauths
       - vmauths/finalizers
       - vmauths/status
@@ -201,6 +202,9 @@ rules:
       - vmusers
       - vmusers/finalizers
       - vmusers/status
+      - vtagents
+      - vtagents/finalizers
+      - vtagents/status
       - vtclusters
       - vtclusters/finalizers
       - vtclusters/status

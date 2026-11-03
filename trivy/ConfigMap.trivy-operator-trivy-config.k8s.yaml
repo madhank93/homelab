@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: trivy-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: trivy-operator
-    app.kubernetes.io/version: 0.33.0
-    helm.sh/chart: trivy-operator-0.35.0
+    app.kubernetes.io/version: 0.35.0
+    helm.sh/chart: trivy-operator-0.37.0
   name: trivy-operator-trivy-config
   namespace: trivy
 data:
@@ -30,7 +30,7 @@ data:
   trivy.skipJavaDBUpdate: "false"
   trivy.slow: "true"
   trivy.supportedConfigAuditKinds: Workload,Service,Role,ClusterRole,NetworkPolicy,Ingress,LimitRange,ResourceQuota,PersistentVolume,PersistentVolumeClaim
-  trivy.tag: 0.73.0
+  trivy.tag: 0.75.0
   trivy.timeout: 5m0s
   trivy.useBuiltinRegoPolicies: "false"
   trivy.useEmbeddedRegoPolicies: "true"

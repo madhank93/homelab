@@ -22,7 +22,7 @@ spec:
         app.kubernetes.io/instance: openbao
         app.kubernetes.io/name: openbao
         component: server
-        helm.sh/chart: openbao-0.29.0
+        helm.sh/chart: openbao-0.30.4
     spec:
       affinity:
         podAntiAffinity:
@@ -80,12 +80,7 @@ spec:
               value: https://$(HOSTNAME).openbao-internal:8201
             - name: HOME
               value: /home/openbao
-            - name: OPENBAO_UNSEAL_KEY
-              valueFrom:
-                secretKeyRef:
-                  key: unseal-key
-                  name: openbao-unseal-key
-          image: quay.io/openbao/openbao:2.6.1
+          image: quay.io/openbao/openbao:2.6.5
           imagePullPolicy: IfNotPresent
           lifecycle:
             preStop:
@@ -141,7 +136,7 @@ spec:
                   name: openbao-unseal-key
             - name: BAO_ADDR
               value: http://127.0.0.1:8200
-          image: openbao/openbao:2.6.1
+          image: openbao/openbao:2.6.5
           name: unseal
       hostNetwork: false
       securityContext:

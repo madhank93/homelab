@@ -9,8 +9,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: prometheus-node-exporter
     app.kubernetes.io/part-of: prometheus-node-exporter
-    app.kubernetes.io/version: 1.10.2
-    helm.sh/chart: prometheus-node-exporter-4.51.1
+    app.kubernetes.io/version: 1.12.1
+    helm.sh/chart: prometheus-node-exporter-4.59.0
     jobLabel: node-exporter
   name: victoria-metrics-prometheus-node-exporter
   namespace: victoria-metrics

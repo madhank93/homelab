@@ -7,8 +7,8 @@ metadata:
     app.kubernetes.io/instance: longhorn
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: longhorn
-    app.kubernetes.io/version: v1.12.0
-    helm.sh/chart: longhorn-1.12.0
+    app.kubernetes.io/version: v1.13.0
+    helm.sh/chart: longhorn-1.13.0
     longhorn-manager: ""
   name: volumes.longhorn.io
   namespace: longhorn-system
@@ -121,6 +121,51 @@ spec:
                     - v1
                     - v2
                   type: string
+                dataLayout:
+                  description: |-
+                    DataLayout declares the user's intended data layout (topology type, protection mode, and EC parameters).
+                    The entire struct is immutable after creation.
+                  properties:
+                    dataChunks:
+                      description: |-
+                        DataChunks is the number of data chunks (k) in the EC array.
+                        Required when Type is sharded; must be 0 for replicated volumes.
+                      minimum: 0
+                      type: integer
+                    mode:
+                      description: |-
+                        Mode describes the specific data protection mechanism in use.
+                        Empty for V1 volumes where no SPDK-level mode applies.
+                      enum:
+                        - raid1
+                        - erasureCoding
+                        - ""
+                      type: string
+                    parityChunks:
+                      description: |-
+                        ParityChunks is the number of parity chunks (m) in the EC array.
+                        The volume tolerates up to m simultaneous disk failures.
+                        Required when Type is sharded; must be 0 for replicated volumes.
+                      minimum: 0
+                      type: integer
+                    stripSizeKB:
+                      description: |-
+                        StripSizeKB is the chunk size in KiB used by the EC bdev.
+                        Must be a power of two in the range [4, 1024].
+                        Required when Type is sharded; must be 0 for replicated volumes.
+                      minimum: 0
+                      type: integer
+                    type:
+                      description: Type describes how volume data is distributed across nodes.
+                      enum:
+                        - replicated
+                        - sharded
+                        - ""
+                      type: string
+                  type: object
+                  x-kubernetes-validations:
+                    - message: DataLayout is immutable
+                      rule: self == oldSelf
                 dataLocality:
                   enum:
                     - disabled
@@ -178,6 +223,13 @@ spec:
                     type: string
                   type: array
                 numberOfReplicas:
+                  type: integer
+                nvmeTcpNrIoQueues:
+                  description: |-
+                    nvmeTcpNrIoQueues limits the number of I/O queues the kernel initiator
+                    creates when connecting the blockdev frontend over NVMe-TCP.
+                    0 means inheriting the global setting default-nvme-tcp-nr-io-queues.
+                    Takes effect on (re)attach.
                   type: integer
                 offlineRebuilding:
                   description: |-
@@ -265,6 +317,27 @@ spec:
                   type: string
                 staleReplicaTimeout:
                   type: integer
+                topologyRequirement:
+                  description: |-
+                    TopologyRequirement lists the failure domains the volume's replicas must
+                    be scheduled in, derived from the CSI accessible topology at creation —
+                    the same failure domains as the PV nodeAffinity terms (a node must match
+                    at least one term). Empty means unconstrained.
+                  items:
+                    description: |-
+                      VolumeTopologyTerm is one failure domain a volume's replicas may be
+                      scheduled in. A node satisfies the term when its zone and region match the
+                      non-empty fields.
+                    properties:
+                      region:
+                        type: string
+                      zone:
+                        type: string
+                    type: object
+                  type: array
+                  x-kubernetes-validations:
+                    - message: TopologyRequirement is immutable
+                      rule: self == oldSelf
                 ublkNumberOfQueue:
                   description: ublkNumberOfQueue controls the number of queues for ublk frontend.
                   type: integer

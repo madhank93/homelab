@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: n8n
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: n8n
-    app.kubernetes.io/version: 1.122.4
-    helm.sh/chart: n8n-2.0.1
+    app.kubernetes.io/version: 2.36.8
+    helm.sh/chart: n8n-2.1.1
   name: n8n
   namespace: n8n
 spec:
@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cb9aca9a1980ad064e93397ed5728d6a62858083d083e80b7d5df0d33e740652
+        checksum/config: 7cc27062d2fc75ff909712501a22b2679ee604a8dab0012b76d55ea033a7ce21
       labels:
         app.kubernetes.io/instance: n8n
         app.kubernetes.io/name: n8n
@@ -42,7 +42,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: n8n-app-config
-          image: n8nio/n8n:1.78.0
+          image: n8nio/n8n:2.45.5
           imagePullPolicy: IfNotPresent
           lifecycle: {}
           livenessProbe:
@@ -56,16 +56,22 @@ spec:
               protocol: TCP
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /healthz/readiness
               port: http
           resources:
             limits:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
             requests:
               cpu: 100m
               memory: 256Mi
           securityContext: {}
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
           volumeMounts:
             - mountPath: /home/node/.n8n
               name: data

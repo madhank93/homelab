@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.15.2
+    app.kubernetes.io/version: 2.15.4
     chart: harbor
     component: nginx
     heritage: Helm
@@ -26,7 +26,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: 7f2c055b87042109a98a3877d0603addd74b14d4c1f35e1030237eab97c33a86
+        checksum/configmap: c0c80a781ec1d4173c5b6574c8458cd79bdf311d550cf3f7bd7123cadff45a15
       labels:
         app: harbor
         app.kubernetes.io/component: nginx
@@ -34,7 +34,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.15.2
+        app.kubernetes.io/version: 2.15.4
         chart: harbor
         component: nginx
         heritage: Helm
@@ -42,7 +42,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: docker.io/goharbor/nginx-photon:v2.15.2
+        - image: docker.io/goharbor/nginx-photon:v2.15.4
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3

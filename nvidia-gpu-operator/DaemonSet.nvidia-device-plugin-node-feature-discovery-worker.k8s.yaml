@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: nvidia-device-plugin
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/version: v0.17.3
-    helm.sh/chart: nfd-0.17.3
+    app.kubernetes.io/version: v0.19.0
+    helm.sh/chart: nfd-0.19.0
     role: worker
   name: nvidia-device-plugin-node-feature-discovery-worker
   namespace: nvidia-gpu-operator
@@ -19,7 +19,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7e2bbf6e0335aace16c4a3daaec36f3219fd91c66b9aa79b7e0768cc2ba31e92
+        checksum/config: 72cfd424e5aa33fba1c04ee6c7458aab74d8f6a5452fb5612a17568108a81b53
       labels:
         app.kubernetes.io/instance: nvidia-device-plugin
         app.kubernetes.io/name: node-feature-discovery
@@ -27,9 +27,8 @@ spec:
     spec:
       containers:
         - args:
-            - -feature-gates=NodeFeatureGroupAPI=false
-            - -metrics=8081
-            - -grpc-health=8082
+            - -owner-refs=pod,ds
+            - -port=8080
           command:
             - nfd-worker
           env:
@@ -45,22 +44,22 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
-          image: registry.k8s.io/nfd/node-feature-discovery:v0.17.3
+          image: registry.k8s.io/nfd/node-feature-discovery:v0.19.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
-            grpc:
-              port: 8082
+            httpGet:
+              path: /healthz
+              port: http
             initialDelaySeconds: 10
           name: worker
           ports:
-            - containerPort: 8081
-              name: metrics
-            - containerPort: 8082
-              name: health
+            - containerPort: 8080
+              name: http
           readinessProbe:
             failureThreshold: 10
-            grpc:
-              port: 8082
+            httpGet:
+              path: /healthz
+              port: http
             initialDelaySeconds: 5
           resources:
             limits:
@@ -113,6 +112,10 @@ spec:
           key: nvidia.com/gpu
           operator: Equal
           value: present
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ai
       volumes:
         - hostPath:
             path: /boot
@@ -141,3 +144,6 @@ spec:
                 path: nfd-worker.conf
             name: nvidia-device-plugin-node-feature-discovery-worker-conf
           name: nfd-worker-conf
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 10%

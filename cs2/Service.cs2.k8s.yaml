@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    lbipam.cilium.io/ips: 192.168.1.230
+  name: cs2
+  namespace: cs2
+spec:
+  ports:
+    - name: game
+      port: 27015
+      protocol: UDP
+      targetPort: game
+    - name: rcon
+      port: 27015
+      protocol: TCP
+      targetPort: rcon
+  selector:
+    app: cs2
+  type: LoadBalancer

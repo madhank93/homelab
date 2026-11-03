@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/instance: openbao
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: openbao
-    helm.sh/chart: openbao-0.29.0
+    helm.sh/chart: openbao-0.30.4
   name: openbao-config
   namespace: openbao
 data:
@@ -20,8 +20,20 @@ data:
         unauthenticated_metrics_access = true
       }
     }
+    # In-pod only (kubectl exec): the one listener that allows the unauthenticated
+    # generate-root used by "just openbao-token"; disabled by default since 2.5.3.
+    listener "unix" {
+      address                                  = "/tmp/openbao.sock"
+      disable_unauthed_generate_root_endpoints = false
+    }
     storage "file" {
       path = "/openbao/data"
+    }
+    # Declarative: API audit creation is off by default (unsafe_allow_api_audit_creation).
+    audit "file" "stdout" {
+      options {
+        file_path = "stdout"
+      }
     }
     telemetry {
       prometheus_retention_time = "30s"

@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: victoria-metrics
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: victoria-metrics-operator
-    app.kubernetes.io/version: v0.68.2
-    helm.sh/chart: victoria-metrics-operator-0.59.2
+    app.kubernetes.io/version: v0.75.0
+    helm.sh/chart: victoria-metrics-operator-0.68.1
   name: victoria-metrics-victoria-metrics-operator
   namespace: victoria-metrics
 spec:
@@ -15,6 +15,11 @@ spec:
     matchLabels:
       app.kubernetes.io/instance: victoria-metrics
       app.kubernetes.io/name: victoria-metrics-operator
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -30,6 +35,16 @@ spec:
             - --health-probe-bind-address=:8081
             - --webhook.enable=true
           env:
+            - name: VM_ANOMALY_VERSION
+              value: v1.30.4
+            - name: VM_LOGS_VERSION
+              value: v1.53.0
+            - name: VM_METRICS_VERSION
+              value: v1.154.0
+            - name: VM_TRACES_VERSION
+              value: v0.10.0
+            - name: VM_VMALERTMANAGER_ALERTMANAGERVERSION
+              value: v0.34.0
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -38,7 +53,7 @@ spec:
               value: victoria-metrics-operator
             - name: VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES
               value: "false"
-          image: victoriametrics/operator:v0.68.2
+          image: victoriametrics/operator:v0.75.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3

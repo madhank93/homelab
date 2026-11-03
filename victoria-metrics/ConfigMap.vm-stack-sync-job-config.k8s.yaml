@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/component: syncJob
+    app.kubernetes.io/instance: victoria-metrics
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-metrics-k8s-stack
+    app.kubernetes.io/version: v0.0.17
+    helm.sh/chart: victoria-metrics-k8s-stack-0.96.0
+  name: vm-stack-sync-job-config
+  namespace: victoria-metrics
+data:
+  config.yaml: |
+    common:
+      clusterLabel: "cluster"
+      multicluster: false
+    dashboards:
+      common:
+        grafana:
+          labelName: "grafana_dashboard"
+          labelValue: "1"
+          datasource: "prometheus"
+          datasourceUID: "VictoriaMetrics"
+      dashboards: 
+        grafana-overview:
+          enabled: false
+        node-exporter-full:
+          clusterMetric: node_uname_info
+        proxy:
+          enabled: false
+        victorialogs-cluster:
+          clusterMetric: vm_app_version
+        victorialogs-single-node:
+          clusterMetric: vm_app_version
+        victorialogs-vlagent:
+          clusterMetric: vm_app_version
+        victoriametrics-cluster:
+          clusterMetric: vm_app_version
+        victoriametrics-operator:
+          clusterMetric: vm_app_version
+        victoriametrics-single-node:
+          clusterMetric: vm_app_version
+        victoriametrics-vmagent:
+          clusterMetric: vm_app_version
+        victoriametrics-vmalert:
+          clusterMetric: vm_app_version
+        victoriatraces-cluster:
+          clusterMetric: vm_app_version
+        victoriatraces-single-node:
+          clusterMetric: vm_app_version
+      sources: 
+        - enabled: true
+          url: https://raw.githubusercontent.com/monitoring-mixins/website/master/assets/etcd/dashboards/etcd.json
+        - url: https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/manifests/grafana-dashboardDefinitions.yaml
+        - enabled: true
+          url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-system-api-server.json
+        - enabled: true
+          url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-system-coredns.json
+        - url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-global.json
+        - url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-namespaces.json
+        - url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-nodes.json
+        - url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-pods.json
+        - enabled: true
+          url: https://raw.githubusercontent.com/rfmoz/grafana-dashboards/master/prometheus/node-exporter-full.json
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaLogs/master/dashboards/victorialogs-cluster.json
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaLogs/master/dashboards/victorialogs.json
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaLogs/master/dashboards/vlagent.json
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/dashboards/backupmanager.json
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/dashboards/victoriametrics-cluster.json
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/dashboards/operator.json
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/dashboards/victoriametrics.json
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/dashboards/vmagent.json
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/dashboards/vmalert.json
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaTraces/master/dashboards/victoriatraces-cluster.json
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaTraces/master/dashboards/victoriatraces.json
+    rules:
+      common:
+        runbookUrl: "https://runbooks.prometheus-operator.dev/runbooks"
+        grafanaUrl: "http://"
+        group: 
+          spec: {}
+        rule: 
+          spec:
+            annotations: {}
+            labels: {}
+        alerting: 
+          spec:
+            annotations: {}
+            labels: {}
+        recording: 
+          spec:
+            annotations: {}
+            labels: {}
+      groups: 
+        alertmanager.rules:
+          labelRewrites:
+            job:
+              match: alertmanager-main
+              value: vmalertmanager-.*
+            namespace:
+              match: alertmanager-main
+              value: victoria-metrics
+        kube-prometheus-general.rules:
+          enabled: false
+        kubernetes-apps:
+          labelRewrites:
+            namespace:
+              match: kube-state-metrics
+              value: .*
+        kubernetes-storage:
+          labelRewrites:
+            namespace:
+              match: kubelet
+              value: .*
+      sources: 
+        - enabled: true
+          url: https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/manifests/alertmanager-prometheusRule.yaml
+        - enabled: true
+          url: https://raw.githubusercontent.com/monitoring-mixins/website/master/assets/etcd/alerts.yaml
+        - enabled: true
+          url: https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/manifests/kubeStateMetrics-prometheusRule.yaml
+        - url: https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/manifests/kubePrometheus-prometheusRule.yaml
+        - url: https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/manifests/kubernetesControlPlane-prometheusRule.yaml
+        - enabled: true
+          url: https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/manifests/nodeExporter-prometheusRule.yaml
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaLogs/master/deployment/docker/rules/alerts-vlogs.yml
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaTraces/master/deployment/docker/rules/alerts-vtraces.yml
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaLogs/master/deployment/docker/rules/alerts-vlagent.yml
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaLogs/master/deployment/docker/rules/alerts-health.yml
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/deployment/docker/rules/alerts-vmagent.yml
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/deployment/docker/rules/alerts-vmalert.yml
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/deployment/docker/rules/alerts-cluster.yml
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/deployment/docker/rules/alerts-health.yml
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/operator/master/config/alerting/vmoperator-rules.yaml
+        - enabled: true
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/deployment/docker/rules/alerts-single-node.yml
+        - enabled: false
+          url: https://raw.githubusercontent.com/VictoriaMetrics/VictoriaTraces/master/deployment/docker/rules/alerts-health.yml

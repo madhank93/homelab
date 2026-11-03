@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: falcosidekick
     app.kubernetes.io/part-of: falcosidekick
     app.kubernetes.io/version: 2.31.1
-    helm.sh/chart: falcosidekick-0.12.1
+    helm.sh/chart: falcosidekick-0.14.1
   name: falco-falcosidekick
   namespace: falco
 spec:
@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 53f324e8b736e6f773f78a4c8dcb9678a6e40fb9ccd97dc42bef66bd73f03342
+        checksum/config: d36a1eecc0a976384646255ac1d68a47363ed6707cf9512b70aff284de679704
       labels:
         app.kubernetes.io/component: core
         app.kubernetes.io/instance: falco
@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/name: falcosidekick
         app.kubernetes.io/part-of: falcosidekick
         app.kubernetes.io/version: 2.31.1
-        helm.sh/chart: falcosidekick-0.12.1
+        helm.sh/chart: falcosidekick-0.14.1
     spec:
       containers:
         - env:

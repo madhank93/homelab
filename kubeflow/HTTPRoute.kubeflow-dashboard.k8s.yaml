@@ -115,7 +115,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: centraldashboard
+          name: dashboard
           port: 80
           weight: 1
       filters:
