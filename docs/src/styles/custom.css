@@ -2,3 +2,20 @@
 .hero > img {
   max-width: 12rem;
 }
+
+/* Narrow nav/TOC columns so prose and diagrams get the width. */
+:root {
+  --sl-sidebar-width: 15rem;
+  --sl-content-width: 56rem;
+}
+
+/* Pin the TOC column; Starlight otherwise hands it half the spare width. */
+@media (min-width: 72rem) {
+  .right-sidebar-container {
+    width: var(--sl-sidebar-width);
+  }
+  [data-has-sidebar][data-has-toc] .main-pane {
+    --sl-content-margin-inline: auto;
+    width: calc(100% - var(--sl-sidebar-width));
+  }
+}
