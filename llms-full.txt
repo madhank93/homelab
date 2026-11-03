@@ -4,6 +4,8 @@
 
 > Talos Linux on Proxmox, provisioned by Pulumi, run by Argo CD. Bare VMs to running apps — all in code, no manual steps.
 
+Homelab architecture
+
 Hover a box to trace its path · click for details
 
 −Reset+⛶
@@ -536,6 +538,8 @@ The Network Route points at a stale peer entry. Delete disconnected `k8s-routing
 
 Pulumi builds the VMs, the cluster and the Bifrost edge from a laptop; Argo CD deploys every workload from CDK8s-synthesized manifests. These pages explain the four cross-cutting flows that component pages link back to.
 
+Cluster and its satellites
+
 Click any box for details
 
 −Reset+⛶
@@ -780,6 +784,8 @@ OpenBao seals itself on every restart. An `unseal` container in `extraContainers
 
 Every path ends at the same Cilium Gateway (`192.168.1.220`); they differ in how a packet reaches it. DNS decides which path a hostname takes.
 
+Follow one request
+
 Press Play or Step · click any box for details
 
 −Reset+⛶
@@ -900,6 +906,8 @@ Every box is clickable. Ctrl or ⌘ + scroll (or pinch) zooms, drag pans once zo
 
 How the project works: Pulumi provisions, git deploys, users reach apps.
 
+Homelab architecture
+
 Hover a box to trace its path · click for details
 
 −Reset+⛶
@@ -915,6 +923,8 @@ Hover a box to trace its path · click for details
 [Section titled “2 · Layers”](#2--layers)
 
 The stack from hardware to apps, and which tool owns each layer.
+
+The four layers
 
 Click any box for details
 
@@ -932,6 +942,8 @@ Click any box for details
 
 Follow one request hop by hop. Press Play, or Step through.
 
+Follow one request
+
 Press Play or Step · click any box for details
 
 −Reset+⛶
@@ -948,6 +960,8 @@ Press Play or Step · click any box for details
 
 The cluster at the centre, with everything that feeds it around the edge.
 
+Cluster and its satellites
+
 Click any box for details
 
 −Reset+⛶
@@ -963,6 +977,8 @@ Click any box for details
 [Section titled “5 · Lifecycle”](#5--lifecycle)
 
 How a change reaches the cluster: infrastructure, apps and secrets, stage by stage.
+
+How a change reaches the cluster
 
 Click any box for details
 
@@ -3379,6 +3395,8 @@ Deferred: Kubernetes 1.37, SSO in front of every UI, default-deny NetworkPolicie
 > What this homelab runs, the four layers that build it, and the rules every change follows.
 
 A seven-node Talos Kubernetes cluster on one Proxmox host, with a Hetzner VPS as the public edge and an RTX 5070 Ti for AI workloads. Everything above the bare metal is declared in this repo and rebuilt from it.
+
+Homelab architecture
 
 Hover a box to trace its path · click for details
 
