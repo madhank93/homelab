@@ -3097,7 +3097,7 @@ To make a service public, add it to `publicServices` and run `just core hetzner 
 
 [Section titled “Hostnames on the Gateway”](#hostnames-on-the-gateway)
 
-HTTPRoutes on `homelab-gateway`, all `<name>.madhan.app`: `alertmanager`, `argocd`, `comfyui`, `falco`, `grafana`, `harbor`, `headlamp`, `hubble`, `kubeflow`, `longhorn`, `n8n`, `ollama`, `openbao`, `victorialogs`, `vmselect`.
+HTTPRoutes on `homelab-gateway`, all `<name>.madhan.app`: `alertmanager`, `argocd`, `chat`, `comfyui`, `falco`, `grafana`, `harbor`, `headlamp`, `hubble`, `kubeflow`, `longhorn`, `n8n`, `ollama`, `openbao`, `victorialogs`, `vmselect`.
 
 # Software inventory
 
@@ -3230,6 +3230,7 @@ Trivy has two pins: the chart comes from the typed package, while the CRD bundle
 | NVIDIA Device Plugin | 0.20.1                       | [`workloads/hardware/nvidia_gpu_operator.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/hardware/nvidia_gpu_operator.go) |
 | DCGM Exporter        | 4.8.4                        | same                                                                                                                                      |
 | ComfyUI              | cu130-megapak-pt211-20260812 | [`workloads/ai/comfyui.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/ai/comfyui.go)                                     |
+| Open WebUI           | v0.12.5                      | [`config/versions.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/config/versions.yaml)                                           |
 
 Ollama’s image tag is unset so it tracks the chart’s appVersion; the chart is the pin. ComfyUI’s tag encodes its CUDA line: the card is Blackwell (sm_120) and needs CUDA 12.8 or newer.
 
@@ -4084,6 +4085,7 @@ Each app is a CDK8s chart in [`main.go`](https://github.com/madhank93/homelab/bl
 | [Notebook gateway controller](/workloads/ai/notebook-gateway-controller/) | AI         | none                       | Adds notebook paths to `kubeflow.madhan.app`     | —                                              |
 | [NVIDIA device plugin](/workloads/ai/nvidia-device-plugin/)               | AI         | none                       | —                                                | —                                              |
 | [Ollama](/workloads/ai/ollama/)                                           | AI         | LAN                        | `ollama.madhan.app`, `192.168.1.225:11434`       | None                                           |
+| [Open WebUI](/workloads/ai/open-webui/)                                   | AI         | LAN                        | `chat.madhan.app`                                | Own login                                      |
 | [n8n](/workloads/automation/n8n/)                                         | Automation | LAN                        | `n8n.madhan.app`                                 | n8n login                                      |
 | [CloudNativePG](/workloads/databases/cnpg/)                               | Databases  | none                       | —                                                | —                                              |
 | [Counter-Strike 2](/workloads/gaming/cs2/)                                | Gaming     | LAN                        | `192.168.1.230:27015`                            | Join password                                  |
@@ -4162,6 +4164,8 @@ All GPU pods need `runtimeClassName: nvidia`, the `nvidia.com/gpu.present: "true
 [NVIDIA device plugin](/workloads/ai/nvidia-device-plugin/)GPU advertisement, time-slicing and DCGM metrics on Talos.
 
 [Ollama](/workloads/ai/ollama/)LLM inference server and the aider offload endpoint.
+
+[Open WebUI](/workloads/ai/open-webui/)Browser chat for Ollama's models. LAN only, no GPU.
 
 [ComfyUI](/workloads/ai/comfyui/)Node-graph image generation. Off by default.
 
@@ -4569,6 +4573,35 @@ Check the pod has `runtimeClassName: nvidia` and the toleration, and that the no
 ```bash
 kubectl describe node k8s-worker4 | grep nvidia.com/gpu
 ```
+
+# Open WebUI
+
+> Browser chat for the models served by Ollama. LAN only.
+
+Open WebUI is a ChatGPT-style front end for the in-cluster [Ollama](/workloads/ai/ollama/). [Upstream docs](https://docs.openwebui.com/).
+
+|           |                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| Namespace | `open-webui`                                                                                   |
+| Source    | [`open_webui.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/ai/open_webui.go) |
+| Exposure  | LAN · `chat.madhan.app`                                                                        |
+| Storage   | 10Gi Longhorn PVC at `/app/backend/data`                                                       |
+
+It needs no GPU, so it runs on the general workers and talks to Ollama at `ollama.ollama.svc.cluster.local:11434`. Models pulled into Ollama appear in its model picker.
+
+## Accounts
+
+[Section titled “Accounts”](#accounts)
+
+Open WebUI has its own login, not Authentik. The first account to sign up becomes admin. Later sign-ups land as `pending` (`DEFAULT_USER_ROLE`) until the admin approves them under **Admin Panel → Users**.
+
+The SQLite database, uploads and the session secret key it generates on first start all live on the PVC, so a pod restart keeps every account and chat.
+
+## Keeping it private
+
+[Section titled “Keeping it private”](#keeping-it-private)
+
+`chat` is not in `publicServices` ([Exposure](/cloud/exposure/)), so it resolves only to the LAN gateway `192.168.1.220`. Do not add it there without putting Authentik in front first.
 
 # Automation
 
