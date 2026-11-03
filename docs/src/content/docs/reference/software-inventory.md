@@ -112,6 +112,7 @@ Trivy has two pins: the chart comes from the typed package, while the CRD bundle
 | NVIDIA Device Plugin | 0.20.1 | [`workloads/hardware/nvidia_gpu_operator.go`](src:workloads/hardware/nvidia_gpu_operator.go) |
 | DCGM Exporter | 4.8.4 | same |
 | ComfyUI | cu130-megapak-pt211-20260812 | [`workloads/ai/comfyui.go`](src:workloads/ai/comfyui.go) |
+| Open WebUI | v0.12.5 | [`config/versions.yaml`](src:config/versions.yaml) |
 
 Ollama's image tag is unset so it tracks the chart's appVersion; the chart is the pin. ComfyUI's tag encodes its CUDA line: the card is Blackwell (sm_120) and needs CUDA 12.8 or newer.
 

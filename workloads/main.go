@@ -40,6 +40,7 @@ var apps = []struct {
 	}},
 	{"ollama", func(a cdk8s.App) { ai.NewOllamaChart(a, "ollama-app", "ollama") }},
 	{"comfyui", func(a cdk8s.App) { ai.NewComfyUIChart(a, "comfyui-app", "comfyui") }},
+	{"open-webui", func(a cdk8s.App) { ai.NewOpenWebUIChart(a, "open-webui-app", "open-webui") }},
 	// The Kubeflow platform itself is a pre-built kustomize overlay (workloads/ai/kubeflow/).
 	{"kubeflow", func(a cdk8s.App) {
 		ai.NewKubeflowChart(a, "kubeflow-app", "kubeflow")
