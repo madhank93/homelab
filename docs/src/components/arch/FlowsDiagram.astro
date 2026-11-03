@@ -10,7 +10,7 @@ import Node from './Node.astro';
 import Arrows from './Arrows.astro';
 
 const apps = [
-  ['AI', ['ollama', 'comfyui', 'kubeflow']],
+  ['AI', ['ollama', 'openwebui', 'comfyui', 'kubeflow']],
   ['Observability', ['grafana', 'victoriametrics', 'victorialogs', 'otel']],
   ['Security', ['falco', 'trivy', 'kyverno']],
   ['Tools', ['harbor', 'n8n', 'headlamp', 'cs2']],
@@ -22,7 +22,7 @@ const edge = ['traefik', 'netbird', 'authentik', 'gatus'] as const;
 // Reachability, from the HTTPRoutes and LoadBalancer Services in the repo.
 const viaGateway = new Set<ComponentId>([
   'argocd', 'cilium', 'longhorn', 'openbao', 'grafana', 'victoriametrics', 'victorialogs',
-  'falco', 'harbor', 'n8n', 'headlamp', 'kubeflow', 'comfyui', 'ollama',
+  'falco', 'harbor', 'n8n', 'headlamp', 'kubeflow', 'comfyui', 'ollama', 'openwebui',
 ]);
 const publicApps = new Set<ComponentId>(['grafana']);
 // Own LoadBalancer IPs, and why the Gateway (HTTP/HTTPS listeners only) is not used.

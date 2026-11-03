@@ -57,6 +57,7 @@ export const components = {
   netbirdpeer: { name: 'NetBird peer', role: 'tunnel end', logo: 'netbird.svg', owner: 'argocd', info: 'Routing peer pod: ends the WireGuard tunnel from the VPS and the NetBird mesh for off-site devices, and forwards both onto the LAN toward the Gateway.', href: '/workloads/networking/netbird-peer/' },
 
   ollama: { name: 'Ollama', role: 'LLM inference', logo: 'ollama.svg', owner: 'argocd', info: 'Serves local LLMs on the GPU, including the model that does offloaded coding work.', href: '/workloads/ai/ollama/' },
+  openwebui: { name: 'Open WebUI', role: 'chat UI', logo: 'open-webui.svg', owner: 'argocd', info: 'Browser chat for the models Ollama serves. LAN only, with its own login.', href: '/workloads/ai/open-webui/' },
   comfyui: { name: 'ComfyUI', role: 'image generation', logo: 'comfyui.svg', owner: 'argocd', info: 'Node-based Stable Diffusion and Flux UI. Ships scaled to zero; just comfyui on starts it.', href: '/workloads/ai/comfyui/' },
   kubeflow: { name: 'Kubeflow', role: 'notebooks + pipelines', logo: 'kubeflow.svg', owner: 'argocd', info: 'Jupyter notebooks and ML pipelines with GPU access.', href: '/workloads/ai/kubeflow/' },
   grafana: { name: 'Grafana', role: 'dashboards', logo: 'grafana.svg', owner: 'argocd', info: 'Dashboards over metrics and logs. The one service exposed to the internet, behind its own OIDC login.', href: '/workloads/monitoring/grafana/' },
