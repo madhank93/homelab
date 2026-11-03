@@ -34,6 +34,11 @@ spec:
             - containerPort: 8080
               name: http
               protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
           resources:
             limits:
               cpu: 2000m
