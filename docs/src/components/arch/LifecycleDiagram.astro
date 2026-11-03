@@ -36,7 +36,7 @@ const hop = (from: number, to: number, y: number) => `M${cx(from) + W} ${y} H${c
 const legendY = L3 + H3 + 30;
 ---
 
-<Explorer label="How a change reaches the cluster: infrastructure, apps and secrets">
+<Explorer title="How a change reaches the cluster" label="How a change reaches the cluster: infrastructure, apps and secrets">
   <svg viewBox={`0 0 1280 ${legendY + 22}`} role="group" aria-label="Lifecycle diagram: three numbered swimlanes showing how infrastructure, apps and secrets reach the cluster">
     <Arrows />
     <defs>
