@@ -6,7 +6,7 @@ sidebar:
 ---
 import { Aside, Steps } from '@astrojs/starlight/components';
 
-Released 2026-10-29. Full notes: [`v0.1.8-RELEASE-NOTES.md`](src:docs/releases/v0.1.8-RELEASE-NOTES.md).
+Released 2026-11-02, rolled out from 2026-10-29. Full notes: [`v0.1.8-RELEASE-NOTES.md`](src:docs/releases/v0.1.8-RELEASE-NOTES.md).
 
 ## Highlights
 
@@ -14,12 +14,13 @@ Released 2026-10-29. Full notes: [`v0.1.8-RELEASE-NOTES.md`](src:docs/releases/v
 - **Security.** No OpenBao root token on disk (`just openbao-token` over an in-pod socket). Grafana split into an admin org and a metrics-only Public org. VPS key-only SSH with fail2ban. CI actions pinned to SHAs, SBOM per release, gitleaks + trufflehog hooks (`just hooks`).
 - **Platform.** Talos 1.14 with Kubernetes held on 1.36, Gateway API CRDs v1.6.3, Cilium 1.18 → 1.19 → 1.20, Argo CD chart 10.10.5. Node IPs removed from the LB pool.
 - **Workloads.** Longhorn 1.13, n8n 2.x (one-way DB migration), Kubeflow 26.03, Falco 9, Grafana chart 14, and every other chart to latest stable.
-- **New.** LAN-only Counter-Strike 2 server on `192.168.1.230`.
+- **New.** LAN-only Counter-Strike 2 server on `192.168.1.230`, and [Open WebUI](/workloads/ai/open-webui/) at `chat.madhan.app` — a LAN-only chat front end for Ollama.
+- **Docs.** Moved from Zola to Astro Starlight, with interactive architecture diagrams.
 - **Pre-release security patches.** Harbor, Kyverno, OpenBao, n8n, Grafana, the `n8n-pg` operand and Talos patch bumps; Longhorn engines now auto-upgrade.
 
 ## Manual steps
 
-Pass each step's gate before the next. Runbooks: [Upgrades](/operate/upgrades/).
+Pass each step's gate before the next. Kubernetes ends on 1.36.6. Runbooks: [Upgrades](/operate/upgrades/).
 
 <Steps>
 
@@ -38,7 +39,7 @@ Pass each step's gate before the next. Runbooks: [Upgrades](/operate/upgrades/).
 </Steps>
 
 <Aside type="caution" title="Open after rollout">
-k8s-worker1 host DNS is flaky; each Cilium agent rollout darkens the Gateway IP for about 35 s; there is no Longhorn backup target. Ollama with flash attention on Blackwell may crash at warmup ([ollama/ollama#18276](https://github.com/ollama/ollama/issues/18276)) — set `OLLAMA_FLASH_ATTENTION=0` if it does. Harbor keeps its existing admin password; rotate it and update OpenBao.
+k8s-worker1 host DNS is flaky; each Cilium agent rollout darkens the Gateway IP for about 35 s; after a control-plane restart a new HTTPRoute can stay status-less until the Cilium operator leader pod is deleted; there is no Longhorn backup target. Ollama with flash attention on Blackwell may crash at warmup ([ollama/ollama#18276](https://github.com/ollama/ollama/issues/18276)) — set `OLLAMA_FLASH_ATTENTION=0` if it does. Harbor keeps its existing admin password; rotate it and update OpenBao.
 </Aside>
 
 Deferred: Kubernetes 1.37, SSO in front of every UI, default-deny NetworkPolicies, Kyverno enforce mode, image digest pins, NetBird 0.81.x.
