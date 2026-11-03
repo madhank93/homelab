@@ -21,6 +21,12 @@ spec:
               value: http://ollama.ollama.svc.cluster.local:11434
             - name: DEFAULT_USER_ROLE
               value: pending
+            - name: ENABLE_PERSISTENT_CONFIG
+              value: "false"
+            - name: ENABLE_SIGNUP
+              value: "false"
+            - name: DEFAULT_MODEL_METADATA
+              value: '{"capabilities":{"builtin_tools":false}}'
           image: ghcr.io/open-webui/open-webui:v0.12.5
           imagePullPolicy: IfNotPresent
           name: open-webui
@@ -28,6 +34,11 @@ spec:
             - containerPort: 8080
               name: http
               protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
           resources:
             limits:
               cpu: 2000m
