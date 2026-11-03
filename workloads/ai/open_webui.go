@@ -73,6 +73,14 @@ func NewOpenWebUIChart(scope constructs.Construct, id string, namespace string) 
 								// Built-in tools make the local Qwen models answer with raw tool-call JSON.
 								{Name: jsii.String("DEFAULT_MODEL_METADATA"), Value: jsii.String(`{"capabilities":{"builtin_tools":false}}`)},
 							},
+							// Startup runs DB migrations and takes ~40s; keep traffic off until /health answers.
+							ReadinessProbe: &k8s.Probe{
+								HttpGet: &k8s.HttpGetAction{
+									Path: jsii.String("/health"),
+									Port: k8s.IntOrString_FromString(jsii.String("http")),
+								},
+								PeriodSeconds: jsii.Number(5),
+							},
 							Resources: &k8s.ResourceRequirements{
 								Limits: &map[string]k8s.Quantity{
 									"cpu":    k8s.Quantity_FromString(jsii.String("2000m")),
