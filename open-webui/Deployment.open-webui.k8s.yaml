@@ -21,6 +21,12 @@ spec:
               value: http://ollama.ollama.svc.cluster.local:11434
             - name: DEFAULT_USER_ROLE
               value: pending
+            - name: ENABLE_PERSISTENT_CONFIG
+              value: "false"
+            - name: ENABLE_SIGNUP
+              value: "false"
+            - name: DEFAULT_MODEL_METADATA
+              value: '{"capabilities":{"builtin_tools":false}}'
           image: ghcr.io/open-webui/open-webui:v0.12.5
           imagePullPolicy: IfNotPresent
           name: open-webui
