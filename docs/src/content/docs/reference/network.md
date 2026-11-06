@@ -49,7 +49,7 @@ Not overridden in the Talos config, so the Talos defaults apply: Services `10.96
 
 | What | Address |
 |---|---|
-| WireGuard interface | `wt0` on the Bifrost `netbird-agent` and on the `netbird-peer` pod (hostNetwork) |
+| WireGuard interface | `wt0` on the Bifrost `netbird-agent` and on the `netbird-peer` pod (pod netns) |
 | Overlay addresses | Assigned by NetBird management; peers here sit in `100.109.0.0/16`. Not set in this repo |
 | Routed into the mesh | `192.168.1.0/24`, advertised by `k8s-routing-peer` |
 | Policy routing on Bifrost | ip rule table `7120` |

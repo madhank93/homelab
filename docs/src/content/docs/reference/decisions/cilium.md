@@ -14,5 +14,5 @@ description: Why one Cilium install replaces kube-proxy, MetalLB and an Ingress 
 
 **Consequences:**
 - Gateway API CRDs are vendored and applied before Cilium; Cilium upgrades go one minor at a time.
-- `wt0` can never be a Cilium device, so NetBird traffic reaches pods by kernel forwarding to another node.
+- `wt0` can never be a Cilium device, so the NetBird peer keeps `wt0` in its pod netns and reaches Cilium through the pod's `eth0`.
 - An L2 lease can go stale after an agent restart; `just gateway-repair-l2` re-elects it.

@@ -25,13 +25,13 @@ sequenceDiagram
   participant G as Gateway 192.168.1.220
   T->>A: proxy to 192.168.1.220:80
   A->>P: WireGuard via relay
-  P->>P: forward wt0 → LAN NIC,<br/>MASQUERADE to node IP
-  P->>G: request from node IP
-  G-->>P: reply on the LAN
+  P->>P: forward wt0 → pod eth0,<br/>MASQUERADE to pod IP
+  P->>G: Cilium load-balances from the pod
+  G-->>P: reply to the pod IP
   P-->>A: back through wt0
 ```
 
-The StatefulSet has **no nodeSelector**; the pod runs on whichever worker schedules it. The MASQUERADE rule makes that safe: backends see the peer node's IP and reply over the LAN, so no node needs a route to the NetBird overlay. No such route exists in [`talos.go`](src:core/platform/talos.go); nodes get only a default route via the router.
+The StatefulSet has **no nodeSelector**; the pod runs on whichever worker schedules it. Because `wt0` lives in the pod's own network namespace, forwarded traffic leaves through the pod's `eth0` and Cilium load-balances it like any pod traffic, wherever the Gateway's L2 lease is. With `hostNetwork` the peer depended on ARP for `192.168.1.220`, which fails when the peer shares a node with the lease holder: a node cannot resolve the IP it announces itself. The MASQUERADE rule means backends see the pod IP, so no node needs a route to the NetBird overlay. No such route exists in [`talos.go`](src:core/platform/talos.go); nodes get only a default route via the router.
 
 ## Configuration
 
@@ -39,7 +39,7 @@ The StatefulSet has **no nodeSelector**; the pod runs on whichever worker schedu
 |---|---|---|
 | Kind | StatefulSet, 1 replica | Stable identity with its PVC |
 | PVC mount | `/var/lib/netbird/` | NetBird keeps its private key there; without it every restart registers a duplicate peer |
-| `hostNetwork` / `dnsPolicy` | `true` / `ClusterFirstWithHostNet` | WireGuard edits the host routing table |
+| `hostNetwork` | `false` (default) | `wt0` and its routes stay in the pod netns; see above |
 | Capabilities | `NET_ADMIN`, `SYS_MODULE`, privileged | WireGuard and iptables |
 | Image | `netbird` in [`config.yml`](src:config/config.yml) | Must match the Bifrost server; see [Software inventory](/reference/software-inventory/) |
 | `NB_MANAGEMENT_URL` | `https://netbird.madhan.app` | Management server on Bifrost |
@@ -57,7 +57,7 @@ iptables -t nat -C POSTROUTING ! -o wt0 -d 192.168.1.0/24 -j MASQUERADE 2>/dev/n
   || iptables -t nat -A POSTROUTING ! -o wt0 -d 192.168.1.0/24 -j MASQUERADE
 ```
 
-It matches "not back out `wt0`" rather than a NIC name, because the LAN NIC is `ens18` or `eth0` depending on Talos naming. `-C` stops restarts from stacking duplicates.
+It matches "not back out `wt0`" rather than a NIC name. `-C` stops restarts from stacking duplicates. While the route's **Masquerade** toggle is on in the NetBird UI, NetBird's own `NETBIRD-RT-NAT` chain matches first and this rule counts 0 packets; it is the fallback if that toggle is ever turned off.
 
 :::danger[Never set NB_SKIP_SOCKET_MARK]
 The peer adds a host route for the management server via `lo`; socket fwmark lets its own traffic bypass it. Without the mark, management traffic loops into the tunnel, the relay never connects, and `wt0` carries 0 bytes: every public service goes down. Details: [NetBird](/cloud/netbird/).

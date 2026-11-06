@@ -47,7 +47,7 @@ The Gateway has an HTTP listener on 80 and an HTTPS listener on 443 terminating 
 The pool range overlaps worker IPs `.221`–`.224`, so only `.220` and `.225`–`.230` are handed out. Fixed assignments use the `lbipam.cilium.io/ips` annotation (Ollama `.225`, CS2 `.230`).
 
 :::danger[Never add wt0 to devices]
-NetBird's `wt0` is NOARP/POINTOPOINT; Cilium's TC BPF silently drops its non-Ethernet frames with no monitor events. Tunnel traffic reaches Cilium by kernel forwarding to another node's NIC instead. See [Traffic](/concepts/traffic/).
+NetBird's `wt0` is NOARP/POINTOPOINT; Cilium's TC BPF silently drops its non-Ethernet frames with no monitor events. `wt0` lives inside the `netbird-peer` pod, and tunnel traffic reaches Cilium through the pod's `eth0`. See [Traffic](/concepts/traffic/).
 :::
 
 ### Gateway API CRDs

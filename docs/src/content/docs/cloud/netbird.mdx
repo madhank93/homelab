@@ -21,13 +21,13 @@ The NetBird server on Bifrost coordinates a WireGuard mesh; an in-cluster routin
 flowchart LR
   L[Laptop / phone] -->|WireGuard| P
   T[Traefik] --> S[netbird-server<br/>management, signal,<br/>relay, Dex]
-  B[bifrost-agent] <-->|WireGuard| P[k8s-routing-peer<br/>hostNetwork]
+  B[bifrost-agent] <-->|WireGuard| P[k8s-routing-peer<br/>pod network]
   S -. coordinates .- B & P
   P -->|IP forward<br/>+ MASQUERADE| G[Cilium Gateway<br/>192.168.1.220]
   S -->|Dex connector| A[Authentik]
 ```
 
-The routing peer floats to any worker. Forwarded packets leave its node's LAN NIC and are handled by Cilium on another node; the hop-by-hop path is in [Traffic](/concepts/traffic/). Peer details live on [NetBird peer](/workloads/networking/netbird-peer/).
+The routing peer floats to any worker. Forwarded packets leave the pod's `eth0` and Cilium load-balances them on the peer's own node; the hop-by-hop path is in [Traffic](/concepts/traffic/). Peer details live on [NetBird peer](/workloads/networking/netbird-peer/).
 
 ### Embedded Dex is the issuer
 

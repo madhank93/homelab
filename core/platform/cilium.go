@@ -18,8 +18,8 @@ import (
 // plus an HTTPRoute for hubble.madhan.app.
 //
 // devices must never include wt0: it is NOARP/POINTOPOINT, and Cilium's TC BPF
-// silently drops non-Ethernet frames. NetBird traffic reaches Cilium by kernel
-// IP forwarding to the LAN NIC of another node.
+// silently drops non-Ethernet frames. The NetBird peer keeps wt0 in its pod netns
+// and reaches Cilium through the pod's eth0.
 func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewayCRDs pulumi.Resource) error {
 	// Upgrade one minor at a time. From 1.19 the datapath drops traffic to an
 	// LB-IPAM address on ports no Service uses, and LB-IPAM does not skip node

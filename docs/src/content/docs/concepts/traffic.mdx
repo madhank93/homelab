@@ -50,7 +50,7 @@ sequenceDiagram
     Note over BA: route 192.168.1.0/24 via wt0
     BA->>WG: encrypted
     WG->>NP: decapsulated on wt0
-    Note over NP: kernel forward wt0 → eth0<br/>MASQUERADE: src → this node's IP
+    Note over NP: forward wt0 → pod eth0<br/>MASQUERADE: src → pod IP
     NP->>ETH: LAN, dst 192.168.1.220
     Note over ETH: node holding the L2 lease answers ARP<br/>Cilium DNAT to Envoy
     ETH->>EN: HTTP
@@ -62,11 +62,11 @@ sequenceDiagram
 |---|---|---|
 | Traefik | File provider only; public routers are generated into `public-services.yml` from `publicServices` | [`hetzner.go`](src:core/cloud/hetzner.go) |
 | bifrost-agent | `netbird-agent` container, `network_mode: host`, peer name `bifrost-agent` | [`docker-compose.yml`](src:core/cloud/bifrost/docker-compose.yml) |
-| k8s-routing-peer | `netbird-peer` StatefulSet, `hostNetwork`, no `nodeSelector`: it runs on whichever worker the scheduler picks | [`netbird_peer.go`](src:workloads/networking/netbird_peer.go) |
+| k8s-routing-peer | `netbird-peer` StatefulSet in pod networking, no `nodeSelector`: it runs on whichever worker the scheduler picks | [`netbird_peer.go`](src:workloads/networking/netbird_peer.go) |
 | MASQUERADE | Init container adds `POSTROUTING ! -o wt0 -d 192.168.1.0/24 -j MASQUERADE` | [`netbird_peer.go`](src:workloads/networking/netbird_peer.go) |
 | Cilium | Datapath on `ens18`/`eth0` only; L2 announcement of the LB pool | [`cilium.go`](src:core/platform/cilium.go) |
 
-Replies need no route back to the overlay. MASQUERADE rewrites the source to the peer node's LAN IP, so the backend answers that node, and conntrack on it reverses the NAT and returns the packet into `wt0`. Nodes carry only a default route ([`talos.go`](src:core/platform/talos.go)), which is why the peer can float between workers.
+Replies need no route back to the overlay. MASQUERADE rewrites the source to the peer's pod IP, Cilium load-balances the packet from the pod's `eth0` (so it works on the L2 lease holder too), and conntrack in the pod reverses the NAT and returns the reply into `wt0`. Nodes carry only a default route ([`talos.go`](src:core/platform/talos.go)), which is why the peer can float between workers.
 
 :::danger[Never add wt0 to Cilium devices]
 `wt0` is a NOARP/POINTOPOINT WireGuard interface with no Ethernet header. Cilium's TC BPF program expects Ethernet frames, so on `wt0` it misparses every packet and drops it without a single monitor event, and the public path dies silently. Packets from `wt0` must instead leave through the kernel to the LAN NIC of the node that owns the Gateway IP, where Cilium runs on a real Ethernet interface.
