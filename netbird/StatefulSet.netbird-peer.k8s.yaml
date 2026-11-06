@@ -41,8 +41,6 @@ spec:
             - mountPath: /mnt/secrets
               name: openbao-secrets
               readOnly: true
-      dnsPolicy: ClusterFirstWithHostNet
-      hostNetwork: true
       initContainers:
         - args:
             - -c
