@@ -38,6 +38,9 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 			// instance and share managers) run on the GPU worker. Changing it restarts
 			// them, and Longhorn defers parts of it while volumes are attached.
 			"taintToleration": "dedicated=ai:NoSchedule",
+			// Force-deletes pods on a node that went down uncleanly, so their RWO
+			// volumes detach and the pods reschedule instead of hanging in Terminating.
+			"nodeDownPodDeletionPolicy": "delete-both-statefulset-and-deployment-pod",
 		},
 		"persistence": map[string]any{
 			"defaultClass":             true,
