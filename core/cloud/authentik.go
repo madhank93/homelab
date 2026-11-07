@@ -268,8 +268,21 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	}
 
 	// grafana-admins group — members get Admin in Grafana's main org via org_mapping.
+	var grafanaAdmins pulumi.Float64Array
+	for _, email := range config.C.GrafanaAdmins {
+		res, err := authentik.GetUsers(ctx, &authentik.GetUsersArgs{Email: pulumi.StringRef(email)}, pulumi.Provider(provider))
+		if err != nil {
+			return err
+		}
+		if len(res.Users) == 0 {
+			ctx.Log.Warn("grafana_admins: no Authentik user "+email+" yet; log in once, then re-run", nil)
+			continue
+		}
+		grafanaAdmins = append(grafanaAdmins, pulumi.Float64(res.Users[0].Pk))
+	}
 	_, err = authentik.NewGroup(ctx, "group-grafana-admins", &authentik.GroupArgs{
-		Name: pulumi.String("grafana-admins"),
+		Name:  pulumi.String("grafana-admins"),
+		Users: grafanaAdmins,
 	}, pulumi.Provider(provider))
 	if err != nil {
 		return err

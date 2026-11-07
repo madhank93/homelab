@@ -30,6 +30,10 @@ manifests_branch: v0.1.8-manifests
 # true pauses Argo CD auto-sync; sync apps one at a time with `just argocd-sync <app>`.
 argocd_manual_sync: false
 
+# Authentik users (by email) placed in the grafana-admins group; a user exists
+# only after their first GitHub login, so Pulumi skips unknown emails.
+grafana_admins: [madhankumaravelu93@gmail.com]
+
 cloudflare:
   zone_id: ab8d029e91fb2bb38cb8bc91b9f0b218
 

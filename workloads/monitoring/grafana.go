@@ -131,6 +131,10 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 			// HTTP API with basic auth (still enabled) as the local admin.
 			"auth": map[string]any{
 				"disable_login_form": true,
+				// Links SSO logins to an existing Grafana user by email. Without it a user
+				// whose Authentik account was recreated (new sub) fails "User sync failed".
+				// Trusts emails from Authentik, the only identity provider.
+				"oauth_allow_insecure_email_lookup": true,
 			},
 		},
 		// Client secret injected from grafana-oauth-secret k8s Secret (synced by CSI driver above).

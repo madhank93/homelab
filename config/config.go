@@ -48,6 +48,7 @@ type Config struct {
 	OpenBaoAddr      string                           `yaml:"openbao_addr"`
 	ManifestsBranch  string                           `yaml:"manifests_branch"`
 	ArgoCDManualSync bool                             `yaml:"argocd_manual_sync"`
+	GrafanaAdmins    []string                         `yaml:"grafana_admins"`
 	Cloudflare       struct {
 		ZoneID string `yaml:"zone_id"`
 	} `yaml:"cloudflare"`
