@@ -85,16 +85,16 @@ Everything outside the house: a Hetzner VPS that is the public edge, the SSO and
 
 # Authentik
 
-> SSO on Bifrost — GitHub login, OIDC for Grafana and NetBird, and ForwardAuth for public cluster routes.
+> SSO on Bifrost — GitHub login, OIDC for the cluster admin UIs and NetBird, and ForwardAuth for public cluster routes.
 
 Authentik on Bifrost is the single sign-on for everything public: users log in with GitHub, Grafana and NetBird use it over OIDC, and Traefik gates other public routes with ForwardAuth. [Authentik docs](https://docs.goauthentik.io/).
 
-|               |                                                                                                                                                |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| URL           | `https://auth.madhan.app` (always public)                                                                                                      |
-| Runs on       | [Bifrost](/cloud/bifrost/), started by `just core hetzner up`                                                                                  |
-| Configured by | Pulumi stack `authentik`, [`authentik.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/cloud/authentik.go), `just core authentik up` |
-| Secrets       | `AUTHENTIK_TOKEN`, `AUTHENTIK_GITHUB_SECRET`, `GRAFANA_OAUTH_CLIENT_SECRET`, `NETBIRD_CLIENT_SECRET` (SOPS)                                    |
+|               |                                                                                                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| URL           | `https://auth.madhan.app` (always public)                                                                                                                                   |
+| Runs on       | [Bifrost](/cloud/bifrost/), started by `just core hetzner up`                                                                                                               |
+| Configured by | Pulumi stack `authentik`, [`authentik.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/cloud/authentik.go), `just core authentik up`                              |
+| Secrets       | `AUTHENTIK_TOKEN`, `AUTHENTIK_GITHUB_SECRET`, `NETBIRD_CLIENT_SECRET` and `<APP>_OAUTH_CLIENT_SECRET` for Grafana, Homepage, Argo CD, Harbor, Kubernetes and Proxmox (SOPS) |
 
 The container comes up on the Hetzner stack; the `authentik` stack then configures it through its API with `AUTHENTIK_TOKEN`, which is also the bootstrap token Authentik creates for `akadmin` on first boot.
 
@@ -117,14 +117,23 @@ The container comes up on the Hetzner stack; the `authentik` stack then configur
 
 [Section titled “OIDC applications”](#oidc-applications)
 
-| App     | Client ID                                  | Redirect URIs                                                          | Extra scopes |
-| ------- | ------------------------------------------ | ---------------------------------------------------------------------- | ------------ |
-| Grafana | `grafana-homelab`                          | `https://grafana.madhan.app/login/generic_oauth`                       | `groups`     |
-| NetBird | `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT` | `https://netbird.madhan.app/oauth2/callback`, `http://localhost:53000` | —            |
+| App        | Client ID                                  | Redirect URIs                                                          | Extra scopes |
+| ---------- | ------------------------------------------ | ---------------------------------------------------------------------- | ------------ |
+| Grafana    | `grafana-homelab`                          | `https://grafana.madhan.app/login/generic_oauth`                       | `groups`     |
+| Homepage   | `homepage-homelab`                         | `https://home.madhan.app/api/auth/callback/homepage-oidc`              | —            |
+| Argo CD    | `argocd-homelab`                           | `https://argocd.madhan.app/auth/callback`                              | `groups`     |
+| Harbor     | `harbor-homelab`                           | `https://harbor.madhan.app/c/oidc/callback`                            | `groups`     |
+| Kubernetes | `kubernetes`                               | `https://headlamp.madhan.app/oidc-callback`                            | `groups`     |
+| Proxmox    | `proxmox-homelab`                          | `https://pve.madhan.app:8006`                                          | `groups`     |
+| NetBird    | `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT` | `https://netbird.madhan.app/oauth2/callback`, `http://localhost:53000` | —            |
 
-Both are confidential clients signed with the default self-signed key; access tokens last 1 hour, authorization codes 10 minutes. Every provider gets `openid`, `email`, `profile`, `offline_access` and a custom empty `api` scope that NetBird requests.
+All are confidential clients signed with the default self-signed key; access tokens last 1 hour, authorization codes 10 minutes. Every provider gets `openid`, `email`, `profile`, `offline_access` and a custom empty `api` scope that NetBird requests.
 
-The `groups` scope returns the user’s group names. Grafana’s `org_mapping` makes members of `grafana-admins` Admin of the main org; everyone else is a Viewer.
+Each provider lists its grant types (`authorization_code` and `refresh_token`; NetBird adds `device_code`). Authentik 2026.5+ rejects any grant type not listed, and a provider created without the list gets none, so every login fails with `invalid_request`.
+
+The `groups` scope returns the user’s group names. Grafana’s `org_mapping` makes members of `grafana-admins` Admin of the main org; everyone else is a Viewer. Argo CD, Harbor, Kubernetes (Headlamp) and Proxmox map `grafana-admins` to their admin role.
+
+Homepage, Argo CD, Harbor, Kubernetes and Proxmox are bound to `grafana-admins`: any GitHub account can enroll in Authentik, so Authentik refuses everyone else for these apps.
 
 The NetBird app is the upstream for NetBird’s embedded Dex, not NetBird itself; the connector is added by hand in the NetBird UI ([setup](/cloud/netbird/)). Pulumi also creates service account `sa-netbird` (in `authentik Admins`) with a non-expiring token, exported as `NetbirdServiceToken`.
 
@@ -143,7 +152,7 @@ just core authentik up    # idempotent; re-run after drift or a failed run
 cd core && pulumi stack select authentik && pulumi stack output NetbirdServiceToken --show-secrets
 ```
 
-Grant Grafana admin: **Directory → Groups → grafana-admins → Add user**.
+Grant admin on Grafana, Homepage, Argo CD, Harbor and Headlamp: add the email to `grafana_admins` in `config.yml` and run `just core authentik up`. The user must have logged in once.
 
 ## Troubleshooting
 
@@ -2123,6 +2132,12 @@ With server-side diff, per-Application `jqPathExpressions` apply only to the dry
 
 Bootstrap Secrets `openbao/openbao-unseal-key` and `cert-manager/cloudflare-api-token` carry `Prune=false` so Argo CD never deletes them.
 
+## Login
+
+[Section titled “Login”](#login)
+
+**Log in via Authentik** uses the `argocd-homelab` OIDC app; `grafana-admins` members get `role:admin` and other SSO users get nothing. Argo CD deploys OpenBao, so its client secret cannot come from there: the platform stack writes it from SOPS `ARGOCD_OAUTH_CLIENT_SECRET` into Secret `argocd/argocd-oidc`. The local `admin` login still works as the fallback.
+
 ## Operate
 
 [Section titled “Operate”](#operate)
@@ -2370,6 +2385,8 @@ kubectl get secret -n cilium-secrets
 [Section titled “Proxmox host certificate”](#proxmox-host-certificate)
 
 The Proxmox UI at `pve.madhan.app:8006` does not go through cert-manager. The talos stack ([`proxmox.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/platform/proxmox.go)) sets up Proxmox’s own ACME client with the same Cloudflare token and orders the certificate once. Proxmox then renews it itself. The `pve` A record points at the host on the LAN ([`cloudflare.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/cloud/cloudflare.go)).
+
+The same stack adds the `authentik` login realm (the default on the login form). Users are created on first login from their GitHub username; Authentik’s `grafana-admins` syncs in as group `grafana-admins-authentik`, which holds `Administrator` on `/`. `root` with realm **Linux PAM** remains the fallback.
 
 ## Troubleshooting
 
@@ -4086,34 +4103,34 @@ Each app is a CDK8s chart in [`main.go`](https://github.com/madhank93/homelab/bl
 
 [Section titled “Service catalog”](#service-catalog)
 
-| App                                                                       | Group      | Exposure                   | Hostname                                         | Auth                                           |
-| ------------------------------------------------------------------------- | ---------- | -------------------------- | ------------------------------------------------ | ---------------------------------------------- |
-| [ComfyUI](/workloads/ai/comfyui/)                                         | AI         | LAN (off by default)       | `comfyui.madhan.app`                             | None                                           |
-| [Kubeflow](/workloads/ai/kubeflow/)                                       | AI         | LAN                        | `kubeflow.madhan.app`                            | None (route injects a fixed `kubeflow-userid`) |
-| [Notebook gateway controller](/workloads/ai/notebook-gateway-controller/) | AI         | none                       | Adds notebook paths to `kubeflow.madhan.app`     | —                                              |
-| [NVIDIA device plugin](/workloads/ai/nvidia-device-plugin/)               | AI         | none                       | —                                                | —                                              |
-| [Ollama](/workloads/ai/ollama/)                                           | AI         | LAN                        | `ollama.madhan.app`, `192.168.1.225:11434`       | None                                           |
-| [Open WebUI](/workloads/ai/open-webui/)                                   | AI         | LAN                        | `chat.madhan.app`                                | Own login                                      |
-| [n8n](/workloads/automation/n8n/)                                         | Automation | LAN                        | `n8n.madhan.app`                                 | n8n login                                      |
-| [CloudNativePG](/workloads/databases/cnpg/)                               | Databases  | none                       | —                                                | —                                              |
-| [Counter-Strike 2](/workloads/gaming/cs2/)                                | Gaming     | LAN                        | `192.168.1.230:27015`                            | Join password                                  |
-| [Headlamp](/workloads/management/headlamp/)                               | Management | LAN                        | `headlamp.madhan.app`                            | ServiceAccount token                           |
-| [Homepage](/workloads/management/homepage/)                               | Management | LAN                        | `home.madhan.app`                                | Authentik OIDC (Homepage’s own)                |
-| [Argo CD monitor](/workloads/monitoring/argocd-monitor/)                  | Monitoring | none                       | —                                                | —                                              |
-| [Grafana](/workloads/monitoring/grafana/)                                 | Monitoring | **Public**                 | `grafana.madhan.app`                             | Authentik OIDC (Grafana’s own)                 |
-| [Metrics Server](/workloads/monitoring/metrics-server/)                   | Monitoring | none                       | —                                                | —                                              |
-| [OpenTelemetry](/workloads/monitoring/opentelemetry/)                     | Monitoring | none                       | —                                                | —                                              |
-| [VictoriaLogs](/workloads/monitoring/victoria-logs/)                      | Monitoring | LAN                        | `victorialogs.madhan.app`                        | None                                           |
-| [VictoriaMetrics](/workloads/monitoring/victoria-metrics/)                | Monitoring | LAN                        | `vmselect.madhan.app`, `alertmanager.madhan.app` | None                                           |
-| [NetBird peer](/workloads/networking/netbird-peer/)                       | Networking | none (it is the VPN route) | —                                                | —                                              |
-| [Harbor](/workloads/registry/harbor/)                                     | Registry   | LAN                        | `harbor.madhan.app`                              | Harbor admin                                   |
-| [OpenBao](/workloads/secrets/openbao/)                                    | Secrets    | LAN                        | `openbao.madhan.app`                             | OpenBao token                                  |
-| [Secrets Store CSI driver](/workloads/secrets/csi-driver/)                | Secrets    | none                       | —                                                | —                                              |
-| [Falco](/workloads/security/falco/)                                       | Security   | LAN                        | `falco.madhan.app`                               | Sidekick UI login                              |
-| [Kyverno](/workloads/security/kyverno/)                                   | Security   | none                       | —                                                | —                                              |
-| [Trivy](/workloads/security/trivy/)                                       | Security   | none                       | —                                                | —                                              |
-| [Longhorn](/workloads/storage/longhorn/)                                  | Storage    | LAN                        | `longhorn.madhan.app`                            | None                                           |
-| [Reloader](/workloads/support/reloader/)                                  | Support    | none                       | —                                                | —                                              |
+| App                                                                       | Group      | Exposure                   | Hostname                                         | Auth                                                             |
+| ------------------------------------------------------------------------- | ---------- | -------------------------- | ------------------------------------------------ | ---------------------------------------------------------------- |
+| [ComfyUI](/workloads/ai/comfyui/)                                         | AI         | LAN (off by default)       | `comfyui.madhan.app`                             | None                                                             |
+| [Kubeflow](/workloads/ai/kubeflow/)                                       | AI         | LAN                        | `kubeflow.madhan.app`                            | None (route injects a fixed `kubeflow-userid`)                   |
+| [Notebook gateway controller](/workloads/ai/notebook-gateway-controller/) | AI         | none                       | Adds notebook paths to `kubeflow.madhan.app`     | —                                                                |
+| [NVIDIA device plugin](/workloads/ai/nvidia-device-plugin/)               | AI         | none                       | —                                                | —                                                                |
+| [Ollama](/workloads/ai/ollama/)                                           | AI         | LAN                        | `ollama.madhan.app`, `192.168.1.225:11434`       | None                                                             |
+| [Open WebUI](/workloads/ai/open-webui/)                                   | AI         | LAN                        | `chat.madhan.app`                                | Own login                                                        |
+| [n8n](/workloads/automation/n8n/)                                         | Automation | LAN                        | `n8n.madhan.app`                                 | n8n login                                                        |
+| [CloudNativePG](/workloads/databases/cnpg/)                               | Databases  | none                       | —                                                | —                                                                |
+| [Counter-Strike 2](/workloads/gaming/cs2/)                                | Gaming     | LAN                        | `192.168.1.230:27015`                            | Join password                                                    |
+| [Headlamp](/workloads/management/headlamp/)                               | Management | LAN                        | `headlamp.madhan.app`                            | Authentik OIDC via the API server; ServiceAccount token fallback |
+| [Homepage](/workloads/management/homepage/)                               | Management | LAN                        | `home.madhan.app`                                | Authentik OIDC (Homepage’s own)                                  |
+| [Argo CD monitor](/workloads/monitoring/argocd-monitor/)                  | Monitoring | none                       | —                                                | —                                                                |
+| [Grafana](/workloads/monitoring/grafana/)                                 | Monitoring | **Public**                 | `grafana.madhan.app`                             | Authentik OIDC (Grafana’s own)                                   |
+| [Metrics Server](/workloads/monitoring/metrics-server/)                   | Monitoring | none                       | —                                                | —                                                                |
+| [OpenTelemetry](/workloads/monitoring/opentelemetry/)                     | Monitoring | none                       | —                                                | —                                                                |
+| [VictoriaLogs](/workloads/monitoring/victoria-logs/)                      | Monitoring | LAN                        | `victorialogs.madhan.app`                        | None                                                             |
+| [VictoriaMetrics](/workloads/monitoring/victoria-metrics/)                | Monitoring | LAN                        | `vmselect.madhan.app`, `alertmanager.madhan.app` | None                                                             |
+| [NetBird peer](/workloads/networking/netbird-peer/)                       | Networking | none (it is the VPN route) | —                                                | —                                                                |
+| [Harbor](/workloads/registry/harbor/)                                     | Registry   | LAN                        | `harbor.madhan.app`                              | Authentik OIDC; local `admin` fallback                           |
+| [OpenBao](/workloads/secrets/openbao/)                                    | Secrets    | LAN                        | `openbao.madhan.app`                             | OpenBao token                                                    |
+| [Secrets Store CSI driver](/workloads/secrets/csi-driver/)                | Secrets    | none                       | —                                                | —                                                                |
+| [Falco](/workloads/security/falco/)                                       | Security   | LAN                        | `falco.madhan.app`                               | Sidekick UI login                                                |
+| [Kyverno](/workloads/security/kyverno/)                                   | Security   | none                       | —                                                | —                                                                |
+| [Trivy](/workloads/security/trivy/)                                       | Security   | none                       | —                                                | —                                                                |
+| [Longhorn](/workloads/storage/longhorn/)                                  | Storage    | LAN                        | `longhorn.madhan.app`                            | None                                                             |
+| [Reloader](/workloads/support/reloader/)                                  | Support    | none                       | —                                                | —                                                                |
 
 **Public** means listed in `publicServices` in [`cloudflare.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/cloud/cloudflare.go), served through Bifrost. **LAN** means an HTTPRoute on the shared Gateway (or a LoadBalancer IP); NetBird VPN clients reach these too, through the routing peer. See [Exposure](/cloud/exposure/).
 
@@ -4900,17 +4917,17 @@ Headlamp is the only cluster UI; changes still go through code and Argo CD. Home
 
 # Headlamp
 
-> Kubernetes dashboard on the LAN, logged in with short-lived cluster-admin tokens.
+> Kubernetes dashboard on the LAN, logged in through Authentik or a short-lived cluster-admin token.
 
 Headlamp is the cluster’s only UI, for browsing resources, logs and events; changes still go through code and [Argo CD](/platform/argocd/). [Upstream docs](https://headlamp.dev/docs/latest/).
 
-|           |                                                                                                    |
-| --------- | -------------------------------------------------------------------------------------------------- |
-| Namespace | `headlamp`                                                                                         |
-| Source    | [`headlamp.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/management/headlamp.go) |
-| Exposure  | LAN · `headlamp.madhan.app` → `headlamp:80`                                                        |
-| Storage   | —                                                                                                  |
-| Auth      | Token for ServiceAccount `headlamp-admin` (bound to `cluster-admin`)                               |
+|           |                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------- |
+| Namespace | `headlamp`                                                                                              |
+| Source    | [`headlamp.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/management/headlamp.go)      |
+| Exposure  | LAN · `headlamp.madhan.app` → `headlamp:80`                                                             |
+| Storage   | —                                                                                                       |
+| Auth      | Authentik OIDC (`grafana-admins` → `cluster-admin`); fallback token for ServiceAccount `headlamp-admin` |
 
 ## Configuration
 
@@ -4922,11 +4939,19 @@ Headlamp is the cluster’s only UI, for browsing resources, logs and events; ch
 | ServiceAccount + ClusterRoleBinding | `headlamp-admin` → `cluster-admin` | Login identity; no static token Secret exists |
 | Resources                           | limits `500m` / `512Mi`            | Small dashboard                               |
 
+## Authentik login
+
+[Section titled “Authentik login”](#authentik-login)
+
+**Sign In** sends you to Authentik’s `kubernetes` app. Headlamp then calls the API with your ID token, which the API server trusts through `oidc-*` flags in the control-plane patch ([`talos.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/platform/talos.go)). You act as `oidc:<github username>` in groups `oidc:<authentik group>`; the `oidc-grafana-admins` ClusterRoleBinding makes `grafana-admins` cluster-admin.
+
+The client secret comes from OpenBao `secret/headlamp` (`OIDC_CLIENT_SECRET`, seeded from SOPS `KUBERNETES_OAUTH_CLIENT_SECRET`).
+
 ## Operate
 
 [Section titled “Operate”](#operate)
 
-Mint a token (default lifetime `24h`) and paste it into the login screen:
+If Authentik is down, mint a token (default lifetime `24h`) and paste it into the login screen:
 
 ```bash
 just headlamp-token        # or: just headlamp-token 8h
@@ -5549,13 +5574,13 @@ Harbor stores private images and caches upstream registries on the LAN.
 
 Harbor stores the homelab’s own images and caches upstream registries so repeat pulls stay on the LAN. [Upstream docs](https://goharbor.io/docs/).
 
-|           |                                                                                              |
-| --------- | -------------------------------------------------------------------------------------------- |
-| Namespace | `harbor`                                                                                     |
-| Source    | [`harbor.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/registry/harbor.go) |
-| Exposure  | LAN · `harbor.madhan.app` → `harbor:80`                                                      |
-| Storage   | Registry 50 Gi RWX, jobservice RWX, database 10 Gi RWO (Longhorn)                            |
-| Auth      | Harbor `admin`, password from OpenBao `secret/harbor`                                        |
+|           |                                                                                                                               |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Namespace | `harbor`                                                                                                                      |
+| Source    | [`harbor.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/registry/harbor.go)                                  |
+| Exposure  | LAN · `harbor.madhan.app` → `harbor:80`                                                                                       |
+| Storage   | Registry 50 Gi RWX, jobservice RWX, database 10 Gi RWO (Longhorn)                                                             |
+| Auth      | Authentik OIDC (`grafana-admins` = Harbor admins); local `admin` at `/account/sign-in`, password from OpenBao `secret/harbor` |
 
 Harbor won over a plain Docker registry for RBAC, scanning and the proxy cache; see [Harbor for the registry](/reference/decisions/harbor/).
 
@@ -5597,6 +5622,16 @@ The HTTPRoute must target `harbor`, not `harbor-core`
 ## Operate
 
 [Section titled “Operate”](#operate)
+
+### Authentik login
+
+[Section titled “Authentik login”](#authentik-login)
+
+`CONFIG_OVERWRITE_JSON` on harbor-core sets `auth_mode: oidc_auth` and the OIDC settings on every start, so changes made in **Configuration → Authentication** reset on restart; edit [`harbor.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/registry/harbor.go) instead. Users are created on first login from `preferred_username`. The client secret comes from OpenBao `secret/harbor` (`OIDC_CLIENT_SECRET`), mirrored into `harbor-admin`.
+
+For `docker login`, use the **CLI secret** from **User Profile**, not the Authentik password.
+
+If the client secret changes, restart harbor-core after the CSI driver re-syncs `harbor-admin` (up to 2 minutes): the chart offers no Deployment annotation for Reloader.
 
 ### Rotate the admin password
 
