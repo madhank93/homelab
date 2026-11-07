@@ -20,7 +20,7 @@ git push
 [`cdk8s-seal-publish.yml`](src:.github/workflows/cdk8s-seal-publish.yml) runs on pushes to `main` and `v*` branches that touch `workloads/`, and when a `v*` branch is created.
 
 :::caution[A push outside workloads/ publishes nothing]
-Commits that only touch `core/`, `docs/` or `config/` do not trigger the workflow. Run it by hand from the Actions tab (`workflow_dispatch`) if the manifests branch must refresh.
+Commits that only touch `core/` or `docs/` do not trigger the workflow. Run it by hand from the Actions tab (`workflow_dispatch`) if the manifests branch must refresh.
 :::
 
 :::caution[CI blocks rendered Secrets]

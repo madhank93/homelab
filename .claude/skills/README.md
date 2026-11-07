@@ -11,6 +11,12 @@ here; `homelab-*` are this repo's own.
 | `homelab-cdk8s` | repo | `workloads/` charts, kit helpers, OpenBao/CSI secrets, Gateway routes, GPU scheduling, synth verification |
 | `homelab-pulumi-go` | repo | `core/` stacks, SOPS-provided config, resource options, bridged SDKs, reading previews |
 | `homelab-docs` | repo | `docs/` Starlight pages: placement, page shapes, inventory-only versions, `src:` links, verification |
+| `homelab-sso` | repo | Authentik OIDC apps: client secret route, group binding, per-app wiring, login checks |
+| `homelab-talos` | repo | Talos machine patches, change impact (reboot or not), talosctl, worker4 GPU node, node upgrades |
+| `homelab-incident` | repo | Outage triage by blast radius, read-only first checks, sanctioned fixes, power-outage recovery |
+| `homelab-rollout` | repo | Getting a change live: Pulumi stack order, release branch, CI, Argo CD sync, release cut |
+| `homelab-upgrade` | repo | Version bumps: upstream research, where pins live, layer order, Renovate PRs |
+| `homelab-security-review` | repo | Repo checklist: rendered Secrets, exposure, auth binding, RBAC, Pod Security, pinning, CI |
 | `golang-code-style` | samber | Formatting, function shape, comments, readability |
 | `golang-naming` | samber | Package, type, function, variable and constant names |
 | `golang-error-handling` | samber | Wrapping, sentinel/custom errors, `errors.Is`/`As`, panics |
@@ -48,7 +54,13 @@ Sample prompts and the skill that should load. Re-run these after editing a
 | "Pin the Proxmox VM disk so a new Talos image doesn't replace it" | `homelab-pulumi-go` |
 | "Add an Authentik OIDC application for Open WebUI" | `homelab-pulumi-go` |
 | "Document the new Uptime Kuma workload" | `homelab-docs` |
-| "Bump Longhorn in the software inventory" | `homelab-docs` |
+| "Write the release notes page for the next release" | `homelab-docs` |
+| "Add Authentik login to Open WebUI" | `homelab-sso` |
+| "Will this Talos patch reboot every node?" | `homelab-talos` |
+| "Every madhan.app URL times out from the LAN" | `homelab-incident` |
+| "Get this change live on the cluster" | `homelab-rollout` |
+| "Upgrade Longhorn to the next minor" | `homelab-upgrade` |
+| "Security-review exposing n8n publicly" | `homelab-security-review` |
 | "Clean up the formatting and comments in kit.go" | `golang-code-style` |
 | "Is `cfg.K` a good name for the config instance?" | `golang-naming` |
 | "Wrap the errors returned by DeployHetznerVPS with context" | `golang-error-handling` |

@@ -2,7 +2,7 @@
 #
 # Keeps the docs honest about versions. Two rules:
 #
-#   1. Every version in docs/src/content/docs/architecture/software-inventory.md must
+#   1. Every version in docs/src/content/docs/reference/software-inventory.md must
 #      still appear in the file that page says pins it.
 #   2. No other page under docs/src/content/docs/ may state a version at all — they
 #      describe behaviour and link to the inventory.
@@ -201,7 +201,7 @@ done < <(
 echo
 if [[ "$failures" -gt 0 ]]; then
   echo "$failures problem(s). The inventory is the single source of truth:"
-  echo "  docs/src/content/docs/architecture/software-inventory.md"
+  echo "  docs/src/content/docs/reference/software-inventory.md"
   exit 1
 fi
 echo "Docs agree with the code."
