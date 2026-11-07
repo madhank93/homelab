@@ -2365,6 +2365,12 @@ kubectl get certificate -A      # expect Ready=True
 kubectl get secret -n cilium-secrets
 ```
 
+## Proxmox host certificate
+
+[Section titled “Proxmox host certificate”](#proxmox-host-certificate)
+
+The Proxmox UI at `pve.madhan.app:8006` does not go through cert-manager. The talos stack ([`proxmox.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/platform/proxmox.go)) sets up Proxmox’s own ACME client with the same Cloudflare token and orders the certificate once. Proxmox then renews it itself. The `pve` A record points at the host on the LAN ([`cloudflare.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/cloud/cloudflare.go)).
+
 ## Troubleshooting
 
 [Section titled “Troubleshooting”](#troubleshooting)
@@ -3213,6 +3219,7 @@ Trivy has two pins: the chart comes from the typed package, while the CRD bundle
 | --------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Harbor                      | 1.19.4  | [`cdk8s.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/cdk8s.yaml)                                                         |
 | Headlamp                    | 0.45.0  | [`cdk8s.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/cdk8s.yaml)                                                         |
+| Homepage                    | v2.7.0  | [`config/versions.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/config/versions.yaml)                                               |
 | n8n (chart)                 | 2.1.1   | [`workloads/automation/n8n.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/automation/n8n.go)                                 |
 | n8n (image)                 | 2.45.5  | same                                                                                                                                          |
 | Reloader                    | 2.2.19  | [`workloads/support/reloader.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/support/reloader.go)                             |
@@ -4091,6 +4098,7 @@ Each app is a CDK8s chart in [`main.go`](https://github.com/madhank93/homelab/bl
 | [CloudNativePG](/workloads/databases/cnpg/)                               | Databases  | none                       | —                                                | —                                              |
 | [Counter-Strike 2](/workloads/gaming/cs2/)                                | Gaming     | LAN                        | `192.168.1.230:27015`                            | Join password                                  |
 | [Headlamp](/workloads/management/headlamp/)                               | Management | LAN                        | `headlamp.madhan.app`                            | ServiceAccount token                           |
+| [Homepage](/workloads/management/homepage/)                               | Management | LAN                        | `home.madhan.app`                                | Authentik OIDC (Homepage’s own)                |
 | [Argo CD monitor](/workloads/monitoring/argocd-monitor/)                  | Monitoring | none                       | —                                                | —                                              |
 | [Grafana](/workloads/monitoring/grafana/)                                 | Monitoring | **Public**                 | `grafana.madhan.app`                             | Authentik OIDC (Grafana’s own)                 |
 | [Metrics Server](/workloads/monitoring/metrics-server/)                   | Monitoring | none                       | —                                                | —                                              |
@@ -4125,7 +4133,7 @@ Rows marked “None” trust anything that can reach the LAN or the VPN. Keep th
 
 [Gaming](/workloads/gaming/)Counter-Strike 2 server.
 
-[Management](/workloads/management/)Headlamp cluster dashboard.
+[Management](/workloads/management/)Headlamp cluster dashboard and the Homepage start page.
 
 [Monitoring](/workloads/monitoring/)Grafana, VictoriaMetrics, VictoriaLogs, OpenTelemetry.
 
@@ -4884,9 +4892,11 @@ Low-spec laptops: plug in, use *Best performance* power mode, dual-channel RAM, 
 
 > Operator-facing UI for the cluster.
 
-Headlamp is the only cluster UI; changes still go through code and Argo CD.
+Headlamp is the only cluster UI; changes still go through code and Argo CD. Homepage links every app.
 
 [Headlamp](/workloads/management/headlamp/)Kubernetes dashboard with short-lived cluster-admin tokens.
+
+[Homepage](/workloads/management/homepage/)Start page for every app, behind Authentik login.
 
 # Headlamp
 
@@ -4941,6 +4951,40 @@ It expired, or `headlamp-admin` was recreated. Run `just headlamp-token` again.
 [Section titled “Resource columns show N/A”](#resource-columns-show-na)
 
 Metrics Server is down. Check `kubectl top nodes`.
+
+# Homepage
+
+> Start page linking every homelab app, behind Authentik login. LAN only.
+
+Homepage is the start page: one tile per app with its live status, plus cluster and node usage. [Upstream docs](https://gethomepage.dev/).
+
+|           |                                                                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Namespace | `homepage`                                                                                                                                                                                                   |
+| Source    | [`homepage.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/management/homepage.go), config in [`homepage/`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/management/homepage/) |
+| Exposure  | LAN · `home.madhan.app`                                                                                                                                                                                      |
+| Login     | Authentik OIDC, `grafana-admins` group only                                                                                                                                                                  |
+
+## Editing the page
+
+[Section titled “Editing the page”](#editing-the-page)
+
+Tiles live in `homepage/services.yaml`, the top bar in `widgets.yaml`, and layout in `settings.yaml` ([config reference](https://gethomepage.dev/configs/services/)). Every file in that directory becomes a key of the `homepage` ConfigMap; Reloader restarts the pod when it changes.
+
+Icons are [dashboard-icons](https://dashboardicons.com) names (`grafana.svg`); apps without one use `mdi-` or `si-` icons. `{{HOMEPAGE_VAR_DOMAIN}}` is filled from `domain` in `config.yml`. Each tile’s status dot comes from `siteMonitor`, which Homepage checks from inside the cluster.
+
+## Login
+
+[Section titled “Login”](#login)
+
+Homepage’s own auth gate signs in through the Authentik `homepage` OIDC app ([`authentik.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/cloud/authentik.go)). Homepage admits anyone Authentik authorizes, and any GitHub account can enroll in Authentik, so a policy binding limits the app to `grafana-admins` (users from `grafana_admins` in `config.yml`).
+
+| Secret                | Source                                                                     |
+| --------------------- | -------------------------------------------------------------------------- |
+| `OAUTH_CLIENT_SECRET` | SOPS `HOMEPAGE_OAUTH_CLIENT_SECRET`, seeded into OpenBao `secret/homepage` |
+| `AUTH_SECRET`         | Random, generated by `just openbao-setup` (session cookie key)             |
+
+If the OIDC login breaks, `https://home.madhan.app/auth/signin?autologin=0` shows the login page without redirecting.
 
 # Monitoring
 
