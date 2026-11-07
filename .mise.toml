@@ -2,3 +2,5 @@
 # fails to load any package. The CLI hides this via GOTOOLCHAIN=auto.
 [tools]
 go = "1.26.10"
+# Must be built with Go >= the go directive above; CI pins the same release.
+golangci-lint = "2.15.0"

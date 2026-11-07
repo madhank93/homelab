@@ -1,0 +1,41 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - dupl
+    - errorlint
+    - gocognit
+    - gocritic
+    - gosec
+    - misspell
+    - modernize
+    - revive
+    - unparam
+  settings:
+    gocognit:
+      min-complexity: 30
+    dupl:
+      threshold: 150
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
+    paths:
+      - sdks/
+      - imports/
+    rules:
+      # Tests read repo files by computed path and favour long table-driven bodies.
+      - path: _test\.go
+        linters: [dupl, gocognit, gosec]
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - sdks/
+      - imports/

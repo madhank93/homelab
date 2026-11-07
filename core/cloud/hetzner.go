@@ -125,7 +125,7 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 		return err
 	}
 	keyPath := filepath.Join(home, ".ssh", "id_ed25519")
-	privateKey, err := os.ReadFile(keyPath)
+	privateKey, err := os.ReadFile(keyPath) //nolint:gosec // operator's own SSH key under $HOME
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 	}
 
 	// Env files are gitignored and overwritten on every pulumi up — never edit by hand.
-	if err := os.MkdirAll(bifrostEnvDir, 0700); err != nil {
+	if err := os.MkdirAll(bifrostEnvDir, 0o700); err != nil {
 		return err
 	}
 	for _, f := range bifrostEnvFiles {
@@ -259,11 +259,11 @@ func writeBifrostEnv(path string, vars []secretVar) error {
 			log.Printf("[hetzner]   SKIP  %-30s  (not in SOPS — optional)", v.fileKey)
 			continue
 		}
-		sb.WriteString(fmt.Sprintf("%s=%s\n", v.fileKey, val))
-		log.Printf("[hetzner]   SET   %-30s  (%d chars)", v.fileKey, len(val))
+		fmt.Fprintf(&sb, "%s=%s\n", v.fileKey, val)
+		log.Printf("[hetzner]   SET   %-30s  (%d chars)", v.fileKey, len(val)) //nolint:gosec // fileKey is a constant from code, not user input
 	}
 
-	if err := os.WriteFile(path, []byte(sb.String()), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
 		return err
 	}
 	log.Printf("[hetzner]   wrote %s", path)
@@ -280,7 +280,7 @@ func computeBifrostHash() (string, error) {
 		if err != nil || info.IsDir() {
 			return err
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // path comes from walking the repo's own bifrost dir
 		if err != nil {
 			return err
 		}
@@ -299,7 +299,7 @@ func computeBifrostHash() (string, error) {
 // hot-reloads the new routes without a container restart.
 func generateTraefikPublicServices(services []PublicService) error {
 	dir := "./cloud/bifrost/traefik/dynamic"
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // non-secret Traefik config, shipped to Bifrost
 		return fmt.Errorf("create traefik dynamic dir: %w", err)
 	}
 
@@ -309,8 +309,8 @@ func generateTraefikPublicServices(services []PublicService) error {
 	sb.WriteString("http:\n")
 	sb.WriteString("  routers:\n")
 	for _, svc := range services {
-		sb.WriteString(fmt.Sprintf("    %s:\n", svc.Name))
-		sb.WriteString(fmt.Sprintf("      rule: \"Host(`%s`)\"\n", config.C.Host(svc.Name)))
+		fmt.Fprintf(&sb, "    %s:\n", svc.Name)
+		fmt.Fprintf(&sb, "      rule: \"Host(`%s`)\"\n", config.C.Host(svc.Name))
 		if !svc.SkipAuth {
 			sb.WriteString("      middlewares: [authentik-forwardauth]\n")
 		}
@@ -319,5 +319,5 @@ func generateTraefikPublicServices(services []PublicService) error {
 		sb.WriteString("        certResolver: cloudflare-dns\n")
 	}
 
-	return os.WriteFile(fmt.Sprintf("%s/public-services.yml", dir), []byte(sb.String()), 0644)
+	return os.WriteFile(fmt.Sprintf("%s/public-services.yml", dir), []byte(sb.String()), 0o644) //nolint:gosec // non-secret Traefik config; must stay readable by the Traefik container
 }

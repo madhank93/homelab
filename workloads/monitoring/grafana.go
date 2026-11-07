@@ -61,7 +61,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 	registry, repository, _ := strings.Cut(img.Image, "/")
 
 	auth := "https://" + config.C.Host("auth")
-	values := map[string]any{
+	values := map[string]any{ //nolint:gosec // token_url is an endpoint, not a credential
 		"image": map[string]any{
 			"registry":   registry,
 			"repository": repository,
@@ -143,7 +143,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		// Admin password read from the CSI-mounted file via Grafana's $__file provider;
 		// setting it here also stops the chart rendering a random admin Secret on every
 		// synth. The distroless image has no /run.sh, so GF_*__FILE vars are unsupported.
-		"env": map[string]any{
+		"env": map[string]any{ //nolint:gosec // password is a $__file reference to the CSI mount, not a value
 			"GF_SECURITY_ADMIN_USER":     "admin",
 			"GF_SECURITY_ADMIN_PASSWORD": "$__file{/mnt/secrets/ADMIN_PASSWORD}",
 		},

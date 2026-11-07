@@ -31,7 +31,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 	// core re-apply them on every start. The $(...) reference is expanded by
 	// the kubelet, so the client secret stays out of the rendered manifest.
 	// The local admin can still sign in at /account/sign-in.
-	oidc, err := json.Marshal(map[string]any{
+	oidc, err := json.Marshal(map[string]any{ //nolint:gosec // client secret is a $(VAR) reference expanded by the kubelet
 		"auth_mode":          "oidc_auth",
 		"oidc_name":          "Authentik",
 		"oidc_endpoint":      "https://" + config.C.Host("auth") + "/application/o/harbor/",

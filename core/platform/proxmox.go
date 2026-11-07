@@ -109,7 +109,7 @@ func NewProxmoxSSO(ctx *pulumi.Context, provider *proxmoxve.Provider) error {
 	_, err = proxmoxve.NewGroupLegacy(ctx, "pve-group-grafana-admins", &proxmoxve.GroupLegacyArgs{
 		GroupId: pulumi.String("grafana-admins-authentik"),
 		Comment: pulumi.String("Synced from Authentik group grafana-admins"),
-		Acls: proxmoxve.GroupLegacyAclArray{
+		Acls: proxmoxve.GroupLegacyAclArray{ //nolint:staticcheck // moving to the Acl resource would replace live state
 			&proxmoxve.GroupLegacyAclArgs{Path: pulumi.String("/"), RoleId: pulumi.String("Administrator"), Propagate: pulumi.Bool(true)},
 		},
 	}, pulumi.Provider(provider))

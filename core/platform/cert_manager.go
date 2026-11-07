@@ -15,7 +15,6 @@ import (
 //
 //	just create-secrets
 func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
-
 	// Install cert-manager via Helm (CRDs bundled via installCRDs: true)
 	cm := config.HelmChart("cert-manager")
 	chart, err := helm.NewRelease(ctx, "cert-manager", &helm.ReleaseArgs{

@@ -16,7 +16,10 @@ func main() {
 		os.Exit(1)
 	}
 	for _, key := range cfg.K.Keys() {
-		os.Setenv(key, cfg.K.String(key))
+		if err := os.Setenv(key, cfg.K.String(key)); err != nil {
+			fmt.Printf("Critical: Failed to export %s: %v\n", key, err)
+			os.Exit(1)
+		}
 	}
 
 	pulumi.Run(func(ctx *pulumi.Context) error {

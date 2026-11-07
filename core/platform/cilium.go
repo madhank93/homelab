@@ -339,7 +339,6 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 // PatchCiliumRBAC creates a ClusterRole and Binding to allow Cilium to manage Leases for L2 announcements.
 // This is necessary if the Helm chart installation didn't include these permissions.
 func PatchCiliumRBAC(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
-
 	// Create ClusterRole
 	_, err := rbacv1.NewClusterRole(ctx, "cilium-leases-access", &rbacv1.ClusterRoleArgs{
 		Metadata: &metav1.ObjectMetaArgs{

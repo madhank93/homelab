@@ -24,28 +24,28 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		ReleaseName: jsii.String("headlamp"),
 		Namespace:   jsii.String(namespace),
 		Values: &headlamp.HeadlampValues{
-			AdditionalValues: &map[string]interface{}{
-				"resources": map[string]interface{}{
-					"limits":   map[string]interface{}{"cpu": "500m", "memory": "512Mi"},
-					"requests": map[string]interface{}{"cpu": "100m", "memory": "128Mi"},
+			AdditionalValues: &map[string]any{
+				"resources": map[string]any{
+					"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+					"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
 				},
 				// Exposed through the Gateway instead.
-				"ingress": map[string]interface{}{"enabled": false},
+				"ingress": map[string]any{"enabled": false},
 				// Authentik login. Headlamp passes the ID token to the API server, which
 				// trusts the "kubernetes" client (Talos apiServer extraArgs in talos.go).
-				"config": map[string]interface{}{
-					"oidc": map[string]interface{}{
-						"secret":         map[string]interface{}{"create": false},
-						"externalSecret": map[string]interface{}{"enabled": true, "name": "headlamp-oidc", "hasScopes": true},
+				"config": map[string]any{
+					"oidc": map[string]any{
+						"secret":         map[string]any{"create": false},
+						"externalSecret": map[string]any{"enabled": true, "name": "headlamp-oidc", "hasScopes": true},
 					},
 				},
-				"env": []map[string]interface{}{
+				"env": []map[string]any{
 					{"name": "OIDC_CLIENT_ID", "value": "kubernetes"},
 					{"name": "OIDC_ISSUER_URL", "value": "https://" + config.C.Host("auth") + "/application/o/kubernetes/"},
 					{"name": "OIDC_SCOPES", "value": "openid,profile,email,groups,offline_access"},
 				},
-				"volumes":      []map[string]interface{}{kit.SecretsVolumeValues("headlamp-secrets")},
-				"volumeMounts": []map[string]interface{}{kit.SecretsMountValues()},
+				"volumes":      []map[string]any{kit.SecretsVolumeValues("headlamp-secrets")},
+				"volumeMounts": []map[string]any{kit.SecretsMountValues()},
 			},
 		},
 	})

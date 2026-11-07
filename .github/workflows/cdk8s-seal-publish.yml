@@ -7,6 +7,9 @@ on:
       - 'v*'  # Trigger on release branches (v0.1.5, etc)
     paths:
       - 'workloads/**'
+      - 'config/**'
+      - '.golangci.yml'
+      - '.mise.toml'
       - 'scripts/manifest-secret-guard.sh'
       - 'scripts/manifest-secret-allowlist.txt'
       - '.github/workflows/cdk8s-seal-publish.yml'
@@ -47,6 +50,33 @@ jobs:
         with:
           go-version-file: go.work
           cache-dependency-path: workloads/go.sum
+
+      # Same gates as `just check`, minus core/ (its SDKs are generated on the laptop).
+      # GOWORK off: go.work lists core/, which does not resolve without core/sdks/.
+      - name: Lint config
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        env:
+          GOWORK: "off"
+        with:
+          version: v2.15.0  # keep in step with .mise.toml
+          working-directory: config
+          args: --config ../.golangci.yml
+
+      - name: Lint workloads
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        env:
+          GOWORK: "off"
+        with:
+          version: v2.15.0
+          working-directory: workloads
+          args: --config ../.golangci.yml
+
+      - name: Test
+        env:
+          GOWORK: "off"
+        run: |
+          (cd config && go test ./...)
+          (cd workloads && go test ./...)
 
       - name: Synthesize CDK8s manifests
         working-directory: workloads

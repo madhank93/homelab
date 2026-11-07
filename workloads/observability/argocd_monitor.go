@@ -79,7 +79,7 @@ func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 			Name:      jsii.String("argocd-server-tls"),
 			Namespace: jsii.String(namespace),
 		},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{ //nolint:gosec // TLS Secret name, not a credential
 		"secretName": "argocd-server-tls",
 		"issuerRef": map[string]any{
 			"name": "letsencrypt-prod",

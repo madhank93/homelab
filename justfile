@@ -15,6 +15,24 @@ core stack action:
 synth:
     go run .
 
+# Definition of done for Go changes: lint, tests, core build, synth, docs check.
+# core/ needs its generated SDKs (core/sdks/), so CI runs everything except the core steps.
+check: lint test
+    cd core && go build ./...
+    just synth
+    just docs-check
+
+# golangci-lint (.golangci.yml) per workspace module; fails on unformatted code too.
+lint *modules="config core workloads":
+    for m in {{modules}}; do (cd "$m" && golangci-lint fmt --diff --config ../.golangci.yml ./... && golangci-lint run --config ../.golangci.yml ./...) || exit 1; done
+
+# Apply golangci-lint formatting (gofumpt + goimports) across the workspace.
+fmt:
+    for m in config core workloads; do (cd "$m" && golangci-lint fmt --config ../.golangci.yml ./...) || exit 1; done
+
+test:
+    for m in config workloads; do (cd "$m" && go test ./...) || exit 1; done
+
 # Enable the gitleaks + trufflehog secret scan on commit and push (needs Docker).
 hooks:
     git config core.hooksPath .githooks

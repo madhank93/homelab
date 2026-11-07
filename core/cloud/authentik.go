@@ -3,19 +3,19 @@ package cloud
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/madhank93/homelab/config"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/core/internal/cfg"
 	"github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2026/authentik"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-var AuthUrl = "https://" + config.C.Host("auth")
+var AuthURL = "https://" + config.C.Host("auth")
 
 const (
 	AuthInsecure = false
@@ -23,7 +23,7 @@ const (
 	// GitHub SSO Settings
 	GithubName     = "GitHub"
 	GithubSlug     = "github"
-	GithubClientId = "Ov23liUPVh4nPuUJzGFp"
+	GithubClientID = "Ov23liUPVh4nPuUJzGFp"
 )
 
 // identStageInfo holds the fields we need from the Authentik REST API response
@@ -119,7 +119,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 
 	// Setup Provider
 	provider, err := authentik.NewProvider(ctx, "authentik-provider", &authentik.ProviderArgs{
-		Url:      pulumi.String(AuthUrl),
+		Url:      pulumi.String(AuthURL),
 		Token:    pulumi.String(token),
 		Insecure: pulumi.Bool(AuthInsecure),
 	})
@@ -168,9 +168,10 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	// Common OIDC Scopes (email, profile, openid, offline_access)
 	allScopes := getCommonScopes(ctx, provider)
 	// Ensure we convert IDOutput to StringOutput for compatibility
-	ac.Scopes = append(allScopes,
+	allScopes = append(allScopes,
 		apiScope.ID().ToStringOutput(),
 	)
+	ac.Scopes = allScopes
 
 	// Admin group membership required for the NetBird service account
 	adminGroup, err := authentik.LookupGroup(ctx, &authentik.LookupGroupArgs{
@@ -214,7 +215,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		AuthenticationFlow: ac.FlowAuth,
 		EnrollmentFlow:     ac.FlowEnrollment,
 		ProviderType:       pulumi.String("github"),
-		ConsumerKey:        pulumi.String(GithubClientId),
+		ConsumerKey:        pulumi.String(GithubClientID),
 		ConsumerSecret:     pulumi.String(ghSecret),
 		Pkce:               pulumi.String("S256"),
 		// "identifier" creates a new Authentik user from the GitHub identity without
@@ -232,7 +233,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	// We fetch the stage UUID via REST API (no Lookup data source exists in the SDK),
 	// then import + update the stage. pulumi.Import is a no-op on re-runs once the
 	// resource is already in Pulumi state.
-	identStage, err := getDefaultIdentificationStage(AuthUrl, token)
+	identStage, err := getDefaultIdentificationStage(AuthURL, token)
 	if err != nil {
 		return fmt.Errorf("fetch default identification stage: %w", err)
 	}
@@ -271,17 +272,9 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	}
 
 	// grafana-admins group — members get Admin in Grafana's main org via org_mapping.
-	var grafanaAdmins pulumi.Float64Array
-	for _, email := range config.C.GrafanaAdmins {
-		res, err := authentik.GetUsers(ctx, &authentik.GetUsersArgs{Email: pulumi.StringRef(email)}, pulumi.Provider(provider))
-		if err != nil {
-			return err
-		}
-		if len(res.Users) == 0 {
-			ctx.Log.Warn("grafana_admins: no Authentik user "+email+" yet; log in once, then re-run", nil)
-			continue
-		}
-		grafanaAdmins = append(grafanaAdmins, pulumi.Float64(res.Users[0].Pk))
+	grafanaAdmins, err := lookupGrafanaAdmins(ctx, provider)
+	if err != nil {
+		return err
 	}
 	grafanaAdminsGroup, err := authentik.NewGroup(ctx, "group-grafana-admins", &authentik.GroupArgs{
 		Name:  pulumi.String("grafana-admins"),
@@ -399,6 +392,24 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	return nil
 }
 
+// lookupGrafanaAdmins resolves config.C.GrafanaAdmins emails to Authentik user
+// PKs, skipping (with a warning) users who have not logged in yet.
+func lookupGrafanaAdmins(ctx *pulumi.Context, provider *authentik.Provider) (pulumi.Float64Array, error) {
+	var grafanaAdmins pulumi.Float64Array
+	for _, email := range config.C.GrafanaAdmins {
+		res, err := authentik.GetUsers(ctx, &authentik.GetUsersArgs{Email: pulumi.StringRef(email)}, pulumi.Provider(provider))
+		if err != nil {
+			return nil, err
+		}
+		if len(res.Users) == 0 {
+			_ = ctx.Log.Warn("grafana_admins: no Authentik user "+email+" yet; log in once, then re-run", nil)
+			continue
+		}
+		grafanaAdmins = append(grafanaAdmins, pulumi.Float64(res.Users[0].Pk))
+	}
+	return grafanaAdmins, nil
+}
+
 // createHomelabForwardAuth creates the Authentik forward-domain proxy provider and
 // embedded outpost that back Traefik's ForwardAuth middleware for public services.
 // All requests from the internet pass through this outpost for
@@ -442,7 +453,6 @@ func createHomelabForwardAuth(ac AuthentikContext) error {
 // sets the redirect URIs (using regex mode for wildcard patterns), and exports the
 // provider ID into the application's ProtocolProvider field.
 func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
-
 	var redirectMap pulumi.StringMapArray
 	for _, url := range app.Redirects {
 		mode := "strict"
@@ -538,7 +548,7 @@ func mustLookupFlow(ctx *pulumi.Context, prov *authentik.Provider, slug string) 
 // OIDC scopes (email, profile, openid, offline_access). These are included in
 // every OIDC provider created by createOIDCApp.
 func getCommonScopes(ctx *pulumi.Context, prov *authentik.Provider) pulumi.StringArray {
-	var scopeIds pulumi.StringArray
+	var scopeIDs pulumi.StringArray
 
 	names := []string{"email", "profile", "openid", "offline_access"}
 
@@ -549,10 +559,10 @@ func getCommonScopes(ctx *pulumi.Context, prov *authentik.Provider) pulumi.Strin
 		if err != nil {
 			panic(fmt.Sprintf("CRITICAL: Missing scope '%s'", name))
 		}
-		scopeIds = append(scopeIds, pulumi.String(scope.Id))
+		scopeIDs = append(scopeIDs, pulumi.String(scope.Id))
 	}
 
-	return scopeIds
+	return scopeIDs
 }
 
 // idFloat converts a Pulumi resource ID to the numeric form the Authentik

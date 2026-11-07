@@ -44,3 +44,8 @@ backups/
 
 node_modules
 .aider*
+
+# ── Claude Code (machine-local) ───────────────────────────────────────
+.claude/worktrees/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

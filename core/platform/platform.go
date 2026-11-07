@@ -10,11 +10,11 @@ import (
 
 // DeployPlatform installs cluster-level platform tools: Cilium, Gateway API,
 // cert-manager, and ArgoCD. It reads the kubeconfig written by the talos stack.
-// Run `just pulumi talos up` before running `just pulumi platform up`.
+// Run `just core talos up` before running `just core platform up`.
 func DeployPlatform(ctx *pulumi.Context) error {
 	kubeconfigBytes, err := os.ReadFile("kubeconfig")
 	if err != nil {
-		return fmt.Errorf("kubeconfig not found — run `just pulumi talos up` first: %w", err)
+		return fmt.Errorf("kubeconfig not found — run `just core talos up` first: %w", err)
 	}
 
 	k8sProvider, err := kubernetes.NewProvider(ctx, "k8s-provider", &kubernetes.ProviderArgs{

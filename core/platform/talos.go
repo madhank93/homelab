@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -244,11 +245,12 @@ machine:
 
 		// Select Config Base
 		var baseConfig pulumi.StringOutput
-		if node.Role == "control" {
+		switch {
+		case node.Role == "control":
 			baseConfig = cpConfig.MachineConfiguration()
-		} else if node.HasGPU() {
+		case node.HasGPU():
 			baseConfig = gpuConfig.MachineConfiguration()
-		} else {
+		default:
 			baseConfig = workerConfig.MachineConfiguration()
 		}
 
@@ -261,17 +263,7 @@ machine:
 		// Falls back to static node IP if the VM is stopped (no QEMU agent response)
 		// so that a stopped VM doesn't block the Pulumi preview for other nodes.
 		dynamicEndpoint := vmRes.Ipv4Addresses.ApplyT(func(ips [][]string) (string, error) {
-			for _, net := range ips {
-				for _, ip := range net {
-					// Filter out loopback, link-local APIPA, and IPv6 addresses
-					if ip != "127.0.0.1" && ip != "" && !strings.HasPrefix(ip, "169.254.") && !strings.Contains(ip, ":") {
-						return ip, nil
-					}
-				}
-			}
-			// VM is stopped or QEMU agent not yet ready — fall back to static IP.
-			// ConfigurationApply will fail gracefully if the node is truly unreachable.
-			return node.IP, nil
+			return firstRoutableIPv4(ips, node.IP), nil
 		}).(pulumi.StringOutput)
 
 		// Client Config construct
@@ -339,6 +331,20 @@ machine:
 	return nil
 }
 
+// firstRoutableIPv4 returns the first QEMU-agent address that is not loopback,
+// link-local APIPA or IPv6. When none is found (VM stopped or agent not ready)
+// it returns fallback; ConfigurationApply fails gracefully if that is unreachable.
+func firstRoutableIPv4(ips [][]string, fallback string) string {
+	for _, net := range ips {
+		for _, ip := range net {
+			if ip != "127.0.0.1" && ip != "" && !strings.HasPrefix(ip, "169.254.") && !strings.Contains(ip, ":") {
+				return ip
+			}
+		}
+	}
+	return fallback
+}
+
 // patchTalosConfig applies per-node patches to a raw Talos machine config YAML.
 //
 // It performs two transformations:
@@ -346,7 +352,11 @@ machine:
 //  2. Sets machine.network.hostname and nameservers, converts DHCP to a static
 //     address in cl.Subnet, and adds a default route via cl.Router.
 func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (string, error) {
-	prefix := cl.Subnet[strings.Index(cl.Subnet, "/"):]
+	_, bits, ok := strings.Cut(cl.Subnet, "/")
+	if !ok {
+		return "", fmt.Errorf("cluster subnet %q is not in CIDR form", cl.Subnet)
+	}
+	prefix := "/" + bits
 	reader := strings.NewReader(rawConfig)
 	decoder := yaml.NewDecoder(reader)
 	var documents []map[string]any
@@ -355,7 +365,7 @@ func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (
 		var doc map[string]any
 		err := decoder.Decode(&doc)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return "", err
@@ -365,27 +375,8 @@ func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (
 			continue
 		}
 
-		if _, hasMachine := doc["machine"]; hasMachine {
-			if machineMap, ok := doc["machine"].(map[string]any); ok {
-				if _, hasNetwork := machineMap["network"]; !hasNetwork {
-					machineMap["network"] = make(map[string]any)
-				}
-				if networkMap, ok := machineMap["network"].(map[string]any); ok {
-					networkMap["hostname"] = hostname
-					if interfaces, ok := networkMap["interfaces"].([]any); ok && len(interfaces) > 0 {
-						if iface, ok := interfaces[0].(map[string]any); ok {
-							iface["dhcp"] = false
-							iface["addresses"] = []string{ip + prefix}
-							iface["routes"] = []any{
-								map[string]any{
-									"gateway": cl.Router,
-								},
-							}
-						}
-					}
-					networkMap["nameservers"] = cl.Nameservers
-				}
-			}
+		if machineMap, ok := doc["machine"].(map[string]any); ok {
+			patchMachineNetwork(machineMap, hostname, ip+prefix, cl)
 		}
 		documents = append(documents, doc)
 	}
@@ -398,6 +389,34 @@ func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (
 			return "", err
 		}
 	}
-	encoder.Close()
+	if err := encoder.Close(); err != nil {
+		return "", err
+	}
 	return buf.String(), nil
+}
+
+// patchMachineNetwork sets the hostname and nameservers on a machine document
+// and turns its first interface from DHCP into a static address with a default
+// route via cl.Router.
+func patchMachineNetwork(machineMap map[string]any, hostname, address string, cl config.ClusterConfig) {
+	if _, hasNetwork := machineMap["network"]; !hasNetwork {
+		machineMap["network"] = make(map[string]any)
+	}
+	networkMap, ok := machineMap["network"].(map[string]any)
+	if !ok {
+		return
+	}
+	networkMap["hostname"] = hostname
+	if interfaces, ok := networkMap["interfaces"].([]any); ok && len(interfaces) > 0 {
+		if iface, ok := interfaces[0].(map[string]any); ok {
+			iface["dhcp"] = false
+			iface["addresses"] = []string{address}
+			iface["routes"] = []any{
+				map[string]any{
+					"gateway": cl.Router,
+				},
+			}
+		}
+	}
+	networkMap["nameservers"] = cl.Nameservers
 }

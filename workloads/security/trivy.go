@@ -3,6 +3,7 @@ package security
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,6 +20,9 @@ import (
 )
 
 const trivyHelmReleasesBase = "https://github.com/aquasecurity/helm-charts/releases/download"
+
+// maxCRDSize caps each extracted CRD file to guard against decompression bombs.
+const maxCRDSize = 16 << 20
 
 // NewTrivyChart deploys the Trivy Operator for continuous vulnerability and
 // misconfiguration scanning of workloads and container images.
@@ -115,10 +119,16 @@ func includeTrivyCRDs(chart cdk8s.Chart) {
 	}
 	defer os.RemoveAll(tempDir)
 
+	root, err := os.OpenRoot(tempDir)
+	if err != nil {
+		panic(fmt.Sprintf("failed to open temp dir for trivy CRDs: %v", err))
+	}
+	defer root.Close()
+
 	name, version := "trivy-operator", config.HelmChart("trivy-operator").Version
 	chartURL := fmt.Sprintf("%s/%s-%s/%s-%s.tgz", trivyHelmReleasesBase, name, version, name, version)
 
-	resp, err := http.Get(chartURL)
+	resp, err := http.Get(chartURL) //nolint:gosec // URL built from a constant base and the pinned chart version
 	if err != nil {
 		panic(fmt.Sprintf("failed to download trivy chart from %s: %v", chartURL, err))
 	}
@@ -138,7 +148,7 @@ func includeTrivyCRDs(chart cdk8s.Chart) {
 
 	for {
 		header, err := tarReader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -153,17 +163,25 @@ func includeTrivyCRDs(chart cdk8s.Chart) {
 			continue
 		}
 
-		targetPath := filepath.Join(tempDir, filepath.Base(header.Name))
-		outFile, err := os.Create(targetPath)
+		fileName := filepath.Base(header.Name)
+		targetPath := filepath.Join(tempDir, fileName)
+		outFile, err := root.Create(fileName)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create CRD file %s: %v", targetPath, err))
 		}
 
-		if _, err := io.Copy(outFile, tarReader); err != nil {
-			outFile.Close()
+		n, err := io.Copy(outFile, io.LimitReader(tarReader, maxCRDSize+1))
+		if err != nil {
+			_ = outFile.Close()
 			panic(fmt.Sprintf("failed to write CRD file %s: %v", targetPath, err))
 		}
-		outFile.Close()
+		if n > maxCRDSize {
+			_ = outFile.Close()
+			panic(fmt.Sprintf("CRD file %s exceeds %d bytes", targetPath, maxCRDSize))
+		}
+		if err := outFile.Close(); err != nil {
+			panic(fmt.Sprintf("failed to close CRD file %s: %v", targetPath, err))
+		}
 
 		id := fmt.Sprintf("crd-%s", strings.TrimSuffix(filepath.Base(header.Name), ".yaml"))
 
