@@ -27,8 +27,8 @@ spec:
     metadata:
       annotations:
         checksum/configmap: 468c796b07af88fd2b8d53c5e860afd6bb51c648ea8b8e469b1a748a156c3b00
-        checksum/secret: 2b230d179f8145be8adc7792c760b326fec0c1c82359a58698c83c34cd9842c4
-        checksum/secret-jobservice: e02ea9b1d14005e3f392edc2e8224d251ddffb7b5e61526007aec3ab5fd33e52
+        checksum/secret: 4b17e56a39df976ab6de3680565ff2fcde3a971cac67b6e457c694a1777e46c6
+        checksum/secret-jobservice: 6d709c80c4c5c939c724d5d85c61c66ae4f9d34626766fde0344d849f1490fa7
       labels:
         app: harbor
         app.kubernetes.io/component: core
@@ -60,6 +60,14 @@ spec:
                 secretKeyRef:
                   key: HARBOR_ADMIN_PASSWORD
                   name: harbor-admin
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: OIDC_CLIENT_SECRET
+                  name: harbor-admin
+                  optional: true
+            - name: CONFIG_OVERWRITE_JSON
+              value: '{"auth_mode":"oidc_auth","oidc_admin_group":"grafana-admins","oidc_auto_onboard":true,"oidc_client_id":"harbor-homelab","oidc_client_secret":"$(OIDC_CLIENT_SECRET)","oidc_endpoint":"https://auth.madhan.app/application/o/harbor/","oidc_groups_claim":"groups","oidc_name":"Authentik","oidc_scope":"openid,profile,email,groups,offline_access","oidc_user_claim":"preferred_username","oidc_verify_cert":true}'
           envFrom:
             - configMapRef:
                 name: harbor-core
