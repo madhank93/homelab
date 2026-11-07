@@ -488,10 +488,7 @@ Run after the first `just core hetzner up` has all containers healthy.
 5. Store the routing peer’s key in OpenBao:
 
    ```sh
-   export ROOT_TOKEN=$(just openbao-token)
-   printf '%s\n%s' "$ROOT_TOKEN" '<k8s-routing-peer key>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
-     sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-'
-   just openbao-revoke
+   printf '%s' '<k8s-routing-peer key>' | just openbao-root kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-
    ```
 
 6. Wait for the peer to connect: `kubectl exec -n netbird netbird-peer-0 -- netbird status` shows `Management: Connected`.
@@ -784,7 +781,7 @@ OpenBao seals itself on every restart. An `unseal` container in `extraContainers
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Workload code declares no `Secret` objects                   | Convention in `workloads/`; secrets come from OpenBao                                                                                                                                                                                                                 |
 | No new Secret payload in published manifests                 | CI [`manifest-secret-guard.sh`](https://github.com/madhank93/homelab/blob/v0.1.8/scripts/manifest-secret-guard.sh); its [allowlist](https://github.com/madhank93/homelab/blob/v0.1.8/scripts/manifest-secret-allowlist.txt) of chart-rendered Secrets may only shrink |
-| No root token at rest                                        | `just openbao-token` generates one on demand from the unseal key; `just openbao-revoke` revokes it                                                                                                                                                                    |
+| No root token at rest                                        | `just openbao-root` generates one per command from the unseal key and revokes it on exit                                                                                                                                                                              |
 | CI needs no repository secrets beyond its own `GITHUB_TOKEN` | Synthesis reads nothing secret                                                                                                                                                                                                                                        |
 
 # How traffic flows
@@ -1217,8 +1214,7 @@ Each recipe below fixes a failure this cluster has actually hit. Run them from t
 | `just talos-health`                                   | Before and after any node change; must be clean before the next node                                                  | `talosctl health` against the first control plane via the VIP                                                                                                                                                                                                  |
 | `just talos-versions`                                 | Checking an upgrade landed on every node                                                                              | `talosctl version` on every node in `config/config.yml`                                                                                                                                                                                                        |
 | `just headlamp-token [duration]`                      | Logging in to Headlamp                                                                                                | Issues a short-lived cluster-admin token for `headlamp-admin` (default 24h)                                                                                                                                                                                    |
-| `just openbao-token`                                  | You need root on OpenBao                                                                                              | Generates a root token over the in-pod unix socket from the unseal key Secret. Refuses to print to a terminal: capture it with `export ROOT_TOKEN=$(just openbao-token)`                                                                                       |
-| `just openbao-revoke [token]`                         | When done with a root token                                                                                           | Revokes the token passed, or `$ROOT_TOKEN`                                                                                                                                                                                                                     |
+| `just openbao-root <bao args>`                        | You need root on OpenBao                                                                                              | Generates a root token over the in-pod unix socket from the unseal key Secret, runs one `bao` command with it, revokes it on exit. Piped stdin reaches `bao`, for `key=-` values                                                                               |
 | `just openbao-get <path> [field]`                     | Reading one secret                                                                                                    | Mints a throwaway root token, reads the KV path, revokes the token on exit                                                                                                                                                                                     |
 | `just openbao-sa-get <sa> <ns> <role> <path> [field]` | Proving an app’s role can read its secret                                                                             | Logs in with the service account’s token through Kubernetes auth, then reads the path                                                                                                                                                                          |
 | `just grafana-init`                                   | Grafana fails to start because provisioning references org 2                                                          | Creates Grafana’s “Public” org and checks it got id 2. Idempotent                                                                                                                                                                                              |
@@ -2982,8 +2978,9 @@ All recipes run from the repo root. Values such as the VIP and node IPs are read
 | `create-secrets`      | —                         | Creates the bootstrap Kubernetes Secrets from SOPS (`scripts/create-bootstrap-secrets.sh`)                                                            |
 | `openbao-init`        | —                         | One-time: initialises and unseals OpenBao, writes the unseal key to `~/openbao-unseal-key` (mode 600), revokes the init root token, prints next steps |
 | `openbao-setup`       | —                         | Kubernetes auth, policies, roles and seeded app secrets (`scripts/openbao-setup.sh`). Idempotent; never overwrites values                             |
-| `openbao-token`       | —                         | Root token via generate-root over the in-pod socket. Refuses a terminal: `export ROOT_TOKEN=$(just openbao-token)`                                    |
-| `openbao-revoke`      | `[token]`                 | Revokes the token, or `$ROOT_TOKEN`                                                                                                                   |
+| `openbao-root`        | `bao args…`               | Runs one `bao` command with a throwaway root token (generate-root over the in-pod socket), revoked on exit. Piped stdin reaches `bao`                 |
+| `openbao-token`       | —                         | Root token kept for longer, e.g. for the UI. Refuses a terminal: `just openbao-token \| pbcopy`                                                       |
+| `openbao-revoke`      | stdin                     | Revokes the token piped in: `pbpaste \| just openbao-revoke`                                                                                          |
 | `openbao-get`         | `path [field]`            | Reads a KV path with a throwaway root token                                                                                                           |
 | `openbao-sa-token`    | `sa ns role`              | Short-lived OpenBao token via Kubernetes auth for a service account                                                                                   |
 | `openbao-sa-get`      | `sa ns role path [field]` | Reads a KV path as that service account                                                                                                               |
@@ -3894,13 +3891,10 @@ Goal: Bifrost and the cluster peer join the mesh, and Bifrost reaches `192.168.1
    just core hetzner up
    ```
 
-3. Write the cluster key to OpenBao. Token and key travel on stdin, so neither shows in a process list.
+3. Write the cluster key to OpenBao. The key travels on stdin, so it never shows in a process list.
 
    ```sh
-   export ROOT_TOKEN=$(just openbao-token)
-   printf '%s\n%s' "$ROOT_TOKEN" '<k8s-routing-peer key>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
-     sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-'
-   just openbao-revoke
+   printf '%s' '<k8s-routing-peer key>' | just openbao-root kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-
    ```
 
 4. Restart the peer so it mounts the new key.
@@ -3910,10 +3904,6 @@ Goal: Bifrost and the cluster peer join the mesh, and Bifrost reaches `192.168.1
    ```
 
 5. In the NetBird UI, add **Network → Routes → Add Route**: network `192.168.1.0/24`, routing peer `k8s-routing-peer`, enabled.
-
-openbao-token refuses a terminal
-
-It exits if stdout is a TTY, so the root token never lands in scrollback. Always capture it with `export ROOT_TOKEN=$(just openbao-token)` and revoke it after.
 
 Never set NB_SKIP_SOCKET_MARK on the peer
 
@@ -3988,7 +3978,7 @@ git push
 
 A push outside workloads/ publishes nothing
 
-Commits that only touch `core/`, `docs/` or `config/` do not trigger the workflow. Run it by hand from the Actions tab (`workflow_dispatch`) if the manifests branch must refresh.
+Commits that only touch `core/` or `docs/` do not trigger the workflow. Run it by hand from the Actions tab (`workflow_dispatch`) if the manifests branch must refresh.
 
 CI blocks rendered Secrets
 
@@ -5790,7 +5780,7 @@ OpenBao holds every runtime secret; pods read them through the [CSI driver](/wor
 | Source    | [`openbao.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/secrets/openbao.go), [`openbao-setup.sh`](https://github.com/madhank93/homelab/blob/v0.1.8/scripts/openbao-setup.sh) |
 | Exposure  | LAN · `openbao.madhan.app` → `openbao:8200`                                                                                                                                                    |
 | Storage   | 10 Gi Longhorn, `file` backend                                                                                                                                                                 |
-| Auth      | Root tokens minted on demand by `just openbao-token`                                                                                                                                           |
+| Auth      | Root tokens minted per command by `just openbao-root`                                                                                                                                          |
 
 ![OpenBao sign-in page with the token method](/assets/screenshots/openbao/login.jpg)
 
@@ -5837,7 +5827,7 @@ OpenBao starts sealed after every restart. The `unseal` container polls `bao sta
 
 First-time init and setup are part of the [deployment guide](/start/deploy/). The server StatefulSet uses `OnDelete`, so a config change takes effect only after `kubectl delete pod -n openbao openbao-0`.
 
-No root token is stored. `just openbao-token` runs the generate-root ceremony over the in-pod socket and refuses to print to a terminal: capture it, pass it on stdin, revoke it.
+No root token is stored. `just openbao-root <bao args>` runs the generate-root ceremony over the in-pod socket, runs one `bao` command with the token, and revokes it on exit. The token and any piped value travel on stdin, never in a process list.
 
 ### Read a secret
 
@@ -5853,10 +5843,7 @@ just openbao-get secret/grafana ADMIN_PASSWORD
 [Section titled “Change a value”](#change-a-value)
 
 ```bash
-export ROOT_TOKEN=$(just openbao-token)
-printf '%s\n%s' "$ROOT_TOKEN" '<new value>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
-  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret grafana ADMIN_PASSWORD=-'
-just openbao-revoke
+printf '%s' '<new value>' | just openbao-root kv patch -mount=secret grafana ADMIN_PASSWORD=-
 ```
 
 ### Any other bao command
@@ -5864,10 +5851,7 @@ just openbao-revoke
 [Section titled “Any other bao command”](#any-other-bao-command)
 
 ```bash
-export ROOT_TOKEN=$(just openbao-token)
-printf '%s\n' "$ROOT_TOKEN" | kubectl exec -i -n openbao openbao-0 -c openbao -- \
-  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao "$@"' bao read auth/kubernetes/role/grafana
-just openbao-revoke
+just openbao-root read auth/kubernetes/role/grafana
 ```
 
 To test what an app itself can read, use `just openbao-sa-get <sa> <ns> <role> secret/<app>`.
