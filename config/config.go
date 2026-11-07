@@ -49,6 +49,7 @@ type Config struct {
 	ManifestsBranch  string                           `yaml:"manifests_branch"`
 	ArgoCDManualSync bool                             `yaml:"argocd_manual_sync"`
 	GrafanaAdmins    []string                         `yaml:"grafana_admins"`
+	ACMEEmail        string                           `yaml:"acme_email"`
 	Cloudflare       struct {
 		ZoneID string `yaml:"zone_id"`
 	} `yaml:"cloudflare"`
@@ -56,6 +57,8 @@ type Config struct {
 		Username string `yaml:"username"`
 		Endpoint string `yaml:"endpoint"`
 		NodeName string `yaml:"nodename"`
+		IP       string `yaml:"ip"`
+		Host     string `yaml:"host"`
 	} `yaml:"proxmox"`
 	Hetzner struct {
 		ServerName string `yaml:"server_name"`

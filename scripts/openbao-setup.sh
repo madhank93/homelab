@@ -73,7 +73,7 @@ echo "→ Enabling KV v2 at secret/..."
 bao secrets enable -path=secret kv-v2 >/dev/null 2>&1 || echo "  (secret/ already enabled)"
 
 # app:ServiceAccount that mounts the app's SecretProviderClass (namespace = app).
-roles="grafana:grafana harbor:secret-sync n8n:n8n netbird:default falco:secret-sync cs2:cs2"
+roles="grafana:grafana harbor:secret-sync n8n:n8n netbird:default falco:secret-sync cs2:cs2 homepage:homepage"
 
 echo "→ Writing read-only policies and K8s auth roles..."
 for role in $roles; do
@@ -104,6 +104,8 @@ seed netbird NETBIRD_SETUP_KEY "$(rand)"
 seed falco FALCOSIDEKICK_UI_USER "admin:$(rand)"
 seed cs2 RCON_PASSWORD "$(rand)"
 seed cs2 JOIN_PASSWORD "$(rand)"
+seed homepage AUTH_SECRET "$(rand)"
+seed homepage OAUTH_CLIENT_SECRET "${HOMEPAGE_OAUTH_CLIENT_SECRET:?missing from secrets/bootstrap.sops.yaml}"
 
 cat <<'EOF'
 

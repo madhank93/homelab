@@ -70,6 +70,11 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 		return err
 	}
 
+	// Proxmox host, LAN only; its Let's Encrypt cert is ordered by the talos stack.
+	if err := newRecord(config.C.Host(config.C.Proxmox.Host), "proxmox-host", config.C.Proxmox.IP, "Proxmox VE - LAN only"); err != nil {
+		return err
+	}
+
 	// Always-public: Authentik, NetBird, NetBird expose base, Gatus uptime page
 	for _, svc := range []string{"auth", "netbird", "proxy", "uptime"} {
 		if err := newRecord(config.C.Host(svc), "always-public-"+svc, hetznerIP, "Bifrost VPS - always public"); err != nil {

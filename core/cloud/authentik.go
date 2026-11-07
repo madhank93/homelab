@@ -98,14 +98,16 @@ type OIDCApp struct {
 	Redirects             []string
 	LaunchURL             string
 	ExtraPropertyMappings pulumi.StringArray // additional scope/property mappings beyond the defaults
+	AccessGroup           pulumi.StringInput // when set, only this group's members may log in
 }
 
 // DeployAuthentik configures the Authentik identity provider running on Bifrost.
-// It registers GitHub as an SSO source, creates OIDC applications for Grafana
-// and NetBird, provisions a service account for NetBird management sync, and
+// It registers GitHub as an SSO source, creates OIDC applications for Grafana,
+// Homepage and NetBird, provisions a service account for NetBird management sync, and
 // creates the homelab-wide ForwardAuth proxy provider backed by Traefik.
 //
-// Prerequisites: AUTHENTIK_TOKEN and AUTHENTIK_GITHUB_SECRET must be present
+// Prerequisites: AUTHENTIK_TOKEN, AUTHENTIK_GITHUB_SECRET and the per-app
+// *_CLIENT_SECRET values must be present
 // in the SOPS-injected environment (run via `sops exec-env secrets/bootstrap.sops.yaml`).
 func DeployAuthentik(ctx *pulumi.Context) error {
 	token := cfg.K.String("AUTHENTIK_TOKEN")
@@ -280,7 +282,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		}
 		grafanaAdmins = append(grafanaAdmins, pulumi.Float64(res.Users[0].Pk))
 	}
-	_, err = authentik.NewGroup(ctx, "group-grafana-admins", &authentik.GroupArgs{
+	grafanaAdminsGroup, err := authentik.NewGroup(ctx, "group-grafana-admins", &authentik.GroupArgs{
 		Name:  pulumi.String("grafana-admins"),
 		Users: grafanaAdmins,
 	}, pulumi.Provider(provider))
@@ -290,7 +292,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 
 	// Grafana — confidential OIDC app. GitHub login flows through Authentik.
 	// Client secret stored in SOPS as GRAFANA_OAUTH_CLIENT_SECRET and in
-	// OpenBao at secret/grafana.OAUTH_CLIENT_SECRET (run: just openbao-grafana-secret).
+	// OpenBao at secret/grafana.OAUTH_CLIENT_SECRET (seeded by just openbao-setup).
 	grafanaSecret := cfg.K.String("GRAFANA_OAUTH_CLIENT_SECRET")
 	if grafanaSecret == "" {
 		return fmt.Errorf("missing GRAFANA_OAUTH_CLIENT_SECRET in config")
@@ -310,6 +312,26 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 	ctx.Export("GrafanaOIDCClientID", pulumi.String("grafana-homelab"))
+
+	// Homepage — confidential OIDC app. Homepage admits any identity the
+	// provider authorizes, and any GitHub account can enroll in Authentik,
+	// so access is limited to the grafana-admins group.
+	homepageSecret := cfg.K.String("HOMEPAGE_OAUTH_CLIENT_SECRET")
+	if homepageSecret == "" {
+		return fmt.Errorf("missing HOMEPAGE_OAUTH_CLIENT_SECRET in config")
+	}
+	if err := createOIDCApp(ac, OIDCApp{
+		Name:         "Homepage",
+		Slug:         "homepage",
+		ClientID:     "homepage-homelab",
+		ClientSecret: homepageSecret,
+		ClientType:   "confidential",
+		LaunchURL:    "https://" + config.C.Host("home") + "/",
+		Redirects:    []string{"https://" + config.C.Host("home") + "/api/auth/callback/homepage-oidc"},
+		AccessGroup:  grafanaAdminsGroup.ID().ToStringOutput(),
+	}); err != nil {
+		return err
+	}
 
 	// Netbird — confidential OIDC app for NetBird's embedded Dex, which federates
 	// to Authentik. Dex's callback URI is always issuer + "/callback".
@@ -440,13 +462,21 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 
 	providerIDPtr := idFloat(oidcProvider.ID()).ToFloat64PtrOutput()
 
-	_, err = authentik.NewApplication(ac.Ctx, fmt.Sprintf("app-%s", app.ClientID), &authentik.ApplicationArgs{
+	application, err := authentik.NewApplication(ac.Ctx, fmt.Sprintf("app-%s", app.ClientID), &authentik.ApplicationArgs{
 		Name:             pulumi.String(app.Name),
 		Slug:             pulumi.String(app.Slug),
 		ProtocolProvider: providerIDPtr,
 		MetaLaunchUrl:    pulumi.String(app.LaunchURL),
 	}, pulumi.Provider(ac.Provider))
+	if err != nil || app.AccessGroup == nil {
+		return err
+	}
 
+	_, err = authentik.NewPolicyBinding(ac.Ctx, fmt.Sprintf("binding-%s", app.ClientID), &authentik.PolicyBindingArgs{
+		Target: application.Uuid,
+		Group:  app.AccessGroup,
+		Order:  pulumi.Float64(0),
+	}, pulumi.Provider(ac.Provider))
 	return err
 }
 

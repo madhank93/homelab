@@ -51,6 +51,10 @@ kubectl get certificate -A      # expect Ready=True
 kubectl get secret -n cilium-secrets
 ```
 
+## Proxmox host certificate
+
+The Proxmox UI at `pve.madhan.app:8006` does not go through cert-manager. The talos stack ([`proxmox.go`](src:core/platform/proxmox.go)) sets up Proxmox's own ACME client with the same Cloudflare token and orders the certificate once. Proxmox then renews it itself. The `pve` A record points at the host on the LAN ([`cloudflare.go`](src:core/cloud/cloudflare.go)).
+
 ## Troubleshooting
 
 ### Certificate not Ready

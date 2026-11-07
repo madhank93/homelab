@@ -1,0 +1,3 @@
+mode: cluster
+# Services are listed in services.yaml; no Ingress/Gateway discovery.
+ingress: false

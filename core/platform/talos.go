@@ -30,6 +30,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := NewProxmoxCert(ctx, provider); err != nil {
+		return err
+	}
 	cl := config.C.Cluster
 	talos := config.V.Talos
 	pveNode := config.C.Proxmox.NodeName

@@ -54,6 +54,7 @@ var apps = []struct {
 	{"argocd-monitor", func(a cdk8s.App) { observability.NewArgoCDMonitorChart(a, "argocd-monitor-app") }},
 	{"netbird", func(a cdk8s.App) { networking.NewNetbirdPeerChart(a, "netbird-app", "netbird") }},
 	{"headlamp", func(a cdk8s.App) { management.NewHeadlampChart(a, "headlamp-app", "headlamp") }},
+	{"homepage", func(a cdk8s.App) { management.NewHomepageChart(a, "homepage-app", "homepage") }},
 	{"reloader", func(a cdk8s.App) { support.NewReloaderChart(a, "reloader-app", "reloader") }},
 	{"cs2", func(a cdk8s.App) { gaming.NewCS2Chart(a, "cs2-app", "cs2") }},
 	{"metrics-server", func(a cdk8s.App) { monitoring.NewMetricsServerChart(a, "metrics-server-app") }},

@@ -1,0 +1,12 @@
+title: Homelab
+headerStyle: clean
+theme: dark
+color: slate
+statusStyle: dot
+hideVersion: true
+layout:
+  Platform: {style: row, columns: 4}
+  Observability: {style: row, columns: 4}
+  AI: {style: row, columns: 4}
+  Apps: {style: row, columns: 4}
+  Edge: {style: row, columns: 4}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve/acme"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve/acme/dns"
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve/download"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
@@ -31,6 +33,48 @@ func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, error) {
 	}
 
 	return provider, nil
+}
+
+// NewProxmoxCert orders a Let's Encrypt certificate for <proxmox.host>.<domain>
+// through a Cloudflare DNS-01 challenge, so the web UI needs no LAN exposure.
+// Proxmox renews it itself (pve-daily-update) once it is within 30 days of expiry.
+func NewProxmoxCert(ctx *pulumi.Context, provider *proxmoxve.Provider) error {
+	pcfg := config.C.Proxmox
+	cfToken := cfg.K.String("CLOUDFLARE_API_TOKEN")
+	if cfToken == "" {
+		return fmt.Errorf("CLOUDFLARE_API_TOKEN not found in .env")
+	}
+
+	account, err := acme.NewAccount(ctx, "pve-acme-account", &acme.AccountArgs{
+		Name:      pulumi.String("letsencrypt"),
+		Contact:   pulumi.String(config.C.ACMEEmail),
+		Directory: pulumi.String("https://acme-v02.api.letsencrypt.org/directory"),
+		Tos:       pulumi.String("https://letsencrypt.org/documents/LE-SA-v1.8-July-06-2026.pdf"),
+	}, pulumi.Provider(provider), pulumi.IgnoreChanges([]string{"tos"}))
+	if err != nil {
+		return err
+	}
+
+	plugin, err := dns.NewPlugin(ctx, "pve-acme-cloudflare", &dns.PluginArgs{
+		Plugin: pulumi.String("cloudflare"),
+		Api:    pulumi.String("cf"),
+		Data: pulumi.ToSecret(pulumi.StringMap{
+			"CF_Token":   pulumi.String(cfToken),
+			"CF_Zone_ID": pulumi.String(config.C.Cloudflare.ZoneID),
+		}).(pulumi.StringMapOutput),
+	}, pulumi.Provider(provider))
+	if err != nil {
+		return err
+	}
+
+	_, err = acme.NewCertificate(ctx, "pve-acme-cert", &acme.CertificateArgs{
+		NodeName: pulumi.String(pcfg.NodeName),
+		Account:  account.Name,
+		Domains: acme.CertificateDomainArray{
+			&acme.CertificateDomainArgs{Domain: pulumi.String(config.C.Host(pcfg.Host)), Plugin: plugin.Plugin},
+		},
+	}, pulumi.Provider(provider))
+	return err
 }
 
 // DownloadImage downloads a file to the Proxmox datastore.

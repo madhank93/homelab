@@ -1,0 +1,10 @@
+- Infra:
+    - GitHub:
+        - icon: github.svg
+          href: https://github.com/madhank93/homelab
+    - Cloudflare:
+        - icon: cloudflare.svg
+          href: https://dash.cloudflare.com
+    - Hetzner:
+        - icon: hetzner.svg
+          href: https://console.hetzner.cloud

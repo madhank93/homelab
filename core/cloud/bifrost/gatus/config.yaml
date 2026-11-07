@@ -128,6 +128,14 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
 
+  - name: Homepage
+    group: Management
+    url: https://home.madhan.app/api/healthcheck
+    interval: 1m
+    ui: *private
+    conditions:
+      - "[STATUS] == 200"
+
   # ── Network ───────────────────────────────────────────────────────────────────
 
   - name: Hubble UI

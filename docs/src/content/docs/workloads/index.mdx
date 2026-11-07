@@ -23,6 +23,7 @@ Each app is a CDK8s chart in [`main.go`](src:workloads/main.go), synthesized by 
 | [CloudNativePG](/workloads/databases/cnpg/) | Databases | none | — | — |
 | [Counter-Strike 2](/workloads/gaming/cs2/) | Gaming | LAN | `192.168.1.230:27015` | Join password |
 | [Headlamp](/workloads/management/headlamp/) | Management | LAN | `headlamp.madhan.app` | ServiceAccount token |
+| [Homepage](/workloads/management/homepage/) | Management | LAN | `home.madhan.app` | Authentik OIDC (Homepage's own) |
 | [Argo CD monitor](/workloads/monitoring/argocd-monitor/) | Monitoring | none | — | — |
 | [Grafana](/workloads/monitoring/grafana/) | Monitoring | **Public** | `grafana.madhan.app` | Authentik OIDC (Grafana's own) |
 | [Metrics Server](/workloads/monitoring/metrics-server/) | Monitoring | none | — | — |
@@ -52,7 +53,7 @@ Rows marked "None" trust anything that can reach the LAN or the VPN. Keep them o
   <LinkCard title="Automation" href="/workloads/automation/" description="n8n workflows." />
   <LinkCard title="Databases" href="/workloads/databases/" description="CloudNativePG operator." />
   <LinkCard title="Gaming" href="/workloads/gaming/" description="Counter-Strike 2 server." />
-  <LinkCard title="Management" href="/workloads/management/" description="Headlamp cluster dashboard." />
+  <LinkCard title="Management" href="/workloads/management/" description="Headlamp cluster dashboard and the Homepage start page." />
   <LinkCard title="Monitoring" href="/workloads/monitoring/" description="Grafana, VictoriaMetrics, VictoriaLogs, OpenTelemetry." />
   <LinkCard title="Networking" href="/workloads/networking/" description="In-cluster NetBird routing peer." />
   <LinkCard title="Registry" href="/workloads/registry/" description="Harbor image registry." />

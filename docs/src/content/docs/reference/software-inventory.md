@@ -97,6 +97,7 @@ Trivy has two pins: the chart comes from the typed package, while the CRD bundle
 |---|---|---|
 | Harbor | 1.19.4 | [`cdk8s.yaml`](src:workloads/cdk8s.yaml) |
 | Headlamp | 0.45.0 | [`cdk8s.yaml`](src:workloads/cdk8s.yaml) |
+| Homepage | v2.7.0 | [`config/versions.yaml`](src:config/versions.yaml) |
 | n8n (chart) | 2.1.1 | [`workloads/automation/n8n.go`](src:workloads/automation/n8n.go) |
 | n8n (image) | 2.45.5 | same |
 | Reloader | 2.2.19 | [`workloads/support/reloader.go`](src:workloads/support/reloader.go) |

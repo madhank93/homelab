@@ -34,6 +34,9 @@ argocd_manual_sync: false
 # only after their first GitHub login, so Pulumi skips unknown emails.
 grafana_admins: [madhankumaravelu93@gmail.com]
 
+# Contact for Let's Encrypt accounts (expiry notices).
+acme_email: madhankumaravelu93@gmail.com
+
 cloudflare:
   zone_id: ab8d029e91fb2bb38cb8bc91b9f0b218
 
@@ -41,6 +44,9 @@ proxmox:
   username: root@pam
   endpoint: https://192.168.1.235:8006/
   nodename: proxmox
+  ip: 192.168.1.235
+  # <host>.<domain> gets an A record to ip and a Let's Encrypt cert on the host.
+  host: pve
 
 hetzner:
   server_name: bifrost-public-vps1
