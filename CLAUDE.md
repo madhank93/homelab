@@ -46,3 +46,5 @@ just check   # lint (golangci-lint, .golangci.yml) + tests + core build + synth 
 ## Skills
 
 Go style: `golang-*` skills (vendored from samber/cc-skills-golang by `scripts/sync-skills.sh`; don't edit them by hand). Repo conventions: `homelab-cdk8s`, `homelab-pulumi-go`. Index and trigger table: `.claude/skills/README.md`.
+
+Agents (`.claude/agents/`): `cluster-inspector` for read-only live-cluster diagnosis, `change-reviewer` for a diff review before commit. `just skill-check` verifies the README trigger table.

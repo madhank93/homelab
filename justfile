@@ -47,6 +47,10 @@ secret-scan-history:
 docs-check:
     ./scripts/docs-version-check.sh
 
+# Check each README trigger prompt loads the expected skill (calls claude; costs API usage)
+skill-check skill='':
+    ./scripts/skill-trigger-check.sh {{skill}}
+
 # Serve the docs locally at http://localhost:4321
 [working-directory: 'docs']
 docs-serve:

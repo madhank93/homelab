@@ -7,6 +7,7 @@ directly — they expect environment variables that `sops exec-env` provides.
 |---|---|---|
 | `create-bootstrap-secrets.sh` | `just create-secrets` | Creates the two bootstrap Secrets (OpenBao unseal key, Cloudflare API token) from `secrets/bootstrap.sops.yaml`. |
 | `openbao-setup.sh` | `just openbao-setup` | One-time OpenBao configuration: Kubernetes auth, policies, roles. |
+| `skill-trigger-check.sh` | `just skill-check [skill]` | Runs each trigger prompt in `.claude/skills/README.md` through `claude -p` and checks the expected skill loads. Costs API usage. |
 
 ## Talos upgrades
 
