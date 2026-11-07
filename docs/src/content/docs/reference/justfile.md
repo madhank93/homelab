@@ -31,8 +31,9 @@ All recipes run from the repo root. Values such as the VIP and node IPs are read
 | `create-secrets` | — | Creates the bootstrap Kubernetes Secrets from SOPS (`scripts/create-bootstrap-secrets.sh`) |
 | `openbao-init` | — | One-time: initialises and unseals OpenBao, writes the unseal key to `~/openbao-unseal-key` (mode 600), revokes the init root token, prints next steps |
 | `openbao-setup` | — | Kubernetes auth, policies, roles and seeded app secrets (`scripts/openbao-setup.sh`). Idempotent; never overwrites values |
-| `openbao-token` | — | Root token via generate-root over the in-pod socket. Refuses a terminal: `export ROOT_TOKEN=$(just openbao-token)` |
-| `openbao-revoke` | `[token]` | Revokes the token, or `$ROOT_TOKEN` |
+| `openbao-root` | `bao args…` | Runs one `bao` command with a throwaway root token (generate-root over the in-pod socket), revoked on exit. Piped stdin reaches `bao` |
+| `openbao-token` | — | Root token kept for longer, e.g. for the UI. Refuses a terminal: `just openbao-token \| pbcopy` |
+| `openbao-revoke` | stdin | Revokes the token piped in: `pbpaste \| just openbao-revoke` |
 | `openbao-get` | `path [field]` | Reads a KV path with a throwaway root token |
 | `openbao-sa-token` | `sa ns role` | Short-lived OpenBao token via Kubernetes auth for a service account |
 | `openbao-sa-get` | `sa ns role path [field]` | Reads a KV path as that service account |

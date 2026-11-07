@@ -96,14 +96,14 @@ openbao-setup:
     SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt" \
       sops exec-env secrets/bootstrap.sops.yaml 'bash scripts/openbao-setup.sh'
 
-# Refuses to print to a terminal; capture it and revoke it when done:
-#   export ROOT_TOKEN=$(just openbao-token) ... just openbao-revoke
 # Generate a root token from the unseal key in the openbao-unseal-key Secret.
 # Goes through the in-pod socket: the only listener allowing generate-root (openbao.go).
+# Refuses a terminal: copy it with | pbcopy, revoke it with pbpaste | just openbao-revoke.
+# Root token for longer use (UI login); one-off commands should use openbao-root
 openbao-token:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [[ -t 1 ]]; then echo "Capture the token instead: export ROOT_TOKEN=\$(just openbao-token)" >&2; exit 1; fi
+    if [[ -t 1 ]]; then echo "Use just openbao-root <bao args> instead" >&2; exit 1; fi
     gen="{{bao_exec}} env BAO_ADDR=unix:///tmp/openbao.sock bao"
     $gen delete sys/generate-root/attempt </dev/null >/dev/null
     init="$($gen write -format=json -f sys/generate-root/attempt </dev/null)"
@@ -117,17 +117,28 @@ openbao-token:
     e, o = sys.stdin.read().split()
     print(bytes(b ^ ord(c) for b, c in zip(base64.b64decode(e + "=" * (-len(e) % 4)), o)).decode())'
 
-# Read an OpenBao secret with a throwaway root token. Optionally pass a field name.
-# Usage:
-#   just openbao-get secret/grafana
-#   just openbao-get secret/grafana ADMIN_PASSWORD
-openbao-get path field='':
+# Piped stdin reaches bao after the token, so values travel as key=- and never hit argv:
+#   just openbao-root read auth/kubernetes/role/grafana
+#   printf '%s' '<value>' | just openbao-root kv patch -mount=secret grafana ADMIN_PASSWORD=-
+# Run one bao command with a throwaway root token, revoked on exit
+[positional-arguments]
+openbao-root +args:
     #!/usr/bin/env bash
     set -euo pipefail
     token="$(just openbao-token)"
-    bao() { printf '%s\n' "$token" | {{bao_root}} "$@"; }
-    trap 'bao token revoke -self >/dev/null' EXIT
-    if [[ -n "{{field}}" ]]; then bao kv get -field="{{field}}" "{{path}}"; else bao kv get "{{path}}"; fi
+    root() { {{bao_root}} "$@"; }
+    trap 'printf "%s\n" "$token" | root token revoke -self >/dev/null' EXIT
+    { printf '%s\n' "$token"; [[ -t 0 ]] || cat; } | root "$@"
+
+# Revoke a token read from stdin, e.g. one kept for the UI: pbpaste | just openbao-revoke
+openbao-revoke:
+    {{bao_root}} token revoke -self
+
+#   just openbao-get secret/grafana
+#   just openbao-get secret/grafana ADMIN_PASSWORD
+# Read an OpenBao secret as root, optionally one field
+openbao-get path field='':
+    just openbao-root kv get {{ if field != "" { "-field=" + field } else { "" } }} {{path}}
 
 # Sync one Argo CD Application from git, without the argocd CLI.
 # Used while argocd_manual_sync is true. Example: just argocd-sync openbao
@@ -135,12 +146,6 @@ argocd-sync app:
     kubectl patch application {{app}} -n argocd --type merge \
       -p '{"operation":{"initiatedBy":{"username":"just"},"sync":{"prune":true,"syncOptions":["CreateNamespace=true","ServerSideApply=true"]}}}'
     @echo "watch: kubectl get application {{app}} -n argocd -w"
-
-# Revoke a root token from openbao-token (argument, or $ROOT_TOKEN if omitted)
-openbao-revoke $token='':
-    #!/usr/bin/env bash
-    set -euo pipefail
-    printf '%s\n' "${token:-${ROOT_TOKEN:?pass a token or export ROOT_TOKEN}}" | {{bao_root}} token revoke -self
 
 # Get a short-lived OpenBao token via Kubernetes auth using a service account.
 # The service account must be bound to an OpenBao role (see scripts/openbao-setup.sh).
@@ -163,18 +168,7 @@ openbao-sa-token sa ns role:
 #   just openbao-sa-get secret-sync harbor harbor secret/harbor
 #   just openbao-sa-get secret-sync harbor harbor secret/harbor HARBOR_ADMIN_PASSWORD
 openbao-sa-get sa ns role path field='':
-    #!/usr/bin/env bash
-    set -euo pipefail
-    SA_TOKEN=$(kubectl create token {{sa}} -n {{ns}} --duration=10m)
-    VAULT_TOKEN=$(kubectl exec -n openbao openbao-0 -c openbao -- \
-      bao write -field=token auth/kubernetes/login role={{role}} jwt="$SA_TOKEN")
-    if [ -n "{{field}}" ]; then
-      kubectl exec -n openbao openbao-0 -c openbao -- \
-        env VAULT_TOKEN="$VAULT_TOKEN" bao kv get -field={{field}} {{path}}
-    else
-      kubectl exec -n openbao openbao-0 -c openbao -- \
-        env VAULT_TOKEN="$VAULT_TOKEN" bao kv get {{path}}
-    fi
+    just openbao-sa-token {{sa}} {{ns}} {{role}} | {{bao_root}} kv get {{ if field != "" { "-field=" + field } else { "" } }} {{path}}
 
 # One-time: create Grafana's "Public" org (must get id 2, see workloads/monitoring/grafana.go).
 # Grafana won't start while provisioning references a missing org, so run this

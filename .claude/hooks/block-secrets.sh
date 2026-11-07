@@ -18,7 +18,7 @@ fi
 if grep -qE '(^|[;&|([:space:]])sops[[:space:]]+(-d|--decrypt|decrypt|exec-|edit|set|unset)' <<<"$cmd"; then
   deny "sops runs only from the justfile, by the user"
 fi
-if grep -qE 'just[[:space:]]+(sops-view|sops-decrypt|openbao-get|openbao-sa-get|openbao-token)' <<<"$cmd"; then
+if grep -qE 'just[[:space:]]+(sops-view|sops-decrypt|openbao-get|openbao-sa-get|openbao-token|openbao-root)' <<<"$cmd"; then
   deny "recipe prints secret values"
 fi
 # Secret payloads from the cluster; names and `describe` (byte counts only) stay allowed.

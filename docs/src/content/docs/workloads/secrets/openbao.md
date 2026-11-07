@@ -14,7 +14,7 @@ OpenBao holds every runtime secret; pods read them through the [CSI driver](/wor
 | Source | [`openbao.go`](src:workloads/secrets/openbao.go), [`openbao-setup.sh`](src:scripts/openbao-setup.sh) |
 | Exposure | LAN · `openbao.madhan.app` → `openbao:8200` |
 | Storage | 10 Gi Longhorn, `file` backend |
-| Auth | Root tokens minted on demand by `just openbao-token` |
+| Auth | Root tokens minted per command by `just openbao-root` |
 
 ![OpenBao sign-in page with the token method](/assets/screenshots/openbao/login.jpg)
 
@@ -53,7 +53,7 @@ OpenBao starts sealed after every restart. The `unseal` container polls `bao sta
 
 First-time init and setup are part of the [deployment guide](/start/deploy/). The server StatefulSet uses `OnDelete`, so a config change takes effect only after `kubectl delete pod -n openbao openbao-0`.
 
-No root token is stored. `just openbao-token` runs the generate-root ceremony over the in-pod socket and refuses to print to a terminal: capture it, pass it on stdin, revoke it.
+No root token is stored. `just openbao-root <bao args>` runs the generate-root ceremony over the in-pod socket, runs one `bao` command with the token, and revokes it on exit. The token and any piped value travel on stdin, never in a process list.
 
 ### Read a secret
 
@@ -65,19 +65,13 @@ just openbao-get secret/grafana ADMIN_PASSWORD
 ### Change a value
 
 ```bash frame="terminal"
-export ROOT_TOKEN=$(just openbao-token)
-printf '%s\n%s' "$ROOT_TOKEN" '<new value>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
-  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret grafana ADMIN_PASSWORD=-'
-just openbao-revoke
+printf '%s' '<new value>' | just openbao-root kv patch -mount=secret grafana ADMIN_PASSWORD=-
 ```
 
 ### Any other bao command
 
 ```bash frame="terminal"
-export ROOT_TOKEN=$(just openbao-token)
-printf '%s\n' "$ROOT_TOKEN" | kubectl exec -i -n openbao openbao-0 -c openbao -- \
-  sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao "$@"' bao read auth/kubernetes/role/grafana
-just openbao-revoke
+just openbao-root read auth/kubernetes/role/grafana
 ```
 
 To test what an app itself can read, use `just openbao-sa-get <sa> <ns> <role> secret/<app>`.

@@ -28,13 +28,10 @@ Goal: Bifrost and the cluster peer join the mesh, and Bifrost reaches `192.168.1
    just core hetzner up
    ```
 
-3. Write the cluster key to OpenBao. Token and key travel on stdin, so neither shows in a process list.
+3. Write the cluster key to OpenBao. The key travels on stdin, so it never shows in a process list.
 
    ```sh frame="terminal"
-   export ROOT_TOKEN=$(just openbao-token)
-   printf '%s\n%s' "$ROOT_TOKEN" '<k8s-routing-peer key>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
-     sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-'
-   just openbao-revoke
+   printf '%s' '<k8s-routing-peer key>' | just openbao-root kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-
    ```
 
 4. Restart the peer so it mounts the new key.
@@ -46,10 +43,6 @@ Goal: Bifrost and the cluster peer join the mesh, and Bifrost reaches `192.168.1
 5. In the NetBird UI, add **Network → Routes → Add Route**: network `192.168.1.0/24`, routing peer `k8s-routing-peer`, enabled.
 
 </Steps>
-
-:::caution[openbao-token refuses a terminal]
-It exits if stdout is a TTY, so the root token never lands in scrollback. Always capture it with `export ROOT_TOKEN=$(just openbao-token)` and revoke it after.
-:::
 
 :::danger[Never set NB_SKIP_SOCKET_MARK on the peer]
 The routing peer adds a host route that keeps management traffic off WireGuard; the socket mark is what bypasses it. Without the mark the relay connection breaks and the tunnel goes dead.

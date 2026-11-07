@@ -18,8 +18,7 @@ Each recipe below fixes a failure this cluster has actually hit. Run them from t
 | `just talos-health` | Before and after any node change; must be clean before the next node | `talosctl health` against the first control plane via the VIP |
 | `just talos-versions` | Checking an upgrade landed on every node | `talosctl version` on every node in `config/config.yml` |
 | `just headlamp-token [duration]` | Logging in to Headlamp | Issues a short-lived cluster-admin token for `headlamp-admin` (default 24h) |
-| `just openbao-token` | You need root on OpenBao | Generates a root token over the in-pod unix socket from the unseal key Secret. Refuses to print to a terminal: capture it with `export ROOT_TOKEN=$(just openbao-token)` |
-| `just openbao-revoke [token]` | When done with a root token | Revokes the token passed, or `$ROOT_TOKEN` |
+| `just openbao-root <bao args>` | You need root on OpenBao | Generates a root token over the in-pod unix socket from the unseal key Secret, runs one `bao` command with it, revokes it on exit. Piped stdin reaches `bao`, for `key=-` values |
 | `just openbao-get <path> [field]` | Reading one secret | Mints a throwaway root token, reads the KV path, revokes the token on exit |
 | `just openbao-sa-get <sa> <ns> <role> <path> [field]` | Proving an app's role can read its secret | Logs in with the service account's token through Kubernetes auth, then reads the path |
 | `just grafana-init` | Grafana fails to start because provisioning references org 2 | Creates Grafana's "Public" org and checks it got id 2. Idempotent |

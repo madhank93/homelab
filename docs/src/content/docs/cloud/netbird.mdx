@@ -101,10 +101,7 @@ Run after the first `just core hetzner up` has all containers healthy.
 5. Store the routing peer's key in OpenBao:
 
    ```sh frame="terminal"
-   export ROOT_TOKEN=$(just openbao-token)
-   printf '%s\n%s' "$ROOT_TOKEN" '<k8s-routing-peer key>' | kubectl exec -i -n openbao openbao-0 -c openbao -- \
-     sh -c 'read -r BAO_TOKEN; export BAO_TOKEN; exec bao kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-'
-   just openbao-revoke
+   printf '%s' '<k8s-routing-peer key>' | just openbao-root kv patch -mount=secret netbird NETBIRD_SETUP_KEY=-
    ```
 
 6. Wait for the peer to connect: `kubectl exec -n netbird netbird-peer-0 -- netbird status` shows `Management: Connected`.

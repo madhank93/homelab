@@ -1,0 +1,8 @@
+# Default gitleaks rules plus path allowlists for vendored files whose fake
+# credentials are deliberate "bad" examples; they are never hand-edited.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "samber golang-security: sample keys in DON'T examples"
+paths = ['''^\.claude/skills/golang-security/references/secrets\.md$''']
