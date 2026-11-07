@@ -1,6 +1,6 @@
 ---
 title: Authentik
-description: SSO on Bifrost — GitHub login, OIDC for Grafana and NetBird, and ForwardAuth for public cluster routes.
+description: SSO on Bifrost — GitHub login, OIDC for the cluster admin UIs and NetBird, and ForwardAuth for public cluster routes.
 sidebar:
   order: 30
 ---
@@ -12,7 +12,7 @@ Authentik on Bifrost is the single sign-on for everything public: users log in w
 | URL | `https://auth.madhan.app` (always public) |
 | Runs on | [Bifrost](/cloud/bifrost/), started by `just core hetzner up` |
 | Configured by | Pulumi stack `authentik`, [`authentik.go`](src:core/cloud/authentik.go), `just core authentik up` |
-| Secrets | `AUTHENTIK_TOKEN`, `AUTHENTIK_GITHUB_SECRET`, `GRAFANA_OAUTH_CLIENT_SECRET`, `NETBIRD_CLIENT_SECRET` (SOPS) |
+| Secrets | `AUTHENTIK_TOKEN`, `AUTHENTIK_GITHUB_SECRET`, `NETBIRD_CLIENT_SECRET` and `<APP>_OAUTH_CLIENT_SECRET` for Grafana, Homepage, Argo CD, Harbor, Kubernetes and Proxmox (SOPS) |
 
 The container comes up on the Hetzner stack; the `authentik` stack then configures it through its API with `AUTHENTIK_TOKEN`, which is also the bootstrap token Authentik creates for `akadmin` on first boot.
 
@@ -32,11 +32,20 @@ The container comes up on the Hetzner stack; the `authentik` stack then configur
 | App | Client ID | Redirect URIs | Extra scopes |
 |---|---|---|---|
 | Grafana | `grafana-homelab` | `https://grafana.madhan.app/login/generic_oauth` | `groups` |
+| Homepage | `homepage-homelab` | `https://home.madhan.app/api/auth/callback/homepage-oidc` | — |
+| Argo CD | `argocd-homelab` | `https://argocd.madhan.app/auth/callback` | `groups` |
+| Harbor | `harbor-homelab` | `https://harbor.madhan.app/c/oidc/callback` | `groups` |
+| Kubernetes | `kubernetes` | `https://headlamp.madhan.app/oidc-callback` | `groups` |
+| Proxmox | `proxmox-homelab` | `https://pve.madhan.app:8006` | `groups` |
 | NetBird | `aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT` | `https://netbird.madhan.app/oauth2/callback`, `http://localhost:53000` | — |
 
-Both are confidential clients signed with the default self-signed key; access tokens last 1 hour, authorization codes 10 minutes. Every provider gets `openid`, `email`, `profile`, `offline_access` and a custom empty `api` scope that NetBird requests.
+All are confidential clients signed with the default self-signed key; access tokens last 1 hour, authorization codes 10 minutes. Every provider gets `openid`, `email`, `profile`, `offline_access` and a custom empty `api` scope that NetBird requests.
 
-The `groups` scope returns the user's group names. Grafana's `org_mapping` makes members of `grafana-admins` Admin of the main org; everyone else is a Viewer.
+Each provider lists its grant types (`authorization_code` and `refresh_token`; NetBird adds `device_code`). Authentik 2026.5+ rejects any grant type not listed, and a provider created without the list gets none, so every login fails with `invalid_request`.
+
+The `groups` scope returns the user's group names. Grafana's `org_mapping` makes members of `grafana-admins` Admin of the main org; everyone else is a Viewer. Argo CD, Harbor, Kubernetes (Headlamp) and Proxmox map `grafana-admins` to their admin role.
+
+Homepage, Argo CD, Harbor, Kubernetes and Proxmox are bound to `grafana-admins`: any GitHub account can enroll in Authentik, so Authentik refuses everyone else for these apps.
 
 The NetBird app is the upstream for NetBird's embedded Dex, not NetBird itself; the connector is added by hand in the NetBird UI ([setup](/cloud/netbird/)). Pulumi also creates service account `sa-netbird` (in `authentik Admins`) with a non-expiring token, exported as `NetbirdServiceToken`.
 
@@ -51,7 +60,7 @@ just core authentik up    # idempotent; re-run after drift or a failed run
 cd core && pulumi stack select authentik && pulumi stack output NetbirdServiceToken --show-secrets
 ```
 
-Grant Grafana admin: **Directory → Groups → grafana-admins → Add user**.
+Grant admin on Grafana, Homepage, Argo CD, Harbor and Headlamp: add the email to `grafana_admins` in `config.yml` and run `just core authentik up`. The user must have logged in once.
 
 ## Troubleshooting
 

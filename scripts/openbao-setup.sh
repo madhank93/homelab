@@ -73,7 +73,7 @@ echo "→ Enabling KV v2 at secret/..."
 bao secrets enable -path=secret kv-v2 >/dev/null 2>&1 || echo "  (secret/ already enabled)"
 
 # app:ServiceAccount that mounts the app's SecretProviderClass (namespace = app).
-roles="grafana:grafana harbor:secret-sync n8n:n8n netbird:default falco:secret-sync cs2:cs2 homepage:homepage"
+roles="grafana:grafana harbor:secret-sync n8n:n8n netbird:default falco:secret-sync cs2:cs2 homepage:homepage headlamp:headlamp"
 
 echo "→ Writing read-only policies and K8s auth roles..."
 for role in $roles; do
@@ -96,6 +96,7 @@ echo "→ Seeding missing secrets (existing values are never changed)..."
 seed grafana ADMIN_PASSWORD "$(rand)"
 seed grafana OAUTH_CLIENT_SECRET "${GRAFANA_OAUTH_CLIENT_SECRET:?missing from secrets/bootstrap.sops.yaml}"
 seed harbor HARBOR_ADMIN_PASSWORD "$(rand)"
+seed harbor OIDC_CLIENT_SECRET "${HARBOR_OAUTH_CLIENT_SECRET:?missing from secrets/bootstrap.sops.yaml}"
 # n8n's encryption key must never change, or saved credentials stop decrypting.
 # Older deploy docs wrote it as N8N_ENCRYPTION_KEY; carry that value over if present.
 legacy_n8n_key="$(jq -r '.data.data.N8N_ENCRYPTION_KEY // empty' <<<"$(read_secret n8n)")"
@@ -106,6 +107,7 @@ seed cs2 RCON_PASSWORD "$(rand)"
 seed cs2 JOIN_PASSWORD "$(rand)"
 seed homepage AUTH_SECRET "$(rand)"
 seed homepage OAUTH_CLIENT_SECRET "${HOMEPAGE_OAUTH_CLIENT_SECRET:?missing from secrets/bootstrap.sops.yaml}"
+seed headlamp OIDC_CLIENT_SECRET "${KUBERNETES_OAUTH_CLIENT_SECRET:?missing from secrets/bootstrap.sops.yaml}"
 
 cat <<'EOF'
 

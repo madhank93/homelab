@@ -50,6 +50,10 @@ With server-side diff, per-Application `jqPathExpressions` apply only to the dry
 
 Bootstrap Secrets `openbao/openbao-unseal-key` and `cert-manager/cloudflare-api-token` carry `Prune=false` so Argo CD never deletes them.
 
+## Login
+
+**Log in via Authentik** uses the `argocd-homelab` OIDC app; `grafana-admins` members get `role:admin` and other SSO users get nothing. Argo CD deploys OpenBao, so its client secret cannot come from there: the platform stack writes it from SOPS `ARGOCD_OAUTH_CLIENT_SECRET` into Secret `argocd/argocd-oidc`. The local `admin` login still works as the fallback.
+
 ## Operate
 
 ```sh frame="terminal"

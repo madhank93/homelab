@@ -1,6 +1,8 @@
 package registry
 
 import (
+	"encoding/json"
+
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
@@ -21,8 +23,30 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 	})
 
 	kit.Namespace(chart, namespace, false)
-	kit.SecretProviderClass(chart, "harbor-secrets", "harbor", []string{"HARBOR_ADMIN_PASSWORD"}, "harbor-admin",
-		kit.Sync{Object: "HARBOR_ADMIN_PASSWORD", Key: "HARBOR_ADMIN_PASSWORD"})
+	kit.SecretProviderClass(chart, "harbor-secrets", "harbor", []string{"HARBOR_ADMIN_PASSWORD", "OIDC_CLIENT_SECRET"}, "harbor-admin",
+		kit.Sync{Object: "HARBOR_ADMIN_PASSWORD", Key: "HARBOR_ADMIN_PASSWORD"},
+		kit.Sync{Object: "OIDC_CLIENT_SECRET", Key: "OIDC_CLIENT_SECRET"})
+
+	// Harbor keeps auth settings in its database; CONFIG_OVERWRITE_JSON makes
+	// core re-apply them on every start. The $(...) reference is expanded by
+	// the kubelet, so the client secret stays out of the rendered manifest.
+	// The local admin can still sign in at /account/sign-in.
+	oidc, err := json.Marshal(map[string]any{
+		"auth_mode":          "oidc_auth",
+		"oidc_name":          "Authentik",
+		"oidc_endpoint":      "https://" + config.C.Host("auth") + "/application/o/harbor/",
+		"oidc_client_id":     "harbor-homelab",
+		"oidc_client_secret": "$(OIDC_CLIENT_SECRET)",
+		"oidc_scope":         "openid,profile,email,groups,offline_access",
+		"oidc_verify_cert":   true,
+		"oidc_auto_onboard":  true,
+		"oidc_user_claim":    "preferred_username",
+		"oidc_groups_claim":  "groups",
+		"oidc_admin_group":   "grafana-admins",
+	})
+	if err != nil {
+		panic(err)
+	}
 	kit.SecretSync(chart, "harbor-secrets")
 
 	values := map[string]any{
@@ -52,6 +76,12 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		"harborAdminPassword":         "",
 		"existingSecretAdminPassword": "harbor-admin", // synced from OpenBao by the secret-sync pod
 		"core": map[string]any{
+			"extraEnvVars": []map[string]any{
+				{"name": "OIDC_CLIENT_SECRET", "valueFrom": map[string]any{
+					"secretKeyRef": map[string]any{"name": "harbor-admin", "key": "OIDC_CLIENT_SECRET", "optional": true},
+				}},
+				{"name": "CONFIG_OVERWRITE_JSON", "value": string(oidc)},
+			},
 			"resources": map[string]any{
 				"limits":   map[string]any{"cpu": "1000m", "memory": "1Gi"},
 				"requests": map[string]any{"cpu": "100m", "memory": "256Mi"},

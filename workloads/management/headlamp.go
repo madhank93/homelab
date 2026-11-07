@@ -4,6 +4,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/headlamp"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 	"github.com/madhank93/homelab/workloads/kit"
@@ -14,6 +15,10 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
 	})
+
+	// The client secret is synced from OpenBao; the rest is plain env.
+	kit.SecretProviderClass(chart, "headlamp-secrets", "headlamp", []string{"OIDC_CLIENT_SECRET"}, "headlamp-oidc",
+		kit.Sync{Object: "OIDC_CLIENT_SECRET", Key: "OIDC_CLIENT_SECRET"})
 
 	headlamp.NewHeadlamp(chart, jsii.String("headlamp-release"), &headlamp.HeadlampProps{
 		ReleaseName: jsii.String("headlamp"),
@@ -26,6 +31,21 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 				},
 				// Exposed through the Gateway instead.
 				"ingress": map[string]interface{}{"enabled": false},
+				// Authentik login. Headlamp passes the ID token to the API server, which
+				// trusts the "kubernetes" client (Talos apiServer extraArgs in talos.go).
+				"config": map[string]interface{}{
+					"oidc": map[string]interface{}{
+						"secret":         map[string]interface{}{"create": false},
+						"externalSecret": map[string]interface{}{"enabled": true, "name": "headlamp-oidc", "hasScopes": true},
+					},
+				},
+				"env": []map[string]interface{}{
+					{"name": "OIDC_CLIENT_ID", "value": "kubernetes"},
+					{"name": "OIDC_ISSUER_URL", "value": "https://" + config.C.Host("auth") + "/application/o/kubernetes/"},
+					{"name": "OIDC_SCOPES", "value": "openid,profile,email,groups,offline_access"},
+				},
+				"volumes":      []map[string]interface{}{kit.SecretsVolumeValues("headlamp-secrets")},
+				"volumeMounts": []map[string]interface{}{kit.SecretsMountValues()},
 			},
 		},
 	})
@@ -54,6 +74,19 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 				Name:      jsii.String("headlamp-admin"),
 				Namespace: jsii.String(namespace),
 			},
+		},
+	})
+
+	// API server identities from Authentik carry the "oidc:" prefix (talos.go).
+	k8s.NewKubeClusterRoleBinding(chart, jsii.String("oidc-admins-crb"), &k8s.KubeClusterRoleBindingProps{
+		Metadata: &k8s.ObjectMeta{Name: jsii.String("oidc-grafana-admins")},
+		RoleRef: &k8s.RoleRef{
+			ApiGroup: jsii.String("rbac.authorization.k8s.io"),
+			Kind:     jsii.String("ClusterRole"),
+			Name:     jsii.String("cluster-admin"),
+		},
+		Subjects: &[]*k8s.Subject{
+			{Kind: jsii.String("Group"), Name: jsii.String("oidc:grafana-admins"), ApiGroup: jsii.String("rbac.authorization.k8s.io")},
 		},
 	})
 

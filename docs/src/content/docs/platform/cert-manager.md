@@ -55,6 +55,8 @@ kubectl get secret -n cilium-secrets
 
 The Proxmox UI at `pve.madhan.app:8006` does not go through cert-manager. The talos stack ([`proxmox.go`](src:core/platform/proxmox.go)) sets up Proxmox's own ACME client with the same Cloudflare token and orders the certificate once. Proxmox then renews it itself. The `pve` A record points at the host on the LAN ([`cloudflare.go`](src:core/cloud/cloudflare.go)).
 
+The same stack adds the `authentik` login realm (the default on the login form). Users are created on first login from their GitHub username; Authentik's `grafana-admins` syncs in as group `grafana-admins-authentik`, which holds `Administrator` on `/`. `root` with realm **Linux PAM** remains the fallback.
+
 ## Troubleshooting
 
 ### Certificate not Ready

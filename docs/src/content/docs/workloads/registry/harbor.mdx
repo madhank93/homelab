@@ -15,7 +15,7 @@ Harbor stores the homelab's own images and caches upstream registries so repeat 
 | Source | [`harbor.go`](src:workloads/registry/harbor.go) |
 | Exposure | LAN · `harbor.madhan.app` → `harbor:80` |
 | Storage | Registry 50 Gi RWX, jobservice RWX, database 10 Gi RWO (Longhorn) |
-| Auth | Harbor `admin`, password from OpenBao `secret/harbor` |
+| Auth | Authentik OIDC (`grafana-admins` = Harbor admins); local `admin` at `/account/sign-in`, password from OpenBao `secret/harbor` |
 
 Harbor won over a plain Docker registry for RBAC, scanning and the proxy cache; see [Harbor for the registry](/reference/decisions/harbor/).
 
@@ -51,6 +51,14 @@ flowchart LR
 :::
 
 ## Operate
+
+### Authentik login
+
+`CONFIG_OVERWRITE_JSON` on harbor-core sets `auth_mode: oidc_auth` and the OIDC settings on every start, so changes made in **Configuration → Authentication** reset on restart; edit [`harbor.go`](src:workloads/registry/harbor.go) instead. Users are created on first login from `preferred_username`. The client secret comes from OpenBao `secret/harbor` (`OIDC_CLIENT_SECRET`), mirrored into `harbor-admin`.
+
+For `docker login`, use the **CLI secret** from **User Profile**, not the Authentik password.
+
+If the client secret changes, restart harbor-core after the CSI driver re-syncs `harbor-admin` (up to 2 minutes): the chart offers no Deployment annotation for Reloader.
 
 ### Rotate the admin password
 

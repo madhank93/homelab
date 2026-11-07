@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/madhank93/homelab/core/internal/cfg"
-	"github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2025/authentik"
+	"github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2026/authentik"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -99,6 +99,7 @@ type OIDCApp struct {
 	LaunchURL             string
 	ExtraPropertyMappings pulumi.StringArray // additional scope/property mappings beyond the defaults
 	AccessGroup           pulumi.StringInput // when set, only this group's members may log in
+	GrantTypes            []string           // defaults to authorization_code + refresh_token
 }
 
 // DeployAuthentik configures the Authentik identity provider running on Bifrost.
@@ -333,6 +334,38 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
+	// Admin UIs that map the groups claim to their own admin role. Each client
+	// secret is in SOPS as <SECRET>; the app reads it from OpenBao (Harbor,
+	// Headlamp) or a Pulumi-made Secret (Argo CD, which deploys OpenBao).
+	// "kubernetes" is the kube-apiserver's OIDC audience; Headlamp logs in with it.
+	// Proxmox redirects back to its own origin, port included.
+	pve := "https://" + config.C.Host(config.C.Proxmox.Host) + ":8006"
+	for _, a := range []struct{ name, slug, clientID, secret, base, callback string }{
+		{"Argo CD", "argocd", "argocd-homelab", "ARGOCD_OAUTH_CLIENT_SECRET", "https://" + config.C.Host("argocd"), "/auth/callback"},
+		{"Harbor", "harbor", "harbor-homelab", "HARBOR_OAUTH_CLIENT_SECRET", "https://" + config.C.Host("harbor"), "/c/oidc/callback"},
+		{"Kubernetes", "kubernetes", "kubernetes", "KUBERNETES_OAUTH_CLIENT_SECRET", "https://" + config.C.Host("headlamp"), "/oidc-callback"},
+		{"Proxmox", "proxmox", "proxmox-homelab", "PROXMOX_OAUTH_CLIENT_SECRET", pve, ""},
+	} {
+		secret := cfg.K.String(a.secret)
+		if secret == "" {
+			return fmt.Errorf("missing %s in config", a.secret)
+		}
+		base := a.base
+		if err := createOIDCApp(ac, OIDCApp{
+			Name:                  a.name,
+			Slug:                  a.slug,
+			ClientID:              a.clientID,
+			ClientSecret:          secret,
+			ClientType:            "confidential",
+			LaunchURL:             base + "/",
+			Redirects:             []string{base + a.callback},
+			ExtraPropertyMappings: pulumi.StringArray{groupsMapping.ID().ToStringOutput()},
+			AccessGroup:           grafanaAdminsGroup.ID().ToStringOutput(),
+		}); err != nil {
+			return err
+		}
+	}
+
 	// Netbird — confidential OIDC app for NetBird's embedded Dex, which federates
 	// to Authentik. Dex's callback URI is always issuer + "/callback".
 	// The connector itself is registered by hand in the NetBird UI; see docs.
@@ -353,6 +386,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 			// NetBird CLI device-auth callback
 			"http://localhost:53000",
 		},
+		GrantTypes: []string{"authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:device_code"},
 	}); err != nil {
 		return err
 	}
@@ -421,6 +455,12 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 		})
 	}
 
+	// Authentik 2026.5+ rejects any grant type not listed, and lists none by default.
+	grantTypes := app.GrantTypes
+	if len(grantTypes) == 0 {
+		grantTypes = []string{"authorization_code", "refresh_token"}
+	}
+
 	// Default to public if not set
 	clientType := app.ClientType
 	if clientType == "" {
@@ -444,6 +484,7 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 		AllowedRedirectUris:    redirectMap,
 		SubMode:                pulumi.String("user_id"),
 		IncludeClaimsInIdToken: pulumi.Bool(true),
+		GrantTypes:             pulumi.ToStringArray(grantTypes),
 		// IMPORTANT: Signing Key is required for verifying JWTs in OIDC (especially for Netbird)
 		SigningKey: ac.SigningKey,
 		// Match NetBird documentation recommendation

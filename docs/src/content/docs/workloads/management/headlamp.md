@@ -1,6 +1,6 @@
 ---
 title: Headlamp
-description: Kubernetes dashboard on the LAN, logged in with short-lived cluster-admin tokens.
+description: Kubernetes dashboard on the LAN, logged in through Authentik or a short-lived cluster-admin token.
 sidebar:
   order: 10
   badge: { text: LAN, variant: note }
@@ -14,7 +14,7 @@ Headlamp is the cluster's only UI, for browsing resources, logs and events; chan
 | Source | [`headlamp.go`](src:workloads/management/headlamp.go) |
 | Exposure | LAN · `headlamp.madhan.app` → `headlamp:80` |
 | Storage | — |
-| Auth | Token for ServiceAccount `headlamp-admin` (bound to `cluster-admin`) |
+| Auth | Authentik OIDC (`grafana-admins` → `cluster-admin`); fallback token for ServiceAccount `headlamp-admin` |
 
 ## Configuration
 
@@ -24,9 +24,15 @@ Headlamp is the cluster's only UI, for browsing resources, logs and events; chan
 | ServiceAccount + ClusterRoleBinding | `headlamp-admin` → `cluster-admin` | Login identity; no static token Secret exists |
 | Resources | limits `500m` / `512Mi` | Small dashboard |
 
+## Authentik login
+
+**Sign In** sends you to Authentik's `kubernetes` app. Headlamp then calls the API with your ID token, which the API server trusts through `oidc-*` flags in the control-plane patch ([`talos.go`](src:core/platform/talos.go)). You act as `oidc:<github username>` in groups `oidc:<authentik group>`; the `oidc-grafana-admins` ClusterRoleBinding makes `grafana-admins` cluster-admin.
+
+The client secret comes from OpenBao `secret/headlamp` (`OIDC_CLIENT_SECRET`, seeded from SOPS `KUBERNETES_OAUTH_CLIENT_SECRET`).
+
 ## Operate
 
-Mint a token (default lifetime `24h`) and paste it into the login screen:
+If Authentik is down, mint a token (default lifetime `24h`) and paste it into the login screen:
 
 ```bash frame="terminal"
 just headlamp-token        # or: just headlamp-token 8h

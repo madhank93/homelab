@@ -1,9 +1,13 @@
 package platform
 
 import (
+	"fmt"
+
 	"github.com/madhank93/homelab/config"
+	"github.com/madhank93/homelab/core/internal/cfg"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
+	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -15,6 +19,11 @@ import (
 // ArgoCD serves plain HTTP; the gateway terminates TLS using a certificate
 // owned by CDK8s in workloads/observability/argocd_monitor.go.
 func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
+	oidcSecret := cfg.K.String("ARGOCD_OAUTH_CLIENT_SECRET")
+	if oidcSecret == "" {
+		return fmt.Errorf("ARGOCD_OAUTH_CLIENT_SECRET not found in .env")
+	}
+
 	argoChart := config.HelmChart("argo-cd")
 	chart, err := helm.NewRelease(ctx, "argo-cd", &helm.ReleaseArgs{
 		Chart:   pulumi.String("argo-cd"),
@@ -57,12 +66,28 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				},
 			},
 			"configs": pulumi.Map{
+				"rbac": pulumi.Map{
+					// SSO users get nothing unless they are in grafana-admins.
+					"policy.default": pulumi.String(""),
+					"policy.csv":     pulumi.String("g, grafana-admins, role:admin\n"),
+					"scopes":         pulumi.String("[groups]"),
+				},
 				"params": pulumi.Map{
 					"server.insecure": pulumi.Bool(true), // serve HTTP on :80; TLS terminated at Cilium gateway
 					// Kubeflow manifests repo is ~400MB; default 90s is too short for git fetch from cluster.
 					"reposerver.exec.timeout": pulumi.String("180s"),
 				},
 				"cm": pulumi.Map{
+					"url": pulumi.String("https://" + config.C.Host("argocd")),
+					// SSO through Authentik; the local admin login stays as the fallback.
+					// $argocd-oidc:clientSecret reads the Secret created below.
+					"oidc.config": pulumi.String(
+						"name: Authentik\n" +
+							"issuer: https://" + config.C.Host("auth") + "/application/o/argocd/\n" +
+							"clientID: argocd-homelab\n" +
+							"clientSecret: $argocd-oidc:clientSecret\n" +
+							"requestedScopes: [openid, profile, email, groups]\n",
+					),
 					// Kubernetes adds apiVersion, kind, volumeMode to VCT items in StatefulSets.
 					// CDK8s omits them. Ignore globally so all StatefulSets stay Synced.
 					"resource.customizations.ignoreDifferences.apps_StatefulSet": pulumi.String(
@@ -89,6 +114,20 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 			},
 		},
 	}, pulumi.Provider(k8sProvider))
+	if err != nil {
+		return err
+	}
+
+	// Argo CD deploys OpenBao, so its OIDC client secret cannot come from there.
+	// The part-of label is what lets argocd-cm reference this Secret.
+	_, err = corev1.NewSecret(ctx, "argocd-oidc", &corev1.SecretArgs{
+		Metadata: &metav1.ObjectMetaArgs{
+			Name:      pulumi.String("argocd-oidc"),
+			Namespace: pulumi.String("argocd"),
+			Labels:    pulumi.StringMap{"app.kubernetes.io/part-of": pulumi.String("argocd")},
+		},
+		StringData: pulumi.StringMap{"clientSecret": pulumi.ToSecret(pulumi.String(oidcSecret)).(pulumi.StringOutput)},
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{chart}))
 	if err != nil {
 		return err
 	}

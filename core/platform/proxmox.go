@@ -7,6 +7,7 @@ import (
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve/acme"
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve/acme/dns"
 	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve/download"
+	"github.com/muhlba91/pulumi-proxmoxve/sdk/v8/go/proxmoxve/realm"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/madhank93/homelab/config"
@@ -72,6 +73,44 @@ func NewProxmoxCert(ctx *pulumi.Context, provider *proxmoxve.Provider) error {
 		Account:  account.Name,
 		Domains: acme.CertificateDomainArray{
 			&acme.CertificateDomainArgs{Domain: pulumi.String(config.C.Host(pcfg.Host)), Plugin: plugin.Plugin},
+		},
+	}, pulumi.Provider(provider))
+	return err
+}
+
+// NewProxmoxSSO adds an "authentik" login realm. Users are created on first
+// login from their GitHub username, and Authentik's groups sync in as
+// <group>-authentik, so grafana-admins members get Administrator. root@pam
+// remains the fallback login.
+func NewProxmoxSSO(ctx *pulumi.Context, provider *proxmoxve.Provider) error {
+	clientSecret := cfg.K.String("PROXMOX_OAUTH_CLIENT_SECRET")
+	if clientSecret == "" {
+		return fmt.Errorf("PROXMOX_OAUTH_CLIENT_SECRET not found in .env")
+	}
+
+	_, err := realm.NewOpenid(ctx, "pve-realm-authentik", &realm.OpenidArgs{
+		Realm:            pulumi.String("authentik"),
+		Comment:          pulumi.String("Authentik (GitHub)"),
+		IssuerUrl:        pulumi.String("https://" + config.C.Host("auth") + "/application/o/proxmox/"),
+		ClientId:         pulumi.String("proxmox-homelab"),
+		ClientKey:        pulumi.ToSecret(pulumi.String(clientSecret)).(pulumi.StringOutput),
+		Scopes:           pulumi.String("openid email profile groups"),
+		UsernameClaim:    pulumi.String("preferred_username"),
+		Autocreate:       pulumi.Bool(true),
+		GroupsClaim:      pulumi.String("groups"),
+		GroupsAutocreate: pulumi.Bool(true),
+		GroupsOverwrite:  pulumi.Bool(true),
+		Default:          pulumi.Bool(true),
+	}, pulumi.Provider(provider))
+	if err != nil {
+		return err
+	}
+
+	_, err = proxmoxve.NewGroupLegacy(ctx, "pve-group-grafana-admins", &proxmoxve.GroupLegacyArgs{
+		GroupId: pulumi.String("grafana-admins-authentik"),
+		Comment: pulumi.String("Synced from Authentik group grafana-admins"),
+		Acls: proxmoxve.GroupLegacyAclArray{
+			&proxmoxve.GroupLegacyAclArgs{Path: pulumi.String("/"), RoleId: pulumi.String("Administrator"), Propagate: pulumi.Bool(true)},
 		},
 	}, pulumi.Provider(provider))
 	return err

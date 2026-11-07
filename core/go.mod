@@ -2,8 +2,6 @@ module github.com/madhank93/homelab/core
 
 go 1.26.10
 
-replace github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2025 => ./sdks/authentik
-
 require (
 	github.com/knadh/koanf/parsers/dotenv v1.1.0
 	github.com/knadh/koanf/providers/env v1.1.0
@@ -13,7 +11,7 @@ require (
 	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.23.1
 	github.com/pulumi/pulumi-command/sdk v1.2.1
 	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.34.2
-	github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2025 v2025.0.0
+	github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2026 v2026.0.0
 	github.com/pulumi/pulumi/sdk/v3 v3.272.0
 	github.com/pulumiverse/pulumi-talos/sdk v0.8.1
 )
@@ -143,3 +141,5 @@ require (
 )
 
 replace github.com/madhank93/homelab/config => ../config
+
+replace github.com/pulumi/pulumi-terraform-provider/sdks/go/authentik/v2026 => ./sdks/authentik

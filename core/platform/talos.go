@@ -33,6 +33,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	if err := NewProxmoxCert(ctx, provider); err != nil {
 		return err
 	}
+	if err := NewProxmoxSSO(ctx, provider); err != nil {
+		return err
+	}
 	cl := config.C.Cluster
 	talos := config.V.Talos
 	pveNode := config.C.Proxmox.NodeName
@@ -94,6 +97,9 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 	})
 
 	// Patches for DHCP and VIP
+	// The API server also trusts ID tokens from Authentik's "kubernetes" client,
+	// so Headlamp logins act as oidc:<username> in oidc:<group>s. A down
+	// Authentik only blocks new OIDC logins; certificate auth is unaffected.
 	cpPatch := fmt.Sprintf(`machine:
   network:
     interfaces:
@@ -102,7 +108,16 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
         dhcp: true
         vip:
           ip: %s
-`, cl.VIP)
+cluster:
+  apiServer:
+    extraArgs:
+      oidc-issuer-url: https://%s/application/o/kubernetes/
+      oidc-client-id: kubernetes
+      oidc-username-claim: preferred_username
+      oidc-username-prefix: "oidc:"
+      oidc-groups-claim: groups
+      oidc-groups-prefix: "oidc:"
+`, cl.VIP, config.C.Host("auth"))
 
 	workerPatch := fmt.Sprintf(`machine:
   nodeLabels:

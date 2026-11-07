@@ -11,3 +11,4 @@ packages:
     version: 1.0.2
     parameters:
       - goauthentik/authentik
+      - 2026.8.2

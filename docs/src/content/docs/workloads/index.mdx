@@ -22,7 +22,7 @@ Each app is a CDK8s chart in [`main.go`](src:workloads/main.go), synthesized by 
 | [n8n](/workloads/automation/n8n/) | Automation | LAN | `n8n.madhan.app` | n8n login |
 | [CloudNativePG](/workloads/databases/cnpg/) | Databases | none | — | — |
 | [Counter-Strike 2](/workloads/gaming/cs2/) | Gaming | LAN | `192.168.1.230:27015` | Join password |
-| [Headlamp](/workloads/management/headlamp/) | Management | LAN | `headlamp.madhan.app` | ServiceAccount token |
+| [Headlamp](/workloads/management/headlamp/) | Management | LAN | `headlamp.madhan.app` | Authentik OIDC via the API server; ServiceAccount token fallback |
 | [Homepage](/workloads/management/homepage/) | Management | LAN | `home.madhan.app` | Authentik OIDC (Homepage's own) |
 | [Argo CD monitor](/workloads/monitoring/argocd-monitor/) | Monitoring | none | — | — |
 | [Grafana](/workloads/monitoring/grafana/) | Monitoring | **Public** | `grafana.madhan.app` | Authentik OIDC (Grafana's own) |
@@ -31,7 +31,7 @@ Each app is a CDK8s chart in [`main.go`](src:workloads/main.go), synthesized by 
 | [VictoriaLogs](/workloads/monitoring/victoria-logs/) | Monitoring | LAN | `victorialogs.madhan.app` | None |
 | [VictoriaMetrics](/workloads/monitoring/victoria-metrics/) | Monitoring | LAN | `vmselect.madhan.app`, `alertmanager.madhan.app` | None |
 | [NetBird peer](/workloads/networking/netbird-peer/) | Networking | none (it is the VPN route) | — | — |
-| [Harbor](/workloads/registry/harbor/) | Registry | LAN | `harbor.madhan.app` | Harbor admin |
+| [Harbor](/workloads/registry/harbor/) | Registry | LAN | `harbor.madhan.app` | Authentik OIDC; local `admin` fallback |
 | [OpenBao](/workloads/secrets/openbao/) | Secrets | LAN | `openbao.madhan.app` | OpenBao token |
 | [Secrets Store CSI driver](/workloads/secrets/csi-driver/) | Secrets | none | — | — |
 | [Falco](/workloads/security/falco/) | Security | LAN | `falco.madhan.app` | Sidekick UI login |
