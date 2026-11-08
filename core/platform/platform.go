@@ -41,6 +41,10 @@ func DeployPlatform(ctx *pulumi.Context) error {
 		return err
 	}
 
+	if err := TaintGPUNodes(ctx, k8sProvider); err != nil {
+		return err
+	}
+
 	if err := InstallCertManager(ctx, k8sProvider); err != nil {
 		return err
 	}

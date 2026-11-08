@@ -131,5 +131,5 @@ Before `just core talos up`: `talosctl rollback --nodes <ip>` boots the previous
 ## Talos 1.13 → 1.14 notes
 
 - Talos 1.14 defaults to Kubernetes 1.37, which Cilium does not support yet, so `kubernetes.version` holds the cluster on 1.36.
-- Upgraded nodes keep their v1alpha1 config. The deprecated fields this repo sets (`machine.install`, `machine.kernel`, `machine.nodeLabels`, `machine.nodeTaints`, `machine.kubelet.nodeIP`) still work.
+- Upgraded nodes keep their v1alpha1 config. The deprecated fields this repo sets (`machine.install`, `machine.kernel`, `machine.nodeLabels`, `machine.kubelet.nodeIP`) still work.
 - 1.14-only defaults such as workload isolation (`SecurityProfileConfig`) and periodic trim stay off. Leave workload isolation off: it moves the kubelet and pods into a sandbox PID namespace, and Longhorn's iSCSI frontend and `just longhorn-repair-iscsi` reach into the host `iscsid` namespaces.

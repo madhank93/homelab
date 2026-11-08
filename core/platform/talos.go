@@ -145,9 +145,13 @@ cluster:
 
 	// Applied on top of workerPatch; Talos appends the module list. The
 	// nvidia-container-toolkit extension configures containerd itself.
+	// The kubelet adds the taint when the node first registers; TaintGPUNodes in
+	// the platform stack keeps it on the existing node.
 	gpuWorkerPatch := `machine:
-  nodeTaints:
-    dedicated: "ai:NoSchedule"
+  kubelet:
+    extraConfig:
+      registerWithTaints:
+        - {key: dedicated, value: ai, effect: NoSchedule}
   kernel:
     modules:
       - name: nvidia

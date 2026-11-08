@@ -49,7 +49,7 @@ The image only seeds a new VM's disk. Existing nodes upgrade in place with `just
 | All | No CNI (Cilium), kube-proxy disabled, `install.disk: /dev/sda` |
 | Control plane | VIP `192.168.1.210` on the physical interface |
 | Worker | Label `node.longhorn.io/create-default-disk: config`; modules `nbd`, `iscsi_tcp`, `iscsi_generic`, `configfs`; tuned `evictionHard` |
-| GPU worker | Taint `dedicated=ai:NoSchedule`; modules `nvidia`, `nvidia_uvm`, `nvidia_drm`, `nvidia_modeset` |
+| GPU worker | Kubelet `registerWithTaints` `dedicated=ai:NoSchedule` (the platform stack keeps it on the live node); modules `nvidia`, `nvidia_uvm`, `nvidia_drm`, `nvidia_modeset` |
 
 Workers lower `imagefs.available` to 10%: images and Longhorn replicas share `/var`, and the default 15% evicts Longhorn before it can free space.
 

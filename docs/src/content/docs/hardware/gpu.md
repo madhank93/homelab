@@ -24,7 +24,7 @@ Proxmox passes the card with `pcie: true` and `xvga: false`: it is compute-only,
 
 | Setting | Value | Why |
 |---|---|---|
-| Node taint | `dedicated=ai:NoSchedule` | Keeps ordinary pods off the GPU node's CPU during inference |
+| Node taint | `dedicated=ai:NoSchedule`, set by kubelet `registerWithTaints` at registration and kept by a Pulumi `NodePatch` in the platform stack ([`nodes.go`](src:core/platform/nodes.go)) | Keeps ordinary pods off the GPU node's CPU during inference. Talos `machine.nodeTaints` cannot set it: NodeRestriction forbids a kubelet changing its own taints |
 
 ## Scheduling a GPU pod
 

@@ -80,7 +80,8 @@ Longhorn manager must not tolerate the control-plane taint, or engine images sta
 
 | Fact | Where |
 |---|---|
-| Taint `dedicated=ai:NoSchedule`, NVIDIA kernel modules | `gpuWorkerPatch` |
+| Taint `dedicated=ai:NoSchedule` | `registerWithTaints` in `gpuWorkerPatch` for first registration; `TaintGPUNodes` (`core/platform/nodes.go`, platform stack) for the live node. Never `machine.nodeTaints`: NodeRestriction rejects it |
+| NVIDIA kernel modules | `gpuWorkerPatch` |
 | PCIe `0000:09:00.0`, `Pcie: true`, `Xvga: false` | `pcie_ids` in `config/config.yml`, `NewProxmoxVM` |
 | Pod requirements (toleration, `runtimeClassName: nvidia`) | [GPU](../../../docs/src/content/docs/hardware/gpu.md); workload side is homelab-cdk8s |
 
