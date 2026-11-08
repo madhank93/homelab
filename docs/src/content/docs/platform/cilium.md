@@ -42,7 +42,6 @@ The Gateway has an HTTP listener on 80 and an HTTPS listener on 443 terminating 
 | IP pool `address-pool` | `192.168.1.220`–`230` from `lb_pool`, minus node IPs | Announcing a node's own IP takes that node off the LAN |
 | L2 policy `l2-policy` | Workers only, `loadBalancerIPs: true`, `externalIPs: false` | |
 | `deny-service-external-ips` | ValidatingAdmissionPolicy | kube-proxy replacement always serves `spec.externalIPs` (CVE-2020-8554); use a LoadBalancer Service |
-| `cilium-leases-access` | ClusterRole + binding | L2 leader election needs Lease access the chart does not grant |
 
 The pool range overlaps worker IPs `.221`–`.224`, so only `.220` and `.225`–`.230` are handed out. Fixed assignments use the `lbipam.cilium.io/ips` annotation (Ollama `.225`, CS2 `.230`).
 

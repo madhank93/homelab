@@ -23,7 +23,6 @@ VictoriaLogs stores container logs, Kubernetes events and Falco alerts. Grafana 
 | `retentionPeriod` | `30d` | |
 | `retentionDiskSpaceUsage` | `40` GiB | Each replica shares a worker disk with every other Longhorn volume, so cap by size as well as age |
 | Limits | `1000m` / `1Gi` | |
-| `image.pullPolicy` | `Always` | Recovers from a corrupted cached image layer |
 
 | Endpoint | Used by |
 |---|---|

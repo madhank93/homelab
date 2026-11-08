@@ -108,6 +108,10 @@ The server is protected and ignores changes to its image and cloud-init user dat
 
 Traefik cannot reach `192.168.1.220`: `netbird-agent` is down or has no route. Check `ssh root@178.156.199.250 'docker exec netbird-agent netbird routes list'` shows `192.168.1.0/24` selected; then see [NetBird troubleshooting](/cloud/netbird/).
 
+### `just core hetzner up` fails with "would be copied to the VPS; remove it"
+
+A dot-prefixed `*.env` file sits in `core/cloud/bifrost/`. The whole directory is copied to the VPS and only `env/` holds deployed secrets, so delete the stray file.
+
 ### Bootstrap exits on a container that never becomes healthy
 
 The script prints that container's last 30 log lines. Fix the cause and re-run `just core hetzner up`; finished steps are no-ops.

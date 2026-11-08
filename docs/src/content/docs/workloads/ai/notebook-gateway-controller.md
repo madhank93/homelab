@@ -32,6 +32,8 @@ On start it syncs every existing resource, then watches all three kinds. ADDED o
 | Image | `harbor.madhan.app/library/notebook-gateway-controller` | Python plus the Kubernetes client, built from `images/notebook-gateway-controller/` |
 | Script | ConfigMap `notebook-gateway-controller-script`, mounted at `/app` | Edit the script in Go; Reloader restarts the pod on change |
 | Security context | non-root `65534`, all capabilities dropped | |
+| RBAC | Role for HTTPRoutes in `kubeflow`; ClusterRole for watching the three kinds and for ReferenceGrants | Routes are only written in `kubeflow`; grants go in each user namespace |
+| Env | `GATEWAY_NS`, `GATEWAY_NAME`, `ROUTE_NS`, `ROUTE_HOSTNAME` | Set from `config/config.yml`, so the script holds no hostnames |
 
 ## Operate
 

@@ -38,7 +38,7 @@ ApplicationSet `cots-applications` uses a git directory generator over `*` on th
 | Where | Resource | Fields | Why |
 |---|---|---|---|
 | `argocd-cm` (global) | StatefulSet | `volumeClaimTemplates[].apiVersion`, `.kind`, `.spec.volumeMode` | CDK8s omits them; the API server adds them |
-| `argocd-cm` (global) | ClusterRole | `.rules` | Aggregated Kubeflow roles are filled in by Kubernetes |
+| `argocd-cm` (global) | ClusterRole | `/metadata/annotations`, `/rules` (jsonPointers) | Kubernetes fills aggregated Kubeflow roles; jq fails on their `rules: null` |
 | `argocd-cm` (global) | CustomResourceDefinition | `.spec.conversion`, `.spec.preserveUnknownFields`, `.status` | Mutated after apply |
 | ApplicationSet | VictoriaMetrics operator Secret and webhook | `/data`, `caBundle` | Regenerated on every operator restart |
 
