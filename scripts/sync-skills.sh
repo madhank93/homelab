@@ -24,6 +24,10 @@ vendor() {
     [[ -f "$src/$dir/$s/SKILL.md" ]] || { echo "sync-skills: $s not found in $repo@$sha" >&2; exit 1; }
     rm -rf "${dest:?}/$s"
     cp -R "$src/$dir/$s" "$dest/$s"
+    # A `paths:` glob hides the skill until a matching file is read; prompts here
+    # often name Go code before opening it, so keep every skill listed.
+    awk '/^---$/ { fm++ } fm == 1 && /^paths:/ { skip = 1; next } skip && /^  - / { next } { skip = 0; print }' \
+      "$src/$dir/$s/SKILL.md" >"$dest/$s/SKILL.md"
   done
   {
     echo
