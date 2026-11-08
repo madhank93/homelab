@@ -50,9 +50,9 @@ Sample prompts and the skill that should load. Re-run these after editing a
 | Prompt | Expected skill |
 |---|---|
 | "Deploy Uptime Kuma to the cluster behind the gateway" | `homelab-cdk8s` |
-| "Harbor needs a new OIDC secret from OpenBao" | `homelab-cdk8s` |
-| "Pin the Proxmox VM disk so a new Talos image doesn't replace it" | `homelab-pulumi-go` |
-| "Add an Authentik OIDC application for Open WebUI" | `homelab-pulumi-go` |
+| "Mount n8n's encryption key from OpenBao into the pod" | `homelab-cdk8s` |
+| "Export the Bifrost VPS IPv6 address as a stack output" | `homelab-pulumi-go` |
+| "Add a Cloudflare DNS record for a new LAN host" | `homelab-pulumi-go` |
 | "Document the new Uptime Kuma workload" | `homelab-docs` |
 | "Write the release notes page for the next release" | `homelab-docs` |
 | "Add Authentik login to Open WebUI" | `homelab-sso` |
@@ -67,16 +67,16 @@ Sample prompts and the skill that should load. Re-run these after editing a
 | "Should AuthentikContext be passed by value or pointer?" | `golang-structs-interfaces` |
 | "Add a timeout to the HTTP call in getDefaultIdentificationStage" | `golang-context` |
 | "Write a table-driven test for serverCfg in cs2.go" | `golang-testing` |
-| "golangci-lint reports gosec G304 in hetzner.go" | `golang-lint` |
+| "Should we enable the godot linter in .golangci.yml?" | `golang-lint` |
 | "Replace the manual key loop with maps/slices helpers" | `golang-modernize` |
 | "Write the doc comment for the kit package" | `golang-documentation` |
 | "Could this map access in serverCfg panic on nil?" | `golang-safety` |
 | "Is the exec.Command in hetzner.go injectable?" | `golang-security` |
 | "synth hangs with no output, find out why" | `golang-troubleshooting` |
-| "Bump cdk8s-plus and check go.sum" | `golang-dependency-management` |
+| "go mod tidy pulls in two versions of x/net in workloads; resolve it" | `golang-dependency-management` |
 | "`just core platform up` failed, find out why" | `pulumi-debug-failed-operation` |
-| "Bump the Proxmox provider to the next major" | `provider-upgrade` |
-| "Security-review the diff on this branch" | `differential-review` |
+| "After the Proxmox provider upgrade, preview replaces every VM; reconcile it" | `provider-upgrade` |
+| "Do a differential review of the last three commits for security regressions" | `differential-review` |
 
 ## Re-sync
 

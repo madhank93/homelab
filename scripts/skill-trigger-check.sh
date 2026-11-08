@@ -3,8 +3,9 @@
 #
 #   skill-trigger-check.sh [skill]
 #
-# Runs every prompt through `claude -p` with only the Skill tool (no MCP servers) and
-# compares the first skill invoked. Pass a skill name to check only its rows.
+# Runs every prompt through `claude -p` with read-only tools and project settings only
+# (no user plugins, hooks or MCP servers) and compares the first skill invoked.
+# Pass a skill name to check only its rows.
 # Each prompt is a real API call.
 set -euo pipefail
 
@@ -19,7 +20,7 @@ while IFS= read -r line; do
   want="${BASH_REMATCH[2]}"
   [[ -z "$only" || "$only" == "$want" ]] || continue
 
-  fired="$(cd "$root" && claude -p "$prompt" --tools Skill --strict-mcp-config --output-format stream-json --verbose \
+  fired="$(cd "$root" && claude -p "$prompt" --tools Skill Read Grep Glob --setting-sources project --strict-mcp-config --max-turns 5 --output-format stream-json --verbose \
     --max-budget-usd 0.30 </dev/null 2>/dev/null |
     jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Skill") | .input.skill' |
     head -n1 || true)"
