@@ -9,11 +9,9 @@ import (
 	"github.com/madhank93/homelab/workloads/kit"
 )
 
-// NewComfyUIChart deploys ComfyUI, a node-based Stable Diffusion UI, as a Deployment
-// pinned to the GPU worker node (nvidia.com/gpu.present=true).
-//
-// A model PVC is mounted at /root so model files persist across pod restarts.
-// An HTTPRoute exposes ComfyUI at comfyui.<domain> through the homelab Gateway.
+// NewComfyUIChart deploys ComfyUI, a node-based Stable Diffusion UI, on the GPU
+// node at comfyui.<domain>. It is scaled to zero by default; `just comfyui on`
+// starts it. Models and custom nodes persist on a PVC.
 func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -21,7 +19,6 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 
 	kit.Namespace(chart, namespace, false)
 
-	// PVC for models, outputs, and custom nodes — stored on Longhorn for persistence across restarts
 	storageClass := "longhorn"
 	k8s.NewKubePersistentVolumeClaim(chart, jsii.String("comfyui-data"), &k8s.KubePersistentVolumeClaimProps{
 		Metadata: &k8s.ObjectMeta{
@@ -49,7 +46,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 		},
 		Spec: &k8s.DeploymentSpec{
 			Replicas: &replicas,
-			// Recreate: GPU workloads cannot have two pods claiming nvidia.com/gpu simultaneously
+			// Recreate: never run two ComfyUI pods against the shared GPU at once.
 			Strategy: &k8s.DeploymentStrategy{Type: jsii.String("Recreate")},
 			Selector: &k8s.LabelSelector{
 				MatchLabels: &map[string]*string{"app": jsii.String("comfyui")},
@@ -59,7 +56,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 					Labels: &map[string]*string{"app": jsii.String("comfyui")},
 				},
 				Spec: &k8s.PodSpec{
-					// nvidia-container-runtime handles GPU injection via Talos-aware paths
+					// Without the nvidia runtime the container gets no CUDA libraries.
 					RuntimeClassName: jsii.String("nvidia"),
 					NodeSelector:     &map[string]*string{"nvidia.com/gpu.present": jsii.String("true")},
 					Tolerations: &[]*k8s.Toleration{
@@ -68,10 +65,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 					Containers: &[]*k8s.Container{
 						{
 							Name: jsii.String("comfyui"),
-							// The cu128-megapak line stopped building in May 2026. cu126 is not
-							// an option: the RTX 5070 Ti is Blackwell (sm_120) and needs CUDA
-							// 12.8+. cu130 + PyTorch 2.11 is the current line, and driver
-							// 595.71.05 reports CUDA 13.2, so it is supported. 12.3 GB image.
+							// The RTX 5070 Ti is Blackwell (sm_120): the image needs CUDA 12.8 or later.
 							Image:           jsii.String(config.ContainerImage("comfyui").Ref()),
 							ImagePullPolicy: jsii.String("IfNotPresent"),
 							Ports: &[]*k8s.ContainerPort{
@@ -79,7 +73,7 @@ func NewComfyUIChart(scope constructs.Construct, id string, namespace string) cd
 							},
 							Env: &[]*k8s.EnvVar{
 								{Name: jsii.String("NVIDIA_VISIBLE_DEVICES"), Value: jsii.String("all")},
-								// --listen 0.0.0.0: bind on all interfaces so the Service can reach it
+								// ComfyUI binds to localhost unless told otherwise.
 								{Name: jsii.String("CLI_ARGS"), Value: jsii.String("--listen 0.0.0.0 --port 8188")},
 							},
 							Resources: &k8s.ResourceRequirements{

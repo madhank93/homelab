@@ -16,6 +16,7 @@ var configYAML []byte
 //go:embed versions.yaml
 var versionsYAML []byte
 
+// Node is one Talos VM: its LAN address, role and Proxmox sizing.
 type Node struct {
 	Name     string   `yaml:"name"`
 	IP       string   `yaml:"ip"`
@@ -28,8 +29,10 @@ type Node struct {
 	PcieIDs  []string `yaml:"pcie_ids"`
 }
 
+// HasGPU reports whether the node gets PCIe devices passed through.
 func (n Node) HasGPU() bool { return len(n.PcieIDs) > 0 }
 
+// ClusterConfig describes the Talos cluster network and its nodes.
 type ClusterConfig struct {
 	Name        string                       `yaml:"name"`
 	VIP         string                       `yaml:"vip"`
@@ -41,6 +44,8 @@ type ClusterConfig struct {
 	Nodes       []Node                       `yaml:"nodes"`
 }
 
+// Config mirrors config.yml, the non-secret settings shared by core, workloads
+// and the justfile.
 type Config struct {
 	Domain           string                           `yaml:"domain"`
 	Cluster          ClusterConfig                    `yaml:"cluster"`
@@ -73,12 +78,17 @@ type Config struct {
 // Host returns "<sub>.<domain>".
 func (c Config) Host(sub string) string { return sub + "." + c.Domain }
 
+// Chart is a pinned Helm chart source.
 type Chart struct{ Repo, Version string }
 
+// Image is a pinned container image.
 type Image struct{ Image, Tag string }
 
+// Ref returns the image reference as "<image>:<tag>".
 func (i Image) Ref() string { return i.Image + ":" + i.Tag }
 
+// Versions mirrors versions.yaml, the version pins for Talos, Kubernetes,
+// charts and images.
 type Versions struct {
 	Talos struct {
 		Version       string `yaml:"version"`
@@ -92,6 +102,8 @@ type Versions struct {
 	Images map[string]Image `yaml:"images"`
 }
 
+// C and V hold the embedded config.yml and versions.yaml, decoded at package
+// init; a malformed file panics.
 var (
 	C Config
 	V Versions
@@ -106,8 +118,8 @@ func init() {
 	}
 }
 
-// HelmChart returns the pinned chart, failing loudly on a typo rather than
-// rendering an empty version.
+// HelmChart returns the pinned chart called name. It panics on an unknown name
+// so a typo fails the build instead of rendering an empty version.
 func HelmChart(name string) Chart {
 	c, ok := V.Charts[name]
 	if !ok {
@@ -116,7 +128,8 @@ func HelmChart(name string) Chart {
 	return c
 }
 
-// ContainerImage returns the pinned image; see HelmChart.
+// ContainerImage returns the pinned image called name, panicking like
+// [HelmChart] on an unknown name.
 func ContainerImage(name string) Image {
 	i, ok := V.Images[name]
 	if !ok {

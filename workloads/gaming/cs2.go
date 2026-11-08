@@ -1,3 +1,4 @@
+// Package gaming deploys game servers (Counter-Strike 2).
 package gaming
 
 import (
@@ -69,8 +70,8 @@ func (c cs2Config) serverCfg() (string, string) {
 // listing). Players join with `connect 192.168.1.230` from the console.
 // Map and gameplay settings live in cs2_config.yml.
 //
-// The image is small; steamcmd downloads the ~60 GB game into the PVC on every
-// start and updates it in place, so a restart picks up a CS2 update.
+// The image is small: steamcmd installs the ~60 GB game into the PVC on first
+// start and updates it in place on every start, so a restart picks up a CS2 update.
 func NewCS2Chart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -96,8 +97,8 @@ func NewCS2Chart(scope constructs.Construct, id string, namespace string) cdk8s.
 		Metadata: &k8s.ObjectMeta{Name: jsii.String("cs2")},
 	})
 
-	// One replica: the game files are re-downloadable from Steam, so losing
-	// the replica costs one download rather than another ~60 GB of disk.
+	// One replica: losing it costs one re-download from Steam, which beats
+	// keeping a second ~60 GB copy.
 	k8s.NewKubeStorageClass(chart, jsii.String("cs2-storageclass"), &k8s.KubeStorageClassProps{
 		Metadata:             &k8s.ObjectMeta{Name: jsii.String(cs2StorageClass)},
 		Provisioner:          jsii.String("driver.longhorn.io"),

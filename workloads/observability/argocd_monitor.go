@@ -8,9 +8,9 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 )
 
-// NewArgoCDMonitorChart creates metrics Services + ServiceMonitors for ArgoCD components.
-// ArgoCD is deployed via the platform layer (Pulumi) with metrics services disabled by default.
-// We create headless metrics Services here so VMAgent can scrape them.
+// NewArgoCDMonitorChart adds metrics Services and ServiceMonitors for the Argo CD
+// components, which the Pulumi-installed chart leaves without metrics Services,
+// plus a Let's Encrypt certificate for argocd-server.
 func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 	namespace := "argocd"
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
@@ -70,8 +70,8 @@ func NewArgoCDMonitorChart(scope constructs.Construct, id string) cdk8s.Chart {
 		}))
 	}
 
-	// ArgoCD auto-detects a secret named "argocd-server-tls" and replaces its
-	// self-signed cert, fixing browser TLS warnings without public exposure.
+	// argocd-server serves the certificate in a Secret named argocd-server-tls
+	// in place of its self-signed one.
 	cdk8s.NewApiObject(chart, jsii.String("argocd-server-tls-cert"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("cert-manager.io/v1"),
 		Kind:       jsii.String("Certificate"),

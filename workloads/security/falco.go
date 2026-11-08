@@ -1,3 +1,5 @@
+// Package security holds the runtime and policy security charts: Falco, Kyverno
+// and the Trivy Operator.
 package security
 
 import (
@@ -8,12 +10,10 @@ import (
 	"github.com/madhank93/homelab/workloads/kit"
 )
 
-// NewFalcoChart deploys Falco runtime security via the official Helm chart.
-//
-// Falco runs as a DaemonSet and observes Linux system calls to detect anomalous
-// container behaviour. The namespace is labelled privileged because the DaemonSet
-// pods need host-level access (hostPID, hostNetwork, the modern eBPF probe).
-// Falco Sidekick receives alerts over the chart-wired http_output.
+// NewFalcoChart deploys Falco, a DaemonSet that watches system calls for anomalous
+// container behaviour, plus Falcosidekick and its UI, which receive its alerts.
+// The namespace is privileged: Falco runs a privileged container with host paths
+// mounted for the eBPF probe.
 func NewFalcoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

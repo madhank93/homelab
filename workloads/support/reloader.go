@@ -1,3 +1,4 @@
+// Package support holds cluster-wide helper controllers.
 package support
 
 import (
@@ -7,9 +8,8 @@ import (
 	"github.com/madhank93/homelab/config"
 )
 
-// NewReloaderChart deploys Stakater Reloader, which watches ConfigMaps and Secrets
-// for changes and rolls the Deployments/StatefulSets that reference them via the
-// reloader.stakater.com/auto: "true" annotation.
+// NewReloaderChart deploys Stakater Reloader, which restarts workloads annotated
+// reloader.stakater.com/auto: "true" when a ConfigMap or Secret they reference changes.
 func NewReloaderChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

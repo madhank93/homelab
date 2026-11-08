@@ -1,3 +1,4 @@
+// Package registry holds the Harbor container registry chart.
 package registry
 
 import (
@@ -11,10 +12,11 @@ import (
 	"github.com/madhank93/homelab/workloads/kit"
 )
 
-// NewHarborChart deploys Harbor container registry via the Helm chart.
+// NewHarborChart deploys the Harbor container registry with Authentik OIDC login.
 //
-// The admin password comes from OpenBao (Pattern B). The Harbor chart cannot
-// mount extra volumes, so a secret-sync pod mounts the CSI volume instead.
+// The admin password and OIDC client secret come from OpenBao as a synced Secret
+// (Pattern B). The Harbor chart cannot mount extra volumes, so a secret-sync pod
+// mounts the CSI volume instead.
 //
 // The HTTPRoute must target the harbor:80 nginx proxy Service, not harbor-core:80.
 func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
@@ -57,9 +59,8 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		"externalURL": "https://" + config.C.Host("harbor"),
 		"persistence": map[string]any{
 			"enabled": true,
-			// ReadWriteMany via Longhorn NFS — eliminates RWO multi-attach deadlocks
-			// on rolling updates. Longhorn automatically provisions an NFS server pod
-			// for each RWX volume.
+			// ReadWriteMany (Longhorn serves RWX over NFS) so a rolling update's new
+			// pod can attach before the old one releases the volume.
 			"persistentVolumeClaim": map[string]any{
 				"registry": map[string]any{
 					"size":       "50Gi",
@@ -78,7 +79,7 @@ func NewHarborChart(scope constructs.Construct, id string, namespace string) cdk
 		"core": map[string]any{
 			"extraEnvVars": []map[string]any{
 				{"name": "OIDC_CLIENT_SECRET", "valueFrom": map[string]any{
-					"secretKeyRef": map[string]any{"name": "harbor-admin", "key": "OIDC_CLIENT_SECRET", "optional": true},
+					"secretKeyRef": map[string]any{"name": "harbor-admin", "key": "OIDC_CLIENT_SECRET"},
 				}},
 				{"name": "CONFIG_OVERWRITE_JSON", "value": string(oidc)},
 			},

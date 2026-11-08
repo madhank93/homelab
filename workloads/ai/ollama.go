@@ -1,3 +1,5 @@
+// Package ai deploys the GPU-backed AI workloads on worker4: Ollama, Open
+// WebUI, ComfyUI and Kubeflow.
 package ai
 
 import (
@@ -9,11 +11,11 @@ import (
 	"github.com/madhank93/homelab/workloads/kit"
 )
 
-// Base weights for the `executor` model used by the aider offload workflow.
-// Kept in sync with FROM in local-ai-setup/ollama/models/executor.Modelfile.
+// executorBaseModel is the base of the `executor` model used by the aider
+// offload workflow; it must match FROM in local-ai-setup/ollama/models/executor.Modelfile.
 const executorBaseModel = "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q3_K_XL"
 
-// Storage class for the Ollama model directory. Model blobs are a re-pullable
+// modelCacheStorageClass backs the Ollama model directory. Model blobs are a re-pullable
 // cache, so one local replica beats Longhorn's default three-way replication:
 // it keeps ~20GB off the other nodes' disks and keeps a 13.8GB model load off
 // the iSCSI path.
@@ -21,18 +23,16 @@ const modelCacheStorageClass = "longhorn-model-cache"
 
 const ollamaLoadBalancerIP = "192.168.1.225"
 
-// NewOllamaChart deploys Ollama LLM inference server via the official Helm chart.
-//
-// Ollama is pinned to the GPU worker node via nodeSelector nvidia.com/gpu.present=true
-// (set by Node Feature Discovery). Time-slicing is configured in the GPU operator
-// (5 virtual GPUs), so Ollama shares the RTX 5070 Ti with ComfyUI and Kubeflow workloads.
-// An HTTPRoute exposes Ollama at ollama.<domain> through the homelab Gateway.
+// NewOllamaChart deploys the Ollama inference server via its Helm chart, pinned
+// to the GPU node. The device plugin time-slices the GPU, so Ollama shares it
+// with ComfyUI and Kubeflow. It is reachable at ollama.<domain> and on a fixed
+// LoadBalancer IP.
 func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
 	})
 
-	// nvidia.com/gpu.present is set by NFD — matches the selector used by the GPU operator.
+	// nvidia.com/gpu.present is set by GPU Feature Discovery (hardware package).
 	gpuNodeSelector := map[string]any{
 		"nvidia.com/gpu.present": "true",
 	}
@@ -65,10 +65,8 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 			"resources": map[string]any{
 				"limits": map[string]any{
 					"nvidia.com/gpu": 1,
-					// memory here is host RAM (cgroup limit), NOT GPU VRAM.
-					// GPU VRAM (16GB) is fully available via nvidia.com/gpu: 1.
-					// host RAM cgroup limit (worker4 allocatable ~15.1Gi). The executor's
-					// 13.8GB GGUF is mmap'd on load and those pages are charged here.
+					// Host RAM, not VRAM (worker4 allocatable ~15.1Gi). The executor's
+					// 13.8GB GGUF is mmap'd on load and those pages count against it.
 					"memory": "12Gi",
 					"cpu":    "4000m",
 				},
@@ -96,8 +94,7 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 			"tolerations": []map[string]any{
 				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
 			},
-			// runtimeClassName=nvidia: routes the pod through nvidia-container-runtime
-			// (installed by Talos nvidia-container-toolkit-production extension).
+			// The nvidia runtime comes from the nvidia-container-toolkit-production Talos extension.
 			"runtimeClassName": "nvidia",
 			"extraEnv": []map[string]any{
 				{"name": "NVIDIA_VISIBLE_DEVICES", "value": "all"},

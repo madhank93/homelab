@@ -1,3 +1,5 @@
+// Package secrets holds OpenBao and the Secrets Store CSI Driver, which together
+// deliver runtime secrets to pods.
 package secrets
 
 import (
@@ -8,9 +10,9 @@ import (
 	"github.com/madhank93/homelab/workloads/kit"
 )
 
-// NewOpenBaoChart deploys OpenBao (open-source Vault fork) as the cluster
-// secrets manager. A sidecar auto-unseals it on restart from the bootstrap
-// Secret openbao-unseal-key (created by scripts/create-bootstrap-secrets.sh).
+// NewOpenBaoChart deploys OpenBao as the cluster secrets manager, served to pods
+// through its CSI provider. A sidecar unseals it from the bootstrap Secret
+// openbao-unseal-key, created by scripts/create-bootstrap-secrets.sh.
 func NewOpenBaoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -44,8 +46,8 @@ func NewOpenBaoChart(scope constructs.Construct, id string, namespace string) cd
 				},
 			},
 			"server": map[string]any{
-				// Pinned to 2.6.x, not the chart appVersion: 2.7 drops the
-				// `file` storage backend configured below.
+				// Pinned in config/versions.yaml, not the chart appVersion: 2.7
+				// drops the `file` storage backend configured below.
 				"image": map[string]any{"tag": config.ContainerImage("openbao").Tag},
 				"podAnnotations": map[string]any{
 					"reloader.stakater.com/auto": "true",

@@ -10,14 +10,9 @@ import (
 // NewKubeflowChart creates the HTTPRoute for the Kubeflow central dashboard and
 // its sub-apps.
 //
-// The Kubeflow platform manifests are pre-built by CI (`kustomize build
-// workloads/ai/kubeflow/`) and committed alongside this HTTPRoute in
-// app/kubeflow/ on the manifests branch, so Argo CD fetches no remote kustomize
-// bases at sync time.
-//
-// GPU notebooks in Kubeflow REQUIRE runtimeClassName: nvidia — without it the
-// nvidia container hook does not fire and CUDA is inaccessible even with the
-// nvidia.com/gpu resource request.
+// The Kubeflow platform itself is rendered by CI (`kustomize build
+// workloads/ai/kubeflow/`) into app/kubeflow/ on the manifests branch, so Argo
+// CD fetches no remote kustomize bases at sync time.
 func NewKubeflowChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

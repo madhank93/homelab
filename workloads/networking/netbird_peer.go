@@ -1,3 +1,5 @@
+// Package networking holds the NetBird routing peer that links the cluster LAN
+// to the Bifrost VPS.
 package networking
 
 import (
@@ -10,24 +12,19 @@ import (
 )
 
 // NewNetbirdPeerChart deploys the NetBird routing peer (k8s-routing-peer) as a
-// StatefulSet on any available worker (no nodeSelector — floats for resilience).
+// single-replica StatefulSet with no nodeSelector, so it can run on any worker.
 //
-// The routing peer forms a WireGuard mesh with the Bifrost VPS and advertises the
-// cluster LAN subnet to Bifrost. Incoming traffic from Bifrost arrives on wt0 in the
-// pod's own network namespace and is forwarded out the pod's eth0, where Cilium BPF
-// load-balances it like any pod traffic. Running in the host namespace would break
-// whenever the peer shares a node with the Gateway's L2 lease holder: a node cannot
-// ARP-resolve the LoadBalancer IP it announces itself.
+// The peer joins the WireGuard mesh with the Bifrost VPS and advertises the
+// cluster LAN subnet. Traffic from Bifrost arrives on wt0 in the pod's own network
+// namespace and leaves through the pod's eth0, where Cilium load-balances it like
+// any pod traffic. It must not use hostNetwork: on the node holding the Gateway's
+// L2 lease, the host cannot ARP-resolve the LoadBalancer IP it announces itself.
 //
-// Key configuration decisions:
-//   - PVC mounts at /var/lib/netbird/ for peer-key persistence across restarts.
-//   - An initContainer adds an iptables POSTROUTING MASQUERADE so forwarded traffic
-//     from wt0 leaves as the pod IP; replies need no route back to the overlay.
-//   - NB_SKIP_SOCKET_MARK must NOT be set: the routing peer relies on socket fwmark
-//     to bypass the management-server host route added to the kernel routing table.
-//   - wt0 never reaches Cilium: it lives inside the pod, and Cilium devices
-//     (core/platform/cilium.go) must not include it — it is NOARP/POINTOPOINT and
-//     Cilium TC BPF silently drops its frames.
+// Constraints:
+//   - NB_SKIP_SOCKET_MARK must not be set: the peer relies on socket fwmark to
+//     bypass the management-server host route it adds to the routing table.
+//   - wt0 must never be a Cilium device (core/platform/cilium.go): it is
+//     NOARP/POINTOPOINT and Cilium TC BPF silently drops its frames.
 func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -55,9 +52,8 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 		},
 	})
 
-	// StatefulSet + PVC keeps the peer's private key across restarts, so a restart
-	// does not register a duplicate peer. Routes are assigned to this peer in the
-	// NetBird UI.
+	// The PVC keeps the peer's private key, so a restart does not register a
+	// duplicate peer. Routes are assigned to this peer in the NetBird UI.
 	image := config.ContainerImage("netbird").Ref()
 	subnet := config.C.Cluster.Subnet
 	replicas := float64(1)
@@ -79,12 +75,9 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 				},
 				Spec: &k8s.PodSpec{
 					Volumes: &[]*k8s.Volume{kit.SecretsVolume("netbird-secrets")},
-					// Init container: MASQUERADE wt0-forwarded traffic to the LAN so it leaves
-					// with the pod IP and replies return through this peer. Kernel
-					// WireGuard hands decapsulated packets straight to FORWARD, skipping
-					// PREROUTING, so the rule matches in POSTROUTING on "not back out wt0"
-					// rather than a NIC name, which varies with Talos interface naming.
-					// The -C check keeps pod restarts from stacking duplicate rules.
+					// MASQUERADE traffic forwarded from wt0 to the LAN so it leaves with
+					// the pod IP and replies return through this peer. The -C check keeps
+					// restarts from stacking duplicate rules.
 					InitContainers: &[]*k8s.Container{
 						{
 							Name:    jsii.String("setup-iptables"),
@@ -105,8 +98,8 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 					Containers: &[]*k8s.Container{
 						{
 							Name: jsii.String("netbird"),
-							// Pinned to match Bifrost server version. Default entrypoint starts
-							// the service daemon then calls 'netbird up' — do not override Command.
+							// Keep in step with netbird-server in core/cloud/bifrost. The default
+							// entrypoint starts the daemon and runs `netbird up`; do not override Command.
 							Image: jsii.String(image),
 							Env: &[]*k8s.EnvVar{
 								{
@@ -138,8 +131,7 @@ func NewNetbirdPeerChart(scope constructs.Construct, id string, namespace string
 							},
 							VolumeMounts: &[]*k8s.VolumeMount{
 								{
-									// Persists NetBird private key + config across restarts.
-									// Without this, every restart = new key = new peer registration.
+									// NetBird keeps its private key and config here.
 									Name:      jsii.String("netbird-config"),
 									MountPath: jsii.String("/var/lib/netbird"),
 								},

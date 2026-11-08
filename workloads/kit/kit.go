@@ -111,8 +111,8 @@ func SecretsMount() *k8s.VolumeMount {
 	return &k8s.VolumeMount{Name: jsii.String(secretsVolume), MountPath: jsii.String("/mnt/secrets"), ReadOnly: jsii.Bool(true)}
 }
 
-// SecretsVolumeValues and SecretsMountValues are the Helm-values forms of
-// SecretsVolume and SecretsMount, for charts that accept extra volumes.
+// SecretsVolumeValues is SecretsVolume in Helm-values form, for charts that
+// accept extra volumes.
 func SecretsVolumeValues(spc string) map[string]any {
 	return map[string]any{
 		"name": secretsVolume,
@@ -124,6 +124,7 @@ func SecretsVolumeValues(spc string) map[string]any {
 	}
 }
 
+// SecretsMountValues is SecretsMount in Helm-values form.
 func SecretsMountValues() map[string]any {
 	return map[string]any{"name": secretsVolume, "mountPath": "/mnt/secrets", "readOnly": true}
 }

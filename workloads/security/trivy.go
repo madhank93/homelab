@@ -25,12 +25,8 @@ const trivyHelmReleasesBase = "https://github.com/aquasecurity/helm-charts/relea
 const maxCRDSize = 16 << 20
 
 // NewTrivyChart deploys the Trivy Operator for continuous vulnerability and
-// misconfiguration scanning of workloads and container images.
-//
-// CRDs are included inline (downloaded from the Aqua Helm releases) unless the
-// environment variable TRIVY_OPERATOR_SKIP_CRDS=true is set. Set this variable
-// when upgrading an existing installation to avoid CRD conflicts.
-// A ServiceMonitor is enabled so VictoriaMetrics scrapes vulnerability metrics.
+// misconfiguration scanning, with its CRDs and a ServiceMonitor for VMAgent.
+// Synth downloads the chart release to extract the CRDs, so it needs network access.
 func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -55,9 +51,8 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 		"trivyOperator": map[string]any{
 			"scanJobTimeout": "5m",
 		},
-		// Talos has a read-only root filesystem — /etc/systemd and /lib/systemd do not exist.
-		// Strip those hostPath mounts from node-collector; keep the k8s-relevant paths only.
-		// Toleration required so node-collector can scan control-plane nodes (NoSchedule taint).
+		// Replaces the default mounts: Talos has no /etc/systemd or /lib/systemd.
+		// The toleration lets node-collector scan control-plane nodes.
 		"nodeCollector": map[string]any{
 			"tolerations": []map[string]any{
 				{
@@ -95,9 +90,7 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 		},
 	}
 
-	if os.Getenv("TRIVY_OPERATOR_SKIP_CRDS") != "true" {
-		includeTrivyCRDs(chart)
-	}
+	includeTrivyCRDs(chart)
 
 	trivyoperator.NewTrivyoperator(chart, jsii.String("trivy-release"), &trivyoperator.TrivyoperatorProps{
 		ReleaseName: jsii.String("trivy-operator"),
@@ -108,10 +101,9 @@ func NewTrivyChart(scope constructs.Construct, id string, namespace string) cdk8
 	return chart
 }
 
-// includeTrivyCRDs downloads the Trivy Operator CRD bundle from the Aqua Helm
-// release tarball, extracts the CRD YAML files, and adds each as an ApiObject
-// to the chart. This ensures CRDs are always in sync with the operator version
-// without needing a separate CRD install step.
+// includeTrivyCRDs adds the crds/ files from the pinned trivy-operator chart
+// release, which cdk8s's Helm rendering omits. It panics on any download or
+// extraction error.
 func includeTrivyCRDs(chart cdk8s.Chart) {
 	tempDir, err := os.MkdirTemp("", "trivy-crds")
 	if err != nil {

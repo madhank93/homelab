@@ -1,3 +1,4 @@
+// Package storage holds the Longhorn distributed block storage chart.
 package storage
 
 import (
@@ -8,14 +9,9 @@ import (
 	"github.com/madhank93/homelab/workloads/kit"
 )
 
-// NewLonghornChart deploys Longhorn distributed block storage into the given
-// namespace.
-//
-// Worker disk sizes live in config/config.yml. The 300%
-// storageOverProvisioningPercentage below lets claims exceed free space,
-// since volumes only consume what they write.
-// The namespace is labelled privileged because the Longhorn CSI driver and
-// instance manager require elevated host access (device files, kernel modules).
+// NewLonghornChart deploys Longhorn distributed block storage, the default
+// StorageClass, on the worker disks sized in config/config.yml. The namespace is
+// privileged because the CSI driver and instance managers need host devices.
 func NewLonghornChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -27,9 +23,9 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		"defaultSettings": map[string]any{
 			"defaultReplicaCount":           3,
 			"defaultDataPath":               "/var/lib/longhorn/", // Talos persistent path
-			"createDefaultDiskLabeledNodes": false,                // Auto-provision default disk on ALL nodes (not just labelled ones)
-			// Volumes only consume what they write, so claims may exceed free space;
-			// 200% left no room for new 50Gi AI model replicas.
+			"createDefaultDiskLabeledNodes": false,                // default disk on every Longhorn node, not only labelled ones
+			// Volumes only consume what they write, so claims may exceed free space,
+			// leaving room for 50Gi AI model replicas.
 			"storageOverProvisioningPercentage": 300,
 			// Moves volume engines onto the chart's engine image after a Longhorn
 			// upgrade without manual per-volume upgrades; one volume per node at a time.
@@ -66,7 +62,7 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 				"enabled": true,
 			},
 		},
-		// Disable pre-upgrade hook for initial installation (ArgoCD/GitOps best practice)
+		// Argo CD runs this Helm pre-upgrade hook on every sync, including the first install.
 		"preUpgradeChecker": map[string]any{
 			"jobEnabled": false,
 		},

@@ -1,3 +1,7 @@
+// Core is the Pulumi program for the homelab's infrastructure. The stack name
+// selects what it deploys: talos, platform, hetzner, authentik or cloudflare.
+// Values from an optional .env file are exported into the process environment
+// for providers that read it directly.
 package main
 
 import (

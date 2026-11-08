@@ -1,3 +1,6 @@
+// Package cloud manages the infrastructure outside the cluster: the Bifrost VPS
+// on Hetzner, Authentik SSO running on it, and Cloudflare DNS. Each exported
+// Deploy or Manage function is one Pulumi stack.
 package cloud
 
 import (
@@ -113,7 +116,11 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 			},
 		},
 		UserData: pulumi.String(string(userData)),
-	}, pulumi.Provider(provider))
+	}, pulumi.Provider(provider),
+		// Both inputs force a replace, which would lose Bifrost's data and the IP Cloudflare points at.
+		pulumi.Protect(true),
+		pulumi.IgnoreChanges([]string{"userData", "image"}),
+	)
 	if err != nil {
 		return err
 	}
@@ -130,8 +137,6 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Generate public-services.yml so Traefik hot-reloads internet-exposed routes.
-	// publicServices is defined in cloudflare.go. Edit that slice to toggle exposure.
 	if err := generateTraefikPublicServices(publicServices); err != nil {
 		return fmt.Errorf("generate traefik public-services.yml: %w", err)
 	}
@@ -147,7 +152,6 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 		}
 	}
 
-	// Trigger hash — bootstrap.sh re-runs when configs or secrets change.
 	triggerHash, err := computeBifrostHash()
 	if err != nil {
 		return fmt.Errorf("hash bifrost dir: %w", err)
@@ -169,8 +173,8 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Run bootstrap.sh on the VPS after every config/secret change.
-	// The script starts services in order, waits for health, and logs each step.
+	// bootstrap.sh starts services in order and waits for health; triggerHash
+	// re-runs it whenever a config or secret changes.
 	_, err = remote.NewCommand(ctx, "bifrost-bootstrap",
 		&remote.CommandArgs{
 			Connection: conn,
@@ -273,12 +277,21 @@ func writeBifrostEnv(path string, vars []secretVar) error {
 // computeBifrostHash returns a SHA-256 of every file under ./cloud/bifrost, the
 // generated env files included. Used as a Pulumi Trigger so bootstrap.sh re-runs
 // when either configs or secrets change. Values are hashed — never stored.
+//
+// The whole directory is copied to the VPS, so a dot-prefixed env file there is an
+// error: deployed secrets live only in env/, and a stray one would otherwise ship.
 func computeBifrostHash() (string, error) {
 	h := sha256.New()
 
 	err := filepath.Walk("./cloud/bifrost", func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+		if err != nil {
 			return err
+		}
+		if name := info.Name(); strings.HasPrefix(name, ".") && strings.HasSuffix(name, ".env") {
+			return fmt.Errorf("%s would be copied to the VPS; remove it", path)
+		}
+		if info.IsDir() {
+			return nil
 		}
 		data, err := os.ReadFile(path) //nolint:gosec // path comes from walking the repo's own bifrost dir
 		if err != nil {

@@ -15,27 +15,30 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// AuthURL is the public Authentik base URL on Bifrost.
 var AuthURL = "https://" + config.C.Host("auth")
 
+// AuthInsecure disables TLS verification for the Authentik provider. GithubName,
+// GithubSlug and GithubClientID identify the GitHub OAuth app used as the login
+// source; its secret comes from AUTHENTIK_GITHUB_SECRET.
 const (
 	AuthInsecure = false
 
-	// GitHub SSO Settings
 	GithubName     = "GitHub"
 	GithubSlug     = "github"
 	GithubClientID = "Ov23liUPVh4nPuUJzGFp"
 )
 
-// identStageInfo holds the fields we need from the Authentik REST API response
-// for the default-authentication-identification stage.
+// identStageInfo is the subset of an identification stage returned by the
+// Authentik REST API.
 type identStageInfo struct {
 	PK         string   `json:"pk"`
 	UserFields []string `json:"user_fields"`
 }
 
 // getDefaultIdentificationStage fetches the default-authentication-identification
-// stage from the Authentik REST API and returns its UUID and user_fields.
-// Used to import and update the stage via Pulumi without a Lookup data source.
+// stage from the Authentik REST API. The SDK has no Lookup for stages, so its
+// UUID is needed to import the stage into Pulumi state.
 func getDefaultIdentificationStage(apiURL, token string) (*identStageInfo, error) {
 	url := apiURL + "/api/v3/stages/identification/?name=default-authentication-identification"
 	req, err := http.NewRequest("GET", url, nil)
@@ -86,9 +89,7 @@ type AuthentikContext struct {
 	SigningKey     pulumi.StringInput // authentik Self-signed Certificate ID
 }
 
-// OIDCApp describes an OIDC application to register in Authentik.
-// ClientSecret is only required when ClientType is "confidential".
-// ClientType defaults to "public" when empty.
+// OIDCApp describes an OIDC provider and application to register in Authentik.
 type OIDCApp struct {
 	Name                  string
 	Slug                  string
@@ -103,13 +104,12 @@ type OIDCApp struct {
 }
 
 // DeployAuthentik configures the Authentik identity provider running on Bifrost.
-// It registers GitHub as an SSO source, creates OIDC applications for Grafana,
-// Homepage and NetBird, provisions a service account for NetBird management sync, and
-// creates the homelab-wide ForwardAuth proxy provider backed by Traefik.
+// It registers GitHub as a login source, creates the OIDC applications (Grafana,
+// Homepage, Argo CD, Harbor, Kubernetes/Headlamp, Proxmox, NetBird) and the
+// ForwardAuth proxy provider that Traefik uses for public services.
 //
-// Prerequisites: AUTHENTIK_TOKEN, AUTHENTIK_GITHUB_SECRET and the per-app
-// *_CLIENT_SECRET values must be present
-// in the SOPS-injected environment (run via `sops exec-env secrets/bootstrap.sops.yaml`).
+// AUTHENTIK_TOKEN, AUTHENTIK_GITHUB_SECRET and each app's client secret must be in
+// the SOPS-injected environment.
 func DeployAuthentik(ctx *pulumi.Context) error {
 	token := cfg.K.String("AUTHENTIK_TOKEN")
 	ghSecret := cfg.K.String("AUTHENTIK_GITHUB_SECRET")
@@ -117,7 +117,6 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return fmt.Errorf("missing AUTHENTIK_TOKEN or AUTHENTIK_GITHUB_SECRET")
 	}
 
-	// Setup Provider
 	provider, err := authentik.NewProvider(ctx, "authentik-provider", &authentik.ProviderArgs{
 		Url:      pulumi.String(AuthURL),
 		Token:    pulumi.String(token),
@@ -127,88 +126,53 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Global Flow Lookups
-	ac := AuthentikContext{
-		Ctx:            ctx,
-		Provider:       provider,
-		FlowAuth:       mustLookupFlow(ctx, provider, "default-authentication-flow"),
-		FlowInvalid:    mustLookupFlow(ctx, provider, "default-provider-invalidation-flow"),
-		FlowImplicit:   mustLookupFlow(ctx, provider, "default-provider-authorization-implicit-consent"),
-		FlowExplicit:   mustLookupFlow(ctx, provider, "default-provider-authorization-explicit-consent"),
-		FlowEnrollment: mustLookupFlow(ctx, provider, "default-source-enrollment"),
+	ac := AuthentikContext{Ctx: ctx, Provider: provider}
+	for _, f := range []struct {
+		dst  *pulumi.StringInput
+		slug string
+	}{
+		{&ac.FlowAuth, "default-authentication-flow"},
+		{&ac.FlowInvalid, "default-provider-invalidation-flow"},
+		{&ac.FlowImplicit, "default-provider-authorization-implicit-consent"},
+		{&ac.FlowExplicit, "default-provider-authorization-explicit-consent"},
+		{&ac.FlowEnrollment, "default-source-enrollment"},
+	} {
+		if *f.dst, err = lookupFlow(ctx, provider, f.slug); err != nil {
+			return err
+		}
 	}
 
-	// Signing Key (Self-signed default)
-	// We need a signing key for OIDC to work correctly with Netbird (JWTs).
-	// Typically Authentik creates a default one. We'll search for it or use a known one.
-	// For now, let's look up the default one created by Authentik.
+	// Authentik creates this key pair on install; OIDC clients such as NetBird
+	// verify ID tokens against it.
 	signingKey, err := authentik.LookupCertificateKeyPair(ctx, &authentik.LookupCertificateKeyPairArgs{
 		Name: "authentik Self-signed Certificate",
 	}, pulumi.Provider(provider))
 	if err != nil {
-		// Fallback or error if critical. It usually exists.
-		// Use a panic here because if we can't sign tokens, OIDC won't work.
 		return fmt.Errorf("failed to find default signing key: %w", err)
 	}
 
 	ac.SigningKey = pulumi.String(signingKey.Id)
 
-	// Netbird requires "api" scope
-	// Docs: https://integrations.goauthentik.io/networking/netbird/
-	// We create a custom scope mapping for "api" which Netbird requests.
+	// NetBird requests an "api" scope that Authentik does not ship; it carries no claims.
+	// See https://integrations.goauthentik.io/networking/netbird/.
 	apiScope, err := authentik.NewPropertyMappingProviderScope(ctx, "scope-api", &authentik.PropertyMappingProviderScopeArgs{
 		Name:       pulumi.String("Netbird API Scope"),
 		ScopeName:  pulumi.String("api"),
-		Expression: pulumi.String("return {}"), // Standard empty mapping
+		Expression: pulumi.String("return {}"),
 	}, pulumi.Provider(provider))
 	if err != nil {
 		return err
 	}
 
-	// Common OIDC Scopes (email, profile, openid, offline_access)
-	allScopes := getCommonScopes(ctx, provider)
-	// Ensure we convert IDOutput to StringOutput for compatibility
+	allScopes, err := getCommonScopes(ctx, provider)
+	if err != nil {
+		return err
+	}
 	allScopes = append(allScopes,
 		apiScope.ID().ToStringOutput(),
 	)
 	ac.Scopes = allScopes
 
-	// Admin group membership required for the NetBird service account
-	adminGroup, err := authentik.LookupGroup(ctx, &authentik.LookupGroupArgs{
-		Name: pulumi.StringRef("authentik Admins"),
-	}, pulumi.Provider(provider))
-	if err != nil {
-		return err
-	}
-
-	// Service account for NetBird management sync
-	sa, err := authentik.NewUser(ctx, "sa-netbird", &authentik.UserArgs{
-		Username: pulumi.String("sa-netbird"),
-		Name:     pulumi.String("Netbird"),
-		Type:     pulumi.String("service_account"),
-		Groups: pulumi.StringArray{
-			pulumi.String(adminGroup.Id),
-		},
-	}, pulumi.Provider(provider))
-	if err != nil {
-		return err
-	}
-
-	// Generate App Token for Netbird
-	// Note: We'll output this so the user can put it in management.json
-	saToken, err := authentik.NewToken(ctx, "token-netbird", &authentik.TokenArgs{
-		Identifier: pulumi.String("netbird-api-token"),
-		User:       idFloat(sa.ID()),
-		Intent:     pulumi.String("app_password"),
-		Expiring:   pulumi.Bool(false),
-	}, pulumi.Provider(provider))
-	if err != nil {
-		return err
-	}
-	ctx.Export("NetbirdServiceToken", saToken.Key)
-	ctx.Export("NetbirdClientID", pulumi.String("aumenijDycfG1cQURqH9BNJpV3KVUCoMHGPUVUlT"))
-
-	// GitHub SSO Source
 	githubSource, err := authentik.NewSourceOauth(ctx, "source-github", &authentik.SourceOauthArgs{
 		Name:               pulumi.String(GithubName),
 		Slug:               pulumi.String(GithubSlug),
@@ -228,11 +192,9 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Bind GitHub source to the default identification stage so the "Login with
-	// GitHub" button appears on the Authentik login page.
-	// We fetch the stage UUID via REST API (no Lookup data source exists in the SDK),
-	// then import + update the stage. pulumi.Import is a no-op on re-runs once the
-	// resource is already in Pulumi state.
+	// Binding the GitHub source to the default identification stage shows the
+	// "Login with GitHub" button. The stage is adopted with pulumi.Import, a no-op
+	// once it is in state; its user_fields are carried over unchanged.
 	identStage, err := getDefaultIdentificationStage(AuthURL, token)
 	if err != nil {
 		return fmt.Errorf("fetch default identification stage: %w", err)
@@ -258,8 +220,8 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 
 	// --- Applications ---
 
-	// Groups property mapping — returns the list of group names the user belongs to.
-	// Grafana's org_mapping reads this claim to place grafana-admins in the admin org.
+	// The groups claim lists the user's group names; apps map grafana-admins to
+	// their admin role.
 	groupsMapping, err := authentik.NewPropertyMappingProviderScope(ctx, "scope-groups", &authentik.PropertyMappingProviderScopeArgs{
 		Name:      pulumi.String("Groups"),
 		ScopeName: pulumi.String("groups"),
@@ -284,9 +246,8 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Grafana — confidential OIDC app. GitHub login flows through Authentik.
-	// Client secret stored in SOPS as GRAFANA_OAUTH_CLIENT_SECRET and in
-	// OpenBao at secret/grafana.OAUTH_CLIENT_SECRET (seeded by just openbao-setup).
+	// Grafana reads its client secret from OpenBao (secret/grafana, seeded from
+	// SOPS by just openbao-setup).
 	grafanaSecret := cfg.K.String("GRAFANA_OAUTH_CLIENT_SECRET")
 	if grafanaSecret == "" {
 		return fmt.Errorf("missing GRAFANA_OAUTH_CLIENT_SECRET in config")
@@ -307,8 +268,7 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	}
 	ctx.Export("GrafanaOIDCClientID", pulumi.String("grafana-homelab"))
 
-	// Homepage — confidential OIDC app. Homepage admits any identity the
-	// provider authorizes, and any GitHub account can enroll in Authentik,
+	// Homepage admits any identity the provider authorizes, and any GitHub account can enroll in Authentik,
 	// so access is limited to the grafana-admins group.
 	homepageSecret := cfg.K.String("HOMEPAGE_OAUTH_CLIENT_SECRET")
 	if homepageSecret == "" {
@@ -359,9 +319,8 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		}
 	}
 
-	// Netbird — confidential OIDC app for NetBird's embedded Dex, which federates
-	// to Authentik. Dex's callback URI is always issuer + "/callback".
-	// The connector itself is registered by hand in the NetBird UI; see docs.
+	// NetBird's embedded Dex federates to Authentik; the Dex connector itself is
+	// registered by hand in the NetBird UI.
 	netbirdSecret := cfg.K.String("NETBIRD_CLIENT_SECRET")
 	if netbirdSecret == "" {
 		return fmt.Errorf("missing NETBIRD_CLIENT_SECRET in config")
@@ -374,9 +333,9 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		ClientType:   "confidential",
 		LaunchURL:    "https://" + config.C.Host("netbird") + "/",
 		Redirects: []string{
-			// Embedded Dex callback: issuer (/oauth2) + /callback
+			// Dex callback: its issuer (/oauth2) + "/callback".
 			"https://" + config.C.Host("netbird") + "/oauth2/callback",
-			// NetBird CLI device-auth callback
+			// NetBird CLI login callback.
 			"http://localhost:53000",
 		},
 		GrantTypes: []string{"authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:device_code"},
@@ -384,7 +343,6 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Homelab ForwardAuth — covers public services via Traefik
 	if err := createHomelabForwardAuth(ac); err != nil {
 		return err
 	}
@@ -411,9 +369,8 @@ func lookupGrafanaAdmins(ctx *pulumi.Context, provider *authentik.Provider) (pul
 }
 
 // createHomelabForwardAuth creates the Authentik forward-domain proxy provider and
-// embedded outpost that back Traefik's ForwardAuth middleware for public services.
-// All requests from the internet pass through this outpost for
-// authentication unless the service is listed with SkipAuth: true in publicServices.
+// outpost that back Traefik's ForwardAuth middleware. Every public service
+// passes through it unless its publicServices entry sets SkipAuth.
 func createHomelabForwardAuth(ac AuthentikContext) error {
 	proxyProvider, err := authentik.NewProviderProxy(ac.Ctx, "provider-homelab-forwardauth", &authentik.ProviderProxyArgs{
 		Name:              pulumi.String("Homelab ForwardAuth"),
@@ -448,10 +405,10 @@ func createHomelabForwardAuth(ac AuthentikContext) error {
 	return err
 }
 
-// createOIDCApp registers an OIDC provider and linked application in Authentik.
-// It merges the common scopes from ac.Scopes with any app-specific ExtraPropertyMappings,
-// sets the redirect URIs (using regex mode for wildcard patterns), and exports the
-// provider ID into the application's ProtocolProvider field.
+// createOIDCApp registers an OIDC provider and its application in Authentik,
+// with ac.Scopes plus app.ExtraPropertyMappings. Redirect URIs containing "*"
+// match as regex. When app.AccessGroup is set, a policy binding restricts login
+// to that group.
 func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 	var redirectMap pulumi.StringMapArray
 	for _, url := range app.Redirects {
@@ -471,13 +428,12 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 		grantTypes = []string{"authorization_code", "refresh_token"}
 	}
 
-	// Default to public if not set
 	clientType := app.ClientType
 	if clientType == "" {
 		clientType = "public"
 	}
 
-	// Merge default scopes with any app-specific extra property mappings.
+	// Copy before appending so apps never share ac.Scopes' backing array.
 	scopes := ac.Scopes
 	if len(app.ExtraPropertyMappings) > 0 {
 		scopes = append(pulumi.ToStringArray([]string{}), scopes.(pulumi.StringArray)...)
@@ -495,9 +451,10 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 		SubMode:                pulumi.String("user_id"),
 		IncludeClaimsInIdToken: pulumi.Bool(true),
 		GrantTypes:             pulumi.ToStringArray(grantTypes),
-		// IMPORTANT: Signing Key is required for verifying JWTs in OIDC (especially for Netbird)
+		// Without a key pair, ID tokens are HS256-signed with the client secret,
+		// which NetBird cannot verify.
 		SigningKey: ac.SigningKey,
-		// Match NetBird documentation recommendation
+		// Lifetimes follow NetBird's Authentik guide.
 		AccessCodeValidity:  pulumi.String("minutes=10"),
 		AccessTokenValidity: pulumi.String("hours=1"),
 	}
@@ -531,23 +488,21 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 	return err
 }
 
-// mustLookupFlow looks up an Authentik flow by slug and panics if not found.
-// Authentik ships these default flows on every install; their absence is a
-// fatal misconfiguration that prevents any authentication from working.
-func mustLookupFlow(ctx *pulumi.Context, prov *authentik.Provider, slug string) pulumi.StringInput {
+// lookupFlow looks up an Authentik flow by slug. Authentik ships these default
+// flows on every install; their absence means no authentication can work.
+func lookupFlow(ctx *pulumi.Context, prov *authentik.Provider, slug string) (pulumi.StringInput, error) {
 	flow, err := authentik.LookupFlow(ctx, &authentik.LookupFlowArgs{
 		Slug: pulumi.StringRef(slug),
 	}, pulumi.Provider(prov))
 	if err != nil {
-		panic(fmt.Sprintf("CRITICAL: Missing flow '%s': %v", slug, err))
+		return nil, fmt.Errorf("look up authentik flow %q: %w", slug, err)
 	}
-	return pulumi.String(flow.Id)
+	return pulumi.String(flow.Id), nil
 }
 
 // getCommonScopes returns the Authentik property-mapping IDs for the standard
-// OIDC scopes (email, profile, openid, offline_access). These are included in
-// every OIDC provider created by createOIDCApp.
-func getCommonScopes(ctx *pulumi.Context, prov *authentik.Provider) pulumi.StringArray {
+// OIDC scopes (email, profile, openid, offline_access).
+func getCommonScopes(ctx *pulumi.Context, prov *authentik.Provider) (pulumi.StringArray, error) {
 	var scopeIDs pulumi.StringArray
 
 	names := []string{"email", "profile", "openid", "offline_access"}
@@ -557,12 +512,12 @@ func getCommonScopes(ctx *pulumi.Context, prov *authentik.Provider) pulumi.Strin
 			Managed: pulumi.StringRef(fmt.Sprintf("goauthentik.io/providers/oauth2/scope-%s", name)),
 		}, pulumi.Provider(prov))
 		if err != nil {
-			panic(fmt.Sprintf("CRITICAL: Missing scope '%s'", name))
+			return nil, fmt.Errorf("look up authentik scope %q: %w", name, err)
 		}
 		scopeIDs = append(scopeIDs, pulumi.String(scope.Id))
 	}
 
-	return scopeIDs
+	return scopeIDs, nil
 }
 
 // idFloat converts a Pulumi resource ID to the numeric form the Authentik

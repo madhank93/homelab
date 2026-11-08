@@ -1,3 +1,5 @@
+// Package hardware deploys GPU support for worker4: the NVIDIA device plugin
+// with node feature discovery, the nvidia RuntimeClass and the DCGM exporter.
 package hardware
 
 import (
@@ -23,14 +25,10 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 
 	kit.Namespace(chart, namespace, true)
 
-	// RuntimeClass: tells containerd to use nvidia-container-runtime for the
-	// device plugin and GFD pods. Without this, the default runc runtime ignores
-	// NVIDIA_VISIBLE_DEVICES=all (already set in the chart template) and never
-	// injects libnvidia-ml.so.1 into the container. On Talos, the NVIDIA libs live
-	// at /usr/local/glibc/usr/lib/ (squashfs, not bind-mountable via hostPath), so
-	// the only way to make NVML accessible is via the nvidia-container-runtime hook.
-	// The handler "nvidia" matches the containerd runtime configured by the
-	// nvidia-container-toolkit-production Talos extension.
+	// Every GPU pod needs this RuntimeClass. Talos keeps the NVIDIA libs on a
+	// squashfs that hostPath cannot mount, so only the nvidia-container-runtime
+	// hook can inject them; plain runc ignores NVIDIA_VISIBLE_DEVICES. The
+	// "nvidia" handler is registered by the nvidia-container-toolkit-production extension.
 	k8s.NewKubeRuntimeClass(chart, jsii.String("nvidia-runtime-class"), &k8s.KubeRuntimeClassProps{
 		Metadata: &k8s.ObjectMeta{Name: jsii.String("nvidia")},
 		Handler:  jsii.String("nvidia"),
@@ -58,24 +56,17 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 					},
 				},
 			},
-			// Tolerate the dedicated=ai taint so the device plugin DaemonSet can run on worker4.
 			"tolerations": []map[string]any{
 				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
 			},
 			// GFD adds nvidia.com/gpu.present=true and product/memory/count labels.
 			"gfd":              map[string]any{"enabled": true},
 			"runtimeClassName": "nvidia",
-			// Inline config avoids a separate ConfigMap resource.
-			// - deviceDiscoveryStrategy: nvml — "auto" fails on Talos because it probes
-			//   standard paths that don't exist; nvml talks directly to the kernel module
-			//   loaded by the nvidia-open-gpu-kernel-modules-production extension.
-			// - plugin.deviceListStrategy: envvar — CDI hostPath mounts fail on Talos
-			//   (libs at non-standard paths); envvar injects NVIDIA_VISIBLE_DEVICES instead.
-			//   NOTE: plugin is nested under flags, not a top-level key (per v1 config schema).
-			// - timeSlicing replicas: 5 — Ollama + ComfyUI + Kubeflow notebook +
-			//   training job + Katib trial. VRAM is not isolated; typical concurrent
-			//   active load is 2-3 processes (~10-12 GB), well within the 16 GB pool.
-			//   Running Flux (12 GB) + Ollama simultaneously would OOM — user responsibility.
+			// - deviceDiscoveryStrategy nvml: "auto" probes standard paths that Talos lacks.
+			// - deviceListStrategy envvar: CDI hostPath mounts fail on Talos's library
+			//   paths. It sits under flags.plugin in the v1 config schema.
+			// - timeSlicing 5: Ollama, ComfyUI, a notebook, a training job and a Katib
+			//   trial. VRAM is not isolated, so two large models at once can OOM the card.
 			"config": map[string]any{
 				"default": "default",
 				"map": map[string]any{
@@ -95,9 +86,8 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 		},
 	})
 
-	// DCGM Exporter — exports GPU metrics (utilisation, VRAM, temp, power) to Prometheus/VMAgent.
-	// Runs as a DaemonSet only on the GPU node (nodeAffinity + toleration for dedicated=ai).
-	// Requires runtimeClassName=nvidia so containerd injects libnvidia-ml.so.1 via the hook.
+	// DCGM exporter: GPU utilisation, VRAM, temperature and power, scraped through
+	// its ServiceMonitor. Needs the nvidia runtime to load NVML.
 	dcgm := config.HelmChart("dcgm-exporter")
 	cdk8s.NewHelm(chart, jsii.String("dcgm-exporter-release"), &cdk8s.HelmProps{
 		Chart:       jsii.String("dcgm-exporter"),
@@ -120,7 +110,6 @@ func NewNvidiaDevicePluginChart(scope constructs.Construct, id string, namespace
 					},
 				},
 			},
-			// Tolerate the dedicated=ai taint on worker4 (GPU node)
 			"tolerations": []map[string]any{
 				{"key": "dedicated", "operator": "Equal", "value": "ai", "effect": "NoSchedule"},
 			},

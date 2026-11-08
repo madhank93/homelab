@@ -1,3 +1,5 @@
+// Package observability holds the metrics and logs pipeline: VictoriaMetrics,
+// VictoriaLogs, the OpenTelemetry Collectors and Argo CD scrape targets.
 package observability
 
 import (
@@ -139,7 +141,7 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 				},
 			},
 
-			// Grafana disabled — deployed separately in monitoring/grafana.go.
+			// Grafana is deployed by monitoring/grafana.go.
 			"grafana": map[string]any{"enabled": false},
 
 			"prometheus-node-exporter": map[string]any{
@@ -157,7 +159,7 @@ func NewVictoriaMetricsChart(scope constructs.Construct, id string, namespace st
 			"kubeEtcd":              map[string]any{"enabled": true},
 			"kubeScheduler":         map[string]any{"enabled": true},
 			"kubeControllerManager": map[string]any{"enabled": true},
-			// Cilium replaces kube-proxy — no kube-proxy metrics endpoint
+			// Cilium replaces kube-proxy.
 			"kubeProxy": map[string]any{"enabled": false},
 
 			// Dashboards and rules are not rendered by the chart: its sync-job (an

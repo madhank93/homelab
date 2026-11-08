@@ -14,13 +14,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// InstallCilium installs Cilium as the cluster CNI and kube-proxy replacement,
-// plus an HTTPRoute for hubble.madhan.app.
+// InstallCilium installs Cilium as the CNI and kube-proxy replacement, the
+// Hubble UI route, and a policy that rejects Service externalIPs.
 //
 // devices must never include wt0: it is NOARP/POINTOPOINT, and Cilium's TC BPF
 // silently drops non-Ethernet frames. The NetBird peer keeps wt0 in its pod netns
 // and reaches Cilium through the pod's eth0.
-func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewayCRDs pulumi.Resource) error {
+func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewayCRDs pulumi.Resource) (pulumi.Resource, error) {
 	// Upgrade one minor at a time. From 1.19 the datapath drops traffic to an
 	// LB-IPAM address on ports no Service uses, and LB-IPAM does not skip node
 	// IPs, so a pool address that is also a node IP cuts that node off from the LAN
@@ -38,7 +38,7 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewa
 			"ipam": pulumi.Map{
 				"mode": pulumi.String("kubernetes"),
 			},
-			"kubeProxyReplacement": pulumi.Bool(true), // Strict eBPF
+			"kubeProxyReplacement": pulumi.Bool(true),
 			"securityContext": pulumi.Map{
 				"capabilities": pulumi.Map{
 					"ciliumAgent": pulumi.StringArray{
@@ -69,20 +69,15 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewa
 					"enabled": pulumi.Bool(true),
 				},
 			},
-			// Access & Routing
 			"l2announcements": pulumi.Map{
 				"enabled": pulumi.Bool(true),
 			},
 			"gatewayAPI": pulumi.Map{
 				"enabled": pulumi.Bool(true),
 				"secretsNamespace": pulumi.Map{
-					// Cilium copies the Gateway's TLS secret into cilium-secrets for Envoy
-					// SDS. It must own that copy: cilium-secrets is Cilium's own namespace,
-					// so a foreign secret parked there gets removed, and if cert-manager is
-					// what recreates it, every removal costs a fresh ACME order. That loop
-					// exhausted Let's Encrypt's 5-per-168h duplicate-certificate limit and
-					// took down HTTPS on every route. One Certificate in kube-system, one
-					// owner for the copy.
+					// Cilium must own the copy of the Gateway TLS secret in cilium-secrets:
+					// a second owner (cert-manager) re-orders the cert on every removal and
+					// burns the Let's Encrypt duplicate-certificate limit.
 					"sync": pulumi.Bool(true),
 				},
 			},
@@ -116,10 +111,9 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewa
 		},
 	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{gatewayCRDs}))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// HTTPRoute for Hubble UI — routes hubble.madhan.app → hubble-ui:80 in kube-system
 	_, err = apiextensions.NewCustomResource(ctx, "hubble-ui-httproute", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 		Kind:       pulumi.String("HTTPRoute"),
@@ -143,10 +137,10 @@ func InstallCilium(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, gatewa
 		},
 	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{ciliumChart}))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return denyServiceExternalIPs(ctx, k8sProvider)
+	return ciliumChart, denyServiceExternalIPs(ctx, k8sProvider)
 }
 
 // denyServiceExternalIPs rejects Services that set spec.externalIPs, which would
@@ -211,9 +205,9 @@ func InstallGatewayAPICRDs(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 	}, pulumi.Provider(k8sProvider))
 }
 
-// InstallGateway creates the shared Gateway resource for the cluster
-func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, crds pulumi.Resource) error {
-	// Create Gateway Resource (Depends on GatewayClass from Cilium Helm Chart + CRDs)
+// InstallGateway creates the shared Gateway. It depends on the CRDs and on the
+// Cilium chart, which provides the "cilium" GatewayClass.
+func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, crds, ciliumChart pulumi.Resource) error {
 	_, err := apiextensions.NewCustomResource(ctx, "cilium-gateway", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 		Kind:       pulumi.String("Gateway"),
@@ -257,14 +251,15 @@ func InstallGateway(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, crds 
 				},
 			},
 		},
-	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{crds}))
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{crds, ciliumChart}))
 
 	return err
 }
 
 // ConfigureCiliumIPPool creates the L2 announcement policy and the LB IP pool
-// (one /32 block per address in config cluster.lb_pool).
-func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, interfaceName string) error {
+// (one /32 block per address in config cluster.lb_pool). Both are CRs whose CRDs
+// the Cilium operator registers, hence the dependency on ciliumChart.
+func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider, ciliumChart pulumi.Resource, interfaceName string) error {
 	start, err := netip.ParseAddr(config.C.Cluster.LBPool.Start)
 	if err != nil {
 		return err
@@ -301,13 +296,13 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 				"blocks": blocks,
 			},
 		},
-	}, pulumi.Provider(k8sProvider),
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{ciliumChart}),
 		pulumi.Aliases([]pulumi.Alias{{Type: pulumi.String("kubernetes:cilium.io/v2alpha1:CiliumLoadBalancerIPPool")}}))
 	if err != nil {
 		return err
 	}
 
-	// Create L2 Policy Resource
+	// Only workers answer ARP for LoadBalancer IPs.
 	_, err = apiextensions.NewCustomResource(ctx, "cilium-l2-policy", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("cilium.io/v2alpha1"),
 		Kind:       pulumi.String("CiliumL2AnnouncementPolicy"),
@@ -331,15 +326,15 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 				"loadBalancerIPs": true,
 			},
 		},
-	}, pulumi.Provider(k8sProvider))
+	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{ciliumChart}))
 
 	return err
 }
 
-// PatchCiliumRBAC creates a ClusterRole and Binding to allow Cilium to manage Leases for L2 announcements.
-// This is necessary if the Helm chart installation didn't include these permissions.
+// PatchCiliumRBAC grants the cilium agent cluster-wide access to Leases, which
+// L2 announcements use to elect the node that answers for each
+// LoadBalancer Service.
 func PatchCiliumRBAC(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
-	// Create ClusterRole
 	_, err := rbacv1.NewClusterRole(ctx, "cilium-leases-access", &rbacv1.ClusterRoleArgs{
 		Metadata: &metav1.ObjectMetaArgs{
 			Name: pulumi.String("cilium-leases-access"),
@@ -356,7 +351,6 @@ func PatchCiliumRBAC(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) erro
 		return err
 	}
 
-	// Create ClusterRoleBinding
 	_, err = rbacv1.NewClusterRoleBinding(ctx, "cilium-leases-access-binding", &rbacv1.ClusterRoleBindingArgs{
 		Metadata: &metav1.ObjectMetaArgs{
 			Name: pulumi.String("cilium-leases-access-binding"),

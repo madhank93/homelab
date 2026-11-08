@@ -12,7 +12,8 @@ import (
 // NewOpenWebUIChart deploys Open WebUI, a chat front end for the in-cluster Ollama.
 //
 // It is LAN only: the route serves chat.<domain>, which has no public DNS record.
-// The first account to sign up becomes admin; later sign-ups wait as pending.
+// Sign-up is closed: the first account on an empty database becomes admin and
+// creates the rest.
 func NewOpenWebUIChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -20,7 +21,7 @@ func NewOpenWebUIChart(scope constructs.Construct, id string, namespace string) 
 
 	kit.Namespace(chart, namespace, false)
 
-	// PVC for the SQLite database, uploads and the generated session secret key
+	// Holds the SQLite database, uploads and the generated session secret key.
 	k8s.NewKubePersistentVolumeClaim(chart, jsii.String("open-webui-data"), &k8s.KubePersistentVolumeClaimProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:      jsii.String("open-webui-data"),
@@ -45,7 +46,7 @@ func NewOpenWebUIChart(scope constructs.Construct, id string, namespace string) 
 		},
 		Spec: &k8s.DeploymentSpec{
 			Replicas: &replicas,
-			// Recreate: the RWO volume cannot attach to two pods at once
+			// Recreate: the RWO volume cannot attach to two pods at once.
 			Strategy: &k8s.DeploymentStrategy{Type: jsii.String("Recreate")},
 			Selector: &k8s.LabelSelector{
 				MatchLabels: &map[string]*string{"app": jsii.String("open-webui")},
@@ -65,7 +66,7 @@ func NewOpenWebUIChart(scope constructs.Construct, id string, namespace string) 
 							},
 							Env: &[]*k8s.EnvVar{
 								{Name: jsii.String("OLLAMA_BASE_URL"), Value: jsii.String("http://ollama.ollama.svc.cluster.local:11434")},
-								// New sign-ups wait for the admin to approve them; only the first account is admin.
+								// Any account not created by the admin needs approval.
 								{Name: jsii.String("DEFAULT_USER_ROLE"), Value: jsii.String("pending")},
 								// Settings come from env only; admin UI changes reset on restart.
 								{Name: jsii.String("ENABLE_PERSISTENT_CONFIG"), Value: jsii.String("false")},

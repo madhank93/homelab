@@ -1,3 +1,5 @@
+// Workloads synthesizes every in-cluster app into ../app/<dir>, one directory
+// per Argo CD Application.
 package main
 
 import (
@@ -19,7 +21,7 @@ import (
 	"github.com/madhank93/homelab/workloads/support"
 )
 
-// Each entry synthesizes into ../app/<dir>, which Argo CD deploys as one Application.
+// apps lists every Application; each entry synthesizes into ../app/<dir>.
 var apps = []struct {
 	dir   string
 	build func(app cdk8s.App)

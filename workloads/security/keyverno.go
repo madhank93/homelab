@@ -7,9 +7,9 @@ import (
 	"github.com/madhank93/homelab/workloads/imports/kyverno"
 )
 
-// NewKyvernoChart deploys the Kyverno policy engine in high-availability mode.
-// The admission controller runs 3 replicas (odd, for leader-election quorum);
-// the other controllers run 2. Metrics on port 8000 are scraped by VMAgent.
+// NewKyvernoChart deploys the Kyverno policy engine with replicated controllers:
+// 3 admission controller replicas serve the webhooks, the other controllers run 2.
+// VMAgent scrapes metrics on port 8000.
 func NewKyvernoChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),

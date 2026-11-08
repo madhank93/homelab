@@ -9,13 +9,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// InstallCertManager installs cert-manager and configures issuers + wildcard certificate.
-// Prerequisite: cert-manager/cloudflare-api-token Secret must exist before the
-// letsencrypt-prod ClusterIssuer can complete DNS-01 challenges. Create it with:
+// InstallCertManager installs cert-manager, the letsencrypt-prod and homelab-ca
+// ClusterIssuers, and the wildcard certificate the Gateway serves. DNS-01
+// challenges need the cert-manager/cloudflare-api-token Secret, created by:
 //
 //	just create-secrets
 func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
-	// Install cert-manager via Helm (CRDs bundled via installCRDs: true)
 	cm := config.HelmChart("cert-manager")
 	chart, err := helm.NewRelease(ctx, "cert-manager", &helm.ReleaseArgs{
 		Name:    pulumi.String("cert-manager"),
@@ -55,8 +54,6 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 		return err
 	}
 
-	// Let's Encrypt ClusterIssuer (DNS-01 via Cloudflare)
-	// Requires cert-manager/cloudflare-api-token Secret — created by create-bootstrap-secrets.sh
 	_, err = apiextensions.NewCustomResource(ctx, "letsencrypt-prod-issuer", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("cert-manager.io/v1"),
 		Kind:       pulumi.String("ClusterIssuer"),
@@ -95,7 +92,7 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 		return err
 	}
 
-	// Self-Signed ClusterIssuer (for internal / testing use)
+	// Self-signed issuer for internal certificates.
 	_, err = apiextensions.NewCustomResource(ctx, "self-signed-issuer", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("cert-manager.io/v1"),
 		Kind:       pulumi.String("ClusterIssuer"),
@@ -112,7 +109,7 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 		return err
 	}
 
-	// Wildcard certificate for *.madhan.app — stored in kube-system for Gateway reference.
+	// The Gateway's HTTPS listener references this Secret in kube-system.
 	_, err = apiextensions.NewCustomResource(ctx, "wildcard-certificate", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("cert-manager.io/v1"),
 		Kind:       pulumi.String("Certificate"),

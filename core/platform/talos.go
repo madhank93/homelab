@@ -15,18 +15,15 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// DeployTalosCluster provisions Talos Linux VMs on Proxmox and bootstraps the
-// Kubernetes cluster. It downloads the base and GPU Talos images, generates
-// machine secrets, creates the VMs listed in config/config.yml, applies per-node
-// machine configs (hostname, static IP, routes), bootstraps etcd on the first
-// controller, and writes talosconfig + kubeconfig to disk for the platform stack.
-//
-// Run `just core talos up` to apply.
+// DeployTalosCluster provisions Talos VMs on Proxmox and bootstraps Kubernetes.
+// It also sets up the Proxmox host's certificate and Authentik login, downloads
+// the base and GPU Talos images, creates the VMs in config.yml, applies per-node
+// machine configs (hostname, static IP, route), bootstraps etcd on the first
+// controller, and writes talosconfig and kubeconfig for the platform stack.
 //
 // Changing the Talos image affects only newly created VMs; upgrade existing
 // nodes with `just talos-upgrade <ip>`.
 func DeployTalosCluster(ctx *pulumi.Context) error {
-	// Initialize Provider & Config
 	provider, err := NewProxmoxProvider(ctx)
 	if err != nil {
 		return err
@@ -45,7 +42,7 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return "https://factory.talos.dev/image/" + schematic + "/" + talos.Version + "/nocloud-amd64.raw.gz"
 	}
 
-	// Base image extensions: iscsi-tools, util-linux-tools, qemu-guest-agent
+	// Base extensions: iscsi-tools, util-linux-tools, qemu-guest-agent.
 	baseTalosImage, err := DownloadImage(ctx, provider, "talos-base-image", pveNode,
 		factoryURL(talos.BaseSchematic),
 		"talos-nocloud-amd64-base.img",
@@ -55,8 +52,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// GPU image adds: iscsi-tools, util-linux-tools, qemu-guest-agent,
-	//             nvidia-container-toolkit-production, nvidia-open-gpu-kernel-modules-production
+	// GPU image: the base extensions plus nvidia-container-toolkit-production and
+	// nvidia-open-gpu-kernel-modules-production.
 	gpuTalosImage, err := DownloadImage(ctx, provider, "talos-gpu-image", pveNode,
 		factoryURL(talos.GPUSchematic),
 		"talos-nocloud-amd64-gpu.img",
@@ -66,8 +63,8 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Generate Talos Secrets. The provider replaces them (new cluster PKI) when
-	// TalosVersion decreases, so a version rollback must never reach pulumi up.
+	// The provider replaces the secrets (new cluster PKI) when TalosVersion
+	// decreases, so a version rollback must never reach pulumi up.
 	secrets, err := talos_machine.NewSecrets(ctx, "talos-secrets", &talos_machine.SecretsArgs{
 		TalosVersion: pulumi.String(talos.Version),
 	}, pulumi.Protect(true))
@@ -75,14 +72,12 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Transform secrets for Client package
 	clientConfigInput := talos_client.GetConfigurationClientConfigurationArgs{
 		CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
 		ClientCertificate: secrets.ClientConfiguration.ClientCertificate(),
 		ClientKey:         secrets.ClientConfiguration.ClientKey(),
 	}
 
-	// Generate Client Config (Talos Config)
 	clientConfig := talos_client.GetConfigurationOutput(ctx, talos_client.GetConfigurationOutputArgs{
 		ClusterName:         pulumi.String(cl.Name),
 		ClientConfiguration: clientConfigInput,
@@ -91,14 +86,12 @@ func DeployTalosCluster(ctx *pulumi.Context) error {
 
 	ctx.Export("talosconfig", clientConfig.TalosConfig())
 
-	// Write Talosconfig to local file
 	clientConfig.TalosConfig().ApplyT(func(tc string) (any, error) {
 		err := os.WriteFile("talosconfig", []byte(tc), 0o600)
 		return nil, err
 	})
 
-	// Patches for DHCP and VIP
-	// The API server also trusts ID tokens from Authentik's "kubernetes" client,
+	// Control planes share the API VIP. The API server also trusts ID tokens from Authentik's "kubernetes" client,
 	// so Headlamp logins act as oidc:<username> in oidc:<group>s. A down
 	// Authentik only blocks new OIDC logins; certificate auth is unaffected.
 	cpPatch := fmt.Sprintf(`machine:
@@ -150,10 +143,8 @@ cluster:
       - name: configfs
 `, cl.Subnet)
 
-	// GPU worker = worker patch + this; Talos appends the module list.
-	// Note: The nvidia-container-toolkit-production Talos extension configures
-	// containerd automatically — no machine.files drop-in needed.
-	// Talos v1.10+ restricts machine.files writes to /var; /etc/cri/conf.d/ is not allowed.
+	// Applied on top of workerPatch; Talos appends the module list. The
+	// nvidia-container-toolkit extension configures containerd itself.
 	gpuWorkerPatch := `machine:
   nodeTaints:
     dedicated: "ai:NoSchedule"
@@ -180,7 +171,7 @@ machine:
     disk: /dev/sda
 `
 
-	// Generate Configs. KubernetesVersion pins the kubelet and control-plane images;
+	// KubernetesVersion pins the kubelet and control-plane images;
 	// left unset, the provider's built-in default would roll nodes back on apply.
 	cpConfig := talos_machine.GetConfigurationOutput(ctx, talos_machine.GetConfigurationOutputArgs{
 		ClusterName:       pulumi.String(cl.Name),
@@ -212,7 +203,6 @@ machine:
 		ConfigPatches:     pulumi.StringArray{pulumi.String(basePatch), pulumi.String(workerPatch), pulumi.String(gpuWorkerPatch)},
 	})
 
-	// Export sanitized configs
 	ctx.Export("cp-config", cpConfig.MachineConfiguration())
 	ctx.Export("worker-config", workerConfig.MachineConfiguration())
 
@@ -220,7 +210,6 @@ machine:
 	var controllerIP pulumi.String
 
 	for _, node := range cl.Nodes {
-		// Select Image Based on GPU
 		var imageID pulumi.IDOutput
 		if node.HasGPU() {
 			imageID = gpuTalosImage.ID()
@@ -228,13 +217,11 @@ machine:
 			imageID = baseTalosImage.ID()
 		}
 
-		// Create VM
 		vmRes, err := NewProxmoxVM(ctx, provider, pveNode, node, imageID)
 		if err != nil {
 			return err
 		}
 
-		// Use Static IP
 		nodeIP := pulumi.String(node.IP)
 
 		ctx.Export(node.Name+"-ip", nodeIP)
@@ -243,7 +230,6 @@ machine:
 			controllerIP = nodeIP
 		}
 
-		// Select Config Base
 		var baseConfig pulumi.StringOutput
 		switch {
 		case node.Role == "control":
@@ -254,26 +240,22 @@ machine:
 			baseConfig = workerConfig.MachineConfiguration()
 		}
 
-		// Patch Hostname and Sanitize
 		finalConfig := baseConfig.ApplyT(func(c string) (string, error) {
 			return patchTalosConfig(c, node.Name, node.IP, cl)
 		}).(pulumi.StringOutput)
 
-		// Dynamically discovered IP from QEMU agent for bootstrapping.
-		// Falls back to static node IP if the VM is stopped (no QEMU agent response)
-		// so that a stopped VM doesn't block the Pulumi preview for other nodes.
+		// Reach the node at the address its QEMU agent reports, falling back to the
+		// static IP so a stopped VM does not block preview for the other nodes.
 		dynamicEndpoint := vmRes.Ipv4Addresses.ApplyT(func(ips [][]string) (string, error) {
 			return firstRoutableIPv4(ips, node.IP), nil
 		}).(pulumi.StringOutput)
 
-		// Client Config construct
 		clientConfigArgs := talos_machine.ClientConfigurationArgs{
 			CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
 			ClientCertificate: secrets.ClientConfiguration.ClientCertificate(),
 			ClientKey:         secrets.ClientConfiguration.ClientKey(),
 		}
 
-		// Apply Config In-Band
 		cfgApply, err := talos_machine.NewConfigurationApply(ctx, node.Name+"-config-apply", &talos_machine.ConfigurationApplyArgs{
 			ClientConfiguration:       clientConfigArgs,
 			MachineConfigurationInput: finalConfig,
@@ -289,14 +271,13 @@ machine:
 		}
 	}
 
-	// Bootstrap
 	bootstrapClientConfig := talos_machine.ClientConfigurationArgs{
 		CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
 		ClientCertificate: secrets.ClientConfiguration.ClientCertificate(),
 		ClientKey:         secrets.ClientConfiguration.ClientKey(),
 	}
 
-	// Bootstrap against the FIRST Controller Node IP (k8s-controller1) to ensure safe leader election
+	// etcd is bootstrapped exactly once, on the first control-plane node in config.yml.
 	bootstrap, err := talos_machine.NewBootstrap(ctx, "bootstrap", &talos_machine.BootstrapArgs{
 		ClientConfiguration: bootstrapClientConfig,
 		Node:                controllerIP,
@@ -305,7 +286,6 @@ machine:
 		return err
 	}
 
-	// Kubeconfig
 	clusterClientConfigInput := talos_cluster.KubeconfigClientConfigurationArgs{
 		CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
 		ClientCertificate: secrets.ClientConfiguration.ClientCertificate(),
@@ -320,7 +300,7 @@ machine:
 		return err
 	}
 
-	// Write Kubeconfig to local file — read by the platform stack via DeployPlatform
+	// DeployPlatform reads this file.
 	kubeconfigRes.KubeconfigRaw.ApplyT(func(kc string) (any, error) {
 		err := os.WriteFile("kubeconfig", []byte(kc), 0o600)
 		return nil, err
@@ -332,8 +312,8 @@ machine:
 }
 
 // firstRoutableIPv4 returns the first QEMU-agent address that is not loopback,
-// link-local APIPA or IPv6. When none is found (VM stopped or agent not ready)
-// it returns fallback; ConfigurationApply fails gracefully if that is unreachable.
+// link-local or IPv6, or fallback when there is none (VM stopped or agent not
+// ready).
 func firstRoutableIPv4(ips [][]string, fallback string) string {
 	for _, net := range ips {
 		for _, ip := range net {
@@ -347,10 +327,8 @@ func firstRoutableIPv4(ips [][]string, fallback string) string {
 
 // patchTalosConfig applies per-node patches to a raw Talos machine config YAML.
 //
-// It performs two transformations:
-//  1. Drops the HostnameConfig document (auto-generated; we set hostname explicitly).
-//  2. Sets machine.network.hostname and nameservers, converts DHCP to a static
-//     address in cl.Subnet, and adds a default route via cl.Router.
+// It drops the generated HostnameConfig document, which would conflict with the
+// explicit hostname, and applies [patchMachineNetwork] to the machine document.
 func patchTalosConfig(rawConfig, hostname, ip string, cl config.ClusterConfig) (string, error) {
 	_, bits, ok := strings.Cut(cl.Subnet, "/")
 	if !ok {

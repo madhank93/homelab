@@ -13,11 +13,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// InstallArgoCD installs ArgoCD and the ApplicationSet that drives every
-// workload deployment. Run `just core platform up` to apply.
-//
-// ArgoCD serves plain HTTP; the gateway terminates TLS using a certificate
-// owned by CDK8s in workloads/observability/argocd_monitor.go.
+// InstallArgoCD installs Argo CD with Authentik SSO, its HTTPRoute, and the
+// ApplicationSet that creates one Application per top-level directory of the
+// manifests branch. Argo CD serves plain HTTP; the Gateway terminates TLS.
 func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
 	oidcSecret := cfg.K.String("ARGOCD_OAUTH_CLIENT_SECRET")
 	if oidcSecret == "" {
@@ -34,24 +32,24 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		Namespace:       pulumi.String("argocd"),
 		CreateNamespace: pulumi.Bool(true),
 		Values: pulumi.Map{
-			// Chart 10.0.0 flipped this default to true. Cilium enforces the
-			// resulting policies, and ArgoCD is what would surface a breakage
-			// anywhere else, so keep them off until they are reviewed on their own.
+			// The chart creates NetworkPolicies by default. Cilium enforces them, and
+			// Argo CD is what would surface a breakage anywhere else, so they stay off
+			// until reviewed on their own.
 			"global": pulumi.Map{
 				"networkPolicy": pulumi.Map{
 					"create": pulumi.Bool(false),
 				},
-				// Chart 10.10.5 still pins v3.5.5. 3.5.6 stops server-side diff
-				// reporting fields removed by other field managers as drift; this
-				// cluster runs ServerSideApply everywhere. Drop once a chart ships it.
+				// Overrides the chart's default image: v3.5.6+ stops server-side diff
+				// reporting fields removed by other field managers as drift, and this
+				// cluster uses ServerSideApply everywhere. Drop once the chart default
+				// reaches it.
 				"image": pulumi.Map{
 					"tag": pulumi.String(config.ContainerImage("argocd").Tag),
 				},
 			},
 			"repoServer": pulumi.Map{
-				// Kustomize 5.x has a hardcoded 27s git fetch timeout for remote bases.
-				// KUSTOMIZE_REMOTE_FETCH_TIMEOUT overrides it so large repos (e.g. kubeflow/manifests)
-				// can be fetched within CI/CD pipelines without timing out.
+				// Kustomize's default git fetch timeout for remote bases is too short
+				// for large repos such as kubeflow/manifests.
 				"env": pulumi.Array{
 					pulumi.Map{
 						"name":  pulumi.String("KUSTOMIZE_REMOTE_FETCH_TIMEOUT"),
@@ -74,7 +72,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 				},
 				"params": pulumi.Map{
 					"server.insecure": pulumi.Bool(true), // serve HTTP on :80; TLS terminated at Cilium gateway
-					// Kubeflow manifests repo is ~400MB; default 90s is too short for git fetch from cluster.
+					// The Kubeflow manifests repo is too large for the default 90s.
 					"reposerver.exec.timeout": pulumi.String("180s"),
 				},
 				"cm": pulumi.Map{
@@ -88,22 +86,24 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 							"clientSecret: $argocd-oidc:clientSecret\n" +
 							"requestedScopes: [openid, profile, email, groups]\n",
 					),
-					// Kubernetes adds apiVersion, kind, volumeMode to VCT items in StatefulSets.
-					// CDK8s omits them. Ignore globally so all StatefulSets stay Synced.
+					// Kubernetes adds apiVersion, kind and volumeMode to StatefulSet
+					// volumeClaimTemplates, which CDK8s omits. Set globally because
+					// per-Application jqPathExpressions are not applied to live state
+					// under server-side diff.
 					"resource.customizations.ignoreDifferences.apps_StatefulSet": pulumi.String(
 						"jqPathExpressions:\n" +
 							"  - .spec.volumeClaimTemplates[]?.apiVersion\n" +
 							"  - .spec.volumeClaimTemplates[]?.kind\n" +
 							"  - .spec.volumeClaimTemplates[]?.spec.volumeMode\n",
 					),
-					// Kubeflow aggregationRule ClusterRoles: K8s auto-fills .rules from sub-roles;
-					// manifests have rules:null. Global customization handles all ClusterRoles.
+					// Kubernetes fills .rules on aggregated ClusterRoles (Kubeflow ships
+					// rules: null).
 					"resource.customizations.ignoreDifferences.rbac.authorization.k8s.io_ClusterRole": pulumi.String(
 						"jqPathExpressions:\n" +
 							"  - .rules\n",
 					),
-					// Kubeflow CRDs: K8s adds .spec.conversion and .status after apply.
-					// .spec.preserveUnknownFields=false is explicit in manifests but K8s drops it (default).
+					// Kubernetes adds .spec.conversion and .status to CRDs, and drops
+					// preserveUnknownFields: false, which Kubeflow sets explicitly.
 					"resource.customizations.ignoreDifferences.apiextensions.k8s.io_CustomResourceDefinition": pulumi.String(
 						"jqPathExpressions:\n" +
 							"  - .spec.conversion\n" +
@@ -132,9 +132,8 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return err
 	}
 
-	// Derive the ArgoCD server service name from the Helm release name output.
-	// Pulumi appends a hash to the release name (e.g. argo-cd → argo-cd-36ddc8c6);
-	// chart.Name is StringPtrOutput of the actual Helm release name on the cluster.
+	// The release has no fixed name, so Pulumi suffixes it (argo-cd-<hash>) and
+	// the server Service name must be derived from it.
 	serverSvcName := chart.Name.ApplyT(func(name *string) string {
 		if name == nil {
 			return "argocd-server"
@@ -142,10 +141,6 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return *name + "-argocd-server"
 	}).(pulumi.StringOutput)
 
-	// HTTPRoute for ArgoCD — both LAN hostname and public hostname.
-	// ArgoCD runs in insecure mode (HTTP on :80); TLS for argocd.madhan.app is
-	// terminated at the Cilium gateway via the wildcard-madhan-app-tls cert.
-	// The old TLSRoute (passthrough) is removed — gateway has no TLS listener on :443.
 	_, err = apiextensions.NewCustomResource(ctx, "argocd-httproute", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 		Kind:       pulumi.String("HTTPRoute"),
@@ -187,11 +182,11 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 		return err
 	}
 
-	// 5. Create ApplicationSet to Bootstrap GitOps (watches config manifests_branch)
-	// argocd_manual_sync pauses auto-sync so a release can be rolled out app by app.
+	// argocd_manual_sync turns off auto-sync so a release can be rolled out app
+	// by app.
 	syncPolicy := map[string]any{
-		// ServerSideApply=true: required for kube-prometheus-stack CRDs which
-		// exceed the 262KB kubectl.kubernetes.io/last-applied-configuration limit
+		// Server-side apply avoids the last-applied-configuration annotation,
+		// which large CRDs overflow (256 KiB annotation limit).
 		"syncOptions": []string{"CreateNamespace=true", "ServerSideApply=true"},
 	}
 	if !config.C.ArgoCDManualSync {
@@ -212,7 +207,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 							"repoURL":  "https://github.com/madhank93/homelab.git",
 							"revision": config.C.ManifestsBranch,
 							"directories": []map[string]any{
-								{"path": "*"}, // Apps are at the root of the manifests branch
+								{"path": "*"}, // one directory per app at the branch root
 							},
 						},
 					},
@@ -234,7 +229,7 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 						},
 						"syncPolicy": syncPolicy,
 						"ignoreDifferences": []map[string]any{
-							// VM operator regenerates TLS cert on every restart — ignore dynamic fields.
+							// The VictoriaMetrics operator regenerates its webhook cert on every restart.
 							{
 								"kind":         "Secret",
 								"name":         "victoria-metrics-victoria-metrics-operator-validation",
@@ -247,15 +242,14 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 								"name":              "victoria-metrics-victoria-metrics-operator-admission",
 								"jqPathExpressions": []string{".webhooks[].clientConfig.caBundle"},
 							},
-							// Kubeflow CRDs and ClusterRoles: Kubernetes mutates fields not in manifests.
+							// Fields Kubernetes fills in on Kubeflow CRDs and aggregated ClusterRoles.
 							{
 								"group":             "apiextensions.k8s.io",
 								"kind":              "CustomResourceDefinition",
 								"jqPathExpressions": []string{".spec.conversion", ".status"},
 							},
 							{
-								// aggregationRule ClusterRoles: K8s auto-fills .rules from sub-roles;
-								// manifest has rules:null — use jsonPointers which handles null reliably.
+								// jsonPointers, unlike jq, handles the manifests' rules: null.
 								"kind":         "ClusterRole",
 								"jsonPointers": []string{"/metadata/annotations", "/rules"},
 							},

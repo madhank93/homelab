@@ -13,17 +13,13 @@ const (
 	vlOtlpEndpoint   = "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry"
 )
 
-// NewOtelCollectorChart deploys two OpenTelemetry Collector instances:
+// NewOtelCollectorChart deploys two OpenTelemetry Collector releases:
 //
-//   - Agent (DaemonSet): runs on every node, collects container logs,
-//     node/pod/container metrics from kubelet, and host-level metrics.
+//   - Agent (DaemonSet): container logs, kubelet stats and host metrics from every node.
+//   - Gateway (Deployment): cluster-level resource metrics and Kubernetes events.
 //
-//   - Gateway (Deployment): cluster-scoped receiver that collects
-//     Kubernetes resource metrics (nodes, pods, deployments) and
-//     Kubernetes events.
-//
-// Both export metrics to VictoriaMetrics (prometheus remote write) and
-// logs to VictoriaLogs (OTLP/HTTP).
+// Both send metrics to VictoriaMetrics by Prometheus remote write and logs to
+// VictoriaLogs over OTLP/HTTP.
 func NewOtelCollectorChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -32,14 +28,14 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 	// The agent DaemonSet uses hostPath volumes and hostPorts.
 	kit.Namespace(chart, namespace, true)
 
-	// contrib image includes all Kubernetes receivers (kubeletstats, k8s_cluster, filelog, etc.)
+	// The contrib image carries the Kubernetes receivers (kubeletstats, k8s_cluster, filelog).
 	img := config.ContainerImage("otel-collector-contrib")
 	image := map[string]any{"repository": img.Image, "tag": img.Tag}
 
 	commonExporters := map[string]any{
 		"prometheusremotewrite": map[string]any{
 			"endpoint": vmInsertEndpoint,
-			// Converts resource attributes (k8s.pod.name etc.) to Prometheus labels
+			// Turns resource attributes such as k8s.pod.name into labels.
 			"resource_to_telemetry_conversion": map[string]any{"enabled": true},
 		},
 		"otlp_http/logs": map[string]any{
@@ -57,9 +53,8 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		},
 	}
 
-	// ── Agent (DaemonSet) ────────────────────────────────────────────────────
-	// Presets configure: filelog receiver, kubeletstats receiver, hostmetrics
-	// receiver, k8sattributes processor, and the necessary RBAC + volume mounts.
+	// Agent: presets add the filelog, kubeletstats and hostmetrics receivers, the
+	// k8sattributes processor, and their RBAC and mounts.
 	agentValues := map[string]any{
 		"mode": "daemonset",
 		"podAnnotations": map[string]any{
@@ -67,19 +62,15 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		},
 		"image": image,
 		"presets": map[string]any{
-			// Container log collection from /var/log/pods on each node
+			// Reads /var/log/pods on each node.
 			"logsCollection": map[string]any{
 				"enabled":              true,
 				"includeCollectorLogs": false,
 			},
-			// Node, pod, container, volume metrics from kubelet /stats/summary.
-			// The preset sets endpoint to "${K8S_NODE_NAME}:10250" — on Talos, node
-			// hostnames are not in cluster DNS. We override the endpoint below using
-			// K8S_NODE_IP (Downward API) so the agent connects via IP instead.
+			// The preset dials the kubelet by node name, which cluster DNS cannot
+			// resolve; receivers.kubeletstats below dials the node IP instead.
 			"kubeletMetrics": map[string]any{"enabled": true},
-			// CPU, memory, disk, network metrics from the host OS
-			"hostMetrics": map[string]any{"enabled": true},
-			// Enriches telemetry with k8s.pod.name, k8s.namespace.name, etc.
+			"hostMetrics":    map[string]any{"enabled": true},
 			"kubernetesAttributes": map[string]any{
 				"enabled":             true,
 				"extractAllPodLabels": true,
@@ -87,9 +78,8 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		},
 		"config": map[string]any{
 			"extensions": map[string]any{
-				// file_storage persists filelog receiver read offsets (checkpoints)
-				// to the hostPath volume so that agent restarts don't re-read historical
-				// logs from the beginning, avoiding duplicates and slow recovery.
+				// Keeps filelog read offsets on the host, so a restarted agent does
+				// not resend logs it already shipped.
 				"file_storage": map[string]any{
 					"directory": "/var/lib/otelcol",
 				},
@@ -153,9 +143,8 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		Values:      &agentValues,
 	})
 
-	// ── Gateway (Deployment) ─────────────────────────────────────────────────
-	// Presets configure: k8s_cluster receiver (node/pod/deployment metrics),
-	// k8sobjects receiver (Kubernetes events as logs), and necessary RBAC.
+	// Gateway: presets add the k8s_cluster receiver, the k8sobjects receiver
+	// (events as logs) and their RBAC.
 	gatewayValues := map[string]any{
 		"mode": "deployment",
 		"podAnnotations": map[string]any{
@@ -163,9 +152,7 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 		},
 		"image": image,
 		"presets": map[string]any{
-			// Cluster-level resource metrics: nodes, pods, deployments, etc.
-			"clusterMetrics": map[string]any{"enabled": true},
-			// Kubernetes events forwarded as log records to VictoriaLogs
+			"clusterMetrics":   map[string]any{"enabled": true},
 			"kubernetesEvents": map[string]any{"enabled": true},
 			"kubernetesAttributes": map[string]any{
 				"enabled": true,
@@ -176,9 +163,8 @@ func NewOtelCollectorChart(scope constructs.Construct, id string, namespace stri
 			"processors": map[string]any{
 				"batch":          map[string]any{"timeout": "10s"},
 				"memory_limiter": commonProcessors["memory_limiter"],
-				// passthrough: true — k8sobjects log records (k8s Events) have no pod
-				// IP or UID, so the default passthrough=false silently drops them all
-				// before they reach the VictoriaLogs exporter.
+				// The preset also puts this processor in the events pipeline, and
+				// events carry no pod IP or UID; without passthrough they are dropped.
 				"k8sattributes": map[string]any{"passthrough": true},
 			},
 			"service": map[string]any{

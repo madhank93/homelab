@@ -7,27 +7,26 @@ import (
 	"github.com/madhank93/homelab/config"
 )
 
-// NewNotebookGatewayControllerChart creates a small controller that watches Notebook CRs
-// and creates an HTTPRoute + ReferenceGrant for each one so the notebook URL
-// /notebook/<namespace>/<name>/ is routable through the Cilium Gateway.
+// NewNotebookGatewayControllerChart deploys a small controller that watches
+// Notebook, Tensorboard and PVCViewer CRs and creates an HTTPRoute for each,
+// plus a ReferenceGrant in its namespace, so /notebook/, /tensorboard/ and
+// /pvcviewers/<namespace>/<name>/ route through the shared Gateway.
 //
-// The notebook-controller (USE_ISTIO=true) creates Istio VirtualServices, which are
-// no-ops without Istio, and Gateway API has no dynamic path routing. The
-// ReferenceGrant is required for the cross-namespace service ref.
+// Kubeflow's own controllers emit Istio VirtualServices, which are no-ops
+// without Istio, and Gateway API has no dynamic path routing.
 func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
 	})
 
-	// ServiceAccount
 	cdk8s.NewApiObject(chart, jsii.String("ngc-sa"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("v1"),
 		Kind:       jsii.String("ServiceAccount"),
 		Metadata:   &cdk8s.ApiObjectMetadata{Name: jsii.String("notebook-gateway-controller"), Namespace: jsii.String(namespace)},
 	})
 
-	// ClusterRole — needs to watch Notebooks (cluster-scoped read), manage HTTPRoutes in kubeflow ns,
-	// manage ReferenceGrants in user namespaces.
+	// ClusterRole: watch the CRs and manage ReferenceGrants in user namespaces.
+	// HTTPRoutes are written only in the chart namespace, so that grant is a Role below.
 	cdk8s.NewApiObject(chart, jsii.String("ngc-cr"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
 		Kind:       jsii.String("ClusterRole"),
@@ -50,17 +49,11 @@ func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, na
 		},
 		{
 			"apiGroups": []string{"gateway.networking.k8s.io"},
-			"resources": []string{"httproutes"},
-			"verbs":     []string{"get", "list", "create", "update", "patch", "delete"},
-		},
-		{
-			"apiGroups": []string{"gateway.networking.k8s.io"},
 			"resources": []string{"referencegrants"},
 			"verbs":     []string{"get", "list", "create", "update", "patch", "delete"},
 		},
 	}))
 
-	// ClusterRoleBinding
 	crb := cdk8s.NewApiObject(chart, jsii.String("ngc-crb"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
 		Kind:       jsii.String("ClusterRoleBinding"),
@@ -75,10 +68,34 @@ func NewNotebookGatewayControllerChart(scope constructs.Construct, id string, na
 		{"kind": "ServiceAccount", "name": "notebook-gateway-controller", "namespace": namespace},
 	}))
 
-	// Deployment — Python controller using the in-cluster Kubernetes client
+	cdk8s.NewApiObject(chart, jsii.String("ngc-role"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
+		Kind:       jsii.String("Role"),
+		Metadata:   &cdk8s.ApiObjectMetadata{Name: jsii.String("notebook-gateway-controller"), Namespace: jsii.String(namespace)},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/rules"), []map[string]any{
+		{
+			"apiGroups": []string{"gateway.networking.k8s.io"},
+			"resources": []string{"httproutes"},
+			"verbs":     []string{"get", "list", "create", "update", "patch", "delete"},
+		},
+	}))
+
+	rb := cdk8s.NewApiObject(chart, jsii.String("ngc-rb"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("rbac.authorization.k8s.io/v1"),
+		Kind:       jsii.String("RoleBinding"),
+		Metadata:   &cdk8s.ApiObjectMetadata{Name: jsii.String("notebook-gateway-controller"), Namespace: jsii.String(namespace)},
+	})
+	rb.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/roleRef"), map[string]any{
+		"apiGroup": "rbac.authorization.k8s.io",
+		"kind":     "Role",
+		"name":     "notebook-gateway-controller",
+	}))
+	rb.AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/subjects"), []map[string]any{
+		{"kind": "ServiceAccount", "name": "notebook-gateway-controller", "namespace": namespace},
+	}))
+
 	controllerScript := `
-# notebook-gateway-controller v6 — fix apply_httproute url_rewrite passthrough
-import threading, time, logging
+import os, threading, time, logging
 from kubernetes import client, config, watch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -88,10 +105,10 @@ config.load_incluster_config()
 custom = client.CustomObjectsApi()
 net    = client.CustomObjectsApi()
 
-GATEWAY_NS    = "kube-system"
-GATEWAY_NAME  = "homelab-gateway"
-ROUTE_NS      = "kubeflow"
-HOSTNAME      = "kubeflow.madhan.app"
+GATEWAY_NS    = os.environ["GATEWAY_NS"]
+GATEWAY_NAME  = os.environ["GATEWAY_NAME"]
+ROUTE_NS      = os.environ["ROUTE_NS"]
+HOSTNAME      = os.environ["ROUTE_HOSTNAME"]
 USERID_HEADER = "kubeflow-userid"
 USERID_VALUE  = "user@example.com"
 
@@ -316,12 +333,16 @@ if __name__ == "__main__":
 				"containers": []map[string]any{
 					{
 						"name":  "controller",
-						"image": config.C.Host("harbor") + "/library/notebook-gateway-controller:v1",
+						"image": config.ContainerImage("notebook-gateway-controller").Ref(),
 						"command": []string{
 							"python", "/app/controller.py",
 						},
 						"env": []map[string]any{
 							{"name": "HOME", "value": "/tmp"},
+							{"name": "GATEWAY_NS", "value": config.C.Gateway.Namespace},
+							{"name": "GATEWAY_NAME", "value": config.C.Gateway.Name},
+							{"name": "ROUTE_NS", "value": namespace},
+							{"name": "ROUTE_HOSTNAME", "value": config.C.Host("kubeflow")},
 						},
 						"securityContext": map[string]any{
 							"allowPrivilegeEscalation": false,
@@ -349,7 +370,6 @@ if __name__ == "__main__":
 		},
 	}))
 
-	// ConfigMap holding the controller Python script
 	cdk8s.NewApiObject(chart, jsii.String("ngc-cm"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("v1"),
 		Kind:       jsii.String("ConfigMap"),

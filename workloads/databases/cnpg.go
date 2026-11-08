@@ -1,3 +1,4 @@
+// Package databases deploys the CloudNativePG operator.
 package databases
 
 import (

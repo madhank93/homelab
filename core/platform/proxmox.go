@@ -14,8 +14,8 @@ import (
 	"github.com/madhank93/homelab/core/internal/cfg"
 )
 
-// NewProxmoxProvider initialises the Proxmox VE provider from config.yml and
-// the PROXMOX_PASSWORD environment variable (injected via SOPS).
+// NewProxmoxProvider returns the Proxmox VE provider, configured from config.yml
+// and PROXMOX_PASSWORD.
 func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, error) {
 	pcfg := config.C.Proxmox
 	password := cfg.K.String("PROXMOX_PASSWORD")
@@ -37,7 +37,7 @@ func NewProxmoxProvider(ctx *pulumi.Context) (*proxmoxve.Provider, error) {
 }
 
 // NewProxmoxCert orders a Let's Encrypt certificate for <proxmox.host>.<domain>
-// through a Cloudflare DNS-01 challenge, so the web UI needs no LAN exposure.
+// through a Cloudflare DNS-01 challenge, so the web UI needs no internet exposure.
 // Proxmox renews it itself (pve-daily-update) once it is within 30 days of expiry.
 func NewProxmoxCert(ctx *pulumi.Context, provider *proxmoxve.Provider) error {
 	pcfg := config.C.Proxmox
@@ -116,17 +116,10 @@ func NewProxmoxSSO(ctx *pulumi.Context, provider *proxmoxve.Provider) error {
 	return err
 }
 
-// DownloadImage downloads a file to the Proxmox datastore.
-//
-// Reliability notes:
-//   - IgnoreChanges("fileName"): prevents state drift from triggering unintended
-//     replacements. If the resource is dropped from state (e.g. after pulumi cancel),
-//     Pulumi will reconcile without forcing a re-download.
-//   - DeleteBeforeReplace: when a replacement IS intentional (URL/schematic change),
-//     Pulumi deletes the Proxmox file first (physically removing it from disk), then
-//     re-downloads — eliminating the "refusing to override existing file" error.
-//   - OverwriteUnmanaged: safety net for files that exist on Proxmox but were never
-//     in Pulumi state (e.g. manually uploaded files with the same name).
+// DownloadImage downloads a disk image to the Proxmox "local" datastore.
+// A replacement (new URL or schematic) deletes the old file first, since Proxmox
+// refuses to overwrite an existing one; OverwriteUnmanaged adopts a same-named
+// file that is not in Pulumi state.
 func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceName, nodeName, url, fileName, compression string) (*download.FileLegacy, error) {
 	return download.NewFileLegacy(ctx, resourceName, &download.FileLegacyArgs{
 		ContentType:            pulumi.String("iso"),
@@ -145,9 +138,8 @@ func DownloadImage(ctx *pulumi.Context, provider *proxmoxve.Provider, resourceNa
 }
 
 // NewProxmoxVM creates a Talos virtual machine on the given Proxmox node.
-// It uses OVMF BIOS + q35 machine type, virtio-scsi-single, and an EFI disk.
-// Each of the node's PcieIDs becomes a PCIe passthrough device with Xvga=false
-// (compute-only; no VGA BAR constraints).
+// It uses OVMF + q35 with an EFI disk, and passes each of the node's PcieIDs
+// through as a PCIe device. VMs are protected: control planes are etcd members.
 func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string, node config.Node, imageID pulumi.IDInput) (*proxmoxve.VmLegacy, error) {
 	diskArgs := proxmoxve.VmLegacyDiskArgs{
 		Size:        pulumi.Int(node.Disk),
@@ -205,16 +197,15 @@ func NewProxmoxVM(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName st
 				Device: pulumi.String(fmt.Sprintf("hostpci%d", i)),
 				Pcie:   pulumi.Bool(true),
 				Id:     pulumi.String(pcieID),
-				// Xvga=false: this is a compute-only GPU (CUDA/Ollama/ComfyUI), not a display.
-				// xvga=true adds VGA BAR constraints that conflict with large memory allocations.
+				// Compute-only GPU; primary-VGA mode adds BAR constraints that conflict
+				// with large memory allocations.
 				Xvga: pulumi.Bool(false),
 			})
 		}
 		args.Hostpcis = hostpcis
 	}
 
-	// Prevent accidental VM replacement; controllers are etcd members.
-	// Unprotect explicitly for intentional rebuilds.
+	// Unprotect explicitly for an intentional rebuild.
 	return proxmoxve.NewVmLegacy(ctx, node.Name, args,
 		pulumi.Provider(provider),
 		pulumi.Protect(true),

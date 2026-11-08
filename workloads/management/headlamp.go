@@ -1,3 +1,4 @@
+// Package management deploys cluster management UIs: Headlamp and Homepage.
 package management
 
 import (
@@ -10,7 +11,9 @@ import (
 	"github.com/madhank93/homelab/workloads/kit"
 )
 
-// NewHeadlampChart deploys Headlamp, a Kubernetes web UI, via the official Helm chart.
+// NewHeadlampChart deploys Headlamp, a Kubernetes web UI, via its Helm chart.
+// Users log in through Authentik OIDC; a cluster-admin ServiceAccount is the
+// token-login fallback.
 func NewHeadlampChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -32,7 +35,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 				// Exposed through the Gateway instead.
 				"ingress": map[string]any{"enabled": false},
 				// Authentik login. Headlamp passes the ID token to the API server, which
-				// trusts the "kubernetes" client (Talos apiServer extraArgs in talos.go).
+				// trusts the "kubernetes" client (apiServer extraArgs in core/platform/talos.go).
 				"config": map[string]any{
 					"oidc": map[string]any{
 						"secret":         map[string]any{"create": false},
@@ -77,7 +80,7 @@ func NewHeadlampChart(scope constructs.Construct, id string, namespace string) c
 		},
 	})
 
-	// API server identities from Authentik carry the "oidc:" prefix (talos.go).
+	// API server identities from Authentik carry the "oidc:" prefix (core/platform/talos.go).
 	k8s.NewKubeClusterRoleBinding(chart, jsii.String("oidc-admins-crb"), &k8s.KubeClusterRoleBindingProps{
 		Metadata: &k8s.ObjectMeta{Name: jsii.String("oidc-grafana-admins")},
 		RoleRef: &k8s.RoleRef{

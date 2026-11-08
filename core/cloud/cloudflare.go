@@ -11,8 +11,7 @@ import (
 )
 
 // PublicService describes a service exposed to the public internet via the Hetzner VPS.
-// SkipAuth=true bypasses Authentik forwardauth — use for services that handle their own
-// authentication (e.g. Grafana, which signs users in through Authentik OIDC itself).
+// SkipAuth bypasses Authentik ForwardAuth, for services that run their own login.
 type PublicService struct {
 	Name     string
 	SkipAuth bool
@@ -29,10 +28,10 @@ var publicServices = []PublicService{
 
 // ManageCloudflare provisions Cloudflare DNS records for the homelab domain.
 //
-// It creates a wildcard A record pointing every subdomain at the LAN gateway
-// (config cluster.gateway_ip), static records for always-public services
-// (auth, netbird, proxy), and per-entry records for each service listed in
-// [publicServices]. Run `just core cloudflare up` to apply changes.
+// A wildcard record points every subdomain at the LAN gateway, so a name is
+// private unless it has its own record. The Proxmox host gets its LAN IP; the
+// always-public Bifrost names (auth, netbird, proxy, *.proxy, uptime) and each
+// [publicServices] entry point at the VPS. Records are DNS-only, not proxied.
 func ManageCloudflare(ctx *pulumi.Context) error {
 	hetznerIP := config.C.Hetzner.VPSIP
 
@@ -65,7 +64,6 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Wildcard — every subdomain defaults to the LAN gateway (private, no internet)
 	if err := newRecord("*", "wildcard-madhan-app", config.C.Cluster.GatewayIP, "Homelab wildcard - LAN gateway"); err != nil {
 		return err
 	}
@@ -75,19 +73,18 @@ func ManageCloudflare(ctx *pulumi.Context) error {
 		return err
 	}
 
-	// Always-public: Authentik, NetBird, NetBird expose base, Gatus uptime page
+	// Authentik, NetBird, the NetBird expose base and the Gatus status page.
 	for _, svc := range []string{"auth", "netbird", "proxy", "uptime"} {
 		if err := newRecord(config.C.Host(svc), "always-public-"+svc, hetznerIP, "Bifrost VPS - always public"); err != nil {
 			return err
 		}
 	}
 
-	// Wildcard for NetBird expose feature
+	// Services published with NetBird expose.
 	if err := newRecord(config.C.Host("*.proxy"), "wildcard-proxy-madhan-app", hetznerIP, "NetBird expose wildcard"); err != nil {
 		return err
 	}
 
-	// Selectively public homelab services — edit publicServices slice to toggle
 	for _, svc := range publicServices {
 		comment := "Public via Bifrost+Authentik SSO"
 		if svc.SkipAuth {

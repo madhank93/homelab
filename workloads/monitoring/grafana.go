@@ -1,3 +1,4 @@
+// Package monitoring holds the Grafana and Metrics Server charts.
 package monitoring
 
 import (
@@ -32,16 +33,9 @@ func victoriaMetrics(orgID int) map[string]any {
 	}
 }
 
-// NewGrafanaChart deploys Grafana into the given namespace with OpenBao-sourced secrets.
+// NewGrafanaChart deploys Grafana with Authentik SSO and OpenBao-sourced secrets.
 // The main org (admins only) gets VictoriaMetrics and VictoriaLogs; the Public org
 // gets VictoriaMetrics and a few dashboards, never logs.
-//
-// Secrets use Pattern B (secretObjects sync) via the CSI Driver:
-//   - ADMIN_PASSWORD: file-mounted at /mnt/secrets/ADMIN_PASSWORD, read via Grafana's $__file{} expansion.
-//   - OAUTH_CLIENT_SECRET: synced to k8s Secret "grafana-oauth-secret" for Authentik OIDC.
-//
-// Kyverno policy engine dashboards are imported via a ConfigMap with the
-// grafana_dashboard label so Grafana's sidecar picks them up automatically.
 func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -90,29 +84,18 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 				},
 			},
 		},
-		// Authentik OIDC — GitHub login flows through Authentik.
-		// Steps to activate:
-		//   1. Authentik UI → Directory → Social Logins → Add GitHub source (slug: github)
-		//   2. Authentik UI → Applications → Providers → Create OAuth2/OIDC provider
-		//        Name: Grafana | Slug: grafana | Scopes: openid, email, profile
-		//        Redirect URI: https://grafana.<domain>/login/generic_oauth
-		//   3. Authentik UI → Applications → Create Application → bind to Grafana provider
-		//   4. Copy the Client ID from the provider and replace the placeholder below.
-		//   5. Copy the Client Secret and store it in OpenBao:
-		//        bao kv patch secret/grafana OAUTH_CLIENT_SECRET=<secret>
-		//   6. In Authentik, create a group "grafana-admins" and add yourself to it for Admin role.
+		// Login goes through Authentik; the OIDC app is created in core/cloud/authentik.go
+		// and the client secret comes from OpenBao.
 		"grafana.ini": map[string]any{
-			// root_url must be set so Grafana constructs OAuth redirect_uri with https://.
-			// Without it, Grafana uses the incoming request scheme (http — TLS terminates at
-			// Bifrost/Traefik) and sends http://grafana.<domain>/login/generic_oauth,
-			// which mismatches the https:// redirect_uri registered in Authentik.
+			// TLS terminates before Grafana, so without root_url it builds an http://
+			// OAuth redirect_uri that does not match the one registered in Authentik.
 			"server": map[string]any{
 				"root_url": "https://" + config.C.Host("grafana"),
 			},
 			"auth.generic_oauth": map[string]any{
 				"enabled": true,
 				"name":    "GitHub via Authentik",
-				// Client ID set in core/cloud/authentik.go — matches GrafanaOIDCClientID export.
+				// Must match the client ID in core/cloud/authentik.go.
 				"client_id":     "grafana-homelab",
 				"scopes":        "openid email profile groups",
 				"auth_url":      auth + "/application/o/authorize/",
@@ -137,8 +120,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 				"oauth_allow_insecure_email_lookup": true,
 			},
 		},
-		// Client secret injected from grafana-oauth-secret k8s Secret (synced by CSI driver above).
-		// GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET overrides auth.generic_oauth.client_secret in ini.
+		// Supplies GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET, which overrides the ini value.
 		"envFromSecret": "grafana-oauth-secret",
 		// Admin password read from the CSI-mounted file via Grafana's $__file provider;
 		// setting it here also stops the chart rendering a random admin Secret on every
@@ -163,8 +145,8 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 		"ingress": map[string]any{"enabled": false},
 		// Helm test hooks have no meaning under Argo CD.
 		"testFramework": map[string]any{"enabled": false},
-		// Sidecar watches for ConfigMaps with label grafana_dashboard="1" across
-		// all namespaces and auto-provisions them as dashboards.
+		// Any ConfigMap labelled grafana_dashboard="1", in any namespace, becomes a
+		// dashboard (e.g. the Kyverno and VictoriaMetrics ones).
 		"sidecar": map[string]any{
 			"dashboards": map[string]any{
 				"enabled":          true,

@@ -1,3 +1,4 @@
+// Package automation deploys workflow automation (n8n).
 package automation
 
 import (
@@ -10,10 +11,9 @@ import (
 
 // NewN8nChart deploys n8n workflow automation via the 8gears Helm chart (OCI).
 //
-// Secrets are sourced from OpenBao via the CSI Driver (Pattern B):
-//   - ENCRYPTION_KEY is fetched from OpenBao and synced to k8s Secret "n8n-secrets".
-//   - The PostgreSQL password is managed by CloudNativePG and stored in "n8n-pg-app",
-//     from the CNPG Cluster created alongside.
+// The encryption key comes from OpenBao through the CSI driver (Secret
+// "n8n-secrets"); the PostgreSQL password is owned by the CNPG Cluster created
+// alongside (Secret "n8n-pg-app").
 func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String(namespace),
@@ -25,13 +25,9 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 	kit.SecretProviderClass(chart, "n8n-secrets", "n8n", []string{"ENCRYPTION_KEY"}, "n8n-secrets",
 		kit.Sync{Object: "ENCRYPTION_KEY", Key: "N8N_ENCRYPTION_KEY"})
 
-	// CloudNativePG Cluster — single-instance PostgreSQL for n8n.
-	// CNPG auto-creates:
-	//   - Secret  "n8n-pg-app"  → username/password for the "n8n" app user
-	//   - Service "n8n-pg-rw"   → read-write endpoint (primary)
-	// No manual password management required; CNPG owns the credential lifecycle.
-	// imageName is the operand: a minor bump within one major is an in-place
-	// rolling update, a major bump needs a new cluster or pg_upgrade.
+	// Single-instance PostgreSQL. CNPG creates Secret n8n-pg-app (app user
+	// credentials) and Service n8n-pg-rw. A minor imageName bump is an in-place
+	// rolling update; a major bump needs a new cluster or pg_upgrade.
 	pg := config.ContainerImage("n8n-postgres")
 	cdk8s.NewApiObject(chart, jsii.String("n8n-pg-cluster"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String("postgresql.cnpg.io/v1"),
@@ -70,7 +66,6 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 				"db": map[string]any{
 					"type": "postgresdb",
 					"postgresdb": map[string]any{
-						// n8n-pg-rw: CNPG read-write service (primary)
 						"host":     "n8n-pg-rw",
 						"port":     5432,
 						"user":     "n8n",
@@ -83,7 +78,6 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 					"default_binary_data_mode": "filesystem",
 				},
 			},
-			// Secrets injected from k8s Secrets via valueFrom — never stored in ConfigMap.
 			"extraEnv": map[string]any{
 				"N8N_ENCRYPTION_KEY": map[string]any{
 					"valueFrom": map[string]any{
@@ -96,7 +90,6 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 				"DB_POSTGRESDB_PASSWORD": map[string]any{
 					"valueFrom": map[string]any{
 						"secretKeyRef": map[string]any{
-							// CNPG auto-creates this secret when the Cluster CR is reconciled.
 							"name": "n8n-pg-app",
 							"key":  "password",
 						},
@@ -130,7 +123,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		"ingress": map[string]any{
 			"enabled": false,
 		},
-		// Disable embedded Bitnami PostgreSQL subchart — using CloudNativePG instead.
+		// The database is the CNPG Cluster above.
 		"postgresql": map[string]any{
 			"enabled": false,
 		},

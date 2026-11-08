@@ -8,14 +8,8 @@ import (
 )
 
 // NewMetricsServerChart deploys Kubernetes Metrics Server into kube-system.
-//
-// Talos-specific flags:
-//   - --kubelet-insecure-tls: Talos kubelets use self-signed TLS certs.
-//   - --kubelet-preferred-address-types=InternalIP: avoids hostname resolution
-//     issues common in Talos clusters where node FQDNs are not resolvable.
-//
-// A control-plane toleration is added so the server can also scrape control-plane
-// node metrics (required for accurate HPA on control-plane workloads).
+// The control-plane toleration only lets the server schedule there; it scrapes every
+// kubelet wherever it runs.
 func NewMetricsServerChart(scope constructs.Construct, id string) cdk8s.Chart {
 	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
 		Namespace: jsii.String("kube-system"),
@@ -23,13 +17,12 @@ func NewMetricsServerChart(scope constructs.Construct, id string) cdk8s.Chart {
 
 	values := map[string]any{
 		"args": []string{
-			// Talos kubelets use self-signed TLS — skip cert verification.
+			// Talos kubelets serve self-signed certificates.
 			"--kubelet-insecure-tls",
-			// Use node InternalIP to avoid hostname resolution issues on Talos.
+			// Node hostnames are not resolvable in cluster DNS.
 			"--kubelet-preferred-address-types=InternalIP",
 		},
 		"tolerations": []map[string]any{
-			// Allow running on control-plane nodes so control-plane metrics are collected.
 			{"key": "node-role.kubernetes.io/control-plane", "operator": "Exists", "effect": "NoSchedule"},
 		},
 	}

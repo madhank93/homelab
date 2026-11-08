@@ -367,3 +367,52 @@ func TestSecretProviderClassRoles(t *testing.T) {
 		t.Error("no SecretProviderClasses rendered; the walk is likely broken")
 	}
 }
+
+// requestsGPU reports whether any container in spec asks for an nvidia.com/gpu.
+func requestsGPU(spec map[string]any) bool {
+	for _, key := range []string{"initContainers", "containers"} {
+		for _, c := range list(spec[key]) {
+			for _, kind := range []string{"limits", "requests"} {
+				res, _ := c["resources"].(map[string]any)
+				q, _ := res[kind].(map[string]any)
+				if _, ok := q["nvidia.com/gpu"]; ok {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// GPU pods must land on worker4 (selector + taint toleration) and run under the
+// nvidia runtime, or they stay Pending or start without CUDA.
+func TestGPUPodsScheduleOnGPUNode(t *testing.T) {
+	found := 0
+	for _, o := range allObjects(t) {
+		for _, spec := range podSpecs(o.m) {
+			if !requestsGPU(spec) {
+				continue
+			}
+			found++
+			if got := str(spec, "runtimeClassName"); got != "nvidia" {
+				t.Errorf("%s: %s %s requests a GPU but runtimeClassName is %q, want nvidia", o.file, o.kind(), o.name(), got)
+			}
+			if got := str(spec, "nodeSelector", "nvidia.com/gpu.present"); got != "true" {
+				t.Errorf("%s: %s %s requests a GPU but nodeSelector nvidia.com/gpu.present is %q, want \"true\"", o.file, o.kind(), o.name(), got)
+			}
+			tolerated := false
+			for _, tol := range list(spec["tolerations"]) {
+				op := str(tol, "operator")
+				if str(tol, "key") == "dedicated" && str(tol, "value") == "ai" && (op == "" || op == "Equal") {
+					tolerated = true
+				}
+			}
+			if !tolerated {
+				t.Errorf("%s: %s %s requests a GPU but does not tolerate dedicated=ai", o.file, o.kind(), o.name())
+			}
+		}
+	}
+	if found == 0 {
+		t.Error("no GPU pods rendered; the walk is likely broken")
+	}
+}
