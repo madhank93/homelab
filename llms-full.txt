@@ -3413,7 +3413,7 @@ Gotchas found in the rollout — stale L2 leases, nodes that cannot reboot grace
 
 > Config refactor, security hardening, and latest stable on every layer — Talos 1.14, Cilium 1.20, Longhorn 1.13, n8n 2.x.
 
-Released 2026-11-02, rolled out from 2026-10-29. Full notes: [`v0.1.8-RELEASE-NOTES.md`](https://github.com/madhank93/homelab/blob/v0.1.8/docs/releases/v0.1.8-RELEASE-NOTES.md).
+Released 2026-11-02, rolled out from 2026-10-29; re-released 2026-11-08 with the updates below. Full notes: [`v0.1.8-RELEASE-NOTES.md`](https://github.com/madhank93/homelab/blob/v0.1.8/docs/releases/v0.1.8-RELEASE-NOTES.md).
 
 ## Highlights
 
@@ -3425,6 +3425,7 @@ Released 2026-11-02, rolled out from 2026-10-29. Full notes: [`v0.1.8-RELEASE-NO
 * **Workloads.** Longhorn 1.13, n8n 2.x (one-way DB migration), Kubeflow 26.03, Falco 9, Grafana chart 14, and every other chart to latest stable.
 * **New.** LAN-only Counter-Strike 2 server on `192.168.1.230`, and [Open WebUI](/workloads/ai/open-webui/) at `chat.madhan.app` — a LAN-only chat front end for Ollama.
 * **Docs.** Moved from Zola to Astro Starlight, with interactive architecture diagrams.
+* **Since the first release.** [Homepage](/workloads/management/homepage/) with Authentik SSO for Argo CD, Harbor, Headlamp and Proxmox; [AdGuard Home](/workloads/networking/adguard/) as LAN DNS on `192.168.1.226`; the GPU node taint actually applied (Talos `nodeTaints` is rejected by NodeRestriction); NetBird peer in the pod network namespace; a code and docs audit with every fix applied; Claude Code skills and agents for this repo.
 * **Pre-release security patches.** Harbor, Kyverno, OpenBao, n8n, Grafana, the `n8n-pg` operand and Talos patch bumps; Longhorn engines now auto-upgrade.
 
 ## Manual steps
