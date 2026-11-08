@@ -22,6 +22,14 @@ spec:
           env:
             - name: HOME
               value: /tmp
+            - name: GATEWAY_NS
+              value: kube-system
+            - name: GATEWAY_NAME
+              value: homelab-gateway
+            - name: ROUTE_NS
+              value: kubeflow
+            - name: ROUTE_HOSTNAME
+              value: kubeflow.madhan.app
           image: harbor.madhan.app/library/notebook-gateway-controller:v1
           name: controller
           resources:

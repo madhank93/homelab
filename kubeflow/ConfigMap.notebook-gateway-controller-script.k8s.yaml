@@ -6,8 +6,7 @@ metadata:
 data:
   controller.py: |
     
-    # notebook-gateway-controller v6 — fix apply_httproute url_rewrite passthrough
-    import threading, time, logging
+    import os, threading, time, logging
     from kubernetes import client, config, watch
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -17,10 +16,10 @@ data:
     custom = client.CustomObjectsApi()
     net    = client.CustomObjectsApi()
 
-    GATEWAY_NS    = "kube-system"
-    GATEWAY_NAME  = "homelab-gateway"
-    ROUTE_NS      = "kubeflow"
-    HOSTNAME      = "kubeflow.madhan.app"
+    GATEWAY_NS    = os.environ["GATEWAY_NS"]
+    GATEWAY_NAME  = os.environ["GATEWAY_NAME"]
+    ROUTE_NS      = os.environ["ROUTE_NS"]
+    HOSTNAME      = os.environ["ROUTE_HOSTNAME"]
     USERID_HEADER = "kubeflow-userid"
     USERID_VALUE  = "user@example.com"
 
