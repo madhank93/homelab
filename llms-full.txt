@@ -1055,9 +1055,9 @@ Proxmox passes the card with `pcie: true` and `xvga: false`: it is compute-only,
 
 [Section titled “Configuration”](#configuration)
 
-| Setting    | Value                     | Why                                                         |
-| ---------- | ------------------------- | ----------------------------------------------------------- |
-| Node taint | `dedicated=ai:NoSchedule` | Keeps ordinary pods off the GPU node’s CPU during inference |
+| Setting    | Value                                                                                                                                                                                                                         | Why                                                                                                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node taint | `dedicated=ai:NoSchedule`, set by kubelet `registerWithTaints` at registration and kept by a Pulumi `NodePatch` in the platform stack ([`nodes.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/platform/nodes.go)) | Keeps ordinary pods off the GPU node’s CPU during inference. Talos `machine.nodeTaints` cannot set it: NodeRestriction forbids a kubelet changing its own taints |
 
 ## Scheduling a GPU pod
 
@@ -1188,12 +1188,12 @@ The image only seeds a new VM’s disk. Existing nodes upgrade in place with `ju
 
 [Section titled “Per-role machine patches”](#per-role-machine-patches)
 
-| Role          | Adds                                                                                                                                |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| All           | No CNI (Cilium), kube-proxy disabled, `install.disk: /dev/sda`                                                                      |
-| Control plane | VIP `192.168.1.210` on the physical interface                                                                                       |
-| Worker        | Label `node.longhorn.io/create-default-disk: config`; modules `nbd`, `iscsi_tcp`, `iscsi_generic`, `configfs`; tuned `evictionHard` |
-| GPU worker    | Taint `dedicated=ai:NoSchedule`; modules `nvidia`, `nvidia_uvm`, `nvidia_drm`, `nvidia_modeset`                                     |
+| Role          | Adds                                                                                                                                                                  |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| All           | No CNI (Cilium), kube-proxy disabled, `install.disk: /dev/sda`                                                                                                        |
+| Control plane | VIP `192.168.1.210` on the physical interface                                                                                                                         |
+| Worker        | Label `node.longhorn.io/create-default-disk: config`; modules `nbd`, `iscsi_tcp`, `iscsi_generic`, `configfs`; tuned `evictionHard`                                   |
+| GPU worker    | Kubelet `registerWithTaints` `dedicated=ai:NoSchedule` (the platform stack keeps it on the live node); modules `nvidia`, `nvidia_uvm`, `nvidia_drm`, `nvidia_modeset` |
 
 Workers lower `imagefs.available` to 10%: images and Longhorn replicas share `/var`, and the default 15% evicts Longhorn before it can free space.
 
@@ -1933,7 +1933,7 @@ Before `just core talos up`: `talosctl rollback --nodes <ip>` boots the previous
 [Section titled “Talos 1.13 → 1.14 notes”](#talos-113--114-notes)
 
 * Talos 1.14 defaults to Kubernetes 1.37, which Cilium does not support yet, so `kubernetes.version` holds the cluster on 1.36.
-* Upgraded nodes keep their v1alpha1 config. The deprecated fields this repo sets (`machine.install`, `machine.kernel`, `machine.nodeLabels`, `machine.nodeTaints`, `machine.kubelet.nodeIP`) still work.
+* Upgraded nodes keep their v1alpha1 config. The deprecated fields this repo sets (`machine.install`, `machine.kernel`, `machine.nodeLabels`, `machine.kubelet.nodeIP`) still work.
 * 1.14-only defaults such as workload isolation (`SecurityProfileConfig`) and periodic trim stay off. Leave workload isolation off: it moves the kubelet and pods into a sandbox PID namespace, and Longhorn’s iSCSI frontend and `just longhorn-repair-iscsi` reach into the host `iscsid` namespaces.
 
 # Workloads
