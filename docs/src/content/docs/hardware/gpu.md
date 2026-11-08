@@ -16,7 +16,7 @@ An NVIDIA RTX 5070 Ti (16 GB VRAM) is passed through to `k8s-worker4` and shared
 
 ## How it fits
 
-The driver and container toolkit come from Talos system extensions in the GPU image, so the full GPU Operator is not used — its validator does not work with Talos paths. The cluster runs only the standalone device plugin, with Node Feature Discovery and GPU Feature Discovery, plus DCGM Exporter for metrics.
+The driver and container toolkit come from Talos system extensions in the GPU image. In the cluster, the [NVIDIA device plugin](/workloads/hardware/nvidia-device-plugin/) advertises the card, time-slices it and exports DCGM metrics; its settings (RuntimeClass, NVML discovery, time-slicing) are documented there.
 
 Proxmox passes the card with `pcie: true` and `xvga: false`: it is compute-only, and VGA BAR constraints conflict with large memory allocations. Passthrough changes need a cold boot of the VM.
 
@@ -25,10 +25,6 @@ Proxmox passes the card with `pcie: true` and `xvga: false`: it is compute-only,
 | Setting | Value | Why |
 |---|---|---|
 | Node taint | `dedicated=ai:NoSchedule` | Keeps ordinary pods off the GPU node's CPU during inference |
-| `RuntimeClass` | `nvidia` (handler `nvidia`) | Routes pods through the toolkit's runtime hook; plain runc never injects `libnvidia-ml.so.1` |
-| `deviceDiscoveryStrategy` | `nvml` | `auto` probes standard paths that do not exist on Talos |
-| `deviceListStrategy` | `envvar` | CDI host-path mounts fail on Talos's non-standard lib paths |
-| Time-slicing | `replicas: 5` | The node advertises five `nvidia.com/gpu`: Ollama, ComfyUI, a notebook, a training job, a Katib trial |
 
 ## Scheduling a GPU pod
 

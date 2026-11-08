@@ -2,7 +2,7 @@
 title: Kubeflow
 description: Notebooks, Pipelines, Katib and Trainer from the upstream manifests, without Istio, Knative, KServe or Dex.
 sidebar:
-  order: 30
+  order: 35
   badge: { text: LAN, variant: note }
 ---
 
@@ -46,19 +46,7 @@ The Flask apps expect `/` (Istio's VirtualService used to rewrite it), hence the
 
 ## GPU notebooks
 
-A GPU notebook needs all four settings:
-
-```yaml title="Notebook pod spec"
-runtimeClassName: nvidia          # without it CUDA is unreachable even with a GPU request
-nodeSelector:
-  nvidia.com/gpu.present: "true"
-tolerations:
-- {key: dedicated, operator: Equal, value: ai, effect: NoSchedule}
-containers:
-- resources:
-    limits:
-      nvidia.com/gpu: "1"
-```
+A GPU notebook needs the same pod settings as any GPU pod, `runtimeClassName: nvidia` included: see [Scheduling a GPU pod](/hardware/gpu/#scheduling-a-gpu-pod).
 
 The RTX 5070 Ti is Blackwell (`sm_120`). The `kubeflownotebookswg/jupyter-pytorch-cuda-full` images ship PyTorch without `sm_120` kernels, so install the nightly `cu128` wheel in the notebook and restart the kernel:
 

@@ -47,7 +47,7 @@ RWX volumes get a Longhorn share-manager pod that serves NFS, so several pods (o
 | Driver and UI tolerations | control-plane `NoSchedule` | Driver and UI may run on control planes; the manager may not |
 
 :::danger[Never let longhorn-manager tolerate the control-plane taint]
-Each manager pod registers its node as a Longhorn node, and each Longhorn node needs an engine image. The engine-image DaemonSet has no tolerations, so control-plane nodes leave EngineImages stuck "deploying" and **every volume attach in the cluster blocks**. `longhornManager` deliberately has no `tolerations`.
+Each manager pod registers its node as a Longhorn node, and each Longhorn node needs an engine image. The engine-image DaemonSet tolerates only the `taintToleration` setting (`dedicated=ai`), so control-plane nodes would leave EngineImages stuck "deploying" and **every volume attach in the cluster blocks**. `longhornManager` tolerates `dedicated=ai` and nothing else.
 :::
 
 ### Capacity

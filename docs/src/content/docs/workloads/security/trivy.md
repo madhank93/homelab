@@ -24,7 +24,7 @@ Trivy Operator scans each new or changed workload for CVEs, misconfiguration and
 | `nodeCollector.volumes` | etcd, kubelet, scheduler, controller-manager, `/etc/kubernetes`, CNI only | Talos has no `/etc/systemd` or `/lib/systemd`; the chart's default mounts fail |
 | `nodeCollector.tolerations` | control-plane `NoSchedule` | Control planes get node checks too |
 | `serviceMonitor.enabled` | `true` | VMAgent scrapes vulnerability metrics |
-| CRDs | Downloaded from the chart tarball at synth time | Kept in step with the operator; set `TRIVY_OPERATOR_SKIP_CRDS=true` to skip them when CRDs already exist |
+| CRDs | Downloaded from the chart tarball at synth time | Always rendered, so they stay in step with the operator |
 
 ## Operate
 
@@ -53,4 +53,4 @@ kubectl logs -n trivy job/<scan-job>
 
 ### Reports missing entirely
 
-Check the CRDs exist: `kubectl get crd | grep aquasecurity`. A synth with `TRIVY_OPERATOR_SKIP_CRDS=true` leaves them out.
+Check the CRDs exist: `kubectl get crd | grep aquasecurity`. If they are missing, check the `trivy` app in Argo CD synced its CRDs.

@@ -43,11 +43,13 @@ OpenBao starts sealed after every restart. The `unseal` container polls `bao sta
 | Role / path `secret/<app>` | ServiceAccount | Keys |
 |---|---|---|
 | `grafana` | `grafana` | `ADMIN_PASSWORD`, `OAUTH_CLIENT_SECRET` |
-| `harbor` | `secret-sync` | `HARBOR_ADMIN_PASSWORD` |
+| `harbor` | `secret-sync` | `HARBOR_ADMIN_PASSWORD`, `OIDC_CLIENT_SECRET` |
 | `n8n` | `n8n` | `ENCRYPTION_KEY` |
 | `netbird` | `default` | `NETBIRD_SETUP_KEY` |
 | `falco` | `secret-sync` | `FALCOSIDEKICK_UI_USER` |
 | `cs2` | `cs2` | `RCON_PASSWORD`, `JOIN_PASSWORD` |
+| `homepage` | `homepage` | `AUTH_SECRET`, `OAUTH_CLIENT_SECRET` |
+| `headlamp` | `headlamp` | `OIDC_CLIENT_SECRET` |
 
 ## Operate
 
@@ -75,8 +77,6 @@ just openbao-root read auth/kubernetes/role/grafana
 ```
 
 To test what an app itself can read, use `just openbao-sa-get <sa> <ns> <role> secret/<app>`.
-
-{/* TODO screenshot: OpenBao UI showing the secret/ KV mount and Kubernetes auth roles */}
 
 ## Troubleshooting
 

@@ -16,7 +16,7 @@ Each app is a CDK8s chart in [`main.go`](src:workloads/main.go), synthesized by 
 | [ComfyUI](/workloads/ai/comfyui/) | AI | LAN (off by default) | `comfyui.madhan.app` | None |
 | [Kubeflow](/workloads/ai/kubeflow/) | AI | LAN | `kubeflow.madhan.app` | None (route injects a fixed `kubeflow-userid`) |
 | [Notebook gateway controller](/workloads/ai/notebook-gateway-controller/) | AI | none | Adds notebook paths to `kubeflow.madhan.app` | — |
-| [NVIDIA device plugin](/workloads/ai/nvidia-device-plugin/) | AI | none | — | — |
+| [NVIDIA device plugin](/workloads/hardware/nvidia-device-plugin/) | Hardware | none | — | — |
 | [Ollama](/workloads/ai/ollama/) | AI | LAN | `ollama.madhan.app`, `192.168.1.225:11434` | None |
 | [Open WebUI](/workloads/ai/open-webui/) | AI | LAN | `chat.madhan.app` | Own login |
 | [n8n](/workloads/automation/n8n/) | Automation | LAN | `n8n.madhan.app` | n8n login |
@@ -24,12 +24,12 @@ Each app is a CDK8s chart in [`main.go`](src:workloads/main.go), synthesized by 
 | [Counter-Strike 2](/workloads/gaming/cs2/) | Gaming | LAN | `192.168.1.230:27015` | Join password |
 | [Headlamp](/workloads/management/headlamp/) | Management | LAN | `headlamp.madhan.app` | Authentik OIDC via the API server; ServiceAccount token fallback |
 | [Homepage](/workloads/management/homepage/) | Management | LAN | `home.madhan.app` | Authentik OIDC (Homepage's own) |
-| [Argo CD monitor](/workloads/monitoring/argocd-monitor/) | Monitoring | none | — | — |
+| [Argo CD monitor](/workloads/observability/argocd-monitor/) | Observability | none | — | — |
 | [Grafana](/workloads/monitoring/grafana/) | Monitoring | **Public** | `grafana.madhan.app` | Authentik OIDC (Grafana's own) |
 | [Metrics Server](/workloads/monitoring/metrics-server/) | Monitoring | none | — | — |
-| [OpenTelemetry](/workloads/monitoring/opentelemetry/) | Monitoring | none | — | — |
-| [VictoriaLogs](/workloads/monitoring/victoria-logs/) | Monitoring | LAN | `victorialogs.madhan.app` | None |
-| [VictoriaMetrics](/workloads/monitoring/victoria-metrics/) | Monitoring | LAN | `vmselect.madhan.app`, `alertmanager.madhan.app` | None |
+| [OpenTelemetry](/workloads/observability/opentelemetry/) | Observability | none | — | — |
+| [VictoriaLogs](/workloads/observability/victoria-logs/) | Observability | LAN | `victorialogs.madhan.app` | None |
+| [VictoriaMetrics](/workloads/observability/victoria-metrics/) | Observability | LAN | `vmselect.madhan.app`, `alertmanager.madhan.app` | None |
 | [NetBird peer](/workloads/networking/netbird-peer/) | Networking | none (it is the VPN route) | — | — |
 | [Harbor](/workloads/registry/harbor/) | Registry | LAN | `harbor.madhan.app` | Authentik OIDC; local `admin` fallback |
 | [OpenBao](/workloads/secrets/openbao/) | Secrets | LAN | `openbao.madhan.app` | OpenBao token |
@@ -49,12 +49,14 @@ Rows marked "None" trust anything that can reach the LAN or the VPN. Keep them o
 ## Groups
 
 <CardGrid>
-  <LinkCard title="AI" href="/workloads/ai/" description="Ollama, ComfyUI, Kubeflow and the GPU plumbing on worker4." />
+  <LinkCard title="AI" href="/workloads/ai/" description="Ollama, Open WebUI, ComfyUI and Kubeflow on worker4." />
   <LinkCard title="Automation" href="/workloads/automation/" description="n8n workflows." />
   <LinkCard title="Databases" href="/workloads/databases/" description="CloudNativePG operator." />
   <LinkCard title="Gaming" href="/workloads/gaming/" description="Counter-Strike 2 server." />
   <LinkCard title="Management" href="/workloads/management/" description="Headlamp cluster dashboard and the Homepage start page." />
-  <LinkCard title="Monitoring" href="/workloads/monitoring/" description="Grafana, VictoriaMetrics, VictoriaLogs, OpenTelemetry." />
+  <LinkCard title="Hardware" href="/workloads/hardware/" description="NVIDIA device plugin and GPU time-slicing." />
+  <LinkCard title="Monitoring" href="/workloads/monitoring/" description="Grafana and Metrics Server." />
+  <LinkCard title="Observability" href="/workloads/observability/" description="VictoriaMetrics, VictoriaLogs, OpenTelemetry and the Argo CD monitor." />
   <LinkCard title="Networking" href="/workloads/networking/" description="In-cluster NetBird routing peer." />
   <LinkCard title="Registry" href="/workloads/registry/" description="Harbor image registry." />
   <LinkCard title="Secrets" href="/workloads/secrets/" description="OpenBao and the Secrets Store CSI driver." />

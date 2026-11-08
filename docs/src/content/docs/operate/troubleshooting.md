@@ -35,7 +35,7 @@ Find the symptom, then follow the link. Component pages carry the detailed fixes
 | Symptom | Likely cause | Where to look |
 |---|---|---|
 | `kubectl top` says `Metrics API not available` | Metrics Server | [Metrics Server](/workloads/monitoring/metrics-server/) |
-| Metrics missing from Grafana | VMAgent is not scraping the target | [VictoriaMetrics](/workloads/monitoring/victoria-metrics/) |
+| Metrics missing from Grafana | VMAgent is not scraping the target | [VictoriaMetrics](/workloads/observability/victoria-metrics/) |
 | Ollama cannot load a model | ComfyUI holds VRAM; the error surfaces on Ollama | [GPU](/hardware/gpu/), `just comfyui off` |
 | Grafana OIDC login loops or errors | `root_url` / redirect URI mismatch | [Grafana](/workloads/monitoring/grafana/) |
 | Falco UI never becomes ready | Redis wedged with `MISCONF`: TTL and volume size | [Falco](/workloads/security/falco/) |

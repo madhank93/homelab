@@ -47,14 +47,14 @@ Goal: OpenBao unsealed and auto-unsealing, with a policy, a role and seeded secr
 
 </Steps>
 
-`openbao-setup` is idempotent: it rewrites auth, policies and roles, but never overwrites a key that exists. Grafana's `OAUTH_CLIENT_SECRET` comes from `GRAFANA_OAUTH_CLIENT_SECRET` in SOPS; everything else is random. `NETBIRD_SETUP_KEY` starts as a placeholder so the CSI mount succeeds, and gets its real value in [Phase 6](/start/deploy/6-netbird-keys/).
+`openbao-setup` is idempotent: it rewrites auth, policies and roles, but never overwrites a key that exists. The OAuth client secrets come from SOPS: `GRAFANA_OAUTH_CLIENT_SECRET` → `secret/grafana`, `HARBOR_OAUTH_CLIENT_SECRET` → `secret/harbor`, `HOMEPAGE_OAUTH_CLIENT_SECRET` → `secret/homepage` and `KUBERNETES_OAUTH_CLIENT_SECRET` → `secret/headlamp`. Everything else is random. `NETBIRD_SETUP_KEY` starts as a placeholder so the CSI mount succeeds, and gets its real value in [Phase 6](/start/deploy/6-netbird-keys/).
 
 :::caution[openbao-init refuses to run twice]
 It stops if `~/openbao-unseal-key` exists. Move the key into SOPS and delete the file first.
 :::
 
 :::caution[openbao-setup stops on a missing SOPS key]
-It exits if `GRAFANA_OAUTH_CLIENT_SECRET` is not in the SOPS file. Add it (see [Phase 0](/start/deploy/0-prerequisites/)) and re-run.
+It exits if any of `GRAFANA_OAUTH_CLIENT_SECRET`, `HARBOR_OAUTH_CLIENT_SECRET`, `HOMEPAGE_OAUTH_CLIENT_SECRET` or `KUBERNETES_OAUTH_CLIENT_SECRET` is missing from the SOPS file. Add it (see [Phase 0](/start/deploy/0-prerequisites/)) and re-run.
 :::
 
 ## Check

@@ -41,13 +41,13 @@ The container comes up on the Hetzner stack; the `authentik` stack then configur
 
 All are confidential clients signed with the default self-signed key; access tokens last 1 hour, authorization codes 10 minutes. Every provider gets `openid`, `email`, `profile`, `offline_access` and a custom empty `api` scope that NetBird requests.
 
-Each provider lists its grant types (`authorization_code` and `refresh_token`; NetBird adds `device_code`). Authentik 2026.5+ rejects any grant type not listed, and a provider created without the list gets none, so every login fails with `invalid_request`.
+Each provider lists its grant types (`authorization_code` and `refresh_token`; NetBird adds `device_code`). Current Authentik releases reject any grant type not listed, and a provider created without the list gets none, so every login fails with `invalid_request`.
 
 The `groups` scope returns the user's group names. Grafana's `org_mapping` makes members of `grafana-admins` Admin of the main org; everyone else is a Viewer. Argo CD, Harbor, Kubernetes (Headlamp) and Proxmox map `grafana-admins` to their admin role.
 
 Homepage, Argo CD, Harbor, Kubernetes and Proxmox are bound to `grafana-admins`: any GitHub account can enroll in Authentik, so Authentik refuses everyone else for these apps.
 
-The NetBird app is the upstream for NetBird's embedded Dex, not NetBird itself; the connector is added by hand in the NetBird UI ([setup](/cloud/netbird/)). Pulumi also creates service account `sa-netbird` (in `authentik Admins`) with a non-expiring token, exported as `NetbirdServiceToken`.
+The NetBird app is the upstream for NetBird's embedded Dex, not NetBird itself; the connector is added by hand in the NetBird UI ([setup](/cloud/netbird/)).
 
 ### ForwardAuth
 
@@ -57,7 +57,6 @@ The `Homelab ForwardAuth` proxy provider runs in `forward_domain` mode with cook
 
 ```sh frame="terminal"
 just core authentik up    # idempotent; re-run after drift or a failed run
-cd core && pulumi stack select authentik && pulumi stack output NetbirdServiceToken --show-secrets
 ```
 
 Grant admin on Grafana, Homepage, Argo CD, Harbor and Headlamp: add the email to `grafana_admins` in `config.yml` and run `just core authentik up`. The user must have logged in once.

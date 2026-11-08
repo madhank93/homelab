@@ -41,9 +41,7 @@ flowchart LR
 | Tolerations | `dedicated=ai:NoSchedule` | worker4 carries that taint |
 | DCGM exporter | GPU node only, `serviceMonitor.enabled` | Utilisation, VRAM, temperature and power, shown on the NVIDIA DCGM dashboard in [Grafana](/workloads/monitoring/grafana/) |
 
-:::caution[VRAM is shared, not split]
-Each of the five units is a time slice of the whole 16 GB. Two large models at once (Flux plus an Ollama model) run out of memory.
-:::
+What a GPU pod needs, and why the five units share one VRAM pool: [Scheduling a GPU pod](/hardware/gpu/#scheduling-a-gpu-pod).
 
 ## Troubleshooting
 

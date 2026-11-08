@@ -5,7 +5,7 @@ sidebar:
   order: 60
 ---
 
-Metrics Server serves `metrics.k8s.io` from kubelet CPU and memory readings. It keeps only the latest value; history lives in [VictoriaMetrics](/workloads/monitoring/victoria-metrics/). [Upstream docs](https://github.com/kubernetes-sigs/metrics-server).
+Metrics Server serves `metrics.k8s.io` from kubelet CPU and memory readings. It keeps only the latest value; history lives in [VictoriaMetrics](/workloads/observability/victoria-metrics/). [Upstream docs](https://github.com/kubernetes-sigs/metrics-server).
 
 | | |
 |---|---|

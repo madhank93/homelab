@@ -65,3 +65,13 @@ All recipes run from the repo root. Values such as the VIP and node IPs are read
 |---|---|---|
 | `docs-serve` | — | `npm run dev` in `docs/`, at `http://localhost:4321` |
 | `docs-check` | — | Version and link guard (`scripts/docs-version-check.sh`); also runs in CI |
+
+## Dev and CI
+
+| Recipe | Args | What it does |
+|---|---|---|
+| `check` | — | Done gate: `lint`, `test`, `go build` of `core/`, `synth` and `docs-check` |
+| `lint` | `[modules=config core workloads]` | `golangci-lint` (`.golangci.yml`) per module; fails on unformatted code too |
+| `test` | — | `go test ./...` in `config/` and `workloads/` |
+| `fmt` | — | Applies gofumpt + goimports formatting across `config/`, `core/` and `workloads/` |
+| `skill-check` | `[skill]` | Checks each skill README trigger prompt loads the expected skill (`scripts/skill-trigger-check.sh`); calls Claude, so it costs API usage |

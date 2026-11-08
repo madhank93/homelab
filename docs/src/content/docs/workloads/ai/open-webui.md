@@ -30,7 +30,7 @@ Without this flag, settings saved in the database override the env vars, and cha
 
 ## Built-in tools are off
 
-Open WebUI 0.12 attaches its built-in tools (tasks, memories, skills, knowledge) to every chat by default. The local Qwen3-Coder Q3 models answer with bare tool-call JSON that Ollama does not parse as a tool call, so a plain "hi" came back as `{"name": "create_tasks", ...}`. `DEFAULT_MODEL_METADATA={"capabilities":{"builtin_tools":false}}` turns them off for every model.
+Open WebUI attaches its built-in tools (tasks, memories, skills, knowledge) to every chat by default. The local Qwen3-Coder Q3 models answer with bare tool-call JSON that Ollama does not parse as a tool call, so ordinary messages come back as tool-call JSON instead of text. `DEFAULT_MODEL_METADATA={"capabilities":{"builtin_tools":false}}` turns them off for every model.
 
 ## Picking a model
 

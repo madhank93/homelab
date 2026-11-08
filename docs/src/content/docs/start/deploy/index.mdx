@@ -37,6 +37,11 @@ Key names only. SOPS means `secrets/bootstrap.sops.yaml`; `env/` is `core/cloud/
 | `AUTHENTIK_POSTGRESQL_PASSWORD` | SOPS → `env/authentik-postgres.env`, `env/authentik-server.env`, `env/authentik-worker.env` | 0 |
 | `AUTHENTIK_GITHUB_SECRET` | SOPS → Pulumi `authentik` stack | 0 |
 | `GRAFANA_OAUTH_CLIENT_SECRET` | SOPS → Pulumi `authentik` stack, OpenBao `secret/grafana` `OAUTH_CLIENT_SECRET` | 0 |
+| `ARGOCD_OAUTH_CLIENT_SECRET` | SOPS → Pulumi `authentik` and `platform` stacks | 0 |
+| `HARBOR_OAUTH_CLIENT_SECRET` | SOPS → Pulumi `authentik` stack, OpenBao `secret/harbor` `OIDC_CLIENT_SECRET` | 0 |
+| `HOMEPAGE_OAUTH_CLIENT_SECRET` | SOPS → Pulumi `authentik` stack, OpenBao `secret/homepage` `OAUTH_CLIENT_SECRET` | 0 |
+| `KUBERNETES_OAUTH_CLIENT_SECRET` | SOPS → Pulumi `authentik` stack, OpenBao `secret/headlamp` `OIDC_CLIENT_SECRET` | 0 |
+| `PROXMOX_OAUTH_CLIENT_SECRET` | SOPS → Pulumi `authentik` and `talos` stacks | 0 |
 | `NETBIRD_CLIENT_SECRET` | SOPS → Pulumi `authentik` stack; typed into the NetBird UI | 0 |
 | `NB_DATA_STORE_KEY` | SOPS → `env/bootstrap.env` | 0 |
 | `NB_RELAY_SECRET` | SOPS → `env/bootstrap.env` | 0 |
@@ -49,6 +54,7 @@ Key names only. SOPS means `secrets/bootstrap.sops.yaml`; `env/` is `core/cloud/
 | `ENCRYPTION_KEY` | OpenBao `secret/n8n` (seeded) | 2 |
 | `FALCOSIDEKICK_UI_USER` | OpenBao `secret/falco` (seeded) | 2 |
 | `RCON_PASSWORD`, `JOIN_PASSWORD` | OpenBao `secret/cs2` (seeded) | 2 |
+| `AUTH_SECRET` | OpenBao `secret/homepage` (seeded) | 2 |
 | `NETBIRD_SETUP_KEY` | OpenBao `secret/netbird` (placeholder in 2, real key in 6) | 6 |
 
 :::danger[Never rotate these]

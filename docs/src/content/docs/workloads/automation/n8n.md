@@ -16,8 +16,6 @@ n8n runs scheduled, webhook and event-driven workflows. It uses the [8gears char
 | Storage | 10Gi RWX on the default `longhorn` class (binary data), plus 10Gi Postgres on `longhorn` |
 | Auth | n8n's own login |
 
-<!-- TODO screenshot: n8n workflow editor with node connections and execution history -->
-
 ![n8n sign-in page](/assets/screenshots/n8n/login.jpg)
 
 ## How it fits

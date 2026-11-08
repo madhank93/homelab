@@ -1,13 +1,13 @@
 ---
 title: AI
-description: GPU workloads on k8s-worker4 — Ollama, ComfyUI, Kubeflow and the NVIDIA device plugin that shares the card between them.
+description: GPU workloads on k8s-worker4 — Ollama, Open WebUI, ComfyUI and Kubeflow, sharing one card through the NVIDIA device plugin.
 sidebar:
   label: Overview
   order: 10
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-Every AI workload runs on k8s-worker4 (`192.168.1.224`), the only node with a GPU. The device plugin splits the one RTX 5070 Ti into five time-sliced `nvidia.com/gpu` units; see [GPU](/hardware/gpu/) for the hardware.
+Every AI workload runs on k8s-worker4 (`192.168.1.224`), the only node with a GPU. The [device plugin](/workloads/hardware/nvidia-device-plugin/) splits the one RTX 5070 Ti into five time-sliced `nvidia.com/gpu` units; see [GPU](/hardware/gpu/) for the hardware.
 
 ## GPU consumers
 
@@ -23,7 +23,6 @@ VRAM is not partitioned: each unit is a time slice of the whole 16 GB card, and 
 All GPU pods need `runtimeClassName: nvidia`, the `nvidia.com/gpu.present: "true"` node selector and a toleration for the `dedicated=ai:NoSchedule` taint on worker4.
 
 <CardGrid>
-  <LinkCard title="NVIDIA device plugin" href="/workloads/ai/nvidia-device-plugin/" description="GPU advertisement, time-slicing and DCGM metrics on Talos." />
   <LinkCard title="Ollama" href="/workloads/ai/ollama/" description="LLM inference server and the aider offload endpoint." />
   <LinkCard title="Open WebUI" href="/workloads/ai/open-webui/" description="Browser chat for Ollama's models. LAN only, no GPU." />
   <LinkCard title="ComfyUI" href="/workloads/ai/comfyui/" description="Node-graph image generation. Off by default." />

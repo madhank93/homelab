@@ -29,6 +29,8 @@ Kubernetes is pinned separately from Talos, which would otherwise default to a n
 | Authentik | 2026.8.5 | same |
 | PostgreSQL (Authentik) | 16.15-alpine | same |
 | Gatus (uptime) | v5.37.0 | same |
+| Authentik Pulumi provider (Terraform `goauthentik/authentik`) | 2026.8.2 | [`core/Pulumi.yaml`](src:core/Pulumi.yaml) |
+| Pulumi `terraform-provider` bridge | 1.0.2 | same |
 
 ## Platform
 
@@ -63,6 +65,7 @@ Synthesized by CDK8s and delivered by Argo CD. Charts with a generated typed pac
 | OpenBao (chart) | 0.30.4 | [`workloads/secrets/openbao.go`](src:workloads/secrets/openbao.go) |
 | OpenBao (image) | 2.6.5 | same — server, CSI agent and unseal sidecar; held on 2.6.x for the `file` storage backend |
 | Secrets Store CSI Driver | 1.6.1 | [`workloads/secrets/csi_driver.go`](src:workloads/secrets/csi_driver.go) |
+| pause (`secret-sync` pods) | 3.10 | [`workloads/kit/kit.go`](src:workloads/kit/kit.go) |
 
 ### Observability
 

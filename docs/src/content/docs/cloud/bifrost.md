@@ -100,6 +100,8 @@ ssh root@178.156.199.250 'docker logs --tail=50 traefik'
 
 Never edit files under `/etc/bifrost/` on the VPS; the next run overwrites them.
 
+The server is protected and ignores changes to its image and cloud-init user data, so editing [`cloud-init-hetzner.yml`](src:core/cloud/cloud-init/cloud-init-hetzner.yml) does not touch a running VPS. Put changes in `core/cloud/bifrost/`, which every run copies over SSH.
+
 ## Troubleshooting
 
 ### Every public cluster route returns 504

@@ -75,6 +75,7 @@ Cloudflare, all records `A`, DNS-only (not proxied), from [`cloudflare.go`](src:
 | Record | Points at | Effect |
 |---|---|---|
 | `*.madhan.app` | `192.168.1.220` | Every unlisted subdomain resolves to the LAN Gateway: reachable on the LAN or over the VPN, nowhere else |
+| `pve` | `192.168.1.235` | Proxmox host (`proxmox.host`, `proxmox.ip`); LAN only |
 | `auth`, `netbird`, `proxy`, `uptime` | `178.156.199.250` | Always public |
 | `*.proxy.madhan.app` | `178.156.199.250` | NetBird expose |
 | Each entry in `publicServices` | `178.156.199.250` | Public via Traefik; currently `grafana` |
@@ -83,4 +84,4 @@ To make a service public, add it to `publicServices` and run `just core hetzner 
 
 ## Hostnames on the Gateway
 
-HTTPRoutes on `homelab-gateway`, all `<name>.madhan.app`: `alertmanager`, `argocd`, `chat`, `comfyui`, `falco`, `grafana`, `harbor`, `headlamp`, `hubble`, `kubeflow`, `longhorn`, `n8n`, `ollama`, `openbao`, `victorialogs`, `vmselect`.
+HTTPRoutes on `homelab-gateway`, all `<name>.madhan.app`: `alertmanager`, `argocd`, `chat`, `comfyui`, `falco`, `grafana`, `harbor`, `headlamp`, `home`, `hubble`, `kubeflow`, `longhorn`, `n8n`, `ollama`, `openbao`, `victorialogs`, `vmselect`.

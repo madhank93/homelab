@@ -1,0 +1,34 @@
+---
+title: Observability
+description: Metrics and logs pipeline — OpenTelemetry and VMAgent collect, VictoriaMetrics and VictoriaLogs store, Grafana shows.
+sidebar:
+  label: Overview
+  order: 10
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Two collectors feed two stores, and [Grafana](/workloads/monitoring/grafana/) reads both. Alertmanager ships inside the VictoriaMetrics stack, not as its own app.
+
+```mermaid
+flowchart LR
+  pods["Container logs<br/>/var/log/pods"] --> agent["OTel agent<br/>DaemonSet"]
+  falco["Falco<br/>JSON to stdout"] --> pods
+  kubelet["kubelet + host metrics"] --> agent
+  api["Kubernetes API<br/>cluster metrics + events"] --> gw["OTel gateway<br/>Deployment"]
+  sm["ServiceMonitors<br/>apps, DCGM, Argo CD"] --> vmagent["VMAgent"]
+  agent -->|remote write| vm["VictoriaMetrics<br/>VMSingle"]
+  gw -->|remote write| vm
+  vmagent --> vm
+  agent -->|OTLP/HTTP| vl["VictoriaLogs"]
+  gw -->|OTLP/HTTP| vl
+  vm --> vmalert["VMAlert → Alertmanager"]
+  vm --> grafana["Grafana"]
+  vl --> grafana
+```
+
+<CardGrid>
+  <LinkCard title="VictoriaMetrics" href="/workloads/observability/victoria-metrics/" description="VMSingle, VMAgent, VMAlert and Alertmanager from one chart." />
+  <LinkCard title="VictoriaLogs" href="/workloads/observability/victoria-logs/" description="Log store fed over OTLP, queried through Grafana's Loki plugin." />
+  <LinkCard title="OpenTelemetry" href="/workloads/observability/opentelemetry/" description="Agent DaemonSet and gateway Deployment collector pipelines." />
+  <LinkCard title="Argo CD monitor" href="/workloads/observability/argocd-monitor/" description="Metrics Services, ServiceMonitors and the TLS certificate for Argo CD." />
+</CardGrid>

@@ -16,9 +16,7 @@ ComfyUI generates images from Stable Diffusion and Flux workflows on the RTX 507
 | Storage | 50Gi RWX on `longhorn`, mounted at `/home/user/opt/ComfyUI` |
 | Auth | None |
 
-<!-- TODO screenshot: ComfyUI node graph with a Stable Diffusion workflow (samplers, VAE, ControlNet) -->
-
-It ships with `replicas: 0`. ComfyUI keeps its model in VRAM after a run and never releases it, and nothing in Kubernetes arbitrates VRAM, so a running ComfyUI leaves Ollama unable to load a model.
+It ships with `replicas: 0`: ComfyUI keeps its model in VRAM after a run, which leaves Ollama unable to load one. See [Scheduling a GPU pod](/hardware/gpu/#scheduling-a-gpu-pod) for the shared-VRAM limits.
 
 ## Configuration
 

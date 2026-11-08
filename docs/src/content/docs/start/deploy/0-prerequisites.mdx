@@ -57,6 +57,11 @@ VM sizes come from `cluster.nodes` in [`config.yml`](src:config/config.yml); the
    AUTHENTIK_POSTGRESQL_PASSWORD: # openssl rand -hex 16
    AUTHENTIK_GITHUB_SECRET:       # GitHub OAuth app secret
    GRAFANA_OAUTH_CLIENT_SECRET:   # openssl rand -hex 32
+   ARGOCD_OAUTH_CLIENT_SECRET:    # openssl rand -hex 32
+   HARBOR_OAUTH_CLIENT_SECRET:    # openssl rand -hex 32
+   HOMEPAGE_OAUTH_CLIENT_SECRET:  # openssl rand -hex 32
+   KUBERNETES_OAUTH_CLIENT_SECRET: # openssl rand -hex 32; Headlamp and kube-apiserver OIDC
+   PROXMOX_OAUTH_CLIENT_SECRET:   # openssl rand -hex 32
    NETBIRD_CLIENT_SECRET:         # openssl rand -hex 32
    NB_DATA_STORE_KEY:             # openssl rand -base64 32
    NB_RELAY_SECRET:               # openssl rand -base64 32

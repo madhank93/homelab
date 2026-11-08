@@ -97,6 +97,9 @@ allow=(
   'kubeflownotebookswg/'
   'torch.__version__'
   'kustomize 5.8.0'
+  # Protocol and CUDA lines a capitalised name precedes, not pinned software.
+  'TLS 1.2'
+  'CUDA 12.8'
 )
 
 # Upgrade runbooks and release notes legitimately name version boundaries a change happened at
@@ -124,9 +127,9 @@ while IFS= read -r hit; do
   fail "$file:$lineno states a version — move it to the inventory and link there"
   printf '       %s\n' "$(echo "$text" | cut -c1-100)"
 done < <(
-  # Three-component versions bare or v-prefixed, plus two-component ones only
-  # when v-prefixed — "v0.66" is a version, "12.8" is usually a CUDA line.
-  grep -rnE '\bv?[0-9]+\.[0-9]+\.[0-9]+\b|\bv[0-9]+\.[0-9]+\b' docs/src/content/docs \
+  # Three-component versions bare or v-prefixed, two-component ones when
+  # v-prefixed ("v0.66") or right after a capitalised name ("Authentik 2026.5").
+  grep -rnE '\bv?[0-9]+\.[0-9]+\.[0-9]+\b|\bv[0-9]+\.[0-9]+\b|\b[A-Z][A-Za-z]+ [0-9]+\.[0-9]+\b' docs/src/content/docs \
     --include='*.md' --include='*.mdx' \
     --exclude-dir=upgrades \
     --exclude-dir=releases \

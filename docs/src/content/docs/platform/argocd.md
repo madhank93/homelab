@@ -15,8 +15,6 @@ Argo CD deploys every workload from the CDK8s output on the `v0.1.8-manifests` b
 | Branch | `manifests_branch` in [`config.yml`](src:config/config.yml) |
 | Why | [GitOps with Pulumi and CDK8s](/reference/decisions/gitops-cdk8s/) |
 
-<!-- TODO screenshot: Argo CD application list with sync and health status -->
-
 ![Argo CD login page](/assets/screenshots/argocd/login.jpg)
 
 ## How it fits

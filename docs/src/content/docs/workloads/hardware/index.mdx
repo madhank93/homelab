@@ -1,0 +1,14 @@
+---
+title: Hardware
+description: In-cluster GPU plumbing on k8s-worker4 — the NVIDIA device plugin, time-slicing and DCGM metrics.
+sidebar:
+  label: Overview
+  order: 10
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Charts that expose node hardware to the scheduler. The card itself is described in [GPU](/hardware/gpu/); the workloads that use it are under [AI](/workloads/ai/).
+
+<CardGrid>
+  <LinkCard title="NVIDIA device plugin" href="/workloads/hardware/nvidia-device-plugin/" description="GPU advertisement, time-slicing and DCGM metrics on Talos." />
+</CardGrid>
