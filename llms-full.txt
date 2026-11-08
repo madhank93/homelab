@@ -290,6 +290,12 @@ The server is protected and ignores changes to its image and cloud-init user dat
 
 Traefik cannot reach `192.168.1.220`: `netbird-agent` is down or has no route. Check `ssh root@178.156.199.250 'docker exec netbird-agent netbird routes list'` shows `192.168.1.0/24` selected; then see [NetBird troubleshooting](/cloud/netbird/).
 
+### `just core hetzner up` fails with “would be copied to the VPS; remove it”
+
+[Section titled “just core hetzner up fails with “would be copied to the VPS; remove it””](#just-core-hetzner-up-fails-with-would-be-copied-to-the-vps-remove-it)
+
+A dot-prefixed `*.env` file sits in `core/cloud/bifrost/`. The whole directory is copied to the VPS and only `env/` holds deployed secrets, so delete the stray file.
+
 ### Bootstrap exits on a container that never becomes healthy
 
 [Section titled “Bootstrap exits on a container that never becomes healthy”](#bootstrap-exits-on-a-container-that-never-becomes-healthy)
@@ -322,14 +328,15 @@ All records are DNS-only (not proxied). A specific record beats the wildcard, so
 
 [Section titled “What is reachable where”](#what-is-reachable-where)
 
-| Name or address                                                                                                                                          | LAN | VPN (NetBird) | Public                                                |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------- | ----------------------------------------------------- |
-| `auth`, `netbird`, `uptime`, `proxy`, `*.proxy`                                                                                                          | Yes | Yes           | Yes, served by Bifrost itself                         |
-| `grafana`                                                                                                                                                | Yes | Yes           | Yes, Grafana’s own Authentik login (`SkipAuth: true`) |
-| `argocd`, `hubble` (Pulumi HTTPRoutes)                                                                                                                   | Yes | Yes           | No                                                    |
-| `longhorn`, `openbao`, `harbor`, `n8n`, `headlamp`, `falco`, `vmselect`, `alertmanager`, `victorialogs`, `kubeflow`, `ollama`, `comfyui`, `chat`, `home` | Yes | Yes           | No                                                    |
-| `192.168.1.225:11434` (Ollama LoadBalancer)                                                                                                              | Yes | Yes           | No                                                    |
-| `192.168.1.230` (CS2 LoadBalancer)                                                                                                                       | Yes | Yes           | No                                                    |
+| Name or address                                                                                                                                                     | LAN | VPN (NetBird) | Public                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------- | ----------------------------------------------------- |
+| `auth`, `netbird`, `uptime`, `proxy`, `*.proxy`                                                                                                                     | Yes | Yes           | Yes, served by Bifrost itself                         |
+| `grafana`                                                                                                                                                           | Yes | Yes           | Yes, Grafana’s own Authentik login (`SkipAuth: true`) |
+| `argocd`, `hubble` (Pulumi HTTPRoutes)                                                                                                                              | Yes | Yes           | No                                                    |
+| `longhorn`, `openbao`, `harbor`, `n8n`, `headlamp`, `falco`, `vmselect`, `alertmanager`, `victorialogs`, `kubeflow`, `ollama`, `comfyui`, `chat`, `home`, `adguard` | Yes | Yes           | No                                                    |
+| `192.168.1.225:11434` (Ollama LoadBalancer)                                                                                                                         | Yes | Yes           | No                                                    |
+| `192.168.1.226:53` (AdGuard DNS LoadBalancer)                                                                                                                       | Yes | Yes           | No                                                    |
+| `192.168.1.230` (CS2 LoadBalancer)                                                                                                                                  | Yes | Yes           | No                                                    |
 
 Hostnames are `<name>.madhan.app`. VPN reach comes from the `192.168.1.0/24` route that `k8s-routing-peer` advertises to the `All` group; the public wildcard record makes the same names resolve off-LAN. ComfyUI ships scaled to zero.
 
@@ -607,6 +614,7 @@ flowchart TB
     DS -.-> CP & W & G
     GW["Cilium Gateway<br/>192.168.1.220"] --> APPS
     GW --> AI
+    DNS["AdGuard DNS<br/>192.168.1.226"] --> APPS
 ```
 
 | Placement rule                | How                                                                                                                          | Source                                                                                                                                                                                                                                                                                                             |
@@ -816,6 +824,21 @@ Cloudflare holds the records, all DNS-only (not proxied). Source: [`cloudflare.g
 | each entry in `publicServices`                  | `178.156.199.250` (Bifrost)     | Public, tunnelled to the cluster |
 
 To make a cluster service public, add it to `publicServices`; see [Service exposure](/cloud/exposure/).
+
+### Home DNS
+
+[Section titled “Home DNS”](#home-dns)
+
+Devices set by hand to use [AdGuard Home](/workloads/networking/adguard/) send every lookup to its LoadBalancer IP; AdGuard drops ad and tracker domains and resolves the rest, `*.madhan.app` included, over DNS-over-HTTPS. The AT\&T gateway cannot hand this server out over DHCP, so other devices keep the gateway’s DNS.
+
+```
+flowchart LR
+    C[Device with DNS<br/>192.168.1.226] -->|UDP/TCP 53| N[Node holding<br/>the L2 lease]
+    N -->|Cilium DNAT| A[AdGuard pod<br/>one of two]
+    A -->|blocked| X[0.0.0.0]
+    A -->|DoH| U[Quad9 · Cloudflare]
+    C -.->|cluster down: DNS 2| Q[Quad9]
+```
 
 ## The three paths
 
@@ -2112,12 +2135,12 @@ ApplicationSet `cots-applications` uses a git directory generator over `*` on th
 
 [Section titled “ignoreDifferences”](#ignoredifferences)
 
-| Where                | Resource                                    | Fields                                                           | Why                                                   |
-| -------------------- | ------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| `argocd-cm` (global) | StatefulSet                                 | `volumeClaimTemplates[].apiVersion`, `.kind`, `.spec.volumeMode` | CDK8s omits them; the API server adds them            |
-| `argocd-cm` (global) | ClusterRole                                 | `.rules`                                                         | Aggregated Kubeflow roles are filled in by Kubernetes |
-| `argocd-cm` (global) | CustomResourceDefinition                    | `.spec.conversion`, `.spec.preserveUnknownFields`, `.status`     | Mutated after apply                                   |
-| ApplicationSet       | VictoriaMetrics operator Secret and webhook | `/data`, `caBundle`                                              | Regenerated on every operator restart                 |
+| Where                | Resource                                    | Fields                                                           | Why                                                                         |
+| -------------------- | ------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `argocd-cm` (global) | StatefulSet                                 | `volumeClaimTemplates[].apiVersion`, `.kind`, `.spec.volumeMode` | CDK8s omits them; the API server adds them                                  |
+| `argocd-cm` (global) | ClusterRole                                 | `/metadata/annotations`, `/rules` (jsonPointers)                 | Kubernetes fills aggregated Kubeflow roles; jq fails on their `rules: null` |
+| `argocd-cm` (global) | CustomResourceDefinition                    | `.spec.conversion`, `.spec.preserveUnknownFields`, `.status`     | Mutated after apply                                                         |
+| ApplicationSet       | VictoriaMetrics operator Secret and webhook | `/data`, `caBundle`                                              | Regenerated on every operator restart                                       |
 
 StatefulSet VCT drift needs the global rule
 
@@ -2448,9 +2471,8 @@ The Gateway has an HTTP listener on 80 and an HTTPS listener on 443 terminating 
 | IP pool `address-pool`             | `192.168.1.220`–`230` from `lb_pool`, minus node IPs        | Announcing a node’s own IP takes that node off the LAN                                                          |
 | L2 policy `l2-policy`              | Workers only, `loadBalancerIPs: true`, `externalIPs: false` |                                                                                                                 |
 | `deny-service-external-ips`        | ValidatingAdmissionPolicy                                   | kube-proxy replacement always serves `spec.externalIPs` (CVE-2020-8554); use a LoadBalancer Service             |
-| `cilium-leases-access`             | ClusterRole + binding                                       | L2 leader election needs Lease access the chart does not grant                                                  |
 
-The pool range overlaps worker IPs `.221`–`.224`, so only `.220` and `.225`–`.230` are handed out. Fixed assignments use the `lbipam.cilium.io/ips` annotation (Ollama `.225`, CS2 `.230`).
+The pool range overlaps worker IPs `.221`–`.224`, so only `.220` and `.225`–`.230` are handed out. Fixed assignments use the `lbipam.cilium.io/ips` annotation (Ollama `.225`, AdGuard DNS `.226`, CS2 `.230`).
 
 Never add wt0 to devices
 
@@ -3068,11 +3090,12 @@ Node ports that matter: Talos API `50000`, kubelet `10250`, KubePrism `127.0.0.1
 
 The Cilium LB-IPAM pool is `cluster.lb_pool` (`192.168.1.220`–`192.168.1.230`), announced over L2 by worker nodes. [`cilium.go`](https://github.com/madhank93/homelab/blob/v0.1.8/core/platform/cilium.go) builds it as one `/32` per address and **skips node IPs**, so the usable pool is `.220` and `.225`–`.230`. Announcing a node’s own IP takes that node off the LAN.
 
-| IP              | Service                                          | Ports           | Set in                                                                                 |
-| --------------- | ------------------------------------------------ | --------------- | -------------------------------------------------------------------------------------- |
-| `192.168.1.220` | Cilium Gateway `homelab-gateway` (`kube-system`) | 80, 443         | `cluster.gateway_ip`                                                                   |
-| `192.168.1.225` | Ollama                                           | 11434           | [`ollama.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/ai/ollama.go) |
-| `192.168.1.230` | Counter-Strike 2                                 | 27015 UDP + TCP | [`cs2.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/gaming/cs2.go)   |
+| IP              | Service                                          | Ports           | Set in                   |
+| --------------- | ------------------------------------------------ | --------------- | ------------------------ |
+| `192.168.1.220` | Cilium Gateway `homelab-gateway` (`kube-system`) | 80, 443         | `cluster.gateway_ip`     |
+| `192.168.1.225` | Ollama                                           | 11434           | `cluster.lb_ips.ollama`  |
+| `192.168.1.226` | AdGuard Home DNS (`adguard-dns`)                 | 53 UDP + TCP    | `cluster.lb_ips.adguard` |
+| `192.168.1.230` | Counter-Strike 2                                 | 27015 UDP + TCP | `cluster.lb_ips.cs2`     |
 
 ## Cluster CIDRs
 
@@ -3127,7 +3150,7 @@ To make a service public, add it to `publicServices` and run `just core hetzner 
 
 [Section titled “Hostnames on the Gateway”](#hostnames-on-the-gateway)
 
-HTTPRoutes on `homelab-gateway`, all `<name>.madhan.app`: `alertmanager`, `argocd`, `chat`, `comfyui`, `falco`, `grafana`, `harbor`, `headlamp`, `home`, `hubble`, `kubeflow`, `longhorn`, `n8n`, `ollama`, `openbao`, `victorialogs`, `vmselect`.
+HTTPRoutes on `homelab-gateway`, all `<name>.madhan.app`: `adguard`, `alertmanager`, `argocd`, `chat`, `comfyui`, `falco`, `grafana`, `harbor`, `headlamp`, `home`, `hubble`, `kubeflow`, `longhorn`, `n8n`, `ollama`, `openbao`, `victorialogs`, `vmselect`.
 
 # Software inventory
 
@@ -3242,17 +3265,19 @@ Trivy has two pins: the chart comes from the typed package, while the CRD bundle
 
 [Section titled “Applications”](#applications)
 
-| Software                    | Version | Pinned in                                                                                                                                     |
-| --------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Harbor                      | 1.19.4  | [`cdk8s.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/cdk8s.yaml)                                                         |
-| Headlamp                    | 0.45.0  | [`cdk8s.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/cdk8s.yaml)                                                         |
-| Homepage                    | v2.7.0  | [`config/versions.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/config/versions.yaml)                                               |
-| n8n (chart)                 | 2.1.1   | [`workloads/automation/n8n.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/automation/n8n.go)                                 |
-| n8n (image)                 | 2.45.5  | same                                                                                                                                          |
-| Reloader                    | 2.2.19  | [`workloads/support/reloader.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/support/reloader.go)                             |
-| NetBird peer                | 0.80.0  | [`workloads/networking/netbird_peer.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/networking/netbird_peer.go)               |
-| Kubeflow                    | 26.03.1 | [`workloads/ai/kubeflow/kustomization.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/ai/kubeflow/kustomization.yaml)       |
-| notebook-gateway-controller | v1      | [`workloads/ai/notebook_gateway_controller.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/ai/notebook_gateway_controller.go) |
+| Software                    | Version   | Pinned in                                                                                                                                     |
+| --------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Harbor                      | 1.19.4    | [`cdk8s.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/cdk8s.yaml)                                                         |
+| Headlamp                    | 0.45.0    | [`cdk8s.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/cdk8s.yaml)                                                         |
+| Homepage                    | v2.7.0    | [`config/versions.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/config/versions.yaml)                                               |
+| n8n (chart)                 | 2.1.1     | [`workloads/automation/n8n.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/automation/n8n.go)                                 |
+| n8n (image)                 | 2.45.5    | same                                                                                                                                          |
+| Reloader                    | 2.2.19    | [`workloads/support/reloader.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/support/reloader.go)                             |
+| AdGuard Home                | v0.107.80 | [`config/versions.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/config/versions.yaml)                                               |
+| AdGuard exporter            | v1.2.3    | same                                                                                                                                          |
+| NetBird peer                | 0.80.0    | [`workloads/networking/netbird_peer.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/networking/netbird_peer.go)               |
+| Kubeflow                    | 26.03.1   | [`workloads/ai/kubeflow/kustomization.yaml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/ai/kubeflow/kustomization.yaml)       |
+| notebook-gateway-controller | v1        | [`workloads/ai/notebook_gateway_controller.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/ai/notebook_gateway_controller.go) |
 
 ### AI and GPU
 
@@ -4137,6 +4162,7 @@ Each app is a CDK8s chart in [`main.go`](https://github.com/madhank93/homelab/bl
 | [OpenTelemetry](/workloads/observability/opentelemetry/)                  | Observability | none                       | —                                                | —                                                                |
 | [VictoriaLogs](/workloads/observability/victoria-logs/)                   | Observability | LAN                        | `victorialogs.madhan.app`                        | None                                                             |
 | [VictoriaMetrics](/workloads/observability/victoria-metrics/)             | Observability | LAN                        | `vmselect.madhan.app`, `alertmanager.madhan.app` | None                                                             |
+| [AdGuard Home](/workloads/networking/adguard/)                            | Networking    | LAN                        | `adguard.madhan.app`, DNS `192.168.1.226:53`     | `admin` login (password in OpenBao)                              |
 | [NetBird peer](/workloads/networking/netbird-peer/)                       | Networking    | none (it is the VPN route) | —                                                | —                                                                |
 | [Harbor](/workloads/registry/harbor/)                                     | Registry      | LAN                        | `harbor.madhan.app`                              | Authentik OIDC; local `admin` fallback                           |
 | [OpenBao](/workloads/secrets/openbao/)                                    | Secrets       | LAN                        | `openbao.madhan.app`                             | OpenBao token                                                    |
@@ -4173,7 +4199,7 @@ Rows marked “None” trust anything that can reach the LAN or the VPN. Keep th
 
 [Observability](/workloads/observability/)VictoriaMetrics, VictoriaLogs, OpenTelemetry and the Argo CD monitor.
 
-[Networking](/workloads/networking/)In-cluster NetBird routing peer.
+[Networking](/workloads/networking/)AdGuard Home LAN DNS and the in-cluster NetBird routing peer.
 
 [Registry](/workloads/registry/)Harbor image registry.
 
@@ -4409,11 +4435,13 @@ On start it syncs every existing resource, then watches all three kinds. ADDED o
 
 [Section titled “Configuration”](#configuration)
 
-| Setting          | Value                                                             | Why                                                                                 |
-| ---------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Image            | `harbor.madhan.app/library/notebook-gateway-controller`           | Python plus the Kubernetes client, built from `images/notebook-gateway-controller/` |
-| Script           | ConfigMap `notebook-gateway-controller-script`, mounted at `/app` | Edit the script in Go; Reloader restarts the pod on change                          |
-| Security context | non-root `65534`, all capabilities dropped                        |                                                                                     |
+| Setting          | Value                                                                                               | Why                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Image            | `harbor.madhan.app/library/notebook-gateway-controller`                                             | Python plus the Kubernetes client, built from `images/notebook-gateway-controller/` |
+| Script           | ConfigMap `notebook-gateway-controller-script`, mounted at `/app`                                   | Edit the script in Go; Reloader restarts the pod on change                          |
+| Security context | non-root `65534`, all capabilities dropped                                                          |                                                                                     |
+| RBAC             | Role for HTTPRoutes in `kubeflow`; ClusterRole for watching the three kinds and for ReferenceGrants | Routes are only written in `kubeflow`; grants go in each user namespace             |
+| Env              | `GATEWAY_NS`, `GATEWAY_NAME`, `ROUTE_NS`, `ROUTE_HOSTNAME`                                          | Set from `config/config.yml`, so the script holds no hostnames                      |
 
 ## Operate
 
@@ -5161,11 +5189,130 @@ Metrics Server is down or not yet ready: `kubectl get deploy metrics-server -n k
 
 # Networking
 
-> In-cluster NetBird routing peer that connects Bifrost to the LAN.
+> LAN DNS with ad blocking, and the in-cluster NetBird routing peer that connects Bifrost to the LAN.
 
-The NetBird peer carries every public request from Bifrost into the cluster.
+AdGuard Home answers LAN DNS; the NetBird peer carries every public request from Bifrost into the cluster.
+
+[AdGuard Home](/workloads/networking/adguard/)LAN DNS with ad blocking on 192.168.1.226, and per-device client setup.
 
 [NetBird peer](/workloads/networking/netbird-peer/)Routing peer, MASQUERADE rule, and the 504 runbook.
+
+# AdGuard Home
+
+> LAN DNS with ad and tracker blocking, two pods behind one fixed LoadBalancer IP, configured from one YAML file.
+
+AdGuard Home answers DNS for the devices pointed at it and drops ad and tracker domains. [Upstream docs](https://github.com/AdguardTeam/AdGuardHome/wiki).
+
+|           |                                                                                                                                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Namespace | `adguard`                                                                                                                                                                                                          |
+| Source    | [`adguard.go`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/networking/adguard.go), [`adguard_config.yml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/networking/adguard_config.yml) |
+| Exposure  | LAN · DNS LoadBalancer `192.168.1.226:53` (UDP + TCP) · UI `adguard.madhan.app`                                                                                                                                    |
+| Storage   | None (`emptyDir`); query logs and stats reset on restart                                                                                                                                                           |
+| Auth      | UI user `admin`, password in OpenBao; no SSO (AdGuard has no OIDC)                                                                                                                                                 |
+
+## How it fits
+
+[Section titled “How it fits”](#how-it-fits)
+
+```
+flowchart LR
+  C[LAN device<br/>DNS 1 = 192.168.1.226] -->|UDP/TCP 53| LB[adguard-dns<br/>Cilium L2 LB]
+  LB --> P0[adguard-0]
+  LB --> P1[adguard-1]
+  P0 & P1 -->|DoH| U[Quad9 / Cloudflare]
+  B[Browser] -->|adguard.madhan.app| GW[Gateway] --> P0
+```
+
+A StatefulSet runs two pods with required anti-affinity, so they land on different nodes and a node reboot does not take DNS down. Both serve DNS; the UI route goes to `adguard-0` only, because login sessions and query logs are per pod. A Homepage tile under **Apps** links the UI.
+
+## Configuration
+
+[Section titled “Configuration”](#configuration)
+
+| Setting                 | Value                                                                                                                                           | Why                                                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| DNS LoadBalancer        | `adguard-dns`, `192.168.1.226` (`cluster.lb_ips.adguard` in [`config.yml`](https://github.com/madhank93/homelab/blob/v0.1.8/config/config.yml)) | Clients are configured by IP, so it never moves                                                                    |
+| `externalTrafficPolicy` | `Cluster` (default)                                                                                                                             | Any node can take the L2 lease; the cost is that clients appear as node IPs in the query log                       |
+| `ratelimit`             | `0`                                                                                                                                             | Every client shares a node IP, so a per-client limit would throttle the whole house                                |
+| Upstreams               | Quad9 and Cloudflare DNS-over-HTTPS, `load_balance`                                                                                             | Encrypted upstream; either provider can fail                                                                       |
+| Blocklists              | AdGuard DNS filter, AdAway Default Blocklist                                                                                                    |                                                                                                                    |
+| Security context        | UID/GID `65534`, non-root                                                                                                                       | The image grants `cap_net_bind_service`, so port 53 works unprivileged                                             |
+| Metrics                 | `adguard-exporter` sidecar on `:9618`, ServiceMonitor `adguard`                                                                                 | Dashboard **AdGuard Home Exporter** ships as a ConfigMap for the [Grafana](/workloads/monitoring/grafana/) sidecar |
+
+The config is owned by git. An init container renders [`adguard_config.yml`](https://github.com/madhank93/homelab/blob/v0.1.8/workloads/networking/adguard_config.yml) into each pod at start, substituting the admin password hash from OpenBao. **Changes made in the UI last only until the pod restarts.**
+
+OpenBao keys at `secret/adguard`: `ADMIN_PASSWORD` (read by the exporter) and `ADMIN_PASSWORD_HASH` (bcrypt, read by the init container). Both are mounted as files; no Secret is synced.
+
+## Operate
+
+[Section titled “Operate”](#operate)
+
+First deploy: `just openbao-setup` must run (by you) **before** the pods can start. It creates the `adguard` role and seeds both keys; until then the CSI mount fails and the pods stay in `ContainerCreating`.
+
+Log in to `https://adguard.madhan.app` as `admin`:
+
+```bash
+just openbao-get secret/adguard ADMIN_PASSWORD
+```
+
+Change upstreams or blocklists: edit `adguard_config.yml` and push. Reloader restarts the pods when the ConfigMap changes.
+
+## Client setup
+
+[Section titled “Client setup”](#client-setup)
+
+The AT\&T BGW320 gateway cannot change the DNS servers its DHCP hands out, so set DNS by hand on each device that should be filtered: **DNS 1** `192.168.1.226`, **DNS 2** `9.9.9.9` (Quad9).
+
+* macOS
+
+  1. System Settings → Network → the active Wi-Fi or Ethernet → **Details** → **DNS**.
+  2. Replace the list with `192.168.1.226` and `9.9.9.9`, in that order.
+  3. Check: `dig +short doubleclick.net @192.168.1.226` returns `0.0.0.0`.
+
+* Windows
+
+  1. Settings → Network & internet → the active adapter → **Hardware properties** → DNS server assignment → **Edit**.
+  2. Set **Manual**, IPv4 on, preferred `192.168.1.226`, alternate `9.9.9.9`.
+  3. Check: `Resolve-DnsName doubleclick.net -Server 192.168.1.226` returns `0.0.0.0`.
+
+* TV
+
+  1. Network settings → the active connection → IP settings → **Manual** (or **Static**).
+  2. Keep the IP, subnet and gateway the TV already has; set DNS 1 `192.168.1.226`, DNS 2 `9.9.9.9`.
+  3. Reconnect, then check the device’s queries appear in the AdGuard query log.
+
+If the cluster is down, devices fall back to Quad9 and keep resolving, unfiltered. Blocking is partial even when it is up: some operating systems query both servers and use whichever answers first.
+
+A router behind the BGW320 in IP Passthrough mode would hand out `192.168.1.226` by DHCP and cover every device without per-device setup.
+
+## Troubleshooting
+
+[Section titled “Troubleshooting”](#troubleshooting)
+
+### Pods Pending
+
+[Section titled “Pods Pending”](#pods-pending)
+
+Required anti-affinity needs two schedulable workers. Check for a cordoned or `NotReady` node with `kubectl get nodes`.
+
+### Pods stuck in ContainerCreating with a CSI mount error
+
+[Section titled “Pods stuck in ContainerCreating with a CSI mount error”](#pods-stuck-in-containercreating-with-a-csi-mount-error)
+
+The `adguard` OpenBao role or keys do not exist yet. Run `just openbao-setup`, then delete the pods.
+
+### `192.168.1.226` unreachable after a Cilium restart
+
+[Section titled “192.168.1.226 unreachable after a Cilium restart”](#1921681226-unreachable-after-a-cilium-restart)
+
+Stale L2 announcement lease: the holder renews it but stops answering ARP. `just gateway-repair-l2` repairs only the Gateway’s lease; for DNS, delete this one and Cilium re-elects a holder within seconds:
+
+```bash
+kubectl delete lease -n kube-system cilium-l2announce-adguard-adguard-dns
+```
+
+See [Repairs](/operate/repairs/).
 
 # NetBird peer
 
@@ -5468,7 +5615,6 @@ VictoriaLogs stores container logs, Kubernetes events and Falco alerts. Grafana 
 | `retentionPeriod`         | `30d`           |                                                                                                   |
 | `retentionDiskSpaceUsage` | `40` GiB        | Each replica shares a worker disk with every other Longhorn volume, so cap by size as well as age |
 | Limits                    | `1000m` / `1Gi` |                                                                                                   |
-| `image.pullPolicy`        | `Always`        | Recovers from a corrupted cached image layer                                                      |
 
 | Endpoint                                                                                                     | Used by                                                  |
 | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
@@ -5837,16 +5983,17 @@ OpenBao starts sealed after every restart. The `unseal` container polls `bao sta
 
 `just openbao-setup` writes one read-only policy and Kubernetes auth role per app, bound to that app’s namespace, and seeds missing keys (it never overwrites).
 
-| Role / path `secret/<app>` | ServiceAccount | Keys                                          |
-| -------------------------- | -------------- | --------------------------------------------- |
-| `grafana`                  | `grafana`      | `ADMIN_PASSWORD`, `OAUTH_CLIENT_SECRET`       |
-| `harbor`                   | `secret-sync`  | `HARBOR_ADMIN_PASSWORD`, `OIDC_CLIENT_SECRET` |
-| `n8n`                      | `n8n`          | `ENCRYPTION_KEY`                              |
-| `netbird`                  | `default`      | `NETBIRD_SETUP_KEY`                           |
-| `falco`                    | `secret-sync`  | `FALCOSIDEKICK_UI_USER`                       |
-| `cs2`                      | `cs2`          | `RCON_PASSWORD`, `JOIN_PASSWORD`              |
-| `homepage`                 | `homepage`     | `AUTH_SECRET`, `OAUTH_CLIENT_SECRET`          |
-| `headlamp`                 | `headlamp`     | `OIDC_CLIENT_SECRET`                          |
+| Role / path `secret/<app>` | ServiceAccount | Keys                                                                  |
+| -------------------------- | -------------- | --------------------------------------------------------------------- |
+| `grafana`                  | `grafana`      | `ADMIN_PASSWORD`, `OAUTH_CLIENT_SECRET`                               |
+| `harbor`                   | `secret-sync`  | `HARBOR_ADMIN_PASSWORD`, `OIDC_CLIENT_SECRET`                         |
+| `n8n`                      | `n8n`          | `ENCRYPTION_KEY`                                                      |
+| `netbird`                  | `default`      | `NETBIRD_SETUP_KEY`                                                   |
+| `falco`                    | `secret-sync`  | `FALCOSIDEKICK_UI_USER`                                               |
+| `cs2`                      | `cs2`          | `RCON_PASSWORD`, `JOIN_PASSWORD`                                      |
+| `homepage`                 | `homepage`     | `AUTH_SECRET`, `OAUTH_CLIENT_SECRET`                                  |
+| `headlamp`                 | `headlamp`     | `OIDC_CLIENT_SECRET`                                                  |
+| `adguard`                  | `adguard`      | `ADMIN_PASSWORD`, `ADMIN_PASSWORD_HASH` (file-only, no synced Secret) |
 
 ## Operate
 
@@ -6290,7 +6437,7 @@ Reloader runs with chart defaults; opt in per workload on the **pod template**:
 },
 ```
 
-Annotated today: Grafana, OpenBao, NetBird peer, Falco and its Sidekick UI, every `secret-sync` pod (Harbor, Falco), the OpenTelemetry collectors, the notebook gateway controller, Homepage, and CS2.
+Annotated today: Grafana, OpenBao, NetBird peer, Falco and its Sidekick UI, every `secret-sync` pod (Harbor, Falco), the OpenTelemetry collectors, the notebook gateway controller, Homepage, CS2, and AdGuard Home.
 
 ## How it fits
 
