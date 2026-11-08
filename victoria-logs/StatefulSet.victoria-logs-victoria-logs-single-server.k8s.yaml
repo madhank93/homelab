@@ -39,7 +39,7 @@ spec:
             - --retentionPeriod=30d
             - --storageDataPath=/storage
           image: victoriametrics/victoria-logs:v1.53.0
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10
             initialDelaySeconds: 30

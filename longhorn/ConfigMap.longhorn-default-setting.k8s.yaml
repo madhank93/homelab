@@ -17,5 +17,6 @@ data:
     default-replica-count: "3"
     taint-toleration: "dedicated=ai:NoSchedule"
     priority-class: "longhorn-critical"
+    node-down-pod-deletion-policy: "delete-both-statefulset-and-deployment-pod"
     disable-revision-counter: "{\"v1\":\"true\"}"
     concurrent-automatic-engine-upgrade-per-node-limit: "1"

@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  name: homepage
+  namespace: homepage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  template:
+    metadata:
+      labels:
+        app: homepage
+    spec:
+      containers:
+        - env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: $(MY_POD_IP):3000,home.madhan.app
+            - name: HOMEPAGE_VAR_DOMAIN
+              value: madhan.app
+            - name: HOMEPAGE_AUTH_ENABLED
+              value: "true"
+            - name: HOMEPAGE_EXTERNAL_URL
+              value: https://home.madhan.app
+            - name: HOMEPAGE_OIDC_ISSUER
+              value: https://auth.madhan.app/application/o/homepage/
+            - name: HOMEPAGE_OIDC_CLIENT_ID
+              value: homepage-homelab
+            - name: HOMEPAGE_OIDC_NAME
+              value: Authentik
+            - name: HOMEPAGE_OIDC_AUTO_LOGIN
+              value: "true"
+            - name: HOMEPAGE_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: AUTH_SECRET
+                  name: homepage-secrets
+            - name: HOMEPAGE_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: OAUTH_CLIENT_SECRET
+                  name: homepage-secrets
+          image: ghcr.io/gethomepage/homepage:v2.7.0
+          name: homepage
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: http
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          volumeMounts:
+            - mountPath: /app/config/logs
+              name: logs
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
+            - mountPath: /app/config/bookmarks.yaml
+              name: config
+              subPath: bookmarks.yaml
+            - mountPath: /app/config/custom.css
+              name: config
+              subPath: custom.css
+            - mountPath: /app/config/custom.js
+              name: config
+              subPath: custom.js
+            - mountPath: /app/config/docker.yaml
+              name: config
+              subPath: docker.yaml
+            - mountPath: /app/config/kubernetes.yaml
+              name: config
+              subPath: kubernetes.yaml
+            - mountPath: /app/config/proxmox.yaml
+              name: config
+              subPath: proxmox.yaml
+            - mountPath: /app/config/services.yaml
+              name: config
+              subPath: services.yaml
+            - mountPath: /app/config/settings.yaml
+              name: config
+              subPath: settings.yaml
+            - mountPath: /app/config/widgets.yaml
+              name: config
+              subPath: widgets.yaml
+      serviceAccountName: homepage
+      volumes:
+        - configMap:
+            name: homepage
+          name: config
+        - emptyDir: {}
+          name: logs
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: homepage-secrets
+          name: openbao-secrets

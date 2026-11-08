@@ -1,0 +1,176 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage
+  namespace: homepage
+data:
+  bookmarks.yaml: |
+    - Infra:
+        - GitHub:
+            - icon: github.svg
+              href: https://github.com/madhank93/homelab
+        - Cloudflare:
+            - icon: cloudflare.svg
+              href: https://dash.cloudflare.com
+        - Hetzner:
+            - icon: hetzner.svg
+              href: https://console.hetzner.cloud
+  custom.css: ""
+  custom.js: ""
+  docker.yaml: |
+    {}
+  kubernetes.yaml: |
+    mode: cluster
+    # Services are listed in services.yaml; no Ingress/Gateway discovery.
+    ingress: false
+  proxmox.yaml: |
+    {}
+  services.yaml: |
+    # {{HOMEPAGE_VAR_DOMAIN}} is set from config.yml by homepage.go.
+    # Icons are dashboard-icons names (https://dashboardicons.com); mdi-/si- prefixes for the rest.
+    - Platform:
+        - Proxmox:
+            icon: proxmox.svg
+            href: https://pve.{{HOMEPAGE_VAR_DOMAIN}}:8006
+            description: Hypervisor
+            siteMonitor: https://pve.{{HOMEPAGE_VAR_DOMAIN}}:8006
+        - Argo CD:
+            icon: argo-cd.svg
+            href: https://argocd.{{HOMEPAGE_VAR_DOMAIN}}
+            description: GitOps
+            siteMonitor: https://argocd.{{HOMEPAGE_VAR_DOMAIN}}/healthz
+        - Headlamp:
+            icon: headlamp.svg
+            href: https://headlamp.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Kubernetes UI
+            siteMonitor: https://headlamp.{{HOMEPAGE_VAR_DOMAIN}}
+        - Hubble:
+            icon: cilium.svg
+            href: https://hubble.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Cilium network flows
+            siteMonitor: https://hubble.{{HOMEPAGE_VAR_DOMAIN}}
+        - Longhorn:
+            icon: longhorn.svg
+            href: https://longhorn.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Block storage
+            siteMonitor: https://longhorn.{{HOMEPAGE_VAR_DOMAIN}}
+        - OpenBao:
+            icon: openbao.svg
+            href: https://openbao.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Secrets
+            siteMonitor: https://openbao.{{HOMEPAGE_VAR_DOMAIN}}/v1/sys/health
+        - Harbor:
+            icon: harbor.svg
+            href: https://harbor.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Container registry
+            siteMonitor: https://harbor.{{HOMEPAGE_VAR_DOMAIN}}/api/v2.0/ping
+
+    - Observability:
+        - Grafana:
+            icon: grafana.svg
+            href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Dashboards
+            siteMonitor: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}/api/health
+        - VictoriaMetrics:
+            icon: victoriametrics.svg
+            href: https://vmselect.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Metrics
+            siteMonitor: https://vmselect.{{HOMEPAGE_VAR_DOMAIN}}/health
+        - VictoriaLogs:
+            icon: victorialogs.svg
+            href: https://victorialogs.{{HOMEPAGE_VAR_DOMAIN}}/select/vmui/
+            description: Logs
+            siteMonitor: https://victorialogs.{{HOMEPAGE_VAR_DOMAIN}}/health
+        - Alertmanager:
+            icon: alertmanager.svg
+            href: https://alertmanager.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Alerts
+            siteMonitor: https://alertmanager.{{HOMEPAGE_VAR_DOMAIN}}/-/healthy
+        - Gatus:
+            icon: gatus.svg
+            href: https://uptime.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Uptime (public)
+            siteMonitor: https://uptime.{{HOMEPAGE_VAR_DOMAIN}}
+
+    - AI:
+        - Open WebUI:
+            icon: open-webui.svg
+            href: https://chat.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Chat with local models
+            siteMonitor: https://chat.{{HOMEPAGE_VAR_DOMAIN}}/health
+        - ComfyUI:
+            icon: comfyui.svg
+            href: https://comfyui.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Image generation
+            siteMonitor: https://comfyui.{{HOMEPAGE_VAR_DOMAIN}}
+        - Kubeflow:
+            icon: kubeflow.svg
+            href: https://kubeflow.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Notebooks and pipelines
+            siteMonitor: https://kubeflow.{{HOMEPAGE_VAR_DOMAIN}}
+        - Ollama:
+            icon: ollama.svg
+            href: https://ollama.{{HOMEPAGE_VAR_DOMAIN}}/api/version
+            description: Model API (RTX 5070 Ti)
+            siteMonitor: https://ollama.{{HOMEPAGE_VAR_DOMAIN}}/api/version
+
+    - Apps:
+        - AdGuard Home:
+            icon: adguard-home.svg
+            href: https://adguard.{{HOMEPAGE_VAR_DOMAIN}}
+            description: LAN DNS and ad blocking
+            siteMonitor: https://adguard.{{HOMEPAGE_VAR_DOMAIN}}
+        - n8n:
+            icon: n8n.svg
+            href: https://n8n.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Workflow automation
+            siteMonitor: https://n8n.{{HOMEPAGE_VAR_DOMAIN}}
+        - Falco:
+            icon: mdi-shield-search
+            href: https://falco.{{HOMEPAGE_VAR_DOMAIN}}
+            description: Runtime security events
+            siteMonitor: https://falco.{{HOMEPAGE_VAR_DOMAIN}}
+        - Counter-Strike 2:
+            icon: si-counterstrike
+            description: LAN server · connect 192.168.1.230
+
+    - Edge:
+        - Authentik:
+            icon: authentik.svg
+            href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}/if/user/
+            description: SSO
+            siteMonitor: https://auth.{{HOMEPAGE_VAR_DOMAIN}}/-/health/ready/
+        - NetBird:
+            icon: netbird.svg
+            href: https://netbird.{{HOMEPAGE_VAR_DOMAIN}}
+            description: VPN mesh
+            siteMonitor: https://netbird.{{HOMEPAGE_VAR_DOMAIN}}
+  settings.yaml: |
+    title: Homelab
+    headerStyle: clean
+    theme: dark
+    color: slate
+    statusStyle: dot
+    hideVersion: true
+    layout:
+      Platform: {style: row, columns: 4}
+      Observability: {style: row, columns: 4}
+      AI: {style: row, columns: 4}
+      Apps: {style: row, columns: 4}
+      Edge: {style: row, columns: 4}
+  widgets.yaml: |
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: talos
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - search:
+        provider: duckduckgo
+        target: _blank

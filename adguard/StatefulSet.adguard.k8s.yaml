@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: adguard
+  namespace: adguard
+spec:
+  podManagementPolicy: Parallel
+  replicas: 2
+  selector:
+    matchLabels:
+      app: adguard
+  serviceName: adguard
+  template:
+    metadata:
+      annotations:
+        reloader.stakater.com/auto: "true"
+      labels:
+        app: adguard
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: adguard
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - image: adguard/adguardhome:v0.107.80
+          livenessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            tcpSocket:
+              port: dns-tcp
+          name: adguard
+          ports:
+            - containerPort: 53
+              name: dns-udp
+              protocol: UDP
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            periodSeconds: 10
+            tcpSocket:
+              port: dns-tcp
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          volumeMounts:
+            - mountPath: /opt/adguardhome/conf
+              name: conf
+            - mountPath: /opt/adguardhome/work
+              name: work
+        - env:
+            - name: ADGUARD_SERVERS
+              value: http://localhost:3000
+            - name: ADGUARD_USERNAMES
+              value: admin
+            - name: ADGUARD_PASSWORDS_FILE
+              value: /mnt/secrets/ADMIN_PASSWORD
+          image: ghcr.io/henrywhitaker3/adguard-exporter:v1.2.3
+          name: exporter
+          ports:
+            - containerPort: 9618
+              name: metrics
+          resources:
+            limits:
+              memory: 64Mi
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          volumeMounts:
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
+      initContainers:
+        - args:
+            - sed "s|__ADMIN_PASSWORD_HASH__|$(cat /mnt/secrets/ADMIN_PASSWORD_HASH)|" /template/AdGuardHome.yaml > /opt/adguardhome/conf/AdGuardHome.yaml
+          command:
+            - sh
+            - -c
+          image: adguard/adguardhome:v0.107.80
+          name: render-config
+          volumeMounts:
+            - mountPath: /opt/adguardhome/conf
+              name: conf
+            - mountPath: /template
+              name: template
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
+      securityContext:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: adguard
+      volumes:
+        - emptyDir: {}
+          name: conf
+        - emptyDir: {}
+          name: work
+        - configMap:
+            name: adguard-config
+          name: template
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: adguard-secrets
+          name: openbao-secrets

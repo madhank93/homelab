@@ -28,6 +28,20 @@ spec:
             - -in-cluster-context-name=main
             - -plugins-dir=/headlamp/plugins
             - -session-ttl=86400
+            - -oidc-client-id=$(OIDC_CLIENT_ID)
+            - -oidc-client-secret=$(OIDC_CLIENT_SECRET)
+            - -oidc-idp-issuer-url=$(OIDC_ISSUER_URL)
+            - -oidc-scopes=$(OIDC_SCOPES)
+          env:
+            - name: OIDC_CLIENT_ID
+              value: kubernetes
+            - name: OIDC_ISSUER_URL
+              value: https://auth.madhan.app/application/o/kubernetes/
+            - name: OIDC_SCOPES
+              value: openid,profile,email,groups,offline_access
+          envFrom:
+            - secretRef:
+                name: headlamp-oidc
           image: ghcr.io/headlamp-k8s/headlamp:v0.45.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -67,6 +81,17 @@ spec:
             runAsGroup: 101
             runAsNonRoot: true
             runAsUser: 100
+          volumeMounts:
+            - mountPath: /mnt/secrets
+              name: openbao-secrets
+              readOnly: true
       hostUsers: true
       securityContext: {}
       serviceAccountName: headlamp
+      volumes:
+        - csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: headlamp-secrets
+          name: openbao-secrets

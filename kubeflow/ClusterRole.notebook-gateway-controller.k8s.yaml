@@ -31,17 +31,6 @@ rules:
   - apiGroups:
       - gateway.networking.k8s.io
     resources:
-      - httproutes
-    verbs:
-      - get
-      - list
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - gateway.networking.k8s.io
-    resources:
       - referencegrants
     verbs:
       - get
