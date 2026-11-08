@@ -38,8 +38,8 @@ The Cilium LB-IPAM pool is `cluster.lb_pool` (`192.168.1.220`–`192.168.1.230`)
 | IP | Service | Ports | Set in |
 |---|---|---|---|
 | `192.168.1.220` | Cilium Gateway `homelab-gateway` (`kube-system`) | 80, 443 | `cluster.gateway_ip` |
-| `192.168.1.225` | Ollama | 11434 | [`ollama.go`](src:workloads/ai/ollama.go) |
-| `192.168.1.230` | Counter-Strike 2 | 27015 UDP + TCP | [`cs2.go`](src:workloads/gaming/cs2.go) |
+| `192.168.1.225` | Ollama | 11434 | `cluster.lb_ips.ollama` |
+| `192.168.1.230` | Counter-Strike 2 | 27015 UDP + TCP | `cluster.lb_ips.cs2` |
 
 ## Cluster CIDRs
 

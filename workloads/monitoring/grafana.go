@@ -11,6 +11,7 @@ import (
 	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/grafana"
 	"github.com/madhank93/homelab/workloads/kit"
+	"github.com/madhank93/homelab/workloads/observability"
 )
 
 // publicOrgID is the "Public" org every SSO user lands in as Viewer. Grafana
@@ -24,7 +25,7 @@ func victoriaMetrics(orgID int) map[string]any {
 		"name":      "VictoriaMetrics",
 		"orgId":     orgID,
 		"type":      "prometheus",
-		"url":       "http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428",
+		"url":       observability.VictoriaMetricsURL,
 		"access":    "proxy",
 		"isDefault": true,
 		"jsonData": map[string]any{
@@ -73,7 +74,7 @@ func NewGrafanaChart(scope constructs.Construct, id string, namespace string) cd
 					{
 						"name":   "VictoriaLogs",
 						"type":   "loki",
-						"url":    "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/select",
+						"url":    observability.VictoriaLogsURL + "/select",
 						"access": "proxy",
 						// VictoriaLogs does not implement the Loki index/volume API.
 						// Disabling logsVolumeEnabled suppresses the error in Drilldown Logs.

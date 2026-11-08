@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -18,12 +19,9 @@ import (
 // AuthURL is the public Authentik base URL on Bifrost.
 var AuthURL = "https://" + config.C.Host("auth")
 
-// AuthInsecure disables TLS verification for the Authentik provider. GithubName,
-// GithubSlug and GithubClientID identify the GitHub OAuth app used as the login
-// source; its secret comes from AUTHENTIK_GITHUB_SECRET.
+// GithubName, GithubSlug and GithubClientID identify the GitHub OAuth app used
+// as the login source; its secret comes from AUTHENTIK_GITHUB_SECRET.
 const (
-	AuthInsecure = false
-
 	GithubName     = "GitHub"
 	GithubSlug     = "github"
 	GithubClientID = "Ov23liUPVh4nPuUJzGFp"
@@ -57,7 +55,7 @@ func getDefaultIdentificationStage(apiURL, token string) (*identStageInfo, error
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read identification stage response: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GET identification stage HTTP %d: %s", resp.StatusCode, body)
@@ -85,7 +83,7 @@ type AuthentikContext struct {
 	FlowImplicit   pulumi.StringInput // implicit-consent authorization flow
 	FlowExplicit   pulumi.StringInput // explicit-consent authorization flow
 	FlowEnrollment pulumi.StringInput // default-source-enrollment (required for OAuth sources)
-	Scopes         pulumi.StringArrayInput
+	Scopes         pulumi.StringArray
 	SigningKey     pulumi.StringInput // authentik Self-signed Certificate ID
 }
 
@@ -118,9 +116,10 @@ func DeployAuthentik(ctx *pulumi.Context) error {
 	}
 
 	provider, err := authentik.NewProvider(ctx, "authentik-provider", &authentik.ProviderArgs{
-		Url:      pulumi.String(AuthURL),
-		Token:    pulumi.String(token),
-		Insecure: pulumi.Bool(AuthInsecure),
+		Url:   pulumi.String(AuthURL),
+		Token: pulumi.String(token),
+		// Explicit so a stray AUTHENTIK_INSECURE env var cannot turn off TLS verification.
+		Insecure: pulumi.Bool(false),
 	})
 	if err != nil {
 		return err
@@ -433,12 +432,8 @@ func createOIDCApp(ac AuthentikContext, app OIDCApp) error {
 		clientType = "public"
 	}
 
-	// Copy before appending so apps never share ac.Scopes' backing array.
-	scopes := ac.Scopes
-	if len(app.ExtraPropertyMappings) > 0 {
-		scopes = append(pulumi.ToStringArray([]string{}), scopes.(pulumi.StringArray)...)
-		scopes = append(scopes.(pulumi.StringArray), app.ExtraPropertyMappings...)
-	}
+	// slices.Concat allocates, so apps never share ac.Scopes' backing array.
+	scopes := slices.Concat(ac.Scopes, app.ExtraPropertyMappings)
 
 	providerArgs := &authentik.ProviderOauth2Args{
 		Name:                   pulumi.String(app.Name),

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -120,7 +121,8 @@ func includeTrivyCRDs(chart cdk8s.Chart) {
 	name, version := "trivy-operator", config.HelmChart("trivy-operator").Version
 	chartURL := fmt.Sprintf("%s/%s-%s/%s-%s.tgz", trivyHelmReleasesBase, name, version, name, version)
 
-	resp, err := http.Get(chartURL) //nolint:gosec // URL built from a constant base and the pinned chart version
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Get(chartURL) //nolint:gosec // URL built from a constant base and the pinned chart version
 	if err != nil {
 		panic(fmt.Sprintf("failed to download trivy chart from %s: %v", chartURL, err))
 	}

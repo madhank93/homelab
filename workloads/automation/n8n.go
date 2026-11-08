@@ -38,7 +38,7 @@ func NewN8nChart(scope constructs.Construct, id string, namespace string) cdk8s.
 		},
 	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
 		"instances": 1,
-		"imageName": pg.Image + ":" + pg.Tag,
+		"imageName": pg.Ref(),
 		"storage": map[string]any{
 			"size":         "10Gi",
 			"storageClass": "longhorn",

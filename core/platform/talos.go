@@ -206,6 +206,12 @@ machine:
 	ctx.Export("cp-config", cpConfig.MachineConfiguration())
 	ctx.Export("worker-config", workerConfig.MachineConfiguration())
 
+	clientConfigArgs := talos_machine.ClientConfigurationArgs{
+		CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
+		ClientCertificate: secrets.ClientConfiguration.ClientCertificate(),
+		ClientKey:         secrets.ClientConfiguration.ClientKey(),
+	}
+
 	var cpConfigApplies []pulumi.Resource
 	var controllerIP pulumi.String
 
@@ -250,12 +256,6 @@ machine:
 			return firstRoutableIPv4(ips, node.IP), nil
 		}).(pulumi.StringOutput)
 
-		clientConfigArgs := talos_machine.ClientConfigurationArgs{
-			CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
-			ClientCertificate: secrets.ClientConfiguration.ClientCertificate(),
-			ClientKey:         secrets.ClientConfiguration.ClientKey(),
-		}
-
 		cfgApply, err := talos_machine.NewConfigurationApply(ctx, node.Name+"-config-apply", &talos_machine.ConfigurationApplyArgs{
 			ClientConfiguration:       clientConfigArgs,
 			MachineConfigurationInput: finalConfig,
@@ -271,29 +271,17 @@ machine:
 		}
 	}
 
-	bootstrapClientConfig := talos_machine.ClientConfigurationArgs{
-		CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
-		ClientCertificate: secrets.ClientConfiguration.ClientCertificate(),
-		ClientKey:         secrets.ClientConfiguration.ClientKey(),
-	}
-
 	// etcd is bootstrapped exactly once, on the first control-plane node in config.yml.
 	bootstrap, err := talos_machine.NewBootstrap(ctx, "bootstrap", &talos_machine.BootstrapArgs{
-		ClientConfiguration: bootstrapClientConfig,
+		ClientConfiguration: clientConfigArgs,
 		Node:                controllerIP,
 	}, pulumi.DependsOn(cpConfigApplies))
 	if err != nil {
 		return err
 	}
 
-	clusterClientConfigInput := talos_cluster.KubeconfigClientConfigurationArgs{
-		CaCertificate:     secrets.ClientConfiguration.CaCertificate(),
-		ClientCertificate: secrets.ClientConfiguration.ClientCertificate(),
-		ClientKey:         secrets.ClientConfiguration.ClientKey(),
-	}
-
 	kubeconfigRes, err := talos_cluster.NewKubeconfig(ctx, "kubeconfig", &talos_cluster.KubeconfigArgs{
-		ClientConfiguration: clusterClientConfigInput,
+		ClientConfiguration: talos_cluster.KubeconfigClientConfigurationArgs(clientConfigArgs),
 		Node:                pulumi.String(cl.VIP),
 	}, pulumi.DependsOn([]pulumi.Resource{bootstrap}))
 	if err != nil {

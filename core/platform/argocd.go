@@ -96,11 +96,12 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 							"  - .spec.volumeClaimTemplates[]?.kind\n" +
 							"  - .spec.volumeClaimTemplates[]?.spec.volumeMode\n",
 					),
-					// Kubernetes fills .rules on aggregated ClusterRoles (Kubeflow ships
-					// rules: null).
+					// Kubernetes fills .rules and annotations on aggregated ClusterRoles.
+					// jsonPointers, unlike jq, tolerates Kubeflow's rules: null.
 					"resource.customizations.ignoreDifferences.rbac.authorization.k8s.io_ClusterRole": pulumi.String(
-						"jqPathExpressions:\n" +
-							"  - .rules\n",
+						"jsonPointers:\n" +
+							"  - /metadata/annotations\n" +
+							"  - /rules\n",
 					),
 					// Kubernetes adds .spec.conversion and .status to CRDs, and drops
 					// preserveUnknownFields: false, which Kubeflow sets explicitly.
@@ -241,17 +242,6 @@ func InstallArgoCD(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error 
 								"kind":              "ValidatingWebhookConfiguration",
 								"name":              "victoria-metrics-victoria-metrics-operator-admission",
 								"jqPathExpressions": []string{".webhooks[].clientConfig.caBundle"},
-							},
-							// Fields Kubernetes fills in on Kubeflow CRDs and aggregated ClusterRoles.
-							{
-								"group":             "apiextensions.k8s.io",
-								"kind":              "CustomResourceDefinition",
-								"jqPathExpressions": []string{".spec.conversion", ".status"},
-							},
-							{
-								// jsonPointers, unlike jq, handles the manifests' rules: null.
-								"kind":         "ClusterRole",
-								"jsonPointers": []string{"/metadata/annotations", "/rules"},
 							},
 						},
 					},

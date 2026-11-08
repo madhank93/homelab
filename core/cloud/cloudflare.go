@@ -2,12 +2,12 @@ package cloud
 
 import (
 	"fmt"
-	"os"
 
 	cf "github.com/pulumi/pulumi-cloudflare/sdk/v6/go/cloudflare"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/madhank93/homelab/config"
+	"github.com/madhank93/homelab/core/internal/cfg"
 )
 
 // PublicService describes a service exposed to the public internet via the Hetzner VPS.
@@ -35,7 +35,7 @@ var publicServices = []PublicService{
 func ManageCloudflare(ctx *pulumi.Context) error {
 	hetznerIP := config.C.Hetzner.VPSIP
 
-	cfToken := os.Getenv("CLOUDFLARE_API_TOKEN")
+	cfToken := cfg.K.String("CLOUDFLARE_API_TOKEN")
 	if cfToken == "" {
 		return fmt.Errorf("CLOUDFLARE_API_TOKEN not in environment")
 	}

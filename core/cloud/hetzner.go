@@ -43,59 +43,31 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 		return err
 	}
 
+	var rules hcloud.FirewallRuleArray
+	for _, r := range []struct{ protocol, port string }{
+		{"tcp", "22"}, {"tcp", "443"}, {"tcp", "80"}, {"udp", "3478"},
+	} {
+		rules = append(rules, &hcloud.FirewallRuleArgs{
+			Direction: pulumi.String("in"),
+			Protocol:  pulumi.String(r.protocol),
+			Port:      pulumi.String(r.port),
+			SourceIps: pulumi.StringArray{pulumi.String("0.0.0.0/0"), pulumi.String("::/0")},
+		})
+	}
+
 	fw, err := hcloud.NewFirewall(ctx, "bifrost-fw", &hcloud.FirewallArgs{
-		Name: pulumi.String("bifrost-fw"),
-		Rules: hcloud.FirewallRuleArray{
-			&hcloud.FirewallRuleArgs{
-				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("tcp"),
-				Port:      pulumi.String("22"),
-				SourceIps: pulumi.StringArray{
-					pulumi.String("0.0.0.0/0"),
-					pulumi.String("::/0"),
-				},
-			},
-			&hcloud.FirewallRuleArgs{
-				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("tcp"),
-				Port:      pulumi.String("443"),
-				SourceIps: pulumi.StringArray{
-					pulumi.String("0.0.0.0/0"),
-					pulumi.String("::/0"),
-				},
-			},
-			&hcloud.FirewallRuleArgs{
-				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("tcp"),
-				Port:      pulumi.String("80"),
-				SourceIps: pulumi.StringArray{
-					pulumi.String("0.0.0.0/0"),
-					pulumi.String("::/0"),
-				},
-			},
-			&hcloud.FirewallRuleArgs{
-				Direction: pulumi.String("in"),
-				Protocol:  pulumi.String("udp"),
-				Port:      pulumi.String("3478"),
-				SourceIps: pulumi.StringArray{
-					pulumi.String("0.0.0.0/0"),
-					pulumi.String("::/0"),
-				},
-			},
-		},
+		Name:  pulumi.String("bifrost-fw"),
+		Rules: rules,
 	}, pulumi.Provider(provider))
 	if err != nil {
 		return err
 	}
 
-	fwID := fw.ID().ApplyT(func(id string) (int, error) {
-		i, err := strconv.Atoi(id)
-		return i, err
-	}).(pulumi.IntOutput)
+	fwID := fw.ID().ApplyT(strconv.Atoi).(pulumi.IntOutput)
 
 	userData, err := os.ReadFile("./cloud/cloud-init/cloud-init-hetzner.yml")
 	if err != nil {
-		return err
+		return fmt.Errorf("read cloud-init user data: %w", err)
 	}
 
 	server, err := hcloud.NewServer(ctx, "hetzner-vps", &hcloud.ServerArgs{
@@ -134,7 +106,7 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 	keyPath := filepath.Join(home, ".ssh", "id_ed25519")
 	privateKey, err := os.ReadFile(keyPath) //nolint:gosec // operator's own SSH key under $HOME
 	if err != nil {
-		return err
+		return fmt.Errorf("read SSH private key: %w", err)
 	}
 
 	if err := generateTraefikPublicServices(publicServices); err != nil {
@@ -168,7 +140,7 @@ func DeployHetznerVPS(ctx *pulumi.Context) error {
 			Connection: conn,
 			Source:     pulumi.NewFileArchive("./cloud/bifrost"),
 			RemotePath: pulumi.String("/etc"),
-		}, pulumi.Provider(provider))
+		})
 	if err != nil {
 		return err
 	}
@@ -252,7 +224,7 @@ func writeBifrostEnv(path string, vars []secretVar) error {
 	sb.WriteString("# Regenerated on every: just core hetzner up\n\n")
 
 	for _, v := range vars {
-		val := os.Getenv(v.envKey)
+		val := cfg.K.String(v.envKey)
 		if val == "" {
 			if v.require {
 				return fmt.Errorf(

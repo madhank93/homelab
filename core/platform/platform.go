@@ -49,13 +49,5 @@ func DeployPlatform(ctx *pulumi.Context) error {
 		return err
 	}
 
-	if err := ConfigureCiliumIPPool(ctx, k8sProvider, ciliumChart, "(eth0|ens.*|enp.*)"); err != nil {
-		return err
-	}
-
-	if err := PatchCiliumRBAC(ctx, k8sProvider); err != nil {
-		return err
-	}
-
-	return nil
+	return ConfigureCiliumIPPool(ctx, k8sProvider, ciliumChart, "(eth0|ens.*|enp.*)")
 }

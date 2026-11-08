@@ -5,6 +5,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/longhorn"
 	"github.com/madhank93/homelab/workloads/kit"
 )
@@ -108,8 +109,8 @@ func NewLonghornChart(scope constructs.Construct, id string, namespace string) c
 		Namespace:   jsii.String(namespace),
 		Values:      &values,
 		// helm template otherwise checks the chart's kubeVersion against the local
-		// Helm binary's built-in default; this matches the k8s@ import in cdk8s.yaml.
-		HelmFlags: &[]*string{jsii.String("--kube-version=1.36.0")},
+		// Helm binary's built-in default rather than the cluster's version.
+		HelmFlags: &[]*string{jsii.String("--kube-version=" + config.V.Kubernetes.Version)},
 	})
 
 	return chart

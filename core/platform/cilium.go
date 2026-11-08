@@ -9,7 +9,6 @@ import (
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
-	rbacv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/rbac/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -327,47 +326,6 @@ func ConfigureCiliumIPPool(ctx *pulumi.Context, k8sProvider *kubernetes.Provider
 			},
 		},
 	}, pulumi.Provider(k8sProvider), pulumi.DependsOn([]pulumi.Resource{ciliumChart}))
-
-	return err
-}
-
-// PatchCiliumRBAC grants the cilium agent cluster-wide access to Leases, which
-// L2 announcements use to elect the node that answers for each
-// LoadBalancer Service.
-func PatchCiliumRBAC(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) error {
-	_, err := rbacv1.NewClusterRole(ctx, "cilium-leases-access", &rbacv1.ClusterRoleArgs{
-		Metadata: &metav1.ObjectMetaArgs{
-			Name: pulumi.String("cilium-leases-access"),
-		},
-		Rules: rbacv1.PolicyRuleArray{
-			&rbacv1.PolicyRuleArgs{
-				ApiGroups: pulumi.StringArray{pulumi.String("coordination.k8s.io")},
-				Resources: pulumi.StringArray{pulumi.String("leases")},
-				Verbs:     pulumi.StringArray{pulumi.String("get"), pulumi.String("list"), pulumi.String("watch"), pulumi.String("create"), pulumi.String("update"), pulumi.String("patch"), pulumi.String("delete")},
-			},
-		},
-	}, pulumi.Provider(k8sProvider))
-	if err != nil {
-		return err
-	}
-
-	_, err = rbacv1.NewClusterRoleBinding(ctx, "cilium-leases-access-binding", &rbacv1.ClusterRoleBindingArgs{
-		Metadata: &metav1.ObjectMetaArgs{
-			Name: pulumi.String("cilium-leases-access-binding"),
-		},
-		Subjects: rbacv1.SubjectArray{
-			&rbacv1.SubjectArgs{
-				Kind:      pulumi.String("ServiceAccount"),
-				Name:      pulumi.String("cilium"),
-				Namespace: pulumi.String("kube-system"),
-			},
-		},
-		RoleRef: &rbacv1.RoleRefArgs{
-			ApiGroup: pulumi.String("rbac.authorization.k8s.io"),
-			Kind:     pulumi.String("ClusterRole"),
-			Name:     pulumi.String("cilium-leases-access"),
-		},
-	}, pulumi.Provider(k8sProvider))
 
 	return err
 }

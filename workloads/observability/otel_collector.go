@@ -8,9 +8,15 @@ import (
 	"github.com/madhank93/homelab/workloads/kit"
 )
 
+// In-cluster base URLs of the VictoriaMetrics and VictoriaLogs single-node servers.
 const (
-	vmInsertEndpoint = "http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428/api/v1/write"
-	vlOtlpEndpoint   = "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428/insert/opentelemetry"
+	VictoriaMetricsURL = "http://vmsingle-vm-stack.victoria-metrics.svc.cluster.local:8428"
+	VictoriaLogsURL    = "http://victoria-logs-victoria-logs-single-server.victoria-logs.svc.cluster.local:9428"
+)
+
+const (
+	vmInsertEndpoint = VictoriaMetricsURL + "/api/v1/write"
+	vlOtlpEndpoint   = VictoriaLogsURL + "/insert/opentelemetry"
 )
 
 // NewOtelCollectorChart deploys two OpenTelemetry Collector releases:

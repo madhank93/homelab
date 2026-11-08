@@ -64,7 +64,7 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 			"spec": map[string]any{
 				"acme": map[string]any{
 					"server": "https://acme-v02.api.letsencrypt.org/directory",
-					"email":  "madhankumaravelu93@gmail.com",
+					"email":  config.C.ACMEEmail,
 					"privateKeySecretRef": map[string]any{
 						"name": "letsencrypt-prod-key",
 					},
@@ -72,7 +72,6 @@ func InstallCertManager(ctx *pulumi.Context, k8sProvider *kubernetes.Provider) e
 						{
 							"dns01": map[string]any{
 								"cloudflare": map[string]any{
-									"email": "madhankumaravelu93@gmail.com",
 									"apiTokenSecretRef": map[string]any{
 										"name": "cloudflare-api-token",
 										"key":  "CLOUDFLARE_API_TOKEN",

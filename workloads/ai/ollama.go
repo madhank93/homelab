@@ -6,6 +6,7 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/madhank93/homelab/config"
 	"github.com/madhank93/homelab/workloads/imports/k8s"
 	"github.com/madhank93/homelab/workloads/imports/ollama"
 	"github.com/madhank93/homelab/workloads/kit"
@@ -20,8 +21,6 @@ const executorBaseModel = "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q3
 // it keeps ~20GB off the other nodes' disks and keeps a 13.8GB model load off
 // the iSCSI path.
 const modelCacheStorageClass = "longhorn-model-cache"
-
-const ollamaLoadBalancerIP = "192.168.1.225"
 
 // NewOllamaChart deploys the Ollama inference server via its Helm chart, pinned
 // to the GPU node. The device plugin time-slices the GPU, so Ollama shares it
@@ -88,7 +87,7 @@ func NewOllamaChart(scope constructs.Construct, id string, namespace string) cdk
 			"service": map[string]any{
 				"type":        "LoadBalancer",
 				"port":        11434,
-				"annotations": map[string]any{"lbipam.cilium.io/ips": ollamaLoadBalancerIP},
+				"annotations": map[string]any{"lbipam.cilium.io/ips": config.C.Cluster.LBIPs.Ollama},
 			},
 			"nodeSelector": gpuNodeSelector,
 			"tolerations": []map[string]any{

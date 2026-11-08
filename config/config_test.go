@@ -3,6 +3,7 @@ package config
 import (
 	"io/fs"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -73,6 +74,32 @@ func TestNodes(t *testing.T) {
 	}
 	if roles["control"]%2 == 0 {
 		t.Errorf("config.yml: %d control-plane nodes; etcd needs an odd count", roles["control"])
+	}
+}
+
+func TestFixedLBIPs(t *testing.T) {
+	start, err1 := netip.ParseAddr(C.Cluster.LBPool.Start)
+	stop, err2 := netip.ParseAddr(C.Cluster.LBPool.Stop)
+	if err1 != nil || err2 != nil {
+		t.Fatalf("config.yml: cluster.lb_pool %+v is not a pair of IPs", C.Cluster.LBPool)
+	}
+	// Announcing a node's or the VIP's address over L2 takes it off the LAN.
+	taken := map[string]string{C.Cluster.VIP: "cluster.vip", C.Cluster.GatewayIP: "cluster.gateway_ip"}
+	for _, n := range C.Cluster.Nodes {
+		taken[n.IP] = "node " + n.Name
+	}
+	for name, ip := range map[string]string{
+		"cs2":    C.Cluster.LBIPs.CS2,
+		"ollama": C.Cluster.LBIPs.Ollama,
+	} {
+		addr, err := netip.ParseAddr(ip)
+		if err != nil || addr.Less(start) || stop.Less(addr) {
+			t.Errorf("config.yml: cluster.lb_ips.%s %q is not in lb_pool %s-%s", name, ip, start, stop)
+		}
+		if owner, ok := taken[ip]; ok {
+			t.Errorf("config.yml: cluster.lb_ips.%s %s is already used by %s", name, ip, owner)
+		}
+		taken[ip] = "cluster.lb_ips." + name
 	}
 }
 

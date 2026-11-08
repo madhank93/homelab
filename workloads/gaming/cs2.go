@@ -18,11 +18,8 @@ import (
 
 const (
 	cs2StorageClass = "longhorn-cs2"
-	// Fixed so players' `connect` command never changes. Kept out of the
-	// .221-.224 node addresses that share the LB pool range.
-	cs2LoadBalancerIP = "192.168.1.230"
-	cs2Port           = 27015
-	cs2InstallDir     = "/home/steam/cs2-dedicated"
+	cs2Port         = 27015
+	cs2InstallDir   = "/home/steam/cs2-dedicated"
 )
 
 //go:embed cs2_config.yml
@@ -220,7 +217,7 @@ func NewCS2Chart(scope constructs.Construct, id string, namespace string) cdk8s.
 	k8s.NewKubeService(chart, jsii.String("cs2-service"), &k8s.KubeServiceProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:        jsii.String("cs2"),
-			Annotations: &map[string]*string{"lbipam.cilium.io/ips": jsii.String(cs2LoadBalancerIP)},
+			Annotations: &map[string]*string{"lbipam.cilium.io/ips": jsii.String(config.C.Cluster.LBIPs.CS2)},
 		},
 		Spec: &k8s.ServiceSpec{
 			Type:     jsii.String("LoadBalancer"),
