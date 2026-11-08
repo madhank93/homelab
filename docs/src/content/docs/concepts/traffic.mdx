@@ -23,6 +23,19 @@ Cloudflare holds the records, all DNS-only (not proxied). Source: [`cloudflare.g
 
 To make a cluster service public, add it to `publicServices`; see [Service exposure](/cloud/exposure/).
 
+### Home DNS
+
+Devices set by hand to use [AdGuard Home](/workloads/networking/adguard/) send every lookup to its LoadBalancer IP; AdGuard drops ad and tracker domains and resolves the rest, `*.madhan.app` included, over DNS-over-HTTPS. The AT&T gateway cannot hand this server out over DHCP, so other devices keep the gateway's DNS.
+
+```mermaid
+flowchart LR
+    C[Device with DNS<br/>192.168.1.226] -->|UDP/TCP 53| N[Node holding<br/>the L2 lease]
+    N -->|Cilium DNAT| A[AdGuard pod<br/>one of two]
+    A -->|blocked| X[0.0.0.0]
+    A -->|DoH| U[Quad9 · Cloudflare]
+    C -.->|cluster down: DNS 2| Q[Quad9]
+```
+
 ## The three paths
 
 <Tabs>

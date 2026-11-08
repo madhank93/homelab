@@ -1,0 +1,34 @@
+# AdGuard Home config, rendered into each pod at start; UI changes last until
+# the pod restarts, so make lasting changes here. Unset fields take AdGuard's
+# defaults. __ADMIN_PASSWORD_HASH__ is replaced from OpenBao by the init container.
+http:
+  address: 0.0.0.0:3000
+  session_ttl: 720h
+users:
+  - name: admin
+    password: __ADMIN_PASSWORD_HASH__
+dns:
+  bind_hosts: [0.0.0.0]
+  port: 53
+  upstream_dns:
+    - https://dns.quad9.net/dns-query
+    - https://cloudflare-dns.com/dns-query
+  bootstrap_dns: [9.9.9.9, 1.1.1.1]
+  upstream_mode: load_balance
+  cache_size: 4194304
+  # The LoadBalancer SNATs clients to node IPs, so a per-client limit would
+  # throttle the whole house.
+  ratelimit: 0
+filtering:
+  protection_enabled: true
+  filtering_enabled: true
+filters:
+  - {enabled: true, id: 1, name: AdGuard DNS filter, url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt"}
+  - {enabled: true, id: 2, name: AdAway Default Blocklist, url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt"}
+querylog:
+  enabled: true
+  interval: 24h
+statistics:
+  enabled: true
+  interval: 24h
+schema_version: 34

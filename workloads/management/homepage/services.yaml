@@ -87,6 +87,11 @@
         siteMonitor: https://ollama.{{HOMEPAGE_VAR_DOMAIN}}/api/version
 
 - Apps:
+    - AdGuard Home:
+        icon: adguard-home.svg
+        href: https://adguard.{{HOMEPAGE_VAR_DOMAIN}}
+        description: LAN DNS and ad blocking
+        siteMonitor: https://adguard.{{HOMEPAGE_VAR_DOMAIN}}
     - n8n:
         icon: n8n.svg
         href: https://n8n.{{HOMEPAGE_VAR_DOMAIN}}

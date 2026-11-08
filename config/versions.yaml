@@ -35,6 +35,8 @@ images:
   pause: {image: registry.k8s.io/pause, tag: "3.10"}
   otel-collector-contrib: {image: otel/opentelemetry-collector-contrib, tag: 0.162.0}
   cs2: {image: joedwards32/cs2, tag: 5.0.1}
+  adguardhome: {image: adguard/adguardhome, tag: v0.107.80}
+  adguard-exporter: {image: ghcr.io/henrywhitaker3/adguard-exporter, tag: v1.2.3}
   open-webui: {image: ghcr.io/open-webui/open-webui, tag: v0.12.5}
   homepage: {image: ghcr.io/gethomepage/homepage, tag: v2.7.0}
   comfyui: {image: yanwk/comfyui-boot, tag: cu130-megapak-pt211-20260812}

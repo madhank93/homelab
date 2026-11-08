@@ -50,6 +50,7 @@ OpenBao starts sealed after every restart. The `unseal` container polls `bao sta
 | `cs2` | `cs2` | `RCON_PASSWORD`, `JOIN_PASSWORD` |
 | `homepage` | `homepage` | `AUTH_SECRET`, `OAUTH_CLIENT_SECRET` |
 | `headlamp` | `headlamp` | `OIDC_CLIENT_SECRET` |
+| `adguard` | `adguard` | `ADMIN_PASSWORD`, `ADMIN_PASSWORD_HASH` (file-only, no synced Secret) |
 
 ## Operate
 

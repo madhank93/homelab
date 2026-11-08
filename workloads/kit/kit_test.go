@@ -168,7 +168,7 @@ func TestSecretProviderClass(t *testing.T) {
 		sync     []Sync
 		wantData any
 	}{
-		{"no sync", []string{"A"}, nil, []any{}},
+		{"no sync", []string{"A"}, nil, nil},
 		{"sync", []string{"A", "B"}, []Sync{{"A", "a"}, {"B", "b"}}, []any{
 			map[string]any{"objectName": "A", "key": "a"},
 			map[string]any{"objectName": "B", "key": "b"},
@@ -196,6 +196,12 @@ func TestSecretProviderClass(t *testing.T) {
 			}
 			if n := strings.Count(objs, `secretPath: "secret/data/app"`); n != len(tc.objects) {
 				t.Errorf("objects has %d secretPath entries for role app, want %d:\n%s", n, len(tc.objects), objs)
+			}
+			if tc.sync == nil {
+				if got := get(spc, "spec", "secretObjects"); got != nil {
+					t.Errorf("secretObjects = %v, want none without sync", got)
+				}
+				return
 			}
 			if got := get(spc, "spec", "secretObjects", 0, "secretName"); got != "app-mirror" {
 				t.Errorf("secretName = %v, want app-mirror", got)

@@ -90,6 +90,7 @@ allow=(
   '10.96.'                  # service CIDR
   '172.30.0.'               # bifrost_net
   '1.1.1.1'                 # upstream DNS
+  '9.9.9.9'
   '127.0.0.1'
   '0.0.0.0'
   # Versions of things this repo does not pin: notebook images a user picks at

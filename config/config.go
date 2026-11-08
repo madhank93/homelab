@@ -42,8 +42,9 @@ type ClusterConfig struct {
 	GatewayIP   string                       `yaml:"gateway_ip"`
 	LBPool      struct{ Start, Stop string } `yaml:"lb_pool"`
 	LBIPs       struct {
-		CS2    string `yaml:"cs2"`
-		Ollama string `yaml:"ollama"`
+		CS2     string `yaml:"cs2"`
+		Ollama  string `yaml:"ollama"`
+		AdGuard string `yaml:"adguard"`
 	} `yaml:"lb_ips"`
 	Nodes []Node `yaml:"nodes"`
 }

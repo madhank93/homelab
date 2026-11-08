@@ -70,6 +70,7 @@ export const components = {
   harbor: { name: 'Harbor', role: 'image registry', logo: 'harbor.svg', owner: 'argocd', info: 'Private registry and pull-through cache for custom images.', href: '/workloads/registry/harbor/' },
   n8n: { name: 'n8n', role: 'automation', logo: 'n8n.svg', owner: 'argocd', info: 'Workflow automation backed by a CloudNativePG Postgres cluster.', href: '/workloads/automation/n8n/' },
   headlamp: { name: 'Headlamp', role: 'cluster UI', logo: 'headlamp.svg', owner: 'argocd', info: 'Web UI for browsing cluster resources, LAN only.', href: '/workloads/management/headlamp/' },
+  adguard: { name: 'AdGuard Home', role: 'LAN DNS', logo: 'adguard', owner: 'argocd', info: 'DNS with ad and tracker blocking for devices set to use it, on its own LoadBalancer IP.', href: '/workloads/networking/adguard/' },
   cs2: { name: 'CS2 server', role: 'game server', logo: 'counterstrike', owner: 'argocd', info: 'LAN-only Counter-Strike 2 dedicated server on its own LoadBalancer IP.', href: '/workloads/gaming/cs2/' },
   cnpg: { name: 'CloudNativePG', role: 'Postgres', logo: 'postgresql.svg', owner: 'argocd', info: 'Operator that runs Postgres for in-cluster apps such as n8n.', href: '/workloads/databases/cnpg/' },
 } satisfies Record<string, Component>;

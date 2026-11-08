@@ -64,8 +64,8 @@ type Sync struct{ Object, Key string }
 
 // SecretProviderClass reads objects from OpenBao secret/<role> with the
 // Kubernetes auth role of the same name, and mirrors the synced keys into the
-// Secret secretName. The mirror only happens while a pod mounts the CSI
-// volume (SecretsVolume).
+// Secret secretName. With no sync, the values are only files under the CSI
+// mount. The mirror only happens while a pod mounts the CSI volume (SecretsVolume).
 func SecretProviderClass(scope constructs.Construct, name, role string, objects []string, secretName string, sync ...Sync) {
 	var objs []string
 	for _, o := range objects {
@@ -75,21 +75,24 @@ func SecretProviderClass(scope constructs.Construct, name, role string, objects 
 	for _, s := range sync {
 		data = append(data, map[string]any{"objectName": s.Object, "key": s.Key})
 	}
-	cdk8s.NewApiObject(scope, jsii.String(name+"-spc"), &cdk8s.ApiObjectProps{
-		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
-		Kind:       jsii.String("SecretProviderClass"),
-		Metadata:   &cdk8s.ApiObjectMetadata{Name: jsii.String(name)},
-	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), map[string]any{
+	spec := map[string]any{
 		"provider": "openbao",
 		"parameters": map[string]any{
 			"vaultAddress": config.C.OpenBaoAddr,
 			"roleName":     role,
 			"objects":      strings.Join(objs, "\n"),
 		},
-		"secretObjects": []map[string]any{
+	}
+	if len(sync) > 0 {
+		spec["secretObjects"] = []map[string]any{
 			{"secretName": secretName, "type": "Opaque", "data": data},
-		},
-	}))
+		}
+	}
+	cdk8s.NewApiObject(scope, jsii.String(name+"-spc"), &cdk8s.ApiObjectProps{
+		ApiVersion: jsii.String("secrets-store.csi.x-k8s.io/v1"),
+		Kind:       jsii.String("SecretProviderClass"),
+		Metadata:   &cdk8s.ApiObjectMetadata{Name: jsii.String(name)},
+	}).AddJsonPatch(cdk8s.JsonPatch_Add(jsii.String("/spec"), spec))
 }
 
 const secretsVolume = "openbao-secrets"

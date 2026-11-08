@@ -89,8 +89,9 @@ func TestFixedLBIPs(t *testing.T) {
 		taken[n.IP] = "node " + n.Name
 	}
 	for name, ip := range map[string]string{
-		"cs2":    C.Cluster.LBIPs.CS2,
-		"ollama": C.Cluster.LBIPs.Ollama,
+		"cs2":     C.Cluster.LBIPs.CS2,
+		"ollama":  C.Cluster.LBIPs.Ollama,
+		"adguard": C.Cluster.LBIPs.AdGuard,
 	} {
 		addr, err := netip.ParseAddr(ip)
 		if err != nil || addr.Less(start) || stop.Less(addr) {

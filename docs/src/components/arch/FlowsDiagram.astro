@@ -12,7 +12,7 @@ import Arrows from './Arrows.astro';
 const apps = [
   ['AI', ['ollama', 'openwebui', 'comfyui', 'kubeflow']],
   ['Observability', ['grafana', 'victoriametrics', 'victorialogs', 'otel']],
-  ['Security', ['falco', 'trivy', 'kyverno']],
+  ['Security', ['falco', 'trivy', 'kyverno', 'adguard']],
   ['Tools', ['harbor', 'n8n', 'headlamp', 'cs2']],
 ] as const;
 const platform = ['argocd', 'cilium', 'certmanager'] as const;
@@ -22,13 +22,14 @@ const edge = ['traefik', 'netbird', 'authentik', 'gatus'] as const;
 // Reachability, from the HTTPRoutes and LoadBalancer Services in the repo.
 const viaGateway = new Set<ComponentId>([
   'argocd', 'cilium', 'longhorn', 'openbao', 'grafana', 'victoriametrics', 'victorialogs',
-  'falco', 'harbor', 'n8n', 'headlamp', 'kubeflow', 'comfyui', 'ollama', 'openwebui',
+  'falco', 'harbor', 'n8n', 'headlamp', 'kubeflow', 'comfyui', 'ollama', 'openwebui', 'adguard',
 ]);
 const publicApps = new Set<ComponentId>(['grafana']);
 // Own LoadBalancer IPs, and why the Gateway (HTTP/HTTPS listeners only) is not used.
 const loadBalancer: Partial<Record<ComponentId, [string, string]>> = {
   cs2: ['192.168.1.230', 'UDP game traffic the HTTP Gateway cannot carry'],
   ollama: ['192.168.1.225', 'a fixed IP for the laptop’s OLLAMA_API_BASE'],
+  adguard: ['192.168.1.226', 'DNS on port 53, which the HTTP Gateway cannot carry'],
 };
 
 const fan = (id: ComponentId) =>
@@ -90,7 +91,7 @@ traces.lanuser = only(
   ['lanuser', 'cloudflare', 'gateway', 'workers'],
   [...toGateway.lan.segs, ...allFans, 'lb'],
   `Cloudflare DNS answers *.madhan.app with the Gateway ${gwIp}: every app with a route`,
-  'Plus the apps on their own LoadBalancer IPs (CS2, Ollama) · Grafana goes via the VPS: its public record wins',
+  'Plus the apps on their own LoadBalancer IPs (CS2, Ollama, AdGuard DNS) · Grafana goes via the VPS: its public record wins',
 );
 traces.vpnuser = only(
   ['vpnuser', 'cloudflare', 'netbird', 'netbirdpeer', 'gateway'],

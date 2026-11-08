@@ -29,8 +29,9 @@ All records are DNS-only (not proxied). A specific record beats the wildcard, so
 | `auth`, `netbird`, `uptime`, `proxy`, `*.proxy` | Yes | Yes | Yes, served by Bifrost itself |
 | `grafana` | Yes | Yes | Yes, Grafana's own Authentik login (`SkipAuth: true`) |
 | `argocd`, `hubble` (Pulumi HTTPRoutes) | Yes | Yes | No |
-| `longhorn`, `openbao`, `harbor`, `n8n`, `headlamp`, `falco`, `vmselect`, `alertmanager`, `victorialogs`, `kubeflow`, `ollama`, `comfyui`, `chat`, `home` | Yes | Yes | No |
+| `longhorn`, `openbao`, `harbor`, `n8n`, `headlamp`, `falco`, `vmselect`, `alertmanager`, `victorialogs`, `kubeflow`, `ollama`, `comfyui`, `chat`, `home`, `adguard` | Yes | Yes | No |
 | `192.168.1.225:11434` (Ollama LoadBalancer) | Yes | Yes | No |
+| `192.168.1.226:53` (AdGuard DNS LoadBalancer) | Yes | Yes | No |
 | `192.168.1.230` (CS2 LoadBalancer) | Yes | Yes | No |
 
 Hostnames are `<name>.madhan.app`. VPN reach comes from the `192.168.1.0/24` route that `k8s-routing-peer` advertises to the `All` group; the public wildcard record makes the same names resolve off-LAN. ComfyUI ships scaled to zero.

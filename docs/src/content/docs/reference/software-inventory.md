@@ -104,6 +104,8 @@ Trivy has two pins: the chart comes from the typed package, while the CRD bundle
 | n8n (chart) | 2.1.1 | [`workloads/automation/n8n.go`](src:workloads/automation/n8n.go) |
 | n8n (image) | 2.45.5 | same |
 | Reloader | 2.2.19 | [`workloads/support/reloader.go`](src:workloads/support/reloader.go) |
+| AdGuard Home | v0.107.80 | [`config/versions.yaml`](src:config/versions.yaml) |
+| AdGuard exporter | v1.2.3 | same |
 | NetBird peer | 0.80.0 | [`workloads/networking/netbird_peer.go`](src:workloads/networking/netbird_peer.go) |
 | Kubeflow | 26.03.1 | [`workloads/ai/kubeflow/kustomization.yaml`](src:workloads/ai/kubeflow/kustomization.yaml) |
 | notebook-gateway-controller | v1 | [`workloads/ai/notebook_gateway_controller.go`](src:workloads/ai/notebook_gateway_controller.go) |

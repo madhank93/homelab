@@ -30,6 +30,7 @@ Each app is a CDK8s chart in [`main.go`](src:workloads/main.go), synthesized by 
 | [OpenTelemetry](/workloads/observability/opentelemetry/) | Observability | none | — | — |
 | [VictoriaLogs](/workloads/observability/victoria-logs/) | Observability | LAN | `victorialogs.madhan.app` | None |
 | [VictoriaMetrics](/workloads/observability/victoria-metrics/) | Observability | LAN | `vmselect.madhan.app`, `alertmanager.madhan.app` | None |
+| [AdGuard Home](/workloads/networking/adguard/) | Networking | LAN | `adguard.madhan.app`, DNS `192.168.1.226:53` | `admin` login (password in OpenBao) |
 | [NetBird peer](/workloads/networking/netbird-peer/) | Networking | none (it is the VPN route) | — | — |
 | [Harbor](/workloads/registry/harbor/) | Registry | LAN | `harbor.madhan.app` | Authentik OIDC; local `admin` fallback |
 | [OpenBao](/workloads/secrets/openbao/) | Secrets | LAN | `openbao.madhan.app` | OpenBao token |
@@ -57,7 +58,7 @@ Rows marked "None" trust anything that can reach the LAN or the VPN. Keep them o
   <LinkCard title="Hardware" href="/workloads/hardware/" description="NVIDIA device plugin and GPU time-slicing." />
   <LinkCard title="Monitoring" href="/workloads/monitoring/" description="Grafana and Metrics Server." />
   <LinkCard title="Observability" href="/workloads/observability/" description="VictoriaMetrics, VictoriaLogs, OpenTelemetry and the Argo CD monitor." />
-  <LinkCard title="Networking" href="/workloads/networking/" description="In-cluster NetBird routing peer." />
+  <LinkCard title="Networking" href="/workloads/networking/" description="AdGuard Home LAN DNS and the in-cluster NetBird routing peer." />
   <LinkCard title="Registry" href="/workloads/registry/" description="Harbor image registry." />
   <LinkCard title="Secrets" href="/workloads/secrets/" description="OpenBao and the Secrets Store CSI driver." />
   <LinkCard title="Security" href="/workloads/security/" description="Kyverno, Trivy and Falco." />

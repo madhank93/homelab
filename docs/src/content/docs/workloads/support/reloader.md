@@ -23,7 +23,7 @@ Reloader runs with chart defaults; opt in per workload on the **pod template**:
 },
 ```
 
-Annotated today: Grafana, OpenBao, NetBird peer, Falco and its Sidekick UI, every `secret-sync` pod (Harbor, Falco), the OpenTelemetry collectors, the notebook gateway controller, Homepage, and CS2.
+Annotated today: Grafana, OpenBao, NetBird peer, Falco and its Sidekick UI, every `secret-sync` pod (Harbor, Falco), the OpenTelemetry collectors, the notebook gateway controller, Homepage, CS2, and AdGuard Home.
 
 ## How it fits
 

@@ -1,14 +1,15 @@
 ---
 title: Networking
-description: In-cluster NetBird routing peer that connects Bifrost to the LAN.
+description: LAN DNS with ad blocking, and the in-cluster NetBird routing peer that connects Bifrost to the LAN.
 sidebar:
   label: Overview
   order: 55
 ---
 import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-The NetBird peer carries every public request from Bifrost into the cluster.
+AdGuard Home answers LAN DNS; the NetBird peer carries every public request from Bifrost into the cluster.
 
 <CardGrid>
+  <LinkCard title="AdGuard Home" href="/workloads/networking/adguard/" description="LAN DNS with ad blocking on 192.168.1.226, and per-device client setup." />
   <LinkCard title="NetBird peer" href="/workloads/networking/netbird-peer/" description="Routing peer, MASQUERADE rule, and the 504 runbook." />
 </CardGrid>

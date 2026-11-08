@@ -39,6 +39,7 @@ The Cilium LB-IPAM pool is `cluster.lb_pool` (`192.168.1.220`–`192.168.1.230`)
 |---|---|---|---|
 | `192.168.1.220` | Cilium Gateway `homelab-gateway` (`kube-system`) | 80, 443 | `cluster.gateway_ip` |
 | `192.168.1.225` | Ollama | 11434 | `cluster.lb_ips.ollama` |
+| `192.168.1.226` | AdGuard Home DNS (`adguard-dns`) | 53 UDP + TCP | `cluster.lb_ips.adguard` |
 | `192.168.1.230` | Counter-Strike 2 | 27015 UDP + TCP | `cluster.lb_ips.cs2` |
 
 ## Cluster CIDRs
@@ -84,4 +85,4 @@ To make a service public, add it to `publicServices` and run `just core hetzner 
 
 ## Hostnames on the Gateway
 
-HTTPRoutes on `homelab-gateway`, all `<name>.madhan.app`: `alertmanager`, `argocd`, `chat`, `comfyui`, `falco`, `grafana`, `harbor`, `headlamp`, `home`, `hubble`, `kubeflow`, `longhorn`, `n8n`, `ollama`, `openbao`, `victorialogs`, `vmselect`.
+HTTPRoutes on `homelab-gateway`, all `<name>.madhan.app`: `adguard`, `alertmanager`, `argocd`, `chat`, `comfyui`, `falco`, `grafana`, `harbor`, `headlamp`, `home`, `hubble`, `kubeflow`, `longhorn`, `n8n`, `ollama`, `openbao`, `victorialogs`, `vmselect`.

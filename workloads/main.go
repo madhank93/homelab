@@ -55,6 +55,7 @@ var apps = []struct {
 	// Argo CD itself is deployed by Pulumi; this adds only its ServiceMonitors.
 	{"argocd-monitor", func(a cdk8s.App) { observability.NewArgoCDMonitorChart(a, "argocd-monitor-app") }},
 	{"netbird", func(a cdk8s.App) { networking.NewNetbirdPeerChart(a, "netbird-app", "netbird") }},
+	{"adguard", func(a cdk8s.App) { networking.NewAdGuardChart(a, "adguard-app", "adguard") }},
 	{"headlamp", func(a cdk8s.App) { management.NewHeadlampChart(a, "headlamp-app", "headlamp") }},
 	{"homepage", func(a cdk8s.App) { management.NewHomepageChart(a, "homepage-app", "homepage") }},
 	{"reloader", func(a cdk8s.App) { support.NewReloaderChart(a, "reloader-app", "reloader") }},

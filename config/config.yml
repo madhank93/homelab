@@ -14,7 +14,7 @@ cluster:
   lb_pool: {start: 192.168.1.220, stop: 192.168.1.230}
   # Fixed Service LB addresses (e.g. so CS2 players' `connect` never changes);
   # each must sit in lb_pool and off the node IPs that share its range.
-  lb_ips: {cs2: 192.168.1.230, ollama: 192.168.1.225}
+  lb_ips: {cs2: 192.168.1.230, ollama: 192.168.1.225, adguard: 192.168.1.226}
   # Host RAM 92 GB, 8 GB reserved for Proxmox: control planes 8 GB, workers 14 GB, GPU worker 16 GB.
   nodes:
     - {name: k8s-controller1, ip: 192.168.1.211, role: control, cores: 4, memory: 8192, disk: 50, cpu_units: 1024, balloon: 4096}

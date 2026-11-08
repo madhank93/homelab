@@ -73,7 +73,7 @@ echo "→ Enabling KV v2 at secret/..."
 bao secrets enable -path=secret kv-v2 >/dev/null 2>&1 || echo "  (secret/ already enabled)"
 
 # app:ServiceAccount that mounts the app's SecretProviderClass (namespace = app).
-roles="grafana:grafana harbor:secret-sync n8n:n8n netbird:default falco:secret-sync cs2:cs2 homepage:homepage headlamp:headlamp"
+roles="grafana:grafana harbor:secret-sync n8n:n8n netbird:default falco:secret-sync cs2:cs2 homepage:homepage headlamp:headlamp adguard:adguard"
 
 echo "→ Writing read-only policies and K8s auth roles..."
 for role in $roles; do
@@ -108,6 +108,10 @@ seed cs2 JOIN_PASSWORD "$(rand)"
 seed homepage AUTH_SECRET "$(rand)"
 seed homepage OAUTH_CLIENT_SECRET "${HOMEPAGE_OAUTH_CLIENT_SECRET:?missing from secrets/bootstrap.sops.yaml}"
 seed headlamp OIDC_CLIENT_SECRET "${KUBERNETES_OAUTH_CLIENT_SECRET:?missing from secrets/bootstrap.sops.yaml}"
+# AdGuard's config takes a bcrypt hash; the exporter logs in with the password.
+seed adguard ADMIN_PASSWORD "$(rand)"
+adguard_pw="$(jq -r '.data.data.ADMIN_PASSWORD' <<<"$(read_secret adguard)")"
+seed adguard ADMIN_PASSWORD_HASH "$(htpasswd -nbBC 10 "" "$adguard_pw" | tr -d ':\n')"
 
 cat <<'EOF'
 
